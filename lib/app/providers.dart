@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/repositories/analytics_repository.dart';
 import 'package:sielto/core/db/repositories/budget_period_repository.dart';
+import 'package:sielto/core/db/repositories/calendar_repository.dart';
 import 'package:sielto/core/db/repositories/category_repository.dart';
 import 'package:sielto/core/db/repositories/holiday_repository.dart';
 import 'package:sielto/core/db/repositories/income_repository.dart';
@@ -35,7 +37,9 @@ class Repositories {
        incomeRules = IncomeRuleRepository(db: db, clock: clock, userId: userId),
        periods = BudgetPeriodRepository(db: db, clock: clock, userId: userId),
        holidays = HolidayRepository(db: db, clock: clock),
-       customDays = CustomNonWorkingDayRepository(db: db, clock: clock) {
+       customDays = CustomNonWorkingDayRepository(db: db, clock: clock),
+       calendar = CalendarRepository(db: db),
+       analytics = AnalyticsRepository(db: db) {
     categories = CategoryRepository(
       db: db,
       clock: clock,
@@ -55,6 +59,11 @@ class Repositories {
   /// of these carries sync columns (spec 5.1.1, 5.1.2).
   final HolidayRepository holidays;
   final CustomNonWorkingDayRepository customDays;
+
+  /// Read-only aggregates over the tables above. Neither writes anything, so
+  /// neither takes the clock or the user id (spec 8.1, 8.2).
+  final CalendarRepository calendar;
+  final AnalyticsRepository analytics;
 
   late final CategoryRepository categories;
 }
@@ -144,32 +153,53 @@ final StreamProvider<List<CustomNonWorkingDay>> customNonWorkingDaysProvider =
 /// otherwise none — the spec's three priority levels, resolved here so the
 /// engine below never has to know about settings.
 final FutureProvider<ResolvedCalendar> resolvedCalendarProvider =
-    FutureProvider<ResolvedCalendar>((Ref ref) async {
-      final Space? space = ref.watch(currentSpaceProvider);
+    FutureProvider<ResolvedCalendar>((Ref ref) {
       final CalendarDate today = ref.watch(spaceClockProvider).today();
-
-      // Through the controllers, not the store: a store read would not rebuild
-      // this when the setting changes.
-      final String? defaultCountry = ref.watch(defaultCountryProvider);
-      final bool consented = ref.watch(holidayConsentProvider) ?? false;
-      final bool offline = ref.watch(offlineModeProvider);
-
-      // Marking a day non-working has to change the answer immediately.
-      ref.watch(customNonWorkingDaysProvider);
-
-      return ref
-          .watch(holidayServiceProvider)
-          .resolve(
-            countryCode: space?.countryCode ?? defaultCountry,
-            // The horizon, not the calendar year: a monthly cycle materialised
-            // in July already reaches into January (spec 5.1.1).
-            years: <int>{
-              today.year,
-              today.addMonths(PeriodService.incomeHorizonMonths).year,
-            },
-            mayFetch: !offline && consented,
-          );
+      return _resolveCalendar(ref, <int>{
+        // The horizon, not the calendar year: a monthly cycle materialised in
+        // July already reaches into January (spec 5.1.1).
+        today.year,
+        today.addMonths(PeriodService.incomeHorizonMonths).year,
+      });
     });
+
+/// The same calendar resolved for one arbitrary year.
+///
+/// The Calendar screen browses to any year, and [resolvedCalendarProvider]
+/// only covers the materialisation horizon — outside it, holidays would go
+/// unmarked (spec 8.1).
+///
+/// The type is inferred: `flutter_riverpod` does not export
+/// `FutureProviderFamily`.
+final calendarForYearProvider = FutureProvider.family<ResolvedCalendar, int>(
+  (Ref ref, int year) => _resolveCalendar(ref, <int>{year}),
+);
+
+/// Resolves the country and the fetch permission, then the calendar.
+///
+/// The country is the Space's own if it set one, otherwise the global default,
+/// otherwise none — the spec's three priority levels, resolved here so the
+/// engine below never has to know about settings.
+Future<ResolvedCalendar> _resolveCalendar(Ref ref, Set<int> years) {
+  final Space? space = ref.watch(currentSpaceProvider);
+
+  // Through the controllers, not the store: a store read would not rebuild
+  // this when the setting changes.
+  final String? defaultCountry = ref.watch(defaultCountryProvider);
+  final bool consented = ref.watch(holidayConsentProvider) ?? false;
+  final bool offline = ref.watch(offlineModeProvider);
+
+  // Marking a day non-working has to change the answer immediately.
+  ref.watch(customNonWorkingDaysProvider);
+
+  return ref
+      .watch(holidayServiceProvider)
+      .resolve(
+        countryCode: space?.countryCode ?? defaultCountry,
+        years: years,
+        mayFetch: !offline && consented,
+      );
+}
 
 /// Brings periods and future occurrences up to date for the open Space.
 ///

@@ -51,6 +51,27 @@ void main() {
     }
   });
 
+  test('upgrading from v1 creates the indexes v2 added', () async {
+    // The snapshot carries no indexes, so `migrateAndValidate` above cannot
+    // see this. A v2 branch that forgot the statement would leave every
+    // existing install without the index the autocomplete needs.
+    final InitializedSchema schema = await verifier.schemaAt(1);
+    final AppDatabase db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+    await verifier.migrateAndValidate(db, AppDatabase.currentSchemaVersion);
+
+    final List<QueryRow> rows = await db
+        .customSelect("SELECT name FROM sqlite_schema WHERE type = 'index'")
+        .get();
+    expect(
+      rows.map((QueryRow r) => r.read<String>('name')).toSet(),
+      containsAll(<String>[
+        'payments_space_title',
+        'payments_space_category_due_date',
+      ]),
+    );
+  });
+
   test('a fresh database reports the current user_version', () async {
     final AppDatabase db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);

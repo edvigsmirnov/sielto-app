@@ -280,6 +280,13 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
           ($IncomesTable t) => OrderingTerm(expression: t.id),
         ]);
 
+  /// One day's rows, live. The Calendar's Day view (spec 8.1); the aggregate
+  /// views never call this.
+  Stream<List<Income>> watchOnDay(String spaceId, CalendarDate day) =>
+      (_selectInSpace(spaceId)
+            ..where(($IncomesTable t) => t.expectedDate.equals(day.toIso())))
+          .watch();
+
   Future<List<Income>> forRule(String ruleId) =>
       (selectAlive()
             ..where(($IncomesTable t) => t.recurrenceRuleId.equals(ruleId)))

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/calendar/calendar_page.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/feed/feed_page.dart';
 
@@ -67,11 +67,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       body: PageView(
         controller: _controller,
         onPageChanged: (int index) => setState(() => _index = index),
-        children: const <Widget>[
-          DashboardPage(),
-          FeedPage(),
-          _CalendarPlaceholder(),
-        ],
+        children: const <Widget>[DashboardPage(), FeedPage(), CalendarPage()],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
@@ -96,14 +92,4 @@ class _MainShellState extends ConsumerState<MainShell> {
       ),
     );
   }
-}
-
-/// The Calendar screen lands in M6. The tab exists now so the navigation the
-/// spec describes is complete and does not have to be rebuilt later.
-class _CalendarPlaceholder extends StatelessWidget {
-  const _CalendarPlaceholder();
-
-  @override
-  Widget build(BuildContext context) =>
-      SafeArea(child: EmptyState(message: tr('calendar.notYet')));
 }

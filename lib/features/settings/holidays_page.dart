@@ -144,17 +144,23 @@ Future<void> markNonWorkingDay(
   BuildContext context,
   WidgetRef ref, {
   CalendarDate? initial,
+  bool askDate = true,
 }) async {
   final CalendarDate today = ref.read(spaceClockProvider).today();
-  final CalendarDate start = initial ?? today;
+  CalendarDate date = initial ?? today;
 
-  final DateTime? picked = await showDatePicker(
-    context: context,
-    initialDate: start.toUtcMidnight(),
-    firstDate: DateTime.utc(start.year - 5),
-    lastDate: DateTime.utc(start.year + 10),
-  );
-  if (picked == null || !context.mounted) return;
+  // The Calendar's long press already names the day, so asking for it again
+  // would be a picker opened on the answer (spec 8.1).
+  if (askDate) {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: date.toUtcMidnight(),
+      firstDate: DateTime.utc(date.year - 5),
+      lastDate: DateTime.utc(date.year + 10),
+    );
+    if (picked == null || !context.mounted) return;
+    date = CalendarDate.fromDateTime(picked);
+  }
 
   final String? title = await _askDayTitle(context);
   if (title == null) return;
@@ -163,7 +169,7 @@ Future<void> markNonWorkingDay(
       .read(repositoriesProvider)
       .customDays
       .add(
-        date: CalendarDate.fromDateTime(picked),
+        date: date,
         title: title.isEmpty ? null : title,
         // Bound to the country in force, so a day marked for Germany does not
         // silently apply to a Space kept on another country's calendar.

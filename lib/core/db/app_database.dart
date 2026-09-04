@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Bumped on every schema change, with a step in [migration] and a snapshot
   /// regenerated for the migration harness (spec 10.6).
-  static const int currentSchemaVersion = 1;
+  static const int currentSchemaVersion = 2;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -50,8 +50,13 @@ class AppDatabase extends _$AppDatabase {
       await _createIndexes(this);
     },
     onUpgrade: (Migrator m, int from, int to) async {
-      // v1 is the first version; there is nothing to step from yet. Every
-      // future version adds a branch here and never edits an earlier one.
+      // Every version adds a branch and never edits an earlier one.
+      if (from < 2) {
+        // v2 adds no column, only the index behind the title autocomplete
+        // (spec 8.2). `IF NOT EXISTS` throughout, so running the whole set is
+        // the same as running the new statement.
+        await _createIndexes(m.database);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       // Drift disables it per connection, and soft deletes lean on it.
@@ -82,6 +87,22 @@ Future<void> _createIndexes(DatabaseConnectionUser db) async {
   await db.customStatement(
     'CREATE INDEX IF NOT EXISTS budget_periods_space_start '
     'ON budget_periods (space_id, start_date) WHERE is_deleted = 0',
+  );
+
+  // Prefix lookups for the payment form's title autocomplete, which is the
+  // defence against level-2 fragmentation in Analytics (spec 8.2). The
+  // expression matches the grouping key exactly, so the index serves the query
+  // that offers a title and the one that later merges it.
+  await db.customStatement(
+    'CREATE INDEX IF NOT EXISTS payments_space_title '
+    'ON payments (space_id, lower(trim(title))) WHERE is_deleted = 0',
+  );
+
+  // Analytics reads a calendar range within one category (spec 8.2). The
+  // existing date index cannot serve it: the category is the selective term.
+  await db.customStatement(
+    'CREATE INDEX IF NOT EXISTS payments_space_category_due_date '
+    'ON payments (space_id, category_id, due_date) WHERE is_deleted = 0',
   );
 
   // The sync worker scans for unsent rows across tables.

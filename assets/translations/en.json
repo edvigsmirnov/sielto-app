@@ -272,7 +272,18 @@
     "flexible": "Flexible spending"
   },
   "calendar": {
-    "notYet": "The calendar arrives in a later version."
+    "view": {
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "year": "Year"
+    },
+    "previous": "Back",
+    "next": "Forward",
+    "noRecords": "Nothing planned",
+    "dayExpenses": "Expenses",
+    "dayIncome": "Income",
+    "dayEmpty": "Nothing on this day yet."
   },
   "coverage": {
     "covered": "Covered, with room to spare",

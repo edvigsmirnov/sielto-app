@@ -32,8 +32,29 @@ void main() {
 
   tearDown(() => db.close());
 
-  test('schema version is 1', () {
-    expect(db.schemaVersion, 1);
+  test('schema version is 2', () {
+    expect(db.schemaVersion, 2);
+  });
+
+  test('every index the queries lean on exists', () async {
+    // Drift's snapshot does not carry indexes created by raw statement, so the
+    // migration harness cannot see these: an index dropped from
+    // `_createIndexes` would pass every other test and only show up as a slow
+    // query on a real database.
+    final List<QueryRow> rows = await db
+        .customSelect("SELECT name FROM sqlite_schema WHERE type = 'index'")
+        .get();
+    expect(
+      rows.map((QueryRow r) => r.read<String>('name')).toSet(),
+      containsAll(<String>[
+        'categories_unique_active_title',
+        'payments_space_due_date',
+        'incomes_space_expected_date',
+        'budget_periods_space_start',
+        'payments_space_title',
+        'payments_space_category_due_date',
+      ]),
+    );
   });
 
   test('every syncable table carries all five sync columns', () async {

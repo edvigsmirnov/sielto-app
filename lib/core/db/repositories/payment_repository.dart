@@ -82,6 +82,13 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
             ]))
           .get();
 
+  /// One day's rows, live. The Calendar's Day view (spec 8.1); the aggregate
+  /// views never call this.
+  Stream<List<Payment>> watchOnDay(String spaceId, CalendarDate day) =>
+      (_selectInSpace(
+        spaceId,
+      )..where(($PaymentsTable t) => t.dueDate.equals(day.toIso()))).watch();
+
   Future<Payment?> byId(String id) =>
       (selectAlive()..where(($PaymentsTable t) => t.id.equals(id)))
           .getSingleOrNull();
@@ -394,6 +401,51 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     final List<Payment> rows = await onDay(spaceId, day);
     if (rows.isEmpty) return 0;
     return rows.last.sortOrder + sortOrderGap;
+  }
+
+  /// Titles this Space has used before, starting with [prefix].
+  ///
+  /// The defence against level-2 fragmentation in Analytics (spec 8.2): the
+  /// second level groups by free text, so the cheapest fix is to stop variant
+  /// spellings being typed in the first place.
+  ///
+  /// Grouped by `lower(trim(title))` and returning the most frequent spelling
+  /// of each — the same key the breakdown groups on, so what is offered here
+  /// is exactly what will be merged there.
+  Future<List<String>> titleSuggestions(
+    String spaceId,
+    String prefix, {
+    int limit = 8,
+  }) async {
+    final String trimmed = prefix.trim();
+    if (trimmed.isEmpty) return const <String>[];
+
+    final List<QueryRow> rows = await db
+        .customSelect(
+          'SELECT title, count(*) AS uses FROM payments '
+          'WHERE space_id = ?1 AND is_deleted = 0 '
+          "  AND lower(trim(title)) LIKE ?2 || '%' "
+          'GROUP BY lower(trim(title)), title '
+          'ORDER BY uses DESC, title ASC LIMIT ?3',
+          variables: <Variable<Object>>[
+            Variable<String>(spaceId),
+            Variable<String>(trimmed.toLowerCase()),
+            // Over-fetch: several spellings of one title collapse below.
+            Variable<int>(limit * 4),
+          ],
+          readsFrom: <ResultSetImplementation<HasResultSet, Object>>{
+            db.payments,
+          },
+        )
+        .get();
+
+    final Map<String, String> best = <String, String>{};
+    for (final QueryRow row in rows) {
+      final String title = row.read<String>('title');
+      best.putIfAbsent(title.trim().toLowerCase(), () => title);
+      if (best.length == limit) break;
+    }
+    return best.values.toList();
   }
 
   /// Whether any visible payment uses [categoryId]. Drives the category title

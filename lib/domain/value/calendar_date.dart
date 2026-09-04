@@ -79,6 +79,23 @@ class CalendarDate implements Comparable<CalendarDate> {
   /// 1 = Monday through 7 = Sunday, matching [DateTime.weekday].
   int get weekday => toUtcMidnight().weekday;
 
+  CalendarDate get firstOfMonth => CalendarDate(year, month, 1);
+
+  CalendarDate get lastOfMonth =>
+      CalendarDate.from(year, month + 1, 1).addDays(-1);
+
+  int get daysInMonth => lastOfMonth.day;
+
+  /// The Monday of this date's week.
+  ///
+  /// Monday-first is fixed rather than read from the locale: the grid is seven
+  /// columns wide and a locale-dependent first column would move every cell
+  /// under a language switch, while the design draws Mon-Sun.
+  CalendarDate get startOfWeek => addDays(1 - weekday);
+
+  bool isSameMonth(CalendarDate other) =>
+      year == other.year && month == other.month;
+
   bool isBefore(CalendarDate other) => compareTo(other) < 0;
 
   bool isAfter(CalendarDate other) => compareTo(other) > 0;
