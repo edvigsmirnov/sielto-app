@@ -55,6 +55,10 @@ class AnalyticsPage extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: context.sage.surface,
         title: Text(tr('analytics.title')),
+        // One way out, not two: the cross is the exit, and Navigator's own
+        // back arrow beside it would offer the same thing twice
+        // (design section 11).
+        automaticallyImplyLeading: false,
         actions: <Widget>[
           IconButton(
             // The cross, not a back arrow: level 1 closes the whole stack and
