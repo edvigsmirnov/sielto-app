@@ -460,5 +460,25 @@
     "refusedBeyondDeadline": "The date is fixed at {date}. Nothing can be dated after it.",
     "topUp": "Top up the budget",
     "beyondDeadline": "Past the date"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "open": "Detailed analytics",
+    "empty": "Nothing was spent in this range.",
+    "inRange": "in range",
+    "allTypes": "Everything",
+    "unit": {
+      "month": "Month",
+      "quarter": "Quarter",
+      "year": "Year"
+    },
+    "records": {
+      "one": "{} record",
+      "other": "{} records"
+    },
+    "averagesLink": "Averages for the range",
+    "averagesTitle": "Averages — {category}",
+    "averageTicket": "Average payment in the range",
+    "averagesHint": "A starting point when planning the next one — the figure to expect rather than a figure to guess."
   }
 }

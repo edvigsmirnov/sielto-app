@@ -21,6 +21,7 @@ import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/payments/category_picker.dart';
 import 'package:sielto/features/payments/recurrence.dart';
 import 'package:sielto/features/payments/series_scope_dialog.dart';
+import 'package:sielto/features/payments/title_field.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/periods/period_choice.dart';
@@ -503,11 +504,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                   ],
                   LabelledField(
                     label: tr('payment.fieldTitle'),
-                    child: TextField(
-                      controller: _title,
-                      textCapitalization: TextCapitalization.sentences,
-                      textInputAction: TextInputAction.next,
-                    ),
+                    child: TitleField(controller: _title, spaceId: space.id),
                   ),
                   const SizedBox(height: SageSpace.lg),
                   LabelledField(

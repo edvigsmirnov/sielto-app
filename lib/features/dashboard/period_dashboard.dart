@@ -176,6 +176,7 @@ class _PeriodBody extends ConsumerWidget {
             ],
           ),
         ),
+        const AnalyticsLink(),
       ],
     );
   }

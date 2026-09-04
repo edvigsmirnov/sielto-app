@@ -8,6 +8,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/analytics/analytics_page.dart';
 
 /// The dashboard blocks the three modes share (spec 4.4).
 ///
@@ -454,4 +455,27 @@ class ModeBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The way into Analytics, at the foot of every mode's Dashboard
+/// (design section 2).
+///
+/// A link rather than a fourth tab: Analytics opens from here and its level 1
+/// closes back to here, so the bottom bar keeps the three screens it has
+/// (design section 11). It sits last because it looks backwards at what was
+/// spent, while everything above it looks forward.
+class AnalyticsLink extends StatelessWidget {
+  const AnalyticsLink({super.key});
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: TextButton(
+      onPressed: () => AnalyticsPage.open(context),
+      child: Text(
+        '${tr('analytics.open')} \u2192',
+        style: Theme.of(context).textTheme.bodyLarge
+            ?.copyWith(color: context.sage.accentStrong),
+      ),
+    ),
+  );
 }

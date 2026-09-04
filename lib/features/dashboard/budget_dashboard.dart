@@ -89,6 +89,7 @@ class _Body extends ConsumerWidget {
           remaining: ledger.totalRemaining,
           money: money,
         ),
+        const AnalyticsLink(),
       ],
     );
   }
