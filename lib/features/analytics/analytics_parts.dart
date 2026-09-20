@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
@@ -197,6 +198,31 @@ class SliceRow extends StatelessWidget {
         if (onTap == null) row else InkWell(onTap: onTap, child: row),
         const Hairline(),
       ],
+    );
+  }
+}
+
+/// A right-swipe leaves the level, next to whatever button the header offers
+/// (spec 8.2, design section 11) — a shortcut, not a second visible exit.
+class SwipeBack extends StatelessWidget {
+  const SwipeBack({required this.child, super.key});
+
+  final Widget child;
+
+  static const double _velocityThreshold = 200;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragEnd: (DragEndDetails details) {
+        final double? velocity = details.primaryVelocity;
+        if (velocity != null && velocity > _velocityThreshold) {
+          HapticFeedback.lightImpact();
+          Navigator.of(context).maybePop();
+        }
+      },
+      child: child,
     );
   }
 }

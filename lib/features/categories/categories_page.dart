@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -59,6 +60,8 @@ class CategoriesPage extends ConsumerWidget {
                           onDelete: () =>
                               _delete(context, ref, categories[index]),
                         ),
+                    onReorderStart: (int index) =>
+                        HapticFeedback.mediumImpact(),
                     onReorderItem: (int oldIndex, int newIndex) =>
                         _reorder(ref, categories, oldIndex, newIndex),
                   ),

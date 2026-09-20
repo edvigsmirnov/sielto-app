@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -179,6 +180,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                           freeze: ref.watch(freezeLookupProvider),
                           beyondDeadline: source.beyondDeadline,
                         ),
+                    onReorderStart: (int index) =>
+                        HapticFeedback.mediumImpact(),
                     onReorderItem: (int oldIndex, int newIndex) => _onReorder(
                       items: items,
                       oldIndex: oldIndex,

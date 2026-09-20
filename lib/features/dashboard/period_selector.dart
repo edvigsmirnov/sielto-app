@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -38,59 +39,78 @@ class PeriodSelector extends ConsumerWidget {
     final DateLabels dates = DateLabels(context.locale.toString());
     final CalendarDate today = ref.watch(spaceClockProviderForLabel);
 
-    return Row(
-      children: <Widget>[
-        IconButton(
-          icon: const Icon(Icons.chevron_left),
-          tooltip: tr('period.previous'),
-          onPressed: previous == null ? null : () => _go(ref, previous),
-        ),
-        Expanded(
-          child: Column(
-            children: <Widget>[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Flexible(
-                    child: Text(
-                      _label(current, dates),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                  ),
-                  // The window was computed without that year's holidays and
-                  // can still narrow. Unobtrusive on purpose: the figures are
-                  // usable, just conservative (spec 5.1.1).
-                  if (current.holidayDataIncomplete) ...<Widget>[
-                    const SizedBox(width: SageSpace.xs),
-                    Tooltip(
-                      message: tr('holidays.incomplete'),
-                      child: Icon(
-                        Icons.cloud_off_outlined,
-                        size: 16,
-                        color: context.sage.inkLabel,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      // Swiping the dates does what the chevrons either side of them do — a
+      // shortcut, not a second control (spec 4.7).
+      onHorizontalDragEnd: (DragEndDetails details) {
+        final double? velocity = details.primaryVelocity;
+        if (velocity == null || velocity.abs() < _swipeVelocityThreshold) {
+          return;
+        }
+        final BudgetPeriod? target = velocity > 0 ? previous : next;
+        if (target == null) return;
+        HapticFeedback.selectionClick();
+        _go(ref, target);
+      },
+      child: Row(
+        children: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            tooltip: tr('period.previous'),
+            onPressed: previous == null ? null : () => _go(ref, previous),
+          ),
+          Expanded(
+            child: Column(
+              children: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Flexible(
+                      child: Text(
+                        _label(current, dates),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleSmall,
                       ),
                     ),
+                    // The window was computed without that year's holidays
+                    // and can still narrow. Unobtrusive on purpose: the
+                    // figures are usable, just conservative (spec 5.1.1).
+                    if (current.holidayDataIncomplete) ...<Widget>[
+                      const SizedBox(width: SageSpace.xs),
+                      Tooltip(
+                        message: tr('holidays.incomplete'),
+                        child: Icon(
+                          Icons.cloud_off_outlined,
+                          size: 16,
+                          color: context.sage.inkLabel,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-              if (_isCurrent(current, today))
-                Text(
-                  tr('period.current'),
-                  style: Theme.of(context).textTheme.labelSmall
-                      ?.copyWith(color: context.sage.accentStrong),
                 ),
-            ],
+                if (_isCurrent(current, today))
+                  Text(
+                    tr('period.current'),
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: context.sage.accentStrong),
+                  ),
+              ],
+            ),
           ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.chevron_right),
-          tooltip: tr('period.next'),
-          onPressed: next == null ? null : () => _go(ref, next),
-        ),
-      ],
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            tooltip: tr('period.next'),
+            onPressed: next == null ? null : () => _go(ref, next),
+          ),
+        ],
+      ),
     );
   }
+
+  /// Below this, a drag reads as a scroll or a mis-tap, not an intent to move
+  /// a whole cycle.
+  static const double _swipeVelocityThreshold = 200;
 
   void _go(WidgetRef ref, BudgetPeriod period) {
     ref.read(selectedPeriodIdProvider.notifier).select(period.id);

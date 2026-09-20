@@ -176,32 +176,32 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('a category opens level 2, and level 2 opens level 3', (
-    WidgetTester tester,
-  ) async {
-    await settle(tester);
+  testWidgets(
+    'a category opens level 2, with the range average shown inline',
+    (WidgetTester tester) async {
+      await settle(tester);
 
-    await tester.tap(find.text('Groceries').last);
-    await settle(tester, pumpWidget: false);
-    expect(tester.takeException(), isNull);
-    // Level 2 groups by title inside the category, largest first.
-    expect(find.text('Rewe'), findsOneWidget);
-    expect(find.text('Lidl'), findsOneWidget);
-    expect(
-      tester.getRect(find.text('Rewe')).top,
-      lessThan(tester.getRect(find.text('Lidl')).top),
-    );
-    // And nothing from the other category leaked in.
-    expect(find.text('Ticket'), findsNothing);
+      await tester.tap(find.text('Groceries').last);
+      await settle(tester, pumpWidget: false);
+      expect(tester.takeException(), isNull);
+      // Level 2 groups by title inside the category, largest first.
+      expect(find.text('Rewe'), findsOneWidget);
+      expect(find.text('Lidl'), findsOneWidget);
+      expect(
+        tester.getRect(find.text('Rewe')).top,
+        lessThan(tester.getRect(find.text('Lidl')).top),
+      );
+      // And nothing from the other category leaked in.
+      expect(find.text('Ticket'), findsNothing);
 
-    await tester.tap(find.text('Averages for the range'));
-    await settle(tester, pumpWidget: false);
-    expect(tester.takeException(), isNull);
-    expect(find.text('Average payment in the range'), findsOneWidget);
-    // 980 over two payments.
-    expect(find.textContaining('490'), findsWidgets);
-    await unmount(tester);
-  });
+      // The average ticket sits in the summary card up top — no second level
+      // to tap into.
+      expect(find.text('Average payment in the range'), findsOneWidget);
+      // 980 over two payments.
+      expect(find.textContaining('490'), findsWidgets);
+      await unmount(tester);
+    },
+  );
 
   testWidgets('the range arrows move off the month and it empties', (
     WidgetTester tester,

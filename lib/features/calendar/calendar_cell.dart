@@ -149,10 +149,11 @@ class _HatchPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
-      // The token at low opacity: the hatch sits under the figures and must not
-      // compete with them for contrast.
-      ..color = color.withValues(alpha: 0.45)
-      ..strokeWidth = 1;
+      // 0.45 read as near-invisible on the light card background (sand over
+      // white barely moves the channels); dark theme's light-on-dark stripe
+      // had headroom to spare.
+      ..color = color.withValues(alpha: 0.75)
+      ..strokeWidth = 1.5;
     for (double x = -size.height; x < size.width; x += _spacing) {
       canvas.drawLine(
         Offset(x, size.height),

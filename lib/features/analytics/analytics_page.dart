@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -65,45 +66,50 @@ class AnalyticsPage extends ConsumerWidget {
             // returns to the Dashboard it was opened from.
             icon: const Icon(Icons.close),
             tooltip: tr('common.close'),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).pop();
+            },
           ),
         ],
       ),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
-          children: <Widget>[
-            const RangeHeader(),
-            const SizedBox(height: SageSpace.md),
-            const ExpenseTypeFilter(),
-            const SizedBox(height: SageSpace.lg),
-            if (slices.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: SageSpace.xl),
-                child: EmptyState(message: tr('analytics.empty')),
-              )
-            else ...<Widget>[
-              _Summary(
-                slices: slices,
-                total: total,
-                categories: categories,
-                money: money,
-              ),
+      body: SwipeBack(
+        child: SafeArea(
+          top: false,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
+            children: <Widget>[
+              const RangeHeader(),
+              const SizedBox(height: SageSpace.md),
+              const ExpenseTypeFilter(),
               const SizedBox(height: SageSpace.lg),
-              for (final AnalyticsSlice slice in slices)
-                _CategoryRow(
-                  slice: slice,
-                  category: categories[slice.key],
+              if (slices.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: SageSpace.xl),
+                  child: EmptyState(message: tr('analytics.empty')),
+                )
+              else ...<Widget>[
+                _Summary(
+                  slices: slices,
+                  total: total,
+                  categories: categories,
                   money: money,
-                  onTap: () => CategoryBreakdownPage.open(
-                    context,
-                    categoryKey: slice.key,
-                    title: _labelOf(slice, categories),
-                  ),
                 ),
+                const SizedBox(height: SageSpace.lg),
+                for (final AnalyticsSlice slice in slices)
+                  _CategoryRow(
+                    slice: slice,
+                    category: categories[slice.key],
+                    money: money,
+                    onTap: () => CategoryBreakdownPage.open(
+                      context,
+                      categoryKey: slice.key,
+                      title: _labelOf(slice, categories),
+                    ),
+                  ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

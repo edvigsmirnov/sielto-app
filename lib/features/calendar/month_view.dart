@@ -1,5 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:sielto/core/db/repositories/calendar_repository.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
@@ -154,7 +155,10 @@ class _DayCell extends StatelessWidget {
       onTap: onTap,
       // The position is carried through so the menu opens under the finger
       // rather than at the corner of the grid.
-      onLongPressStart: (LongPressStartDetails d) => onHold(d.globalPosition),
+      onLongPressStart: (LongPressStartDetails d) {
+        HapticFeedback.mediumImpact();
+        onHold(d.globalPosition);
+      },
       child: CellDecoration(
         mark: mark,
         isSelected: isSelected,

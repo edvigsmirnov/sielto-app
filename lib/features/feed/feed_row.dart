@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
@@ -135,6 +136,7 @@ class FeedRowTile extends StatelessWidget {
         isDestructive: false,
       ),
       confirmDismiss: (DismissDirection direction) async {
+        HapticFeedback.mediumImpact();
         if (direction == DismissDirection.startToEnd) {
           onDelete();
         } else {
@@ -159,7 +161,10 @@ class FeedRowTile extends StatelessWidget {
               Expanded(
                 child: InkWell(
                   onTap: onTap,
-                  onLongPress: onLongPress,
+                  onLongPress: () {
+                    HapticFeedback.mediumImpact();
+                    onLongPress();
+                  },
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
                       SageSpace.gutter,
@@ -310,7 +315,12 @@ class _PaidCircle extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     return GestureDetector(
-      onTap: onTap,
+      onTap: onTap == null
+          ? null
+          : () {
+              HapticFeedback.selectionClick();
+              onTap!();
+            },
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: 26,

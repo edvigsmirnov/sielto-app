@@ -96,38 +96,55 @@ class PeriodService {
       calendar: calendar,
     );
 
-    final ({int created, int removed, int updated}) periods =
-        await _syncPeriods(
-          space: space,
-          computed: computed,
-          today: today,
-          settled: await _settledAnchors(space, rules),
-        );
-    // Occurrences stop at the last known boundary, so every materialised row
-    // has a period to belong to. The horizon moves them along together.
-    final List<BudgetPeriod> boundaries = await repos.periods.incomeDrivenIn(
-      space.id,
-    );
-    // The floor is the start of the cycle the user is in, not today. The
-    // anchor of the current period has usually already arrived — a Space
-    // created mid-month is the ordinary case — and without its row the period
-    // it opens has no amount and reads as uncomputable (spec 4.7).
-    final BudgetPeriod? current = boundaries
-        .where(
-          (BudgetPeriod p) =>
-              !p.startDate.isAfter(today) &&
-              (p.endDate == null || !p.endDate!.isBefore(today)),
-        )
-        .firstOrNull;
+    // One transaction for the whole refresh. Written row by row outside one,
+    // every stream this feeds (incomes, periods, payments) re-emits after
+    // each individual write, and every dependent provider recomputes that
+    // many times over — which is what turned entering one regular income
+    // into a visibly slow dashboard (spec 4.7 does not require this to be
+    // instant, but there is no reason it shouldn't be).
+    final ({
+      ({int created, int removed, int updated}) periods,
+      int materialised,
+      int rebound,
+    })
+    result = await repos.db.transaction(() async {
+      final ({int created, int removed, int updated}) periods =
+          await _syncPeriods(
+            space: space,
+            computed: computed,
+            today: today,
+            settled: await _settledAnchors(space, rules),
+          );
+      // Occurrences stop at the last known boundary, so every materialised row
+      // has a period to belong to. The horizon moves them along together.
+      final List<BudgetPeriod> boundaries = await repos.periods.incomeDrivenIn(
+        space.id,
+      );
+      // The floor is the start of the cycle the user is in, not today. The
+      // anchor of the current period has usually already arrived — a Space
+      // created mid-month is the ordinary case — and without its row the
+      // period it opens has no amount and reads as uncomputable (spec 4.7).
+      final BudgetPeriod? current = boundaries
+          .where(
+            (BudgetPeriod p) =>
+                !p.startDate.isAfter(today) &&
+                (p.endDate == null || !p.endDate!.isBefore(today)),
+          )
+          .firstOrNull;
 
-    final int materialised = await _materialiseIncomes(
-      space: space,
-      rules: rules,
-      today: today,
-      from: current?.startDate ?? today,
-      horizonEnd: boundaries.isEmpty ? null : boundaries.last.endDate,
-    );
-    final int rebound = await _bindRecords(space);
+      final int materialised = await _materialiseIncomes(
+        space: space,
+        rules: rules,
+        today: today,
+        from: current?.startDate ?? today,
+        horizonEnd: boundaries.isEmpty ? null : boundaries.last.endDate,
+      );
+      final int rebound = await _bindRecords(space);
+      return (periods: periods, materialised: materialised, rebound: rebound);
+    });
+    final ({int created, int removed, int updated}) periods = result.periods;
+    final int materialised = result.materialised;
+    final int rebound = result.rebound;
 
     return PeriodRefresh(
       periodsCreated: periods.created,

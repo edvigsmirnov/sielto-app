@@ -10,12 +10,12 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/analytics/analytics_data.dart';
 import 'package:sielto/features/analytics/analytics_parts.dart';
-import 'package:sielto/features/analytics/category_averages_page.dart';
 
 /// Analytics level 2: one category, broken down by title (spec 8.2).
 ///
-/// A back arrow, not a cross: levels 2 and 3 move inside the analytics stack
-/// and only level 1 closes it (design section 11).
+/// The average ticket sits in the summary card up top rather than behind a
+/// separate level: planning needs it the moment the category opens, not after
+/// another tap.
 class CategoryBreakdownPage extends ConsumerWidget {
   const CategoryBreakdownPage({
     required this.categoryKey,
@@ -43,6 +43,8 @@ class CategoryBreakdownPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final Space space = ref.space;
+    final SageColors sage = context.sage;
+    final TextTheme text = Theme.of(context).textTheme;
     final MoneyFormat money = MoneyFormat(
       locale: context.locale.toString(),
       currencyCode: space.currencyCode,
@@ -50,77 +52,66 @@ class CategoryBreakdownPage extends ConsumerWidget {
     final List<AnalyticsSlice> slices =
         ref.watch(titleTotalsProvider(categoryKey)).value ??
         const <AnalyticsSlice>[];
+    final int count = slices.fold(
+      0,
+      (int sum, AnalyticsSlice s) => sum + s.count,
+    );
     final Decimal total = slices.fold(
       Decimal.zero,
       (Decimal sum, AnalyticsSlice s) => sum + s.total,
     );
+    // The mean payment across the category, not the mean of the means: a
+    // payee billed once must not weigh as much as one billed thirty times.
+    final Decimal average = count == 0
+        ? Decimal.zero
+        : (total / Decimal.fromInt(count)).toDecimal(
+            scaleOnInfinitePrecision: 2,
+          );
 
     return Scaffold(
-      backgroundColor: context.sage.surface,
+      backgroundColor: sage.surface,
       appBar: AppBar(
-        backgroundColor: context.sage.surface,
+        backgroundColor: sage.surface,
         title: Text(title, overflow: TextOverflow.ellipsis),
       ),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
-          children: <Widget>[
-            const RangeCaption(),
-            const SizedBox(height: SageSpace.xs),
-            Center(
-              child: Text(
-                money.format(total),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-            const SizedBox(height: SageSpace.lg),
-            if (slices.isEmpty)
-              EmptyState(message: tr('analytics.empty'))
-            else ...<Widget>[
-              for (final AnalyticsSlice slice in slices)
-                SliceRow(label: slice.label, value: money.format(slice.total)),
+      body: SwipeBack(
+        child: SafeArea(
+          top: false,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
+            children: <Widget>[
+              const RangeCaption(),
+              const SizedBox(height: SageSpace.xs),
+              Center(child: Text(money.format(total), style: text.titleLarge)),
               const SizedBox(height: SageSpace.md),
-              // Level 3 is the same rows read as averages, so it hangs off the
-              // bottom of this list rather than sitting in the header.
-              _AveragesLink(
-                onTap: () => CategoryAveragesPage.open(
-                  context,
-                  categoryKey: categoryKey,
-                  title: title,
+              if (slices.isNotEmpty)
+                SageCard(
+                  color: sage.accentTint,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        tr('analytics.averageTicket'),
+                        style: text.bodySmall?.copyWith(
+                          color: sage.accentStrong,
+                        ),
+                      ),
+                      const SizedBox(height: SageSpace.xs),
+                      Text(money.format(average), style: text.titleMedium),
+                    ],
+                  ),
                 ),
-              ),
+              const SizedBox(height: SageSpace.lg),
+              if (slices.isEmpty)
+                EmptyState(message: tr('analytics.empty'))
+              else
+                for (final AnalyticsSlice slice in slices)
+                  SliceRow(
+                    label: slice.label,
+                    value: money.format(slice.total),
+                  ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AveragesLink extends StatelessWidget {
-  const _AveragesLink({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                tr('analytics.averagesLink'),
-                style: Theme.of(context).textTheme.bodyLarge
-                    ?.copyWith(color: sage.accentStrong),
-              ),
-            ),
-            Icon(Icons.chevron_right, color: sage.inkLabel),
-          ],
+          ),
         ),
       ),
     );

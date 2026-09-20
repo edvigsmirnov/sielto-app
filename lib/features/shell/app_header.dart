@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
@@ -49,11 +50,14 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
         child: _ProfileAvatar(
           size: _controlSize,
           initial: ref.watch(profileInitialProvider),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (BuildContext _) => const SettingsPage(),
-            ),
-          ),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (BuildContext _) => const SettingsPage(),
+              ),
+            );
+          },
         ),
       ),
       // Tapping the Space name opens the switcher. The spec names this as
@@ -91,12 +95,15 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
             size: _controlSize,
             icon: Icons.settings_outlined,
             tooltip: tr('spaceSettings.title'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (BuildContext _) =>
-                    SpaceSettingsPage(space: ref.space),
-              ),
-            ),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (BuildContext _) =>
+                      SpaceSettingsPage(space: ref.space),
+                ),
+              );
+            },
           ),
         ),
       ],

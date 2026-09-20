@@ -476,9 +476,6 @@
       "one": "{} record",
       "other": "{} records"
     },
-    "averagesLink": "Averages for the range",
-    "averagesTitle": "Averages — {category}",
-    "averageTicket": "Average payment in the range",
-    "averagesHint": "A starting point when planning the next one — the figure to expect rather than a figure to guess."
+    "averageTicket": "Average payment in the range"
   }
 }

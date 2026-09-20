@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -114,6 +115,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
               title: Text(tr('settings.accountSettings')),
               trailing: const Icon(Icons.chevron_right, size: 20),
               onTap: () {
+                HapticFeedback.lightImpact();
                 Navigator.of(context).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -140,6 +142,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
   }
 
   void _openSettings(Space space) {
+    HapticFeedback.lightImpact();
     Navigator.of(context).pop();
     Navigator.of(context).push(
       MaterialPageRoute<void>(
