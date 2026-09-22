@@ -62,6 +62,9 @@ class PeriodSelector extends ConsumerWidget {
           ),
           Expanded(
             child: Column(
+              // Its own height: as the Feed's bottom bar it is offered the
+              // whole screen.
+              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
