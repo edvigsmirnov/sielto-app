@@ -65,6 +65,31 @@ class HolidayBundle {
         if (d is String) CalendarDate.parse(d),
     ];
   }
+
+  /// Holiday names for [countryCode], every bundled year: the English name,
+  /// then the local one where it differs. Empty when none are bundled.
+  Future<Map<CalendarDate, List<String>>> namesFor(String countryCode) async {
+    final String raw;
+    try {
+      raw = await rootBundle.loadString(
+        '$_dir/names/${countryCode.toUpperCase()}.json',
+      );
+    } on Object {
+      return const <CalendarDate, List<String>>{};
+    }
+    final Object? parsed = jsonDecode(raw);
+    if (parsed is! Map<String, dynamic>) {
+      return const <CalendarDate, List<String>>{};
+    }
+    return <CalendarDate, List<String>>{
+      for (final MapEntry<String, dynamic> e in parsed.entries)
+        if (e.value is List<dynamic>)
+          CalendarDate.parse(e.key): <String>[
+            for (final Object? n in e.value as List<dynamic>)
+              if (n is String) n,
+          ],
+    };
+  }
 }
 
 /// Public holidays from date.nager.at (spec 5.1.1).

@@ -49,6 +49,16 @@ void main() {
     expect(onDisk, codes.toSet(), reason: 'index.json and the files disagree');
   });
 
+  test('every bundled holiday has a name', () async {
+    for (final String code in bundledCodes()) {
+      final Map<CalendarDate, List<String>> names = await bundle.namesFor(code);
+      final List<CalendarDate> dates = (await bundle.datesFor(code, 2026))!;
+      for (final CalendarDate d in dates) {
+        expect(names[d], isNotEmpty, reason: '$code $d has no name');
+      }
+    }
+  });
+
   test('every bundled country loads through the asset bundle', () async {
     for (final String code in bundledCodes()) {
       final List<CalendarDate>? dates = await bundle.datesFor(code, 2026);

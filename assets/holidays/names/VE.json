@@ -1,0 +1,808 @@
+{
+  "2026-01-01": [
+    "New Year's Day",
+    "Día de Año Nuevo"
+  ],
+  "2026-01-06": [
+    "Epiphany",
+    "Día de Reyes"
+  ],
+  "2026-01-14": [
+    "Feast of the Divina Pastora",
+    "Día de la Divina Pastora"
+  ],
+  "2026-01-15": [
+    "Teacher's Day",
+    "Día del Maestro"
+  ],
+  "2026-02-12": [
+    "Youth Day",
+    "Día de la Juventud"
+  ],
+  "2026-02-16": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2026-02-17": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2026-03-08": [
+    "International Women's Day",
+    "Dia Internacional de la Mujer"
+  ],
+  "2026-03-19": [
+    "Saint Joseph's Day",
+    "Día de San José"
+  ],
+  "2026-03-21": [
+    "Slavery Abolition Anniversary",
+    "Día del abolición de la esclavitud"
+  ],
+  "2026-03-31": [
+    "Foundation anniversary Day of San Cristóbal, Táchira",
+    "Aniversario del fundacion del San Cristóbal"
+  ],
+  "2026-04-19": [
+    "Beginning of the Independence Movement",
+    "Proclamación de la Independencia"
+  ],
+  "2026-05-01": [
+    "Labour Day",
+    "Día del Trabajador"
+  ],
+  "2026-05-03": [
+    "Festival of the Crosses",
+    "Día del Cruz del Mayo"
+  ],
+  "2026-05-10": [
+    "Mother's Day",
+    "Día de las Madres"
+  ],
+  "2026-05-14": [
+    "Ascension Day",
+    "Día de la Ascención"
+  ],
+  "2026-06-04": [
+    "Corpus Christi"
+  ],
+  "2026-06-21": [
+    "Father's Day",
+    "Día de los Padres"
+  ],
+  "2026-06-24": [
+    "Anniversary of the Battle of Carabobo",
+    "Aniversario de la Batalla de Carabobo"
+  ],
+  "2026-06-27": [
+    "Journalists' Day",
+    "Día del Periodista y aniversario de la instauración del Decreto de Instrucción pública gratuita y obligatoria"
+  ],
+  "2026-07-05": [
+    "Independence Day",
+    "Cinco de julio"
+  ],
+  "2026-07-19": [
+    "Children's Day",
+    "Dia del niño"
+  ],
+  "2026-07-24": [
+    "Simón Bolívar's Birthday",
+    "Natalicio del Libertador Simón Bolívar"
+  ],
+  "2026-07-25": [
+    "Caracas City Foundation Day",
+    "Aniversario del fundacion del Caracas"
+  ],
+  "2026-08-03": [
+    "Flag Day",
+    "Día de la Bandera"
+  ],
+  "2026-09-08": [
+    "Birth of the Blessed Virgin Mary",
+    "Día del Virgen del Valle"
+  ],
+  "2026-09-24": [
+    "Feast of the Our Lady of Mercy",
+    "Día del Virgen de las Mercedes"
+  ],
+  "2026-10-12": [
+    "Day of Indigenous Resistance",
+    "Día de la Resistencia Indígena"
+  ],
+  "2026-11-01": [
+    "All Saints' Day",
+    "Día de Todos los Santos"
+  ],
+  "2026-11-02": [
+    "All Souls' Day",
+    "Día de los fieles difuntos"
+  ],
+  "2026-12-08": [
+    "Immaculate Conception Day",
+    "La Inmaculada Concepción"
+  ],
+  "2026-12-24": [
+    "Christmas Eve",
+    "Nochebuena"
+  ],
+  "2026-12-25": [
+    "Christmas Day",
+    "Navidad"
+  ],
+  "2026-12-31": [
+    "New Year's Eve",
+    "Nochevieja"
+  ],
+  "2027-01-01": [
+    "New Year's Day",
+    "Día de Año Nuevo"
+  ],
+  "2027-01-06": [
+    "Epiphany",
+    "Día de Reyes"
+  ],
+  "2027-01-14": [
+    "Feast of the Divina Pastora",
+    "Día de la Divina Pastora"
+  ],
+  "2027-01-15": [
+    "Teacher's Day",
+    "Día del Maestro"
+  ],
+  "2027-02-08": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2027-02-09": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2027-02-12": [
+    "Youth Day",
+    "Día de la Juventud"
+  ],
+  "2027-03-08": [
+    "International Women's Day",
+    "Dia Internacional de la Mujer"
+  ],
+  "2027-03-19": [
+    "Saint Joseph's Day",
+    "Día de San José"
+  ],
+  "2027-03-21": [
+    "Slavery Abolition Anniversary",
+    "Día del abolición de la esclavitud"
+  ],
+  "2027-03-31": [
+    "Foundation anniversary Day of San Cristóbal, Táchira",
+    "Aniversario del fundacion del San Cristóbal"
+  ],
+  "2027-04-19": [
+    "Beginning of the Independence Movement",
+    "Proclamación de la Independencia"
+  ],
+  "2027-05-01": [
+    "Labour Day",
+    "Día del Trabajador"
+  ],
+  "2027-05-03": [
+    "Festival of the Crosses",
+    "Día del Cruz del Mayo"
+  ],
+  "2027-05-06": [
+    "Ascension Day",
+    "Día de la Ascención"
+  ],
+  "2027-05-09": [
+    "Mother's Day",
+    "Día de las Madres"
+  ],
+  "2027-05-27": [
+    "Corpus Christi"
+  ],
+  "2027-06-20": [
+    "Father's Day",
+    "Día de los Padres"
+  ],
+  "2027-06-24": [
+    "Anniversary of the Battle of Carabobo",
+    "Aniversario de la Batalla de Carabobo"
+  ],
+  "2027-06-27": [
+    "Journalists' Day",
+    "Día del Periodista y aniversario de la instauración del Decreto de Instrucción pública gratuita y obligatoria"
+  ],
+  "2027-07-05": [
+    "Independence Day",
+    "Cinco de julio"
+  ],
+  "2027-07-18": [
+    "Children's Day",
+    "Dia del niño"
+  ],
+  "2027-07-24": [
+    "Simón Bolívar's Birthday",
+    "Natalicio del Libertador Simón Bolívar"
+  ],
+  "2027-07-25": [
+    "Caracas City Foundation Day",
+    "Aniversario del fundacion del Caracas"
+  ],
+  "2027-08-03": [
+    "Flag Day",
+    "Día de la Bandera"
+  ],
+  "2027-09-08": [
+    "Birth of the Blessed Virgin Mary",
+    "Día del Virgen del Valle"
+  ],
+  "2027-09-24": [
+    "Feast of the Our Lady of Mercy",
+    "Día del Virgen de las Mercedes"
+  ],
+  "2027-10-12": [
+    "Day of Indigenous Resistance",
+    "Día de la Resistencia Indígena"
+  ],
+  "2027-11-01": [
+    "All Saints' Day",
+    "Día de Todos los Santos"
+  ],
+  "2027-11-02": [
+    "All Souls' Day",
+    "Día de los fieles difuntos"
+  ],
+  "2027-12-08": [
+    "Immaculate Conception Day",
+    "La Inmaculada Concepción"
+  ],
+  "2027-12-24": [
+    "Christmas Eve",
+    "Nochebuena"
+  ],
+  "2027-12-25": [
+    "Christmas Day",
+    "Navidad"
+  ],
+  "2027-12-31": [
+    "New Year's Eve",
+    "Nochevieja"
+  ],
+  "2028-01-01": [
+    "New Year's Day",
+    "Día de Año Nuevo"
+  ],
+  "2028-01-06": [
+    "Epiphany",
+    "Día de Reyes"
+  ],
+  "2028-01-14": [
+    "Feast of the Divina Pastora",
+    "Día de la Divina Pastora"
+  ],
+  "2028-01-15": [
+    "Teacher's Day",
+    "Día del Maestro"
+  ],
+  "2028-02-12": [
+    "Youth Day",
+    "Día de la Juventud"
+  ],
+  "2028-02-28": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2028-02-29": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2028-03-08": [
+    "International Women's Day",
+    "Dia Internacional de la Mujer"
+  ],
+  "2028-03-19": [
+    "Saint Joseph's Day",
+    "Día de San José"
+  ],
+  "2028-03-21": [
+    "Slavery Abolition Anniversary",
+    "Día del abolición de la esclavitud"
+  ],
+  "2028-03-31": [
+    "Foundation anniversary Day of San Cristóbal, Táchira",
+    "Aniversario del fundacion del San Cristóbal"
+  ],
+  "2028-04-19": [
+    "Beginning of the Independence Movement",
+    "Proclamación de la Independencia"
+  ],
+  "2028-05-01": [
+    "Labour Day",
+    "Día del Trabajador"
+  ],
+  "2028-05-03": [
+    "Festival of the Crosses",
+    "Día del Cruz del Mayo"
+  ],
+  "2028-05-14": [
+    "Mother's Day",
+    "Día de las Madres"
+  ],
+  "2028-05-25": [
+    "Ascension Day",
+    "Día de la Ascención"
+  ],
+  "2028-06-15": [
+    "Corpus Christi"
+  ],
+  "2028-06-18": [
+    "Father's Day",
+    "Día de los Padres"
+  ],
+  "2028-06-24": [
+    "Anniversary of the Battle of Carabobo",
+    "Aniversario de la Batalla de Carabobo"
+  ],
+  "2028-06-27": [
+    "Journalists' Day",
+    "Día del Periodista y aniversario de la instauración del Decreto de Instrucción pública gratuita y obligatoria"
+  ],
+  "2028-07-05": [
+    "Independence Day",
+    "Cinco de julio"
+  ],
+  "2028-07-16": [
+    "Children's Day",
+    "Dia del niño"
+  ],
+  "2028-07-24": [
+    "Simón Bolívar's Birthday",
+    "Natalicio del Libertador Simón Bolívar"
+  ],
+  "2028-07-25": [
+    "Caracas City Foundation Day",
+    "Aniversario del fundacion del Caracas"
+  ],
+  "2028-08-03": [
+    "Flag Day",
+    "Día de la Bandera"
+  ],
+  "2028-09-08": [
+    "Birth of the Blessed Virgin Mary",
+    "Día del Virgen del Valle"
+  ],
+  "2028-09-24": [
+    "Feast of the Our Lady of Mercy",
+    "Día del Virgen de las Mercedes"
+  ],
+  "2028-10-12": [
+    "Day of Indigenous Resistance",
+    "Día de la Resistencia Indígena"
+  ],
+  "2028-11-01": [
+    "All Saints' Day",
+    "Día de Todos los Santos"
+  ],
+  "2028-11-02": [
+    "All Souls' Day",
+    "Día de los fieles difuntos"
+  ],
+  "2028-12-08": [
+    "Immaculate Conception Day",
+    "La Inmaculada Concepción"
+  ],
+  "2028-12-24": [
+    "Christmas Eve",
+    "Nochebuena"
+  ],
+  "2028-12-25": [
+    "Christmas Day",
+    "Navidad"
+  ],
+  "2028-12-31": [
+    "New Year's Eve",
+    "Nochevieja"
+  ],
+  "2029-01-01": [
+    "New Year's Day",
+    "Día de Año Nuevo"
+  ],
+  "2029-01-06": [
+    "Epiphany",
+    "Día de Reyes"
+  ],
+  "2029-01-14": [
+    "Feast of the Divina Pastora",
+    "Día de la Divina Pastora"
+  ],
+  "2029-01-15": [
+    "Teacher's Day",
+    "Día del Maestro"
+  ],
+  "2029-02-12": [
+    "Youth Day / Carnival",
+    "Día de la Juventud / Carnaval"
+  ],
+  "2029-02-13": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2029-03-08": [
+    "International Women's Day",
+    "Dia Internacional de la Mujer"
+  ],
+  "2029-03-19": [
+    "Saint Joseph's Day",
+    "Día de San José"
+  ],
+  "2029-03-21": [
+    "Slavery Abolition Anniversary",
+    "Día del abolición de la esclavitud"
+  ],
+  "2029-03-31": [
+    "Foundation anniversary Day of San Cristóbal, Táchira",
+    "Aniversario del fundacion del San Cristóbal"
+  ],
+  "2029-04-19": [
+    "Beginning of the Independence Movement",
+    "Proclamación de la Independencia"
+  ],
+  "2029-05-01": [
+    "Labour Day",
+    "Día del Trabajador"
+  ],
+  "2029-05-03": [
+    "Festival of the Crosses",
+    "Día del Cruz del Mayo"
+  ],
+  "2029-05-10": [
+    "Ascension Day",
+    "Día de la Ascención"
+  ],
+  "2029-05-13": [
+    "Mother's Day",
+    "Día de las Madres"
+  ],
+  "2029-05-31": [
+    "Corpus Christi"
+  ],
+  "2029-06-17": [
+    "Father's Day",
+    "Día de los Padres"
+  ],
+  "2029-06-24": [
+    "Anniversary of the Battle of Carabobo",
+    "Aniversario de la Batalla de Carabobo"
+  ],
+  "2029-06-27": [
+    "Journalists' Day",
+    "Día del Periodista y aniversario de la instauración del Decreto de Instrucción pública gratuita y obligatoria"
+  ],
+  "2029-07-05": [
+    "Independence Day",
+    "Cinco de julio"
+  ],
+  "2029-07-15": [
+    "Children's Day",
+    "Dia del niño"
+  ],
+  "2029-07-24": [
+    "Simón Bolívar's Birthday",
+    "Natalicio del Libertador Simón Bolívar"
+  ],
+  "2029-07-25": [
+    "Caracas City Foundation Day",
+    "Aniversario del fundacion del Caracas"
+  ],
+  "2029-08-03": [
+    "Flag Day",
+    "Día de la Bandera"
+  ],
+  "2029-09-08": [
+    "Birth of the Blessed Virgin Mary",
+    "Día del Virgen del Valle"
+  ],
+  "2029-09-24": [
+    "Feast of the Our Lady of Mercy",
+    "Día del Virgen de las Mercedes"
+  ],
+  "2029-10-12": [
+    "Day of Indigenous Resistance",
+    "Día de la Resistencia Indígena"
+  ],
+  "2029-11-01": [
+    "All Saints' Day",
+    "Día de Todos los Santos"
+  ],
+  "2029-11-02": [
+    "All Souls' Day",
+    "Día de los fieles difuntos"
+  ],
+  "2029-12-08": [
+    "Immaculate Conception Day",
+    "La Inmaculada Concepción"
+  ],
+  "2029-12-24": [
+    "Christmas Eve",
+    "Nochebuena"
+  ],
+  "2029-12-25": [
+    "Christmas Day",
+    "Navidad"
+  ],
+  "2029-12-31": [
+    "New Year's Eve",
+    "Nochevieja"
+  ],
+  "2030-01-01": [
+    "New Year's Day",
+    "Día de Año Nuevo"
+  ],
+  "2030-01-06": [
+    "Epiphany",
+    "Día de Reyes"
+  ],
+  "2030-01-14": [
+    "Feast of the Divina Pastora",
+    "Día de la Divina Pastora"
+  ],
+  "2030-01-15": [
+    "Teacher's Day",
+    "Día del Maestro"
+  ],
+  "2030-02-12": [
+    "Youth Day",
+    "Día de la Juventud"
+  ],
+  "2030-03-04": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2030-03-05": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2030-03-08": [
+    "International Women's Day",
+    "Dia Internacional de la Mujer"
+  ],
+  "2030-03-19": [
+    "Saint Joseph's Day",
+    "Día de San José"
+  ],
+  "2030-03-21": [
+    "Slavery Abolition Anniversary",
+    "Día del abolición de la esclavitud"
+  ],
+  "2030-03-31": [
+    "Foundation anniversary Day of San Cristóbal, Táchira",
+    "Aniversario del fundacion del San Cristóbal"
+  ],
+  "2030-04-19": [
+    "Beginning of the Independence Movement",
+    "Proclamación de la Independencia"
+  ],
+  "2030-05-01": [
+    "Labour Day",
+    "Día del Trabajador"
+  ],
+  "2030-05-03": [
+    "Festival of the Crosses",
+    "Día del Cruz del Mayo"
+  ],
+  "2030-05-12": [
+    "Mother's Day",
+    "Día de las Madres"
+  ],
+  "2030-05-30": [
+    "Ascension Day",
+    "Día de la Ascención"
+  ],
+  "2030-06-16": [
+    "Father's Day",
+    "Día de los Padres"
+  ],
+  "2030-06-20": [
+    "Corpus Christi"
+  ],
+  "2030-06-24": [
+    "Anniversary of the Battle of Carabobo",
+    "Aniversario de la Batalla de Carabobo"
+  ],
+  "2030-06-27": [
+    "Journalists' Day",
+    "Día del Periodista y aniversario de la instauración del Decreto de Instrucción pública gratuita y obligatoria"
+  ],
+  "2030-07-05": [
+    "Independence Day",
+    "Cinco de julio"
+  ],
+  "2030-07-21": [
+    "Children's Day",
+    "Dia del niño"
+  ],
+  "2030-07-24": [
+    "Simón Bolívar's Birthday",
+    "Natalicio del Libertador Simón Bolívar"
+  ],
+  "2030-07-25": [
+    "Caracas City Foundation Day",
+    "Aniversario del fundacion del Caracas"
+  ],
+  "2030-08-03": [
+    "Flag Day",
+    "Día de la Bandera"
+  ],
+  "2030-09-08": [
+    "Birth of the Blessed Virgin Mary",
+    "Día del Virgen del Valle"
+  ],
+  "2030-09-24": [
+    "Feast of the Our Lady of Mercy",
+    "Día del Virgen de las Mercedes"
+  ],
+  "2030-10-12": [
+    "Day of Indigenous Resistance",
+    "Día de la Resistencia Indígena"
+  ],
+  "2030-11-01": [
+    "All Saints' Day",
+    "Día de Todos los Santos"
+  ],
+  "2030-11-02": [
+    "All Souls' Day",
+    "Día de los fieles difuntos"
+  ],
+  "2030-12-08": [
+    "Immaculate Conception Day",
+    "La Inmaculada Concepción"
+  ],
+  "2030-12-24": [
+    "Christmas Eve",
+    "Nochebuena"
+  ],
+  "2030-12-25": [
+    "Christmas Day",
+    "Navidad"
+  ],
+  "2030-12-31": [
+    "New Year's Eve",
+    "Nochevieja"
+  ],
+  "2031-01-01": [
+    "New Year's Day",
+    "Día de Año Nuevo"
+  ],
+  "2031-01-06": [
+    "Epiphany",
+    "Día de Reyes"
+  ],
+  "2031-01-14": [
+    "Feast of the Divina Pastora",
+    "Día de la Divina Pastora"
+  ],
+  "2031-01-15": [
+    "Teacher's Day",
+    "Día del Maestro"
+  ],
+  "2031-02-12": [
+    "Youth Day",
+    "Día de la Juventud"
+  ],
+  "2031-02-24": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2031-02-25": [
+    "Carnival",
+    "Carnaval"
+  ],
+  "2031-03-08": [
+    "International Women's Day",
+    "Dia Internacional de la Mujer"
+  ],
+  "2031-03-19": [
+    "Saint Joseph's Day",
+    "Día de San José"
+  ],
+  "2031-03-21": [
+    "Slavery Abolition Anniversary",
+    "Día del abolición de la esclavitud"
+  ],
+  "2031-03-31": [
+    "Foundation anniversary Day of San Cristóbal, Táchira",
+    "Aniversario del fundacion del San Cristóbal"
+  ],
+  "2031-04-19": [
+    "Beginning of the Independence Movement",
+    "Proclamación de la Independencia"
+  ],
+  "2031-05-01": [
+    "Labour Day",
+    "Día del Trabajador"
+  ],
+  "2031-05-03": [
+    "Festival of the Crosses",
+    "Día del Cruz del Mayo"
+  ],
+  "2031-05-11": [
+    "Mother's Day",
+    "Día de las Madres"
+  ],
+  "2031-05-22": [
+    "Ascension Day",
+    "Día de la Ascención"
+  ],
+  "2031-06-12": [
+    "Corpus Christi"
+  ],
+  "2031-06-15": [
+    "Father's Day",
+    "Día de los Padres"
+  ],
+  "2031-06-24": [
+    "Anniversary of the Battle of Carabobo",
+    "Aniversario de la Batalla de Carabobo"
+  ],
+  "2031-06-27": [
+    "Journalists' Day",
+    "Día del Periodista y aniversario de la instauración del Decreto de Instrucción pública gratuita y obligatoria"
+  ],
+  "2031-07-05": [
+    "Independence Day",
+    "Cinco de julio"
+  ],
+  "2031-07-20": [
+    "Children's Day",
+    "Dia del niño"
+  ],
+  "2031-07-24": [
+    "Simón Bolívar's Birthday",
+    "Natalicio del Libertador Simón Bolívar"
+  ],
+  "2031-07-25": [
+    "Caracas City Foundation Day",
+    "Aniversario del fundacion del Caracas"
+  ],
+  "2031-08-03": [
+    "Flag Day",
+    "Día de la Bandera"
+  ],
+  "2031-09-08": [
+    "Birth of the Blessed Virgin Mary",
+    "Día del Virgen del Valle"
+  ],
+  "2031-09-24": [
+    "Feast of the Our Lady of Mercy",
+    "Día del Virgen de las Mercedes"
+  ],
+  "2031-10-12": [
+    "Day of Indigenous Resistance",
+    "Día de la Resistencia Indígena"
+  ],
+  "2031-11-01": [
+    "All Saints' Day",
+    "Día de Todos los Santos"
+  ],
+  "2031-11-02": [
+    "All Souls' Day",
+    "Día de los fieles difuntos"
+  ],
+  "2031-12-08": [
+    "Immaculate Conception Day",
+    "La Inmaculada Concepción"
+  ],
+  "2031-12-24": [
+    "Christmas Eve",
+    "Nochebuena"
+  ],
+  "2031-12-25": [
+    "Christmas Day",
+    "Navidad"
+  ],
+  "2031-12-31": [
+    "New Year's Eve",
+    "Nochevieja"
+  ]
+}

@@ -8,8 +8,9 @@ observed in one federal state must not shift a national pay date.
     python tools/fetch_holidays.py . --years 2026 2031
     python tools/fetch_holidays.py . --codes RU DE US
 
-Writes one <CODE>.json per bundled country, index.json listing those codes, and
-countries.json listing every country the API knows.
+Writes one <CODE>.json per bundled country, names/<CODE>.json with the names of
+those days, index.json listing the codes, and countries.json listing every
+country the API knows.
 """
 
 from __future__ import annotations
@@ -52,16 +53,28 @@ def get(url: str) -> object:
     raise AssertionError('unreachable')
 
 
-def nationwide_dates(code: str, year: int) -> list[str]:
+def nationwide(code: str, year: int) -> dict[str, list[str]]:
+    """Date -> [English name, local name]; the local one only when it differs.
+
+    Two holidays on one date are joined into one name.
+    """
     entries = get(f'{API}/PublicHolidays/{year}/{code}')
     if not isinstance(entries, list):
         raise ValueError(f'{code} {year}: unexpected payload')
-    dates = {
-        e['date']
-        for e in entries
-        if isinstance(e, dict) and e.get('global') is True and e.get('date')
-    }
-    return sorted(dates)
+    names: dict[str, list[list[str]]] = {}
+    for e in entries:
+        if not (isinstance(e, dict) and e.get('global') is True
+                and e.get('date')):
+            continue
+        names.setdefault(e['date'], []).append(
+            [e.get('name') or '', e.get('localName') or ''])
+    out: dict[str, list[str]] = {}
+    for date, pairs in sorted(names.items()):
+        english = ' / '.join(dict.fromkeys(p[0] for p in pairs if p[0]))
+        local = ' / '.join(dict.fromkeys(p[1] for p in pairs if p[1]))
+        out[date] = [english] if not local or local == english else [
+            english, local]
+    return out
 
 
 def write_country_names(out: pathlib.Path, locales: list[str],
@@ -144,13 +157,17 @@ def main() -> int:
     first, last = args.years
     years = list(range(first, last + 1))
 
+    names_dir = out / 'names'
+    names_dir.mkdir(exist_ok=True)
     written: list[str] = []
     for code in codes:
         by_year: dict[str, list[str]] = {}
+        names: dict[str, list[str]] = {}
         for year in years:
-            dates = nationwide_dates(code, year)
-            if dates:
-                by_year[str(year)] = dates
+            days = nationwide(code, year)
+            if days:
+                by_year[str(year)] = list(days)
+                names.update(days)
             time.sleep(0.2)
         if not by_year:
             print(f'{code}: no nationwide days in {first}-{last}, skipped',
@@ -158,6 +175,9 @@ def main() -> int:
             continue
         path = out / f'{code}.json'
         path.write_text(json.dumps(by_year, indent=2) + '\n', encoding='utf-8')
+        (names_dir / f'{code}.json').write_text(
+            json.dumps(names, ensure_ascii=False, indent=2) + '\n',
+            encoding='utf-8')
         written.append(code)
         total = sum(len(v) for v in by_year.values())
         print(f'{code}: {total} days across {len(by_year)} years')
@@ -171,6 +191,10 @@ def main() -> int:
     for stale in sorted(p for p in out.glob('*.json') if p.name not in keep):
         stale.unlink()
         print(f'removed stale {stale.name}', file=sys.stderr)
+    for stale in sorted(p for p in names_dir.glob('*.json')
+                        if p.stem not in written):
+        stale.unlink()
+        print(f'removed stale names/{stale.name}', file=sys.stderr)
 
     countries = get(f'{API}/AvailableCountries')
     if isinstance(countries, list):
