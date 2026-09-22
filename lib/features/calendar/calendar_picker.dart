@@ -127,7 +127,11 @@ class _GrainPickerState extends State<_GrainPicker> {
         if (widget.weeks)
           for (final CalendarDate monday in _weeksOf(_page))
             _Choice(
-              label: dates.range(monday, monday.addDays(6)),
+              // Both months spelt out, so every row reads alike rather than
+              // only the two that cross a month.
+              label:
+                  '${dates.dayMonth(monday)} – '
+                  '${dates.dayMonth(monday.addDays(6))}',
               isSelected: widget.selected.startOfWeek == monday,
               onTap: () => Navigator.of(context).pop(monday),
             )
