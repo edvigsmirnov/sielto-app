@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
+import 'package:sielto/core/settings/local_settings.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
@@ -104,14 +106,24 @@ class _PeriodBody extends ConsumerWidget {
     );
     final DateLabels dates = DateLabels(locale);
 
-    return ListView(
+    final bool atBottom = ref
+        .watch(controlsAtBottomProvider)
+        .contains(ControlsScreen.dashboard);
+
+    final Widget list = ListView(
       padding: const EdgeInsets.all(SageSpace.gutter),
       children: <Widget>[
-        const PeriodSelector(),
-        const SizedBox(height: SageSpace.sm),
+        if (!atBottom) ...<Widget>[
+          const PeriodSelector(),
+          const SizedBox(height: SageSpace.sm),
+        ],
         FreezeBanner(period: ledger.period),
         if (!ledger.isComputable)
           _FloatingAnchorCard(ledger: ledger, money: money)
+        // No income in the cycle: a remainder would only be the payments
+        // negated.
+        else if (!ledger.hasIncome)
+          SpentFigure(amount: ledger.totalPaid, money: money)
         else ...<Widget>[
           MainFigure(
             label: tr('dashboard.freeMoney'),
@@ -177,6 +189,16 @@ class _PeriodBody extends ConsumerWidget {
           ),
         ),
         const AnalyticsLink(),
+      ],
+    );
+    if (!atBottom) return list;
+    return Column(
+      children: <Widget>[
+        Expanded(child: list),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: SageSpace.gutter),
+          child: PeriodSelector(),
+        ),
       ],
     );
   }

@@ -1,19 +1,23 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/calendar_repository.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
+import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_data.dart';
+import 'package:sielto/features/calendar/calendar_legend.dart';
 import 'package:sielto/features/calendar/calendar_menu.dart';
+import 'package:sielto/features/calendar/calendar_picker.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
 import 'package:sielto/features/calendar/day_view.dart';
@@ -54,6 +58,27 @@ class CalendarPage extends ConsumerWidget {
       currencyCode: space.currencyCode,
     );
 
+    final bool atBottom = ref
+        .watch(controlsAtBottomProvider)
+        .contains(ControlsScreen.calendar);
+    final Widget controls = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          _ViewSwitcher(view: view),
+          const SizedBox(height: SageSpace.sm),
+          _DateNavigator(
+            view: view,
+            selected: selected,
+            today: today,
+            dates: dates,
+            money: money,
+          ),
+        ],
+      ),
+    );
+
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: AppHeader(title: tr('nav.calendar')),
@@ -68,37 +93,76 @@ class CalendarPage extends ConsumerWidget {
               child: const Icon(Icons.add),
             )
           : null,
+      // Above the bottom bar, where a thumb browsing the grid already is.
+      bottomNavigationBar: atBottom
+          ? SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.only(top: SageSpace.sm),
+                child: controls,
+              ),
+            )
+          : null,
       body: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
-          child: Column(
-            children: <Widget>[
-              _ViewSwitcher(view: view),
+        child: Column(
+          children: <Widget>[
+            if (!atBottom) ...<Widget>[
+              controls,
               const SizedBox(height: SageSpace.sm),
-              _DateNavigator(
-                view: view,
-                selected: selected,
-                today: today,
-                dates: dates,
-              ),
-              const SizedBox(height: SageSpace.sm),
-              // No freeze banner. The banner speaks for one period and the
-              // Calendar is not bound to one; a frozen record still says so
-              // itself in the Day view (spec 5.5).
-              Expanded(
-                child: _Body(
+            ],
+            // No freeze banner. The banner speaks for one period and the
+            // Calendar is not bound to one; a frozen record still says so
+            // itself in the Day view (spec 5.5).
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: SageSpace.gutter,
+                ),
+                child: _Swipe(
                   view: view,
-                  selected: selected,
-                  today: today,
-                  money: money,
-                  dates: dates,
+                  child: _Body(
+                    view: view,
+                    selected: selected,
+                    today: today,
+                    money: money,
+                    dates: dates,
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+/// A horizontal swipe steps the scale on screen, like the arrows (spec 8.1).
+///
+/// Not in the Day view, where a swipe on a row marks or deletes it.
+class _Swipe extends ConsumerWidget {
+  const _Swipe({required this.view, required this.child});
+
+  final CalendarView view;
+  final Widget child;
+
+  static const double _velocityThreshold = 200;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (view == CalendarView.day) return child;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragEnd: (DragEndDetails details) {
+        final double? velocity = details.primaryVelocity;
+        if (velocity == null || velocity.abs() < _velocityThreshold) return;
+        HapticFeedback.selectionClick();
+        ref
+            .read(selectedDateProvider.notifier)
+            .step(view, velocity > 0 ? -1 : 1);
+      },
+      child: child,
     );
   }
 }
@@ -131,28 +195,46 @@ class _DateNavigator extends ConsumerWidget {
     required this.selected,
     required this.today,
     required this.dates,
+    required this.money,
   });
 
   final CalendarView view;
   final CalendarDate selected;
   final CalendarDate today;
   final DateLabels dates;
+  final MoneyFormat money;
+
+  /// The two outer slots are the same width either way, so the arrows and the
+  /// label never shift when one of them empties.
+  static const double _slot = 48;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final SageColors sage = context.sage;
+    final CalendarViewController scales = ref.read(
+      calendarViewProvider.notifier,
+    );
     void step(int by) => ref.read(selectedDateProvider.notifier).step(view, by);
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
+        SizedBox(
+          width: _slot,
+          child: scales.canGoBack()
+              ? IconButton(
+                  onPressed: scales.back,
+                  icon: const Icon(Icons.arrow_back),
+                  tooltip: tr('calendar.back'),
+                )
+              : null,
+        ),
         IconButton(
           onPressed: () => step(-1),
           icon: const Icon(Icons.chevron_left),
           color: sage.accentStrong,
           tooltip: tr('calendar.previous'),
         ),
-        Flexible(
+        Expanded(
           child: InkWell(
             onTap: () => _pick(context, ref),
             borderRadius: BorderRadius.circular(SageRadius.chip),
@@ -177,6 +259,26 @@ class _DateNavigator extends ConsumerWidget {
           color: sage.accentStrong,
           tooltip: tr('calendar.next'),
         ),
+        SizedBox(
+          width: _slot,
+          // Only the scales that draw decorated cells have anything to key.
+          child: view == CalendarView.month || view == CalendarView.week
+              ? IconButton(
+                  onPressed: () => showCalendarLegend(
+                    context,
+                    mode: ref.read(currentSpaceProvider)!.budgetMode,
+                    money: money,
+                    loadThreshold: ref
+                        .read(dayMarksProvider(view))
+                        .value
+                        ?.threshold,
+                  ),
+                  icon: const Icon(Icons.info_outline),
+                  color: sage.inkLabel,
+                  tooltip: tr('calendar.legend.title'),
+                )
+              : null,
+        ),
       ],
     );
   }
@@ -194,20 +296,16 @@ class _DateNavigator extends ConsumerWidget {
     };
   }
 
-  /// The picker jumps rather than steps. Year and Month get a whole calendar
-  /// too: landing on the right day is harmless, since the scale on screen is
-  /// what decides how the date is read.
+  /// The picker jumps rather than steps, at the grain of the scale on screen.
   Future<void> _pick(BuildContext context, WidgetRef ref) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selected.toUtcMidnight(),
-      firstDate: DateTime.utc(today.year - 10),
-      lastDate: DateTime.utc(today.year + 10),
+    final CalendarDate? picked = await pickCalendarDate(
+      context,
+      view: view,
+      selected: selected,
+      today: today,
     );
     if (picked == null) return;
-    ref
-        .read(selectedDateProvider.notifier)
-        .select(CalendarDate.fromDateTime(picked));
+    ref.read(selectedDateProvider.notifier).select(picked);
   }
 }
 
@@ -244,7 +342,7 @@ class _Body extends ConsumerWidget {
         dates: dates,
         onOpenMonth: (CalendarDate month) {
           ref.read(selectedDateProvider.notifier).select(month);
-          ref.read(calendarViewProvider.notifier).select(CalendarView.month);
+          ref.read(calendarViewProvider.notifier).open(CalendarView.month);
         },
       );
     }
@@ -257,7 +355,7 @@ class _Body extends ConsumerWidget {
 
     void openDay(CalendarDate date) {
       ref.read(selectedDateProvider.notifier).select(date);
-      ref.read(calendarViewProvider.notifier).select(CalendarView.day);
+      ref.read(calendarViewProvider.notifier).open(CalendarView.day);
     }
 
     void holdDay(CalendarDate date, Offset at) =>
@@ -322,6 +420,7 @@ class _DayBody extends ConsumerWidget {
       density: ref.watch(feedDensityProvider),
       money: money,
       isFrozen: ref.watch(freezeLookupProvider).isFrozen,
+      dayOff: ref.watch(dayOffNamesProvider(day)),
       onEdit: (FeedRecord r) => _edit(context, r),
       onTogglePaid: (FeedRecord r) => _togglePaid(context, ref, r),
       onDelete: (FeedRecord r) => _delete(context, ref, r),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/features/calendar/calendar_page.dart';
+import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/feed/feed_page.dart';
 
@@ -59,36 +60,54 @@ class _MainShellState extends ConsumerState<MainShell> {
     });
   }
 
+  static const int _calendarTab = 2;
+
+  /// System Back steps back inside the app before it leaves it: out of a Day
+  /// or Month the Calendar zoomed into, then to the Dashboard.
+  void _back() {
+    if (_index == _calendarTab &&
+        ref.read(calendarViewProvider.notifier).back()) {
+      return;
+    }
+    if (_index != 0) _goTo(0);
+  }
+
   @override
   Widget build(BuildContext context) {
     _resetOnSpaceChange();
-    return Scaffold(
-      backgroundColor: context.sage.surface,
-      body: PageView(
-        controller: _controller,
-        onPageChanged: (int index) => setState(() => _index = index),
-        children: const <Widget>[DashboardPage(), FeedPage(), CalendarPage()],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: _goTo,
-        destinations: <NavigationDestination>[
-          NavigationDestination(
-            icon: const Icon(Icons.donut_small_outlined),
-            selectedIcon: const Icon(Icons.donut_small),
-            label: tr('nav.dashboard'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.list_alt_outlined),
-            selectedIcon: const Icon(Icons.list_alt),
-            label: tr('nav.feed'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.calendar_month_outlined),
-            selectedIcon: const Icon(Icons.calendar_month),
-            label: tr('nav.calendar'),
-          ),
-        ],
+    return PopScope(
+      canPop: _index == 0,
+      onPopInvokedWithResult: (bool didPop, Object? _) {
+        if (!didPop) _back();
+      },
+      child: Scaffold(
+        backgroundColor: context.sage.surface,
+        body: PageView(
+          controller: _controller,
+          onPageChanged: (int index) => setState(() => _index = index),
+          children: const <Widget>[DashboardPage(), FeedPage(), CalendarPage()],
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: _goTo,
+          destinations: <NavigationDestination>[
+            NavigationDestination(
+              icon: const Icon(Icons.donut_small_outlined),
+              selectedIcon: const Icon(Icons.donut_small),
+              label: tr('nav.dashboard'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.list_alt_outlined),
+              selectedIcon: const Icon(Icons.list_alt),
+              label: tr('nav.feed'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.calendar_month_outlined),
+              selectedIcon: const Icon(Icons.calendar_month),
+              label: tr('nav.calendar'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -153,6 +153,33 @@ class MainFigure extends StatelessWidget {
   }
 }
 
+/// What has been paid, in place of a remainder when there is nothing to take
+/// one from: a Budget with no fund, a cycle with no income.
+class SpentFigure extends StatelessWidget {
+  const SpentFigure({required this.amount, required this.money, super.key});
+
+  final Decimal amount;
+  final MoneyFormat money;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+      child: Column(
+        children: <Widget>[
+          Text(
+            tr('budget.spent'),
+            style: text.bodyMedium?.copyWith(color: context.sage.inkLabel),
+          ),
+          const SizedBox(height: SageSpace.xs),
+          Text(money.format(amount), style: text.displaySmall),
+        ],
+      ),
+    );
+  }
+}
+
 /// Mandatory first, then everything: two answers from one walk (spec 4.4).
 ///
 /// Only the base remainder appears here. The net figure is the hero above, and

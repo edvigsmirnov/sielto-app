@@ -124,6 +124,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       moneyEndsAt: source.moneyEndsAt,
     );
     final List<FeedItem> items = _items;
+    final bool atBottom = ref
+        .watch(controlsAtBottomProvider)
+        .contains(ControlsScreen.feed);
+    final Widget selector = PeriodSelector(
+      onJump: (BudgetPeriod p) => _scrollToPeriod(p, items),
+    );
 
     return Scaffold(
       backgroundColor: context.sage.surface,
@@ -133,13 +139,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           source: source,
           money: money,
           hasOverdue: !ref.watch(overduePaymentsProvider).isEmpty,
-          selector: source.byPeriod
-              ? PeriodSelector(
-                  onJump: (BudgetPeriod p) => _scrollToPeriod(p, items),
-                )
-              : null,
+          selector: source.byPeriod && !atBottom ? selector : null,
         ),
       ),
+      bottomNavigationBar: source.byPeriod && atBottom
+          ? SafeArea(top: false, child: selector)
+          : null,
       floatingActionButton: FloatingActionButton(
         key: _addButton,
         backgroundColor: context.sage.accent,

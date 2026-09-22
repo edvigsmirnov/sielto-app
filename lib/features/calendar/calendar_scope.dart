@@ -43,10 +43,35 @@ calendarViewProvider = NotifierProvider<CalendarViewController, CalendarView>(
 );
 
 class CalendarViewController extends Notifier<CalendarView> {
-  @override
-  CalendarView build() => CalendarView.month;
+  /// The scales a tap zoomed in from, so Back can zoom out again (spec 8.1).
+  final List<CalendarView> _trail = <CalendarView>[];
 
-  void select(CalendarView view) => state = view;
+  @override
+  CalendarView build() {
+    _trail.clear();
+    return CalendarView.month;
+  }
+
+  /// A scale chosen on the switcher: nothing to go back to.
+  void select(CalendarView view) {
+    _trail.clear();
+    state = view;
+  }
+
+  /// A tap into a day or a month: Back returns to the current scale.
+  void open(CalendarView view) {
+    _trail.add(state);
+    state = view;
+  }
+
+  bool canGoBack() => _trail.isNotEmpty;
+
+  /// Returns to the scale [open] left, or false when there is none.
+  bool back() {
+    if (_trail.isEmpty) return false;
+    state = _trail.removeLast();
+    return true;
+  }
 }
 
 /// The days one view covers, inclusive.

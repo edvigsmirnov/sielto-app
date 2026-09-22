@@ -60,7 +60,8 @@ class PeriodLedger {
   final Decimal totalPlanned;
   final Decimal totalPaid;
 
-  /// The next inflow of this period that has not arrived yet.
+  /// The next inflow not arrived yet, from today or the period's start,
+  /// whichever is later — in this period or a later one.
   final Income? nearestIncome;
 
   /// Incomes in the period whose amount is unknown, so they contribute
@@ -202,9 +203,14 @@ PeriodLedger buildPeriodLedger({
     if (p.isPaid) paid += p.amount;
   }
 
+  // Across every cycle: a period with no income of its own still has a next
+  // one, in the period after.
+  final CalendarDate from = period.startDate.isAfter(today)
+      ? period.startDate
+      : today;
   Income? nearest;
-  for (final Income i in inflows) {
-    if (i.isPaid || i.expectedDate.isBefore(today)) continue;
+  for (final Income i in incomes) {
+    if (i.isPaid || i.expectedDate.isBefore(from)) continue;
     if (nearest == null || i.expectedDate.isBefore(nearest.expectedDate)) {
       nearest = i;
     }
@@ -329,12 +335,14 @@ final Provider<AsyncValue<List<PeriodLedger>>> periodLedgersProvider =
 /// The figures for the selected period, picked out of the set above.
 final Provider<AsyncValue<PeriodLedger>> periodLedgerProvider =
     Provider<AsyncValue<PeriodLedger>>((Ref ref) {
-      final BudgetPeriod? period = ref.watch(selectedPeriodProvider);
-      if (period == null) return const AsyncValue<PeriodLedger>.loading();
-
+      // Watched before the period: it is what triggers the refresh, and the
+      // first anchor has no period until the refresh creates one.
       final AsyncValue<List<PeriodLedger>> all = ref.watch(
         periodLedgersProvider,
       );
+      final BudgetPeriod? period = ref.watch(selectedPeriodProvider);
+      if (period == null) return const AsyncValue<PeriodLedger>.loading();
+
       final Object? error = all.error;
       if (error != null) {
         return AsyncValue<PeriodLedger>.error(error, StackTrace.current);

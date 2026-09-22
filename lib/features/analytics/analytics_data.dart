@@ -4,16 +4,17 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/analytics_repository.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/analytics/analytics_range.dart';
+import 'package:sielto/features/space/space_ledger.dart';
 
 /// Level 1: what each category cost over the selected range (spec 8.2).
 ///
-/// Rebuilt when the range or the type filter changes, and — because it watches
-/// the payments stream — when a record is edited while Analytics is open.
+/// Rebuilt when the range, the type filter or any payment changes.
 final FutureProvider<List<AnalyticsSlice>> categoryTotalsProvider =
     FutureProvider<List<AnalyticsSlice>>((Ref ref) async {
       final Space? space = ref.watch(currentSpaceProvider);
       if (space == null) return const <AnalyticsSlice>[];
       final AnalyticsRange range = ref.watch(analyticsRangeProvider);
+      ref.watch(spacePaymentsProvider);
 
       return ref
           .watch(repositoriesProvider)
@@ -39,6 +40,7 @@ final titleTotalsProvider = FutureProvider.family<List<AnalyticsSlice>, String>(
     final Space? space = ref.watch(currentSpaceProvider);
     if (space == null) return const <AnalyticsSlice>[];
     final AnalyticsRange range = ref.watch(analyticsRangeProvider);
+    ref.watch(spacePaymentsProvider);
 
     return ref
         .watch(repositoriesProvider)

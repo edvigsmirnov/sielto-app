@@ -32,6 +32,7 @@ class LocalSettings {
   static const String _keyDefaultCountry = 'default_country_code';
   static const String _keyHolidayConsent = 'holiday_fetch_consent';
   static const String _keyOfflineMode = 'fully_offline';
+  static const String _keyControlsAtBottom = 'controls_at_bottom';
 
   final SharedPreferences _prefs;
 
@@ -133,6 +134,22 @@ class LocalSettings {
   Future<void> setFullyOffline({required bool value}) =>
       _prefs.setBool(_keyOfflineMode, value);
 
+  /// Screens whose period controls sit above the bottom bar. The Calendar by
+  /// default: it is browsed more than it is read.
+  Set<ControlsScreen> get controlsAtBottom {
+    final List<String>? names = _prefs.getStringList(_keyControlsAtBottom);
+    if (names == null) return const <ControlsScreen>{ControlsScreen.calendar};
+    return <ControlsScreen>{
+      for (final ControlsScreen s in ControlsScreen.values)
+        if (names.contains(s.name)) s,
+    };
+  }
+
+  Future<void> setControlsAtBottom(Set<ControlsScreen> screens) =>
+      _prefs.setStringList(_keyControlsAtBottom, <String>[
+        for (final ControlsScreen s in screens) s.name,
+      ]);
+
   /// Enums are stored by name, not index: a reordered enum would otherwise
   /// reinterpret a stored value.
   T? _readEnum<T extends Enum>(String key, List<T> values) {
@@ -144,3 +161,6 @@ class LocalSettings {
     return null;
   }
 }
+
+/// The screens that have period controls to place.
+enum ControlsScreen { dashboard, feed, calendar }

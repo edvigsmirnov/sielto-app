@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/features/analytics/analytics_parts.dart';
 
 /// [SwipeBack] in isolation, no database involved: a fast rightward swipe
@@ -8,6 +9,7 @@ void main() {
   Future<void> pumpPushed(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        theme: SageTheme.light,
         home: Builder(
           builder: (BuildContext context) => ElevatedButton(
             onPressed: () => Navigator.of(context).push(

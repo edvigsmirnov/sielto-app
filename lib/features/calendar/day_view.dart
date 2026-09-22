@@ -31,6 +31,7 @@ class DayView extends StatelessWidget {
     required this.onDelete,
     required this.onHoldRecord,
     required this.isFrozen,
+    this.dayOff,
     super.key,
   });
 
@@ -47,6 +48,9 @@ class DayView extends StatelessWidget {
 
   /// Whether a record's period has closed (spec 5.5).
   final bool Function(String? budgetPeriodId) isFrozen;
+
+  /// Null on a working day; otherwise the holiday's names, empty when unknown.
+  final List<String>? dayOff;
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +77,10 @@ class DayView extends StatelessWidget {
 
     return Column(
       children: <Widget>[
+        if (dayOff != null) ...<Widget>[
+          _DayOffBanner(names: dayOff!),
+          const SizedBox(height: SageSpace.md),
+        ],
         Row(
           children: <Widget>[
             Expanded(
@@ -133,6 +141,49 @@ class DayView extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// The holiday the day is, above and apart from its records.
+class _DayOffBanner extends StatelessWidget {
+  const _DayOffBanner({required this.names});
+
+  final List<String> names;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    final TextTheme text = Theme.of(context).textTheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(SageSpace.md),
+      decoration: BoxDecoration(
+        color: sage.warningTint,
+        borderRadius: BorderRadius.circular(SageRadius.button),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.celebration_outlined, size: 20, color: sage.warning),
+          const SizedBox(width: SageSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  names.isEmpty ? tr('calendar.holiday') : names.first,
+                  style: text.titleSmall?.copyWith(color: sage.warning),
+                ),
+                for (final String other in names.skip(1))
+                  Text(
+                    other,
+                    style: text.bodySmall?.copyWith(color: sage.warning),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

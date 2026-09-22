@@ -90,3 +90,23 @@ class OfflineModeController extends Notifier<bool> {
 
 final NotifierProvider<OfflineModeController, bool> offlineModeProvider =
     NotifierProvider<OfflineModeController, bool>(OfflineModeController.new);
+
+/// Where each screen's period controls sit. Device-local.
+class ControlsAtBottomController extends Notifier<Set<ControlsScreen>> {
+  @override
+  Set<ControlsScreen> build() =>
+      ref.watch(localSettingsProvider).controlsAtBottom;
+
+  Future<void> set(ControlsScreen screen, {required bool atBottom}) async {
+    final Set<ControlsScreen> next = <ControlsScreen>{...state};
+    atBottom ? next.add(screen) : next.remove(screen);
+    await ref.read(localSettingsProvider).setControlsAtBottom(next);
+    state = next;
+  }
+}
+
+final NotifierProvider<ControlsAtBottomController, Set<ControlsScreen>>
+controlsAtBottomProvider =
+    NotifierProvider<ControlsAtBottomController, Set<ControlsScreen>>(
+      ControlsAtBottomController.new,
+    );

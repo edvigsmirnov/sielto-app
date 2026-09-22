@@ -109,22 +109,9 @@ class _NoFundFigure extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final TextTheme text = Theme.of(context).textTheme;
     return Column(
       children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
-          child: Column(
-            children: <Widget>[
-              Text(
-                tr('budget.spent'),
-                style: text.bodyMedium?.copyWith(color: context.sage.inkLabel),
-              ),
-              const SizedBox(height: SageSpace.xs),
-              Text(money.format(ledger.totalPaid), style: text.displaySmall),
-            ],
-          ),
-        ),
+        SpentFigure(amount: ledger.totalPaid, money: money),
         DashedButton(
           label: tr('budget.setFund'),
           onTap: () => editBudgetFund(context, ref, ledger: ledger),

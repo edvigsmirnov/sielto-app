@@ -103,7 +103,13 @@
     "accountSettings": "Account settings",
     "network": "Network",
     "fullyOffline": "Fully offline",
-    "fullyOfflineHint": "No feature reaches the network while this is on."
+    "fullyOfflineHint": "No feature reaches the network while this is on.",
+    "controlsAtBottom": "Period controls at the bottom",
+    "controlsScreen": {
+      "dashboard": "Dashboard",
+      "feed": "Feed",
+      "calendar": "Calendar"
+    }
   },
   "dashboard": {
     "freeMoney": "Left to spend",
@@ -283,7 +289,24 @@
     "noRecords": "Nothing planned",
     "dayExpenses": "Expenses",
     "dayIncome": "Income",
-    "dayEmpty": "Nothing on this day yet."
+    "dayEmpty": "Nothing on this day yet.",
+    "back": "Return",
+    "holiday": "Public holiday",
+    "legend": {
+      "title": "What the colours mean",
+      "expenses": "Spent or planned that day",
+      "income": "Income that day",
+      "noAmount": "Income with no amount yet",
+      "today": "Today",
+      "selected": "Selected day",
+      "nonWorking": "Weekend or day off",
+      "holiday": "Public holiday or your own non-working day",
+      "highLoad": "Heavy spending day",
+      "highLoadOver": "Heavy spending day: {amount} or more",
+      "uncertainIncome": "The salary may arrive on any of these days",
+      "hardDeadline": "Hard deadline: no records after it",
+      "softDeadline": "Soft deadline: a guide only"
+    }
   },
   "coverage": {
     "covered": "Covered, with room to spare",
@@ -464,7 +487,7 @@
   "analytics": {
     "title": "Analytics",
     "open": "Detailed analytics",
-    "empty": "Nothing was spent in this range.",
+    "empty": "No payments in this range.",
     "inRange": "in range",
     "allTypes": "Everything",
     "unit": {
@@ -476,6 +499,7 @@
       "one": "{} record",
       "other": "{} records"
     },
-    "averageTicket": "Average payment in the range"
+    "averageTicket": "Average payment in the range",
+    "swipeBack": "Swipe right to go back"
   }
 }

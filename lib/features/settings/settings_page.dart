@@ -64,6 +64,15 @@ class SettingsPage extends ConsumerWidget {
               ),
             ),
           ),
+          _SectionLabel(tr('settings.controlsAtBottom')),
+          for (final ControlsScreen screen in ControlsScreen.values)
+            SwitchListTile.adaptive(
+              title: Text(tr('settings.controlsScreen.${screen.name}')),
+              value: ref.watch(controlsAtBottomProvider).contains(screen),
+              onChanged: (bool value) => ref
+                  .read(controlsAtBottomProvider.notifier)
+                  .set(screen, atBottom: value),
+            ),
           // A row and a sheet rather than a segmented control: the control
           // divides its width by the number of options, which stops working
           // the moment there are more than about three languages.

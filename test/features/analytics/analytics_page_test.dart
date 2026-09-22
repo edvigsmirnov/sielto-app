@@ -210,7 +210,34 @@ void main() {
     await settle(tester, pumpWidget: false);
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Nothing was spent in this range.'), findsOneWidget);
+    expect(find.text('No payments in this range.'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('a payment written while the page is open shows up', (
+    WidgetTester tester,
+  ) async {
+    await settle(tester);
+    expect(find.text('No category'), findsNothing);
+
+    final ProviderContainer c = ProviderScope.containerOf(
+      tester.element(find.byType(AnalyticsPage)),
+    );
+    await tester.runAsync(
+      () => c
+          .read(repositoriesProvider)
+          .payments
+          .create(
+            spaceId: c.read(currentSpaceProvider)!.id,
+            title: 'Cafe',
+            amount: Decimal.parse('4.50'),
+            dueDate: c.read(spaceClockProvider).today(),
+            expenseType: ExpenseType.variable,
+          ),
+    );
+    await settle(tester, pumpWidget: false);
+
+    expect(find.text('No category'), findsWidgets);
     await unmount(tester);
   });
 }

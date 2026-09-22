@@ -203,7 +203,8 @@ class SliceRow extends StatelessWidget {
 }
 
 /// A right-swipe leaves the level, next to whatever button the header offers
-/// (spec 8.2, design section 11) — a shortcut, not a second visible exit.
+/// (spec 8.2, design section 11) — a shortcut, not a second visible exit, so a
+/// quiet line at the foot says it exists.
 class SwipeBack extends StatelessWidget {
   const SwipeBack({required this.child, super.key});
 
@@ -213,6 +214,7 @@ class SwipeBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onHorizontalDragEnd: (DragEndDetails details) {
@@ -222,7 +224,33 @@ class SwipeBack extends StatelessWidget {
           Navigator.of(context).maybePop();
         }
       },
-      child: child,
+      child: Column(
+        children: <Widget>[
+          Expanded(child: child),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: SageSpace.sm),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Icon(
+                    Icons.swipe_right_outlined,
+                    size: 16,
+                    color: sage.inkLabel,
+                  ),
+                  const SizedBox(width: SageSpace.xs),
+                  Text(
+                    tr('analytics.swipeBack'),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: sage.inkLabel),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

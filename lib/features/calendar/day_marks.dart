@@ -4,10 +4,13 @@ import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/calendar_repository.dart';
+import 'package:sielto/core/holidays/holiday_source.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/periods/holiday_service.dart';
+import 'package:sielto/features/space/space_ledger.dart';
 
 /// The threshold above which a day is drawn as heavily loaded (spec 8.1).
 ///
@@ -180,6 +183,7 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
 
   // The threshold is read off recent history, not off the range on screen: a
   // quiet month must not lower the bar for what counts as a heavy day.
+  ref.watch(spacePaymentsProvider);
   final CalendarDate today = ref.watch(spaceClockProvider).today();
   final Map<CalendarDate, DayTotals> history = await ref
       .watch(repositoriesProvider)
@@ -201,4 +205,38 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
   }
 
   return DayMarks(marks, threshold: threshold);
+});
+
+/// Bundled holiday names for the country the calendar resolves to.
+final FutureProvider<Map<CalendarDate, List<String>>> holidayNamesProvider =
+    FutureProvider<Map<CalendarDate, List<String>>>((Ref ref) {
+      final String? code =
+          ref.watch(currentSpaceProvider)?.countryCode ??
+          ref.watch(defaultCountryProvider);
+      if (code == null) return const <CalendarDate, List<String>>{};
+      return const HolidayBundle().namesFor(code);
+    });
+
+/// Why [day] is off, for the Day view: null on a working day or a plain
+/// weekend, otherwise the custom day's title or the holiday's names — empty
+/// when none are known.
+///
+/// The type is inferred: `flutter_riverpod` does not export `ProviderFamily`.
+final dayOffNamesProvider = Provider.family<List<String>?, CalendarDate>((
+  Ref ref,
+  CalendarDate day,
+) {
+  final DayMark mark =
+      (ref.watch(dayMarksProvider(CalendarView.day)).value ??
+      DayMarks.empty)[day];
+  if (!mark.isHoliday) return null;
+  for (final CustomNonWorkingDay c
+      in ref.watch(customNonWorkingDaysProvider).value ??
+          const <CustomNonWorkingDay>[]) {
+    final String? title = c.title?.trim();
+    if (c.date == day && title != null && title.isNotEmpty) {
+      return <String>[title];
+    }
+  }
+  return ref.watch(holidayNamesProvider).value?[day] ?? const <String>[];
 });
