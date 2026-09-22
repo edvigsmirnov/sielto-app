@@ -2,31 +2,39 @@
 
     python tools/extract_mark.py <source.png>
 
-The source is artwork delivered as a flat image: the green mark sitting on a
-white rounded plate on a pale ground. Both of those are neutral and the mark is
-the only coloured thing in the frame, which is what makes the cut reliable —
-the glyph is found by its greenness, and the alpha inside that box comes from
-how far each pixel is from white. The white gaps between the ribbons of the S
-fall out with the plate, which is correct: they are gaps, not ink.
+The source is artwork delivered as a flat image: a pale leaf wreath embossed
+on a green rounded plate, on a pale ground. The plate is found by its
+greenness and cropped inside its corners. The leaves are lighter than the
+plate around them, so the alpha is each pixel's lightness above a local plate
+estimate — local, because the plate is shaded and a single threshold would cut
+one corner and flood the other.
 
-Writes `tools/sielto_mark.png`, which `make_icon.py` reads. Needs Pillow and
-numpy. Only rerun this when new artwork arrives.
+The ink is recoloured flat to the `accent` token: the emboss shading belongs to
+the render, not the mark. Writes `tools/sielto_mark.png`, which `make_icon.py`
+reads. Needs Pillow and numpy. Only rerun this when new artwork arrives.
 """
 import os
 import sys
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(_HERE, 'sielto_mark.png')
 
-# Room around the ink for its own anti-aliased edge.
-PAD = 8
+# Sage `accent`, light theme.
+INK = (0x8F, 0xB9, 0x96)
 
-# The palest mint in the mark scores about 60; the off-white ground about 20.
-FLOOR = 20.0
-RAMP = 22.0
+# Share of the plate's width trimmed off each side, clearing the corners.
+INSET = 0.08
+
+# Wider than any leaf, so the min filter sees only plate.
+PLATE_WINDOW = 41
+
+# Lightness above the plate estimate: the plate stays under ~48, the leaves
+# start past ~64.
+FLOOR = 50.0
+RAMP = 10.0
 
 
 def extract(path):
@@ -34,24 +42,25 @@ def extract(path):
     a = np.asarray(src).astype(np.int16)
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
 
-    green = (g > r + 12) & (g > b + 8)
+    green = (g > r + 15) & (g > b + 10)
     if not green.any():
-        raise SystemExit('no green ink found in %s' % path)
+        raise SystemExit('no green plate found in %s' % path)
     ys, xs = np.nonzero(green)
-    x0, x1 = max(0, xs.min() - PAD), min(a.shape[1], xs.max() + 1 + PAD)
-    y0, y1 = max(0, ys.min() - PAD), min(a.shape[0], ys.max() + 1 + PAD)
+    inset = int((xs.max() - xs.min()) * INSET)
+    plate = src.crop((
+        xs.min() + inset, ys.min() + inset,
+        xs.max() - inset, ys.max() - inset,
+    ))
 
-    crop = a[y0:y1, x0:x1]
-    # Anything that is neither white nor neutral is ink: a pixel counts by
-    # whichever it is more of, coloured or dark.
-    score = np.maximum(
-        crop.max(axis=2) - crop.min(axis=2), 255 - crop.min(axis=2),
-    ).astype(np.float32)
-    alpha = np.clip((score - FLOOR) / RAMP, 0.0, 1.0) * 255.0
+    lum = plate.convert('L')
+    ground = lum.filter(ImageFilter.MinFilter(PLATE_WINDOW)).filter(
+        ImageFilter.GaussianBlur(25))
+    lift = np.asarray(lum, np.float32) - np.asarray(ground, np.float32)
+    alpha = Image.fromarray(
+        (np.clip((lift - FLOOR) / RAMP, 0.0, 1.0) * 255.0).astype(np.uint8))
 
-    img = Image.fromarray(
-        np.dstack([crop.astype(np.uint8), alpha.astype(np.uint8)]), 'RGBA',
-    )
+    img = Image.new('RGBA', plate.size, INK + (0,))
+    img.putalpha(alpha)
     return img.crop(img.getbbox())
 
 

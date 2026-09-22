@@ -2,10 +2,10 @@
 
     python tools/make_icon.py .
 
-The artwork is `tools/sielto_mark.png` — the green S whose top stroke leaves as
-an arrow, already cut out onto transparency by `extract_mark.py`. This script
-only places and scales it: a white rounded plate for launchers that do not
-mask, the bare mark for Android's adaptive foreground.
+The artwork is `tools/sielto_mark.png` — the pale leaf wreath, already cut out
+onto transparency by `extract_mark.py`. This script only places and scales it:
+a green rounded plate for launchers that do not mask, the bare mark for
+Android's adaptive foreground over the plate colour as its background.
 
 Needs Pillow. Writes the Android mipmaps, the Linux PNG and the Windows ICO in
 place. Set SCRATCH to also get proof sheets at 512 and 48.
@@ -15,7 +15,8 @@ import sys
 
 from PIL import Image
 
-WHITE = (255, 255, 255, 255)
+# Sage `accentStrong`, light theme. Also the adaptive icon background.
+PLATE = (0x4C, 0x7A, 0x52, 255)
 SS = 8
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -44,16 +45,16 @@ def mark_at(size):
 
 
 def rounded(size, radius_ratio=0.22):
-    """The mark on a white rounded square, for launchers that do not mask."""
+    """The mark on a green rounded square, for launchers that do not mask."""
     from PIL import ImageDraw
 
     n = size * SS
     plate = Image.new('RGBA', (n, n), (0, 0, 0, 0))
     ImageDraw.Draw(plate).rounded_rectangle(
-        [0, 0, n - 1, n - 1], radius=int(n * radius_ratio), fill=WHITE,
+        [0, 0, n - 1, n - 1], radius=int(n * radius_ratio), fill=PLATE,
     )
     out = plate.resize((size, size), Image.LANCZOS)
-    inner = int(size * 0.72)
+    inner = int(size * 0.7)
     out.alpha_composite(mark_at(inner), ((size - inner) // 2,) * 2)
     return out
 
@@ -62,10 +63,11 @@ def adaptive_foreground(size):
     """Android's adaptive foreground: the mark inside the safe zone.
 
     The launcher scales the foreground up and masks it, so the ink has to stay
-    well inside — roughly the middle half of the drawable.
+    inside the safe zone — a circle of 61% of the drawable, which the round
+    wreath fits at 58%.
     """
     canvas = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    inner = int(size * 0.5)
+    inner = int(size * 0.58)
     canvas.alpha_composite(mark_at(inner), ((size - inner) // 2,) * 2)
     return canvas
 

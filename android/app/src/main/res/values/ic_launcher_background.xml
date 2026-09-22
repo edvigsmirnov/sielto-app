@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The plate the adaptive foreground sits on. White, so the mark keeps
-         the same ground it has on the legacy icon. -->
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- The plate the adaptive foreground sits on: Sage accentStrong, the
+         same green as the legacy icon's plate. -->
+    <color name="ic_launcher_background">#4C7A52</color>
 </resources>
