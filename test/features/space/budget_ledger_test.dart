@@ -13,11 +13,7 @@ import 'package:sielto/features/space/budget_ledger.dart';
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 Decimal m(String v) => Decimal.parse(v);
 
-/// Budget mode, end to end from the tables (spec 4.8).
-///
-/// Both limits are optional and independent, which is most of what these pin:
-/// no fund is a valid state, no deadline is a valid state, and a deadline that
-/// moves backwards over existing records must not lose them.
+/// Budget mode from the tables.
 void main() {
   late AppDatabase db;
   late Repositories repos;
@@ -86,7 +82,6 @@ void main() {
 
       final BudgetLedger ledger = await build();
       expect(ledger.hasFund, isFalse);
-      // No walk, so no cutoff and no verdict — only what has been spent.
       expect(ledger.cascade, isNull);
       expect(ledger.coverage, isNull);
       expect(ledger.moneyEndsAt, isEmpty);
@@ -103,8 +98,7 @@ void main() {
       expect(ledger.available, m('1400'));
       expect(ledger.remaining, m('800'));
       expect(ledger.coverage, Coverage.covered);
-      // The top-up is not an entry: it joined the starting sum, so the walk
-      // sees the one expense only.
+      // The top-up joins the starting sum, not the walk.
       expect(ledger.entries.length, 1);
     });
 
@@ -153,7 +147,7 @@ void main() {
         () => topUp('Late', '2026-05-01', '100'),
         throwsA(isA<BeyondHardDeadline>()),
       );
-      // On the day itself is inside it.
+      // The deadline day is inside.
       await expense('On time', '2026-04-01', '100');
       expect((await build()).totalPlanned, m('100'));
     });
@@ -170,10 +164,10 @@ void main() {
 
       final BudgetLedger ledger = await build();
       expect(ledger.beyondDeadline, <String>{late.id});
-      // Out of the reckoning while it sits there.
+      // Excluded.
       expect(ledger.totalPlanned, m('300'));
       expect(ledger.remaining, m('700'));
-      // Still on file.
+      // Not deleted.
       expect(await repos.payments.byId(late.id), isNotNull);
     });
 
@@ -207,7 +201,6 @@ void main() {
       final BudgetLedger ledger = await build();
       expect(ledger.deadline, isNull);
       expect(ledger.deadlineIsHard, isFalse);
-      // And nothing is refused any more.
       await expense('Late', '2026-05-01', '100');
     });
 
@@ -229,7 +222,6 @@ void main() {
   });
 
   test('a zero-amount expense is a dated to-do, not an error', () async {
-    // Budget mode doubles as a task list against the event (spec 4.8).
     await repos.payments.create(
       spaceId: space.id,
       title: 'Book the tickets',

@@ -4,23 +4,16 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// The spans Analytics works over (spec 8.2).
 enum RangeUnit { month, quarter, year }
 
-/// A calendar range, never a budget period (spec 8.2, plan G9).
-///
-/// The Dashboard and the Feed tie their arithmetic to the income cycle;
-/// Analytics deliberately does not, and works on the ordinary calendar. The two
-/// therefore give different totals for what looks like the same month, which is
-/// why every screen here prints the range it used.
+/// A calendar range, never a budget period.
 @immutable
 class AnalyticsRange {
   const AnalyticsRange({required this.unit, required this.anchor});
 
   final RangeUnit unit;
 
-  /// Any date inside the range. The bounds are derived, so stepping never
-  /// accumulates drift.
+  /// Any date inside the range; bounds are derived.
   final CalendarDate anchor;
 
   CalendarDate get from => switch (unit) {
@@ -41,9 +34,6 @@ class AnalyticsRange {
 
   int get _quarterFirstMonth => (anchor.month - 1) ~/ 3 * 3 + 1;
 
-  /// Whether the isolate threshold's "longer than a year" arm applies
-  /// (spec 8.2). No unit here exceeds a year, so it never does — the row count
-  /// decides on its own.
   bool get exceedsAYear => from.addMonths(12).isBefore(to);
 
   AnalyticsRange step(int by) => AnalyticsRange(
@@ -66,7 +56,7 @@ class AnalyticsRange {
   int get hashCode => Object.hash(unit, anchor);
 }
 
-/// The range Analytics is reading. Opens on the current month.
+/// Opens on the current month.
 class AnalyticsRangeController extends Notifier<AnalyticsRange> {
   @override
   AnalyticsRange build() => AnalyticsRange(
@@ -85,8 +75,7 @@ analyticsRangeProvider =
       AnalyticsRangeController.new,
     );
 
-/// The mandatory / variable slice (spec 8.2). Null shows everything, which is
-/// the state the screen opens in.
+/// Null shows everything.
 class ExpenseTypeFilterController extends Notifier<ExpenseType?> {
   @override
   ExpenseType? build() => null;

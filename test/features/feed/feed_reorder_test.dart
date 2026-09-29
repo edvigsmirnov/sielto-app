@@ -36,7 +36,7 @@ void main() {
 
     test('moving a row down reports the new order', () {
       final List<FeedItem> items = feed(day, FeedOrderMode.free);
-      // [header, a, b, c]; lifting 'a' out leaves [header, b, c].
+      // [header, a, b, c]; lifting 'a' leaves [header, b, c].
       final ReorderOutcome outcome = resolveReorder(
         items: items,
         oldIndex: 1,
@@ -68,7 +68,7 @@ void main() {
 
     test('a variable row cannot jump above the mandatory block', () {
       final List<FeedItem> items = feed(mixed, FeedOrderMode.grouped);
-      // [header, rent, loan, gym]; 'gym' to the top of the day.
+      // [header, rent, loan, gym]; 'gym' to the top.
       expect(
         resolveReorder(
           items: items,
@@ -131,8 +131,6 @@ void main() {
     });
 
     test('nothing is written until the picker is confirmed', () {
-      // The outcome only carries a suggestion; applying it is the caller's
-      // job (spec 4.5).
       final List<FeedItem> items = feed(twoDays, FeedOrderMode.free);
       final ReorderOutcome outcome = resolveReorder(
         items: items,
@@ -160,9 +158,7 @@ void main() {
   });
 
   test('a drop above the first day heading asks for a date', () {
-    // Nothing above the first heading names a day, so a drop there is treated
-    // like any other cross-day drag: the picker opens, and nothing is written
-    // unless it is confirmed.
+    // Above the first heading counts as a cross-day drop.
     final List<FeedItem> items = buildFeedItems(
       records: <FeedRecord>[
         expense('early', '2026-02-01'),
@@ -170,7 +166,7 @@ void main() {
       ],
       orderMode: FeedOrderMode.free,
     );
-    // [h02-01, early, h03-20, later]; 'later' dropped above every heading.
+    // [h02-01, early, h03-20, later]; 'later' above every heading.
     final ReorderOutcome outcome = resolveReorder(
       items: items,
       oldIndex: 3,

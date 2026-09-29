@@ -5,8 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 
-/// A card with the standard inner gutter. The look itself comes from
-/// `cardTheme`, which already handles the light/dark elevation swap.
+/// Card with the standard inner gutter; look from `cardTheme`.
 class SageCard extends StatelessWidget {
   const SageCard({
     required this.child,
@@ -21,10 +20,8 @@ class SageCard extends StatelessWidget {
   final EdgeInsets padding;
   final VoidCallback? onTap;
 
-  /// Selected cards sit on `accentTint` rather than gaining a border.
   final bool selected;
 
-  /// Overrides the card ground, for the few cards that carry a status tint.
   final Color? color;
 
   @override
@@ -44,11 +41,7 @@ class SageCard extends StatelessWidget {
   }
 }
 
-/// The label above a form field.
-///
-/// Uppercase, and that is not the same call as the figures on the Dashboard:
-/// the design sets field labels and list-group headers in caps, and leaves
-/// running labels — the ones sitting next to a number — in sentence case.
+/// Uppercase label above a form field.
 class FieldLabel extends StatelessWidget {
   const FieldLabel(this.text, {super.key});
 
@@ -64,7 +57,6 @@ class FieldLabel extends StatelessWidget {
   );
 }
 
-/// A labelled field: label above, control below.
 class LabelledField extends StatelessWidget {
   const LabelledField({required this.label, required this.child, super.key});
 
@@ -78,10 +70,7 @@ class LabelledField extends StatelessWidget {
   );
 }
 
-/// One choice out of a short list, as a row of segments.
-///
-/// Used where the options are few and worth showing at once — expense type,
-/// theme, feed density — rather than hidden behind a dropdown.
+/// One choice from a short list, as segments.
 class SegmentedChoice<T> extends StatelessWidget {
   const SegmentedChoice({
     required this.values,
@@ -97,7 +86,7 @@ class SegmentedChoice<T> extends StatelessWidget {
   final String Function(T value) labelOf;
   final ValueChanged<T> onChanged;
 
-  /// A disabled row still shows which value is set: read-only, not hidden.
+  /// Disabled still shows the selected value.
   final bool enabled;
 
   @override
@@ -147,9 +136,6 @@ class _Segment<T> extends StatelessWidget {
         duration: const Duration(milliseconds: 140),
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
-          // The solid accent, not accentFill: accentOn is legible on accent in
-          // both themes, while accentFill turns dark on a dark ground and
-          // swallows the label (plan section 5, rule 2).
           color: isSelected ? sage.accent : Colors.transparent,
           borderRadius: BorderRadius.circular(SageRadius.chip),
         ),
@@ -166,16 +152,14 @@ class _Segment<T> extends StatelessWidget {
   }
 }
 
-/// The coverage indicator (spec 4.9): green with room to spare, orange covered
-/// exactly, red short. The same three steps in both themes.
+/// Coverage: green spare, orange exact, red short.
 class CoverageDot extends StatelessWidget {
   const CoverageDot(this.coverage, {this.size = 10, super.key});
 
   final Coverage coverage;
   final double size;
 
-  /// Neutral when there is no verdict: a figure nothing was judged against
-  /// must not borrow the colour of one that was.
+  /// Neutral when [coverage] is null.
   static Color colorOf(BuildContext context, Coverage? coverage) =>
       switch (coverage) {
         Coverage.covered => context.sage.accentStrong,
@@ -195,7 +179,7 @@ class CoverageDot extends StatelessWidget {
   );
 }
 
-/// The 1px row divider from the Sage rhythm.
+/// 1px row divider.
 class Hairline extends StatelessWidget {
   const Hairline({this.indent = 0, super.key});
 
@@ -210,8 +194,6 @@ class Hairline extends StatelessWidget {
   );
 }
 
-/// A small labelled figure. Three of these carry the Dashboard's secondary
-/// row: planned, paid, left to pay.
 class StatColumn extends StatelessWidget {
   const StatColumn({
     required this.label,
@@ -244,8 +226,7 @@ class StatColumn extends StatelessWidget {
   }
 }
 
-/// An icon on a soft square: the design's affordance for a secondary action
-/// that sits beside content rather than in a toolbar.
+/// Icon on a soft square, for secondary actions.
 class SoftIconButton extends StatelessWidget {
   const SoftIconButton({
     required this.icon,
@@ -277,7 +258,6 @@ class SoftIconButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(SageRadius.button),
             border: Border.all(color: sage.border),
           ),
-          // Half the box, so the glyph keeps its weight at any size.
           child: Icon(icon, size: size / 2, color: sage.inkSecondary),
         ),
       ),
@@ -285,8 +265,7 @@ class SoftIconButton extends StatelessWidget {
   }
 }
 
-/// A dashed outline button, which reads as a slot to fill rather than as one
-/// more item in the list above it.
+/// Dashed outline button for adding an item.
 class DashedButton extends StatelessWidget {
   const DashedButton({required this.label, required this.onTap, super.key});
 
@@ -319,7 +298,6 @@ class DashedButton extends StatelessWidget {
   }
 }
 
-/// Walked by hand: Flutter strokes no dashed border of its own.
 class _DashedBorderPainter extends CustomPainter {
   const _DashedBorderPainter({required this.color, required this.radius});
 
@@ -354,11 +332,7 @@ class _DashedBorderPainter extends CustomPainter {
       old.color != color || old.radius != radius;
 }
 
-/// A label and its figure on one line, label left and value right.
-///
-/// The dashboard's totals read as a short list rather than three cramped
-/// columns: with a real device's type size, side-by-side columns wrap and the
-/// numbers stop lining up.
+/// Label left, value right.
 class StatRow extends StatelessWidget {
   const StatRow({
     required this.label,
@@ -372,7 +346,7 @@ class StatRow extends StatelessWidget {
   final String value;
   final Color? valueColor;
 
-  /// Draws the value at title weight, for the one figure a card is about.
+  /// Value at title weight.
   final bool emphasised;
 
   @override
@@ -407,12 +381,7 @@ class StatRow extends StatelessWidget {
   }
 }
 
-/// A figure that winds to its new value instead of snapping (spec 10.5).
-///
-/// The animation is what tells the user the number moved because something
-/// changed, rather than because the screen was replaced. Frames are doubles —
-/// they are pixels on the way to a value, never arithmetic; the endpoints stay
-/// [Decimal].
+/// Animates between values. Frames are doubles; endpoints stay [Decimal].
 class AnimatedMoney extends StatelessWidget {
   const AnimatedMoney({
     required this.value,
@@ -441,8 +410,7 @@ class AnimatedMoney extends StatelessWidget {
   );
 }
 
-/// Empty-state plate: a line of explanation and, usually, one way out of it
-/// (spec, Sage section 16).
+/// Empty-state message with an optional action.
 class EmptyState extends StatelessWidget {
   const EmptyState({required this.message, this.action, super.key});
 

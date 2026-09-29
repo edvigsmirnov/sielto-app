@@ -3,12 +3,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// Turns a stored recurrence rule into the schedule the M2 engine understands.
-///
-/// The table keeps one nullable column per schedule field and a CHECK
-/// constraint per type, so a well-formed row always has the fields its type
-/// needs. This still returns null rather than throwing on a malformed one: a
-/// bad row should cost the user one income, not the whole screen.
+/// Null on a malformed row.
 IncomeSchedule? scheduleOf(IncomeRecurrenceRule rule) {
   switch (rule.scheduleType) {
     case ScheduleType.fixedDate:
@@ -36,10 +31,7 @@ IncomeSchedule? scheduleOf(IncomeRecurrenceRule rule) {
   }
 }
 
-/// A one-line description of the rule, for a list row.
-///
-/// Built from the stored fields rather than from [scheduleOf], so it still
-/// describes a rule whose fields that function would reject.
+/// One-line description from the stored fields.
 String scheduleSummary(IncomeRecurrenceRule rule) {
   switch (rule.scheduleType) {
     case ScheduleType.fixedDate:

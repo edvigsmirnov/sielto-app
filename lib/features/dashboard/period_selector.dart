@@ -10,21 +10,15 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/periods/period_service.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 
-/// "← Previous period / Next period →" with the cycle's dates between them
-/// (spec 4.7).
-///
-/// It only moves between periods that exist: back through history, and forward
-/// exactly as far as the schedule is known. There is no arbitrary range — a
-/// period is always one whole cycle between two anchor incomes.
+/// Previous and next period arrows with the cycle's dates. Moves only between
+/// existing periods.
 class PeriodSelector extends ConsumerWidget {
   const PeriodSelector({this.onJump, this.swipe = true, super.key});
 
-  /// Given by the Feed, which scrolls to the period rather than filtering to
-  /// it: the list stays one continuous run of records (spec 4.5).
+  /// Set by the Feed, which scrolls to the period.
   final void Function(BudgetPeriod period)? onJump;
 
-  /// Off at the bottom of the screen, where a horizontal swipe belongs to the
-  /// shell's tabs.
+  /// False at the bottom of the screen, where swipes switch tabs.
   final bool swipe;
 
   @override
@@ -44,8 +38,7 @@ class PeriodSelector extends ConsumerWidget {
     final DateLabels dates = DateLabels(context.locale.toString());
     final CalendarDate today = ref.watch(spaceClockProviderForLabel);
 
-    // Near the last known period, lay out more, so the next arrow is never
-    // a wall while the schedule goes on.
+    // Near the last period, request more.
     final CalendarDate last = periods.last.startDate;
     if (index >= periods.length - 2 &&
         last.isBefore(today.addMonths(PeriodService.maxReachMonths))) {
@@ -59,8 +52,7 @@ class PeriodSelector extends ConsumerWidget {
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
-      // Swiping the dates does what the chevrons either side of them do — a
-      // shortcut, not a second control (spec 4.7).
+      // Swipe does what the arrows do.
       onHorizontalDragEnd: !swipe
           ? null
           : (DragEndDetails details) {
@@ -83,8 +75,7 @@ class PeriodSelector extends ConsumerWidget {
           ),
           Expanded(
             child: Column(
-              // Its own height: as the Feed's bottom bar it is offered the
-              // whole screen.
+              // Shrinks to its content as the Feed's bottom bar.
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Row(
@@ -97,9 +88,7 @@ class PeriodSelector extends ConsumerWidget {
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                     ),
-                    // The window was computed without that year's holidays
-                    // and can still narrow. Unobtrusive on purpose: the
-                    // figures are usable, just conservative (spec 5.1.1).
+                    // Window computed without that year's holidays; may still narrow.
                     if (current.holidayDataIncomplete) ...<Widget>[
                       const SizedBox(width: SageSpace.xs),
                       Tooltip(
@@ -132,8 +121,6 @@ class PeriodSelector extends ConsumerWidget {
     );
   }
 
-  /// Below this, a drag reads as a scroll or a mis-tap, not an intent to move
-  /// a whole cycle.
   static const double _swipeVelocityThreshold = 200;
 
   void _go(WidgetRef ref, BudgetPeriod period) {
@@ -154,6 +141,6 @@ class PeriodSelector extends ConsumerWidget {
   }
 }
 
-/// Today in the Space's timezone, as a plain value for labelling.
+/// Today in the Space's timezone.
 final Provider<CalendarDate> spaceClockProviderForLabel =
     Provider<CalendarDate>((Ref ref) => ref.watch(spaceClockProvider).today());

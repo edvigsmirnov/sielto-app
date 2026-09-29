@@ -5,8 +5,6 @@ import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// Period boundaries. The single source of truth for all three modes
-/// (spec 4.7); the materialisation logic that fills it arrives in M2.
 class BudgetPeriodRepository
     extends SyncedRepository<$BudgetPeriodsTable, BudgetPeriod> {
   BudgetPeriodRepository({
@@ -25,8 +23,7 @@ class BudgetPeriodRepository
             ]))
           .get();
 
-  /// The open row Flow and Budget share. Exactly one per Space, and it never
-  /// closes — which is why freezing does not reach those modes (spec 4.7).
+  /// The single `continuous` row of a Flow or Budget Space.
   Future<BudgetPeriod?> continuousFor(String spaceId) =>
       (selectAliveInSpace(spaceId)..where(
             ($BudgetPeriodsTable t) =>
@@ -34,8 +31,7 @@ class BudgetPeriodRepository
           ))
           .getSingleOrNull();
 
-  /// Creates the continuous row if the Space has none. Idempotent, so it is
-  /// safe to call on every space open (plan G8).
+  /// Idempotent.
   Future<BudgetPeriod> ensureContinuous({
     required String spaceId,
     required CalendarDate startDate,
@@ -55,7 +51,6 @@ class BudgetPeriodRepository
             spaceId: spaceId,
             periodType: PeriodType.continuous,
             startDate: startDate,
-            // Null end_date: the context is open and has no end.
             budgetTarget: Value<Decimal?>(budgetTarget),
             deadlineDate: Value<CalendarDate?>(deadlineDate),
             deadlineIsHard: Value<bool>(deadlineIsHard),
@@ -67,8 +62,7 @@ class BudgetPeriodRepository
         );
   }
 
-  /// An income-driven cycle. Boundaries are inclusive on both ends:
-  /// `[anchor, next anchor - 1]` (spec 4.7).
+  /// Boundaries are inclusive: `[anchor, next anchor - 1]`.
   Future<BudgetPeriod> createIncomeDriven({
     required String spaceId,
     required CalendarDate startDate,
@@ -100,7 +94,7 @@ class BudgetPeriodRepository
         );
   }
 
-  /// The income-driven cycles of a Space, oldest first.
+  /// Oldest first.
   Future<List<BudgetPeriod>> incomeDrivenIn(String spaceId) async {
     final List<BudgetPeriod> all = await inSpace(spaceId);
     return all
@@ -115,11 +109,7 @@ class BudgetPeriodRepository
             ]))
           .watch();
 
-  /// Moves an existing period's boundaries without replacing the row.
-  ///
-  /// In place, and that is the point: a payment pinned to a period by hand
-  /// holds the period as an object, so "I filed this under the September
-  /// salary" stays true even when that salary shifts by two days (spec 5.3).
+  /// Updates in place: payments pinned by hand keep their period.
   Future<int> updateBoundaries(
     String periodId, {
     required CalendarDate startDate,
@@ -147,8 +137,6 @@ class BudgetPeriodRepository
     );
   }
 
-  /// The period a date falls in. A `continuous` row has no end and always
-  /// matches once it has started.
   Future<BudgetPeriod?> containing(String spaceId, CalendarDate date) async {
     final List<BudgetPeriod> periods = await inSpace(spaceId);
     for (final BudgetPeriod p in periods) {
@@ -159,18 +147,13 @@ class BudgetPeriodRepository
     return null;
   }
 
-  /// The Budget fund's planned figure (spec 4.8). Null clears it, which puts
-  /// the Space back into plain expense-tracking with no fit to measure.
+  /// Null clears the fund target.
   Future<int> setBudgetTarget(String periodId, Decimal? target) => _write(
     periodId,
     BudgetPeriodsCompanion(budgetTarget: Value<Decimal?>(target)),
   );
 
-  /// The event date and how strictly it binds (spec 4.8).
-  ///
-  /// Moving it backwards is allowed with records already past it: they are
-  /// marked beyond the deadline, never deleted or blocked, and come back into
-  /// the reckoning if it moves forward again.
+  /// Records past a moved deadline are marked, never deleted.
   Future<int> setDeadline(
     String periodId, {
     required CalendarDate? date,
@@ -179,7 +162,6 @@ class BudgetPeriodRepository
     periodId,
     BudgetPeriodsCompanion(
       deadlineDate: Value<CalendarDate?>(date),
-      // A deadline that does not exist cannot be hard.
       deadlineIsHard: Value<bool>(date != null && isHard),
     ),
   );
@@ -197,7 +179,6 @@ class BudgetPeriodRepository
     );
   }
 
-  /// Temporary unfreeze of a closed period (spec 5.5).
   Future<int> unfreeze(String periodId, DateTime until, String reason) {
     final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(

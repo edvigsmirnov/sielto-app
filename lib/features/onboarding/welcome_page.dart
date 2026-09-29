@@ -7,23 +7,14 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/features/launch/launch_curtain.dart';
 
-/// The first screen of a fresh install.
-///
-/// Nothing has happened yet — no account, no network call, no data — so the
-/// screen carries the name and one way in. "Sign in on this device" belongs
-/// with device linking in M9 and is absent until it works.
-///
-/// On the wordmark's own green in both themes, so the Android splash, which
-/// is the same colour, runs straight into it. It opens with leaves flying in
-/// from every side and settling as the leaf over the "i"; the name, the motto
-/// and the button then fade in. A tap skips to the end.
+/// First screen of a fresh install, on [SageBrand.night] in both themes. Leaves
+/// gather onto the "i", then the name, motto and button fade in. A tap skips.
 class WelcomePage extends StatefulWidget {
   const WelcomePage({required this.onStart, super.key});
 
-  /// Given where the button's centre is on screen, for the transition out.
+  /// Receives the button centre, for the transition.
   final ValueChanged<Offset> onStart;
 
-  /// The whole intro, from the first leaf to the button.
   static const Duration intro = Duration(milliseconds: 2600);
 
   @override
@@ -46,7 +37,7 @@ class _WelcomePageState extends State<WelcomePage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Reduced motion lands on the finished screen.
+    // Reduced motion shows the finished screen.
     if (MediaQuery.disableAnimationsOf(context)) {
       _intro.value = 1;
     } else {
@@ -54,7 +45,7 @@ class _WelcomePageState extends State<WelcomePage>
     }
   }
 
-  /// Starts the intro once it can be seen: not under the launch curtain.
+  /// Waits for the launch curtain.
   void _play() {
     if (LaunchCurtain.covering.value) return;
     if (_intro.value == 0 && !_intro.isAnimating) _intro.forward();
@@ -76,9 +67,8 @@ class _WelcomePageState extends State<WelcomePage>
     final TextTheme text = Theme.of(context).textTheme;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // The navigation bar too. Edge to edge the green already runs under
-      // it; three-button navigation still lays a light contrast scrim over
-      // the buttons unless told not to.
+      // Without `systemNavigationBarContrastEnforced: false`, three-button
+      // navigation draws a light scrim.
       value: SystemUiOverlayStyle.light.copyWith(
         systemNavigationBarColor: SageBrand.night,
         systemNavigationBarIconBrightness: Brightness.light,
@@ -124,8 +114,7 @@ class _WelcomePageState extends State<WelcomePage>
                                       mark.height * _Wordmark.leafAt.dy,
                                     ),
                                 leafLength: mark.width * _Wordmark.leafSize,
-                                // Fade as the wordmark's own leaf appears
-                                // under them.
+                                // Fades as the wordmark's leaf appears.
                                 fade: 1 - _phase(t, 0.5, 0.68),
                               ),
                             ),
@@ -189,30 +178,27 @@ class _WelcomePageState extends State<WelcomePage>
     );
   }
 
-  /// Half the filled button's height, near enough for where a transition
-  /// starts.
   static const double _buttonHalf = 24;
 
-  /// 0 before [from], 1 after [to], eased between.
+  /// 0 before [from], 1 after [to], eased.
   static double _phase(double t, double from, double to) =>
       Curves.easeOutCubic.transform(((t - from) / (to - from)).clamp(0, 1));
 }
 
-/// The wordmark artwork, cut from the delivered master by
-/// `tools/make_icon.py`.
+/// Cut by `tools/make_icon.py`.
 class _Wordmark extends StatelessWidget {
   const _Wordmark();
 
-  /// The crop's width over its height.
+  /// Width over height.
   static const double aspect = 844 / 345;
 
-  /// Where the leaf over the "i" sits, as a fraction of the crop.
+  /// Centre of the "i" leaf, as a fraction of the crop.
   static const Offset leafAt = Offset(0.276, 0.229);
 
-  /// The leaf's length as a fraction of the crop's width.
+  /// Leaf length as a fraction of the crop width.
   static const double leafSize = 0.085;
 
-  /// Centred, a little above the middle, at most 360 wide.
+  /// Centred at 40% height, at most 360 wide.
   static Rect rectIn(Size area) {
     final double width = math.min(area.width * 0.78, 360);
     final double height = width / aspect;
@@ -231,7 +217,7 @@ class _Wordmark extends StatelessWidget {
   );
 }
 
-/// Leaves coming in from every side, spinning, and landing on one point.
+/// Leaves flying in from every side onto one point.
 class _GatheringLeaves extends CustomPainter {
   _GatheringLeaves({
     required this.progress,
@@ -250,20 +236,17 @@ class _GatheringLeaves extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Just past the screen's edge, so every leaf is in sight within a frame
-    // or two of starting.
+    // Starts just outside the screen.
     final double reach = size.longestSide * 0.62;
     final Paint paint = Paint()..isAntiAlias = true;
 
     for (int i = 0; i < _count; i++) {
-      // Staggered starts, every leaf arriving by 0.5.
+      // Every leaf lands by 0.5.
       final double start = 0.12 * i / _count;
       final double t = ((progress - start) / (0.5 - start)).clamp(0.0, 1.0);
       if (t == 0) continue;
-      // Fast in, slow to settle, as a leaf blown onto a spot comes to rest.
       final double eased = Curves.easeOutCubic.transform(t);
 
-      // Each comes from its own direction and curls in on a spiral.
       final double from = i * 2 * math.pi / _count + 0.4;
       final double angle = from + (1 - eased) * 1.6;
       final double radius = reach * (1 - eased);
@@ -271,7 +254,7 @@ class _GatheringLeaves extends CustomPainter {
           target + Offset(math.cos(angle), math.sin(angle)) * radius;
 
       final double spin = (1 - eased) * (3 + i % 3) * math.pi;
-      // Larger in flight, the size of the "i" leaf on landing.
+      // Shrinks to the "i" leaf's size on landing.
       final double length = leafLength * (1 + 1.6 * (1 - eased));
 
       paint.color = Color.lerp(

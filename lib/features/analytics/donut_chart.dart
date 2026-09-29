@@ -3,23 +3,18 @@ import 'dart:math' show pi;
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// One wedge: how much of the whole, and in what colour.
 @immutable
 class DonutSlice {
   const DonutSlice({required this.fraction, required this.color});
 
-  /// Of the total, between 0 and 1.
+  /// Share of the total, 0 to 1.
   final double fraction;
 
   final Color color;
 }
 
-/// The ring over Analytics level 1 (design section 11).
-///
-/// A ring rather than a pie because the hole carries the total, which is the
-/// figure the wedges are proportions of. The caller supplies the colours: they
-/// are the users' own category colours, not Sage tokens, and have to survive a
-/// theme change unchanged (spec 7).
+/// Ring chart with the total in the hole. Colours are category colours, not
+/// tokens.
 class DonutChart extends StatelessWidget {
   const DonutChart({
     required this.slices,
@@ -31,15 +26,14 @@ class DonutChart extends StatelessWidget {
 
   final List<DonutSlice> slices;
 
-  /// The total, in the hole.
   final String centre;
 
-  /// What the total is of — the range, in a word.
+  /// What the total covers.
   final String caption;
 
   final double size;
 
-  /// Ring thickness as a share of the radius.
+  /// Share of the radius.
   static const double _thickness = 0.28;
 
   @override
@@ -53,8 +47,7 @@ class DonutChart extends StatelessWidget {
       child: CustomPaint(
         painter: _DonutPainter(
           slices: slices,
-          // An empty ring still draws, as the shape of an answer that is
-          // simply zero.
+          // An empty ring still draws.
           empty: sage.hairline,
           thickness: _thickness,
         ),
@@ -93,7 +86,7 @@ class _DonutPainter extends CustomPainter {
   final Color empty;
   final double thickness;
 
-  /// Twelve o'clock, in radians from three o'clock where the canvas starts.
+  /// Twelve o'clock.
   static const double _start = -pi / 2;
 
   @override

@@ -2,19 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 
-/// The quick-add bubble opens out of the FAB, upward.
-///
-/// It used to open at the top of the screen: `showMenu` places the menu's top
-/// edge at `position.top` and never reads `position.bottom`, so naming the
-/// space above the button as the anchor put the bubble at y = 0. These tests
-/// pin the geometry rather than the arithmetic, so the same mistake cannot
-/// come back in a different form.
+/// The quick-add bubble opens above the FAB.
 void main() {
   const int itemCount = 3;
 
-  /// A bare Scaffold with a bottom-right FAB that opens a menu of [itemCount]
-  /// items through [quickAddAnchor] — the Feed's FAB without the Feed, so the
-  /// test needs no database.
+  /// A Scaffold with a bottom-right FAB opening [itemCount] items through
+  /// [quickAddAnchor].
   Future<Rect> openMenuAndMeasure(WidgetTester tester) async {
     final GlobalKey fabKey = GlobalKey();
 
@@ -49,8 +42,7 @@ void main() {
 
     expect(find.text('item 0'), findsOneWidget);
 
-    // The union of the item rects stands in for the bubble: the menu's own
-    // Material is wrapped in transitions whose rect is animated.
+    // Item rects stand in for the bubble, whose own rect is animated.
     Rect bounds = tester.getRect(find.text('item 0'));
     for (int i = 1; i < itemCount; i++) {
       bounds = bounds.expandToInclude(tester.getRect(find.text('item $i')));
@@ -65,14 +57,12 @@ void main() {
     final Rect fab = tester.getRect(find.byType(FloatingActionButton));
     final Size screen = tester.view.physicalSize / tester.view.devicePixelRatio;
 
-    // The whole menu is above the button.
     expect(
       menu.bottom,
       lessThanOrEqualTo(fab.top),
       reason: 'the bubble must not overlap the button it opened from',
     );
 
-    // And it is nowhere near the top of the screen, which was the bug.
     expect(
       menu.top,
       greaterThan(screen.height / 2),
@@ -86,8 +76,7 @@ void main() {
     final Rect menu = await openMenuAndMeasure(tester);
     final Rect fab = tester.getRect(find.byType(FloatingActionButton));
 
-    // showMenu grows leftwards from a button nearer the right edge, so the
-    // bubble's right edge tracks the button's rather than the screen's.
+    // Grows leftwards from a button near the right edge.
     expect(menu.right, lessThanOrEqualTo(fab.right));
     expect(menu.left, lessThan(fab.left));
   });

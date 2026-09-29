@@ -1,5 +1,5 @@
 import 'package:decimal/decimal.dart';
-// drift exports isNull/isNotNull as SQL expressions; the matchers win here.
+// drift's isNull/isNotNull are SQL expressions; use the matchers.
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/app/startup.dart';
@@ -13,8 +13,7 @@ import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// The invariants the spec puts in the data layer on purpose, so no screen can
-/// route around them.
+/// Invariants enforced by the repositories.
 void main() {
   late AppDatabase db;
   late SpaceClock clock;
@@ -109,7 +108,6 @@ void main() {
     });
 
     test('a soft-deleted record does not freeze it', () async {
-      // "First record" means a non-deleted payment or income (plan G9).
       final Space space = await makeSpace();
       final Payment p = await payments.create(
         spaceId: space.id,
@@ -129,7 +127,6 @@ void main() {
 
       final Space updated = (await spaces.byId(space.id))!;
       expect(updated.manualBalance, Decimal.fromInt(842));
-      // The walker needs the timestamp, not just the figure (plan G1).
       expect(updated.manualBalanceUpdatedAt, DateTime.utc(2026, 3, 10, 12));
     });
   });
@@ -158,7 +155,7 @@ void main() {
     });
 
     test('a duplicate sort_order still orders deterministically', () async {
-      // sort_order is not unique on purpose (plan G2), so id breaks the tie.
+      // `sort_order` is not unique; id breaks the tie.
       final Space space = await makeSpace();
       const CalendarDate day = CalendarDate(2026, 3, 1);
       final Payment a = await payments.create(
@@ -258,8 +255,6 @@ void main() {
     });
 
     test('a soft-deleted payment does not freeze it', () async {
-      // Nothing visible is distorted by the rename, so it stays allowed
-      // (spec 7).
       final Space space = await makeSpace();
       final Category c = await categories.create(
         spaceId: space.id,
@@ -321,7 +316,6 @@ void main() {
       await categories.softDelete(c.id);
 
       expect(await categories.inSpace(space.id), isEmpty);
-      // category_id is untouched: history still reads the same (spec 7).
       expect((await payments.byId(p.id))!.categoryId, c.id);
       expect(await categories.allEverInSpace(space.id), hasLength(1));
     });
@@ -366,7 +360,6 @@ void main() {
         'Utilities',
         'Groceries',
       ]);
-      // A starter set arrives ready to look at, not as three blank names.
       expect(rows.first.icon, '🏠');
       expect(rows.first.color, '#8FB996');
       expect(rows.first.expenseType, ExpenseType.mandatory);
@@ -375,7 +368,6 @@ void main() {
     });
 
     test('a rename makes a starter category the user\'s', () async {
-      // Until then it is shown in the reader's language; after, as typed.
       final Space space = await makeSpace();
       await categories.createStarterSet(space.id, <
         ({
@@ -515,7 +507,6 @@ void main() {
 
   group('incomes', () {
     test('an income with no amount needs one to be received', () async {
-      // Otherwise the period's Free Cash stays uncomputable (spec 4.7).
       final Space space = await makeSpace();
       final Income row = await incomes.create(
         spaceId: space.id,
@@ -547,7 +538,6 @@ void main() {
       final Income updated = (await incomes.inSpace(space.id)).single;
       expect(updated.isPaid, isTrue);
       expect(updated.amount, Decimal.fromInt(3000));
-      // The actual date never moves the expected one (spec 5.4).
       expect(updated.expectedDate, const CalendarDate(2026, 3, 26));
       expect(updated.actualDate, const CalendarDate(2026, 3, 25));
     });
@@ -565,7 +555,6 @@ void main() {
         startDate: const CalendarDate(2026, 2, 1),
       );
 
-      // Idempotent, so calling it on every space open is safe (plan G8).
       expect(second.id, first.id);
       expect(await periods.inSpace(space.id), hasLength(1));
       expect(first.endDate, isNull);

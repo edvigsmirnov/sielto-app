@@ -12,12 +12,7 @@ import 'package:sielto/features/calendar/calendar_data.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/feed_row.dart';
 
-/// The Day view: the two totals, then every record on the day (spec 8.1).
-///
-/// The only Calendar scale that loads rows, and the reason the other three
-/// need no detail query. It reuses the Feed's row so both screens answer a tap
-/// or a swipe the same way — a record is the same record whichever list it is
-/// read in.
+/// Day totals and records. Reuses the Feed row.
 class DayView extends StatelessWidget {
   const DayView({
     required this.day,
@@ -46,10 +41,9 @@ class DayView extends StatelessWidget {
   final ValueChanged<FeedRecord> onDelete;
   final ValueChanged<FeedRecord> onHoldRecord;
 
-  /// Whether a record's period has closed (spec 5.5).
   final bool Function(String? budgetPeriodId) isFrozen;
 
-  /// Null on a working day; otherwise the holiday's names, empty when unknown.
+  /// Null on a working day; otherwise holiday names, empty when unknown.
   final List<String>? dayOff;
 
   @override
@@ -86,8 +80,7 @@ class DayView extends StatelessWidget {
             Expanded(
               child: _TotalCard(
                 label: tr('calendar.dayExpenses'),
-                // Signed, and zero prints as zero rather than "-0": a day with
-                // nothing spent has spent nothing, not a negative amount.
+                // Zero prints unsigned.
                 text: expenses > Decimal.zero
                     ? money.formatSigned(-expenses)
                     : money.format(Decimal.zero),
@@ -109,8 +102,6 @@ class DayView extends StatelessWidget {
         const SizedBox(height: SageSpace.md),
         Expanded(
           child: rows.isEmpty
-              // No button here: the one that adds to this day is the floating
-              // one, which is on screen either way.
               ? EmptyState(message: tr('calendar.dayEmpty'))
               : ListView.separated(
                   padding: const EdgeInsets.only(bottom: 96),
@@ -121,9 +112,7 @@ class DayView extends StatelessWidget {
                     return FeedRowTile(
                       key: ValueKey<String>(record.id),
                       record: record,
-                      // The Day view is a calendar, not a plan: coverage is a
-                      // property of the walk over a whole cycle and saying
-                      // anything about it from one day would be a guess.
+                      // No coverage in a single day.
                       isCovered: true,
                       density: density,
                       money: money,
@@ -145,7 +134,6 @@ class DayView extends StatelessWidget {
   }
 }
 
-/// The holiday the day is, above and apart from its records.
 class _DayOffBanner extends StatelessWidget {
   const _DayOffBanner({required this.names});
 
@@ -188,7 +176,6 @@ class _DayOffBanner extends StatelessWidget {
   }
 }
 
-/// One of the two figures over the list (design section 7).
 class _TotalCard extends StatelessWidget {
   const _TotalCard({
     required this.label,
@@ -199,8 +186,7 @@ class _TotalCard extends StatelessWidget {
   final String label;
   final String text;
 
-  /// The income card carries the accent tint, matching the Feed's totals where
-  /// what comes in is the figure the rest is measured against.
+  /// Accent tint.
   final bool tinted;
 
   @override

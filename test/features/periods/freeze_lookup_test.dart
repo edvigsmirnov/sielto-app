@@ -10,11 +10,7 @@ import 'package:sielto/features/periods/freeze_providers.dart';
 
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 
-/// What the screens read to decide what to disable (spec 5.5).
-///
-/// The repositories refuse a frozen write on their own; these pin that the
-/// display answer agrees with the enforcement one, and that the two states
-/// which are not "frozen" are distinguished.
+/// Freeze state as screens read it; must match the repositories.
 void main() {
   late AppDatabase db;
   late Repositories repos;
@@ -62,13 +58,13 @@ void main() {
   });
 
   test('a period past its deadline is frozen', () async {
-    // Ended 2026-02-20, so it froze on 2026-03-06 — four days ago.
+    // Ended 2026-02-20; froze on 2026-03-06.
     final BudgetPeriod period = await endingOn('2026-02-20');
     expect((await lookup()).isFrozen(period.id), isTrue);
   });
 
   test('the two days before the deadline warn', () async {
-    // Ends 2026-02-25, so it freezes on 2026-03-11 — tomorrow.
+    // Ends 2026-02-25; freezes on 2026-03-11.
     final BudgetPeriod period = await endingOn('2026-02-25');
     final FreezeLookup state = await lookup();
     expect(state.of(period.id), FreezeState.closingSoon);
@@ -96,8 +92,6 @@ void main() {
   });
 
   test('the continuous period never freezes', () async {
-    // No end date, so there is nothing for the deadline to count from. Flow
-    // and Budget live here (spec 4.7).
     final BudgetPeriod period = await repos.periods.ensureContinuous(
       spaceId: space.id,
       startDate: d('2020-01-01'),
@@ -110,7 +104,7 @@ void main() {
   });
 
   test('a record bound to a period that no longer exists is open', () async {
-    // A dangling id is not a reason to lock a row out of editing.
+    // An unknown id is open.
     expect((await lookup()).of('gone'), FreezeState.open);
   });
 }

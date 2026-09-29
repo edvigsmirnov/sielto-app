@@ -17,21 +17,16 @@ import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// Analytics level 1: the top categories of a calendar range (spec 8.2).
-///
-/// Opened from the Dashboard and closed back to it, which is why the header
-/// carries a cross rather than a back arrow and why this is not a fourth tab:
-/// the bottom bar stays on the three screens throughout (design section 11).
+/// Analytics level 1: top categories of a calendar range. Opened from the
+/// Dashboard; closes back to it.
 class AnalyticsPage extends ConsumerWidget {
   const AnalyticsPage({super.key});
 
-  /// Pushes the analytics stack over whatever is on screen.
   static Future<void> open(BuildContext context) => Navigator.of(context).push(
     MaterialPageRoute<void>(builder: (BuildContext _) => const AnalyticsPage()),
   );
 
-  /// Wedges beyond this go into one "everything else" slice: a ring of
-  /// eighteen hairline wedges says less than four and a remainder.
+  /// The rest goes into one "other" slice.
   static const int _wedges = 5;
 
   @override
@@ -57,14 +52,10 @@ class AnalyticsPage extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: context.sage.surface,
         title: Text(tr('analytics.title')),
-        // One way out, not two: the cross is the exit, and Navigator's own
-        // back arrow beside it would offer the same thing twice
-        // (design section 11).
+        // The close button is the only exit.
         automaticallyImplyLeading: false,
         actions: <Widget>[
           IconButton(
-            // The cross, not a back arrow: level 1 closes the whole stack and
-            // returns to the Dashboard it was opened from.
             icon: const Icon(Icons.close),
             tooltip: tr('common.close'),
             onPressed: () {
@@ -116,14 +107,12 @@ class AnalyticsPage extends ConsumerWidget {
     );
   }
 
-  /// A category that was deleted keeps its name on the payments filed under it
-  /// (spec 7); one that never existed is the uncategorised slice.
+  /// Deleted categories keep their name; a missing one is uncategorised.
   static String _labelOf(
     AnalyticsSlice slice,
     Map<String, Category> categories,
   ) => categories[slice.key]?.shownTitle ?? tr('category.none');
 
-  /// The ring and its legend, as one block.
   static List<DonutSlice> wedges(
     List<AnalyticsSlice> slices,
     Decimal total,
@@ -137,8 +126,7 @@ class AnalyticsPage extends ConsumerWidget {
       for (final AnalyticsSlice s in slices.take(_wedges))
         DonutSlice(
           fraction: fraction(s.total),
-          // The users' own colour where the category has one; the neutral
-          // marker token where it does not.
+          // Category colour, else `sand`.
           color: parseCategoryColor(categories[s.key]?.color) ?? sage.sand,
         ),
     ];
@@ -165,8 +153,7 @@ class _Summary extends StatelessWidget {
   final Map<String, Category> categories;
   final MoneyFormat money;
 
-  /// Legend entries. Beyond three the list under the ring becomes the thing
-  /// being read, and the full list is right below it anyway.
+  /// Legend entries under the ring.
   static const int _legend = 3;
 
   @override
@@ -240,7 +227,7 @@ class _LegendLine extends StatelessWidget {
   }
 }
 
-/// One category, its record count, its total, and the way into level 2.
+/// Category, record count, total; opens level 2.
 class _CategoryRow extends StatelessWidget {
   const _CategoryRow({
     required this.slice,

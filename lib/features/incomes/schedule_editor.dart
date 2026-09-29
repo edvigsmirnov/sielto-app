@@ -5,11 +5,8 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// The schedule fields, as the form holds them before saving.
-///
-/// One object carrying every type's fields rather than a sealed hierarchy:
-/// the user switches type back and forth while filling the form, and keeping
-/// the other types' answers means switching back does not lose them.
+/// Schedule fields as the form holds them. Keeps every type's fields, so
+/// switching type back and forth keeps the answers.
 @immutable
 class ScheduleDraft {
   const ScheduleDraft({
@@ -52,18 +49,10 @@ class ScheduleDraft {
     boundaryCount: boundaryCount ?? this.boundaryCount,
   );
 
-  /// A range must not end before it starts; everything else is constrained by
-  /// its control.
+  /// A range must not end before it starts.
   bool get isValid => type != ScheduleType.dateRange || rangeEnd >= rangeStart;
 
-  /// Compared by value, because the answer decides whether a rule edit re-dates
-  /// the occurrences already on the calendar. By identity every save would look
-  /// like a schedule change and drop rows that had per-month corrections on
-  /// them (spec 5.4).
-  ///
-  /// Only the fields the chosen [type] actually uses count: the editor keeps
-  /// the others at whatever they were last set to, and a stale `fixedDay`
-  /// behind a weekday rule is not a difference.
+  /// Compares only the fields the chosen [type] uses.
   @override
   bool operator ==(Object other) {
     if (other is! ScheduleDraft || other.type != type) return false;
@@ -92,7 +81,7 @@ class ScheduleDraft {
   };
 }
 
-/// Picks one of the four schedule shapes and its fields (spec 5.1).
+/// Picks one of the four schedule types and its fields.
 class ScheduleEditor extends StatelessWidget {
   const ScheduleEditor({
     required this.draft,
@@ -109,9 +98,7 @@ class ScheduleEditor extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         FieldLabel(tr('schedule.type')),
-        // Four chips in a two-by-two block rather than four stacked cards
-        // (design section 5.1): the four are alternatives of equal weight, and
-        // a vertical list of explanations buries the fields underneath them.
+        // Four chips in a 2x2 grid.
         for (int row = 0; row < 2; row++) ...<Widget>[
           Row(
             children: <Widget>[
@@ -132,8 +119,7 @@ class ScheduleEditor extends StatelessWidget {
           const SizedBox(height: SageSpace.sm),
         ],
         const SizedBox(height: SageSpace.xs),
-        // The chosen shape explained where it was chosen, one line instead of
-        // four competing for the same attention.
+        // Explains the chosen type.
         Text(
           tr('schedule.${draft.type.name}.hint'),
           style: Theme.of(context).textTheme.bodySmall,
@@ -163,7 +149,6 @@ class ScheduleEditor extends StatelessWidget {
   };
 }
 
-/// One of the four schedule shapes, as a chip.
 class _TypeChip extends StatelessWidget {
   const _TypeChip({
     required this.type,
@@ -175,13 +160,7 @@ class _TypeChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  /// Every chip is this tall, whether its label wraps or not.
-  ///
-  /// Four alternatives of equal standing should look equal; sizing each to its
-  /// own text makes "Fixed date" look like a lesser option than "N days from
-  /// the edge" for no reason but the length of the words. Two lines of
-  /// `labelLarge` and the padding fit inside it, and a longer translation
-  /// ellipsises rather than pushing one chip out of line with the rest.
+  /// Fixed height, so all chips match. Longer labels ellipsise.
   static const double _height = 58;
 
   @override
@@ -216,11 +195,7 @@ class _TypeChip extends StatelessWidget {
   }
 }
 
-/// What happens when a computed date lands on a weekend or a holiday.
-///
-/// Stated on the form rather than discovered later on the calendar: the rule
-/// decides which cycle a salary opens, and it is not one a reader would guess
-/// (spec 5.1.1).
+/// How a date on a weekend or holiday resolves.
 class UncertaintyNote extends StatelessWidget {
   const UncertaintyNote({super.key});
 
@@ -261,8 +236,7 @@ class _FixedDateFields extends StatelessWidget {
           onChanged: (int day) => onChanged(draft.copyWith(fixedDay: day)),
         ),
       ),
-      // The clamping rule, said where the choice is made rather than after it
-      // surprises someone in February (spec 5.1).
+      // Explains clamping in short months.
       if (draft.fixedDay >= 29)
         Padding(
           padding: const EdgeInsets.only(top: SageSpace.xs),
@@ -398,8 +372,6 @@ class _BoundaryFields extends StatelessWidget {
         child: _Stepper(
           value: draft.boundaryCount,
           min: 1,
-          // Past a fortnight, "the first N days" stops describing anything and
-          // the user wants a fixed date instead (spec 5.1).
           max: BoundaryDaysSchedule.maxCount,
           onChanged: (int n) => onChanged(draft.copyWith(boundaryCount: n)),
         ),
@@ -413,7 +385,7 @@ class _BoundaryFields extends StatelessWidget {
   );
 }
 
-/// A day of the month, 1 to 31.
+/// Day of the month, 1 to 31.
 class _DayPicker extends StatelessWidget {
   const _DayPicker({required this.value, required this.onChanged});
 

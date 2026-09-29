@@ -8,7 +8,6 @@ import 'package:sielto/core/crypto/key_store.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/time/space_clock.dart';
 
-/// Outcome of opening the encrypted database at launch.
 sealed class Startup {
   const Startup();
 }
@@ -19,8 +18,7 @@ class StartupReady extends Startup {
   final AppDatabase database;
 }
 
-/// The database file is there but the key is not. Never a crash and never a
-/// silent wipe — the user chooses what happens next (spec 2.2).
+/// The database exists but its key is unavailable.
 class StartupLocked extends Startup {
   const StartupLocked(this.reason, this.manager);
 
@@ -28,10 +26,7 @@ class StartupLocked extends Startup {
   final DatabaseKeyManager manager;
 }
 
-/// Resolves the key, then opens the database with it.
-///
-/// [directory] is injectable so tests run against a temp folder instead of the
-/// real application support directory.
+/// [directory] is for tests.
 Future<Startup> openDatabase({Directory? directory}) async {
   SpaceClock.initialize();
 
@@ -50,9 +45,7 @@ Future<Startup> openDatabase({Directory? directory}) async {
   );
 }
 
-/// Deletes the database and its key material, then starts fresh. The "Start
-/// over" branch of the decryption-failure screen: the data is unrecoverable
-/// either way, so this only removes what can no longer be read.
+/// Deletes the database and its key material, then opens a fresh one.
 Future<Startup> startOver(DatabaseKeyManager manager) async {
   await manager.destroy();
   for (final String suffix in <String>['', '-wal', '-shm']) {
@@ -62,6 +55,6 @@ Future<Startup> startOver(DatabaseKeyManager manager) async {
   return openDatabase(directory: manager.directory);
 }
 
-/// Opens an in-memory database with the full schema. Tests only.
+/// In-memory database with the full schema. Tests only.
 @visibleForTesting
 AppDatabase inMemoryDatabase() => AppDatabase(NativeDatabase.memory());

@@ -21,8 +21,7 @@ void main() {
     });
 
     test('the 31st clamps into short months without drifting', () {
-      // The bug this guards: stepping from the clamped date instead of the
-      // original walks the series backwards a day at a time.
+      // Steps count from the original date, not the clamped one.
       final List<CalendarDate> dates = recurrenceDates(
         start: d('2026-01-31'),
         interval: RecurrenceInterval.monthly,
@@ -68,8 +67,6 @@ void main() {
 
   group('open-ended', () {
     test('fills the horizon rather than running forever', () {
-      // "Indefinitely" is the one case where no explicit limit would grow the
-      // database without bound (spec 6.3).
       final List<CalendarDate> dates = recurrenceDates(
         start: d('2026-03-10'),
         interval: RecurrenceInterval.monthly,

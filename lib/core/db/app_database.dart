@@ -1,8 +1,6 @@
 import 'dart:io';
 
-// calendar_date and enums are imported for the generated part file rather than
-// for this one: it names those types, and they must be in scope here. Errors
-// inside a .g.dart never reach `flutter analyze` — only a build or a test.
+// decimal, calendar_date and enums are used by app_database.g.dart.
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -16,8 +14,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 part 'app_database.g.dart';
 
-/// The local database — the source of truth. The cloud is transport, never
-/// archival storage (spec 10.1).
+/// The local database, the source of truth.
 @DriftDatabase(
   tables: <Type>[
     Spaces,
@@ -36,8 +33,7 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
-  /// Bumped on every schema change, with a step in [migration] and a snapshot
-  /// regenerated for the migration harness (spec 10.6).
+  /// Bump with a new [migration] step and a new schema snapshot.
   static const int currentSchemaVersion = 3;
 
   @override
@@ -50,19 +46,12 @@ class AppDatabase extends _$AppDatabase {
       await _createIndexes(this);
     },
     onUpgrade: (Migrator m, int from, int to) async {
-      // Every version adds a branch and never edits an earlier one.
       if (from < 2) {
-        // v2 adds no column, only the index behind the title autocomplete
-        // (spec 8.2). `IF NOT EXISTS` throughout, so running the whole set is
-        // the same as running the new statement.
+        // v2: title autocomplete index only.
         await _createIndexes(m.database);
       }
       if (from < 3) {
         await m.addColumn(categories, categories.starterKey);
-        // Starter categories written before v3 carry only their title, in
-        // the language of the day. These are the titles v2 builds wrote, a
-        // fixed snapshot rather than a read of today's dictionaries; a row
-        // still carrying one was never renamed.
         for (final MapEntry<String, List<String>> e
             in _v2StarterTitles.entries) {
           for (final String title in e.value) {
@@ -80,14 +69,12 @@ class AppDatabase extends _$AppDatabase {
       }
     },
     beforeOpen: (OpeningDetails details) async {
-      // Drift disables it per connection, and soft deletes lean on it.
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
 }
 
-/// Starter category titles as v2 wrote them, per key, in every shipped
-/// language.
+/// Starter category titles written by v2, per key. Frozen: do not edit.
 const Map<String, List<String>> _v2StarterTitles = <String, List<String>>{
   'rent': <String>['Rent', 'Аренда'],
   'loans': <String>['Loans', 'Кредиты'],
@@ -96,17 +83,14 @@ const Map<String, List<String>> _v2StarterTitles = <String, List<String>>{
   'flexible': <String>['Flexible spending', 'Гибкие расходы'],
 };
 
-/// Indexes that Drift's table definitions cannot express.
+/// Partial and expression indexes. All `IF NOT EXISTS`.
 Future<void> _createIndexes(DatabaseConnectionUser db) async {
-  // Two active categories cannot share a name; a deleted one frees its name
-  // for reuse (spec 7).
+  // Titles are unique among active categories only.
   await db.customStatement(
     'CREATE UNIQUE INDEX IF NOT EXISTS categories_unique_active_title '
     'ON categories (space_id, lower(title)) WHERE is_deleted = 0',
   );
 
-  // The Feed and the ledger walker read a Space's rows in date order, always
-  // filtered to the undeleted ones.
   await db.customStatement(
     'CREATE INDEX IF NOT EXISTS payments_space_due_date '
     'ON payments (space_id, due_date) WHERE is_deleted = 0',
@@ -120,23 +104,18 @@ Future<void> _createIndexes(DatabaseConnectionUser db) async {
     'ON budget_periods (space_id, start_date) WHERE is_deleted = 0',
   );
 
-  // Prefix lookups for the payment form's title autocomplete, which is the
-  // defence against level-2 fragmentation in Analytics (spec 8.2). The
-  // expression matches the grouping key exactly, so the index serves the query
-  // that offers a title and the one that later merges it.
+  // Title autocomplete and Analytics grouping use the same key.
   await db.customStatement(
     'CREATE INDEX IF NOT EXISTS payments_space_title '
     'ON payments (space_id, lower(trim(title))) WHERE is_deleted = 0',
   );
 
-  // Analytics reads a calendar range within one category (spec 8.2). The
-  // existing date index cannot serve it: the category is the selective term.
+  // Analytics by category and range.
   await db.customStatement(
     'CREATE INDEX IF NOT EXISTS payments_space_category_due_date '
     'ON payments (space_id, category_id, due_date) WHERE is_deleted = 0',
   );
 
-  // The sync worker scans for unsent rows across tables.
   for (final String table in <String>[
     'payments',
     'incomes',
@@ -151,12 +130,8 @@ Future<void> _createIndexes(DatabaseConnectionUser db) async {
   }
 }
 
-/// Opens the encrypted database file.
-///
-/// The key is applied before any other statement — SQLCipher requires it as
-/// the first operation on the connection — and then verified by a read that
-/// touches a page. Without that read a wrong key surfaces later, at a random
-/// query, instead of here (spec 2.2).
+/// `PRAGMA key` must be the first statement; the read after it fails fast on
+/// a wrong key.
 QueryExecutor openEncryptedDatabase({
   required Directory directory,
   required DatabaseKey key,

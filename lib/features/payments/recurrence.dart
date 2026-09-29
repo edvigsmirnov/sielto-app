@@ -1,20 +1,11 @@
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// How often a repeating payment recurs (spec 6.3).
 enum RecurrenceInterval { monthly, weekly }
 
-/// Rows an open-ended series materialises ahead of today.
-///
-/// "Indefinitely" is not an unbounded INSERT: the series is rolled forward in
-/// a 24-month window and extended as that window approaches (spec 6.3). This
-/// is the one place where no explicit limit would grow the database without
-/// bound, so the limit is stated rather than implied.
+/// Months an open-ended series materialises ahead of today.
 const int recurrenceHorizonMonths = 24;
 
-/// The dates of one series.
-///
-/// [count] is the number of occurrences including the first. Null means
-/// open-ended, which fills the horizon instead.
+/// [count] includes the first occurrence. Null fills [recurrenceHorizonMonths].
 List<CalendarDate> recurrenceDates({
   required CalendarDate start,
   required RecurrenceInterval interval,
@@ -29,9 +20,7 @@ List<CalendarDate> recurrenceDates({
     dates.add(current);
     index++;
     current = switch (interval) {
-      // Monthly steps count from the original date, so a series that starts on
-      // the 31st returns to the 31st after a short month instead of drifting
-      // backwards a day at a time.
+      // Counted from the start date, so the 31st returns after a short month.
       RecurrenceInterval.monthly => start.addMonths(index),
       RecurrenceInterval.weekly => start.addDays(7 * index),
     };

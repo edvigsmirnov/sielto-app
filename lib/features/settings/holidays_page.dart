@@ -13,12 +13,8 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/periods/holiday_service.dart';
 
-/// Settings → Weekends and holidays (spec 5.1.2).
-///
-/// Two blocks, as the spec asks. The public holidays are read-only: they are a
-/// fact about a country, and showing them is what makes it clear which days
-/// are already accounted for. Below them are the days the user added, which
-/// are theirs to edit.
+/// Settings → Weekends and holidays: the country's public holidays, read-only,
+/// and the user's own days.
 class HolidaysPage extends ConsumerWidget {
   const HolidaysPage({super.key});
 
@@ -52,8 +48,7 @@ class HolidaysPage extends ConsumerWidget {
               offline ? tr('holidays.blockedByOffline') : tr('holidays.source'),
             ),
             value: !offline && (consent ?? false),
-            // The master switch wins, so the row goes inert rather than
-            // pretending the choice still matters (spec 1).
+            // Inactive while offline mode is on.
             onChanged: offline
                 ? null
                 : (bool value) => ref
@@ -111,8 +106,7 @@ class HolidaysPage extends ConsumerWidget {
     if (picked == null) return;
 
     await ref.read(defaultCountryProvider.notifier).set(picked.code);
-    // Setting a country for the first time is what triggers the one-time
-    // question about the download (spec 5.1.1).
+    // The first country choice asks for download consent.
     if (picked.code != null &&
         previous == null &&
         ref.read(holidayConsentProvider) == null &&
@@ -122,11 +116,7 @@ class HolidaysPage extends ConsumerWidget {
   }
 }
 
-/// The one-time download question (spec 5.1.1).
-///
-/// Asked when a country is first chosen, and never again on its own: a refusal
-/// is an answer, not a postponement. The setting stays reversible on this
-/// screen.
+/// Asked once, when a country is first chosen.
 Future<void> askHolidayConsent(BuildContext context, WidgetRef ref) async {
   final bool allowed = await confirmDialog(
     context,
@@ -137,10 +127,8 @@ Future<void> askHolidayConsent(BuildContext context, WidgetRef ref) async {
   await ref.read(holidayConsentProvider.notifier).set(allowed: allowed);
 }
 
-/// Adds a non-working day: a date, then an optional name (spec 5.1.2).
-///
-/// Shared by this screen and the Feed's add menu, so both write the same row
-/// with the same warning about what it does and does not affect.
+/// Adds a non-working day: a date, then an optional name. Shared with the Feed
+/// and Calendar menus.
 Future<void> markNonWorkingDay(
   BuildContext context,
   WidgetRef ref, {
@@ -150,8 +138,6 @@ Future<void> markNonWorkingDay(
   final CalendarDate today = ref.read(spaceClockProvider).today();
   CalendarDate date = initial ?? today;
 
-  // The Calendar's long press already names the day, so asking for it again
-  // would be a picker opened on the answer (spec 8.1).
   if (askDate) {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -172,14 +158,13 @@ Future<void> markNonWorkingDay(
       .add(
         date: date,
         title: title.isEmpty ? null : title,
-        // Bound to the country in force, so a day marked for Germany does not
-        // silently apply to a Space kept on another country's calendar.
+        // Bound to the current country.
         countryCode: ref.read(defaultCountryProvider),
       );
   ref.invalidate(periodRefreshProvider);
 }
 
-/// Empty string means "no name", which is allowed. Null means cancelled.
+/// Empty string: no name. Null: cancelled.
 Future<String?> _askDayTitle(BuildContext context) async {
   final TextEditingController controller = TextEditingController();
   try {
@@ -198,7 +183,6 @@ Future<String?> _askDayTitle(BuildContext context) async {
           controller: controller,
           autofocus: true,
           maxLength: 200,
-          // Wraps and grows downward rather than scrolling one line sideways.
           minLines: 1,
           maxLines: 5,
           textInputAction: TextInputAction.done,
@@ -222,7 +206,7 @@ Future<String?> _askDayTitle(BuildContext context) async {
   }
 }
 
-/// This year's public holidays for the default country. Read-only.
+/// This year's public holidays for the default country.
 class _PublicHolidays extends ConsumerWidget {
   const _PublicHolidays({required this.country, required this.dates});
 
@@ -236,12 +220,11 @@ class _PublicHolidays extends ConsumerWidget {
     }
 
     final int year = ref.watch(spaceClockProvider).today().year;
-    // Watched so the list fills in as soon as a fetch lands.
     final AsyncValue<ResolvedCalendar> refresh = ref.watch(
       resolvedCalendarProvider,
     );
 
-    // Names are bundled beside the dates; a fetched year has none.
+    // Names are bundled; fetched years have none.
     Future<(List<CalendarDate>?, Map<CalendarDate, List<String>>)>
     load() async => (
       await ref.read(repositoriesProvider).holidays.cached(country!, year),
@@ -268,9 +251,7 @@ class _PublicHolidays extends ConsumerWidget {
             final Map<CalendarDate, List<String>> names =
                 snapshot.data?.$2 ?? const <CalendarDate, List<String>>{};
             if (days == null || days.isEmpty) {
-              // countries.json offers every country the source knows, ten
-              // times what is bundled, so an empty list usually means this
-              // country needs the download rather than that it failed.
+              // Most listed countries are not bundled; empty usually means not downloaded.
               final ResolvedCalendar? resolved = refresh.value;
               final bool blocked =
                   resolved != null &&
@@ -290,8 +271,7 @@ class _PublicHolidays extends ConsumerWidget {
                       size: 20,
                       color: context.sage.inkLabel,
                     ),
-                    // As in the Day view: the English name, then the local
-                    // one where it differs.
+                    // English name, then the local one where different.
                     title: Text(
                       names[day]?.firstOrNull ?? tr('calendar.holiday'),
                     ),
@@ -309,7 +289,7 @@ class _PublicHolidays extends ConsumerWidget {
   }
 }
 
-/// The days the user marked, with a delete on each.
+/// User-marked days, each with a delete.
 class _CustomDays extends ConsumerWidget {
   const _CustomDays();
 
@@ -379,7 +359,6 @@ class _SectionLabel extends StatelessWidget {
       SageSpace.gutter,
       SageSpace.xs,
     ),
-    // Caps, like the design's list-group headers.
     child: Text(
       text.toUpperCase(),
       style: Theme.of(context).textTheme.labelSmall,
@@ -387,7 +366,7 @@ class _SectionLabel extends StatelessWidget {
   );
 }
 
-/// Null code is the "no country" row, which is a choice rather than a cancel.
+/// Null code is the "no country" choice.
 @immutable
 class _CountryResult {
   const _CountryResult(this.code);

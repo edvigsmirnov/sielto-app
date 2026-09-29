@@ -6,11 +6,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// The Year view: twelve cards, three figures each (spec 8.1).
-///
-/// In, out, and the difference — the only view that shows a net, because a
-/// month is the shortest span over which "did it balance" is a real question.
-/// Tapping one opens that month.
+/// Twelve month cards: in, out and net. Tap opens the month.
 class YearView extends StatelessWidget {
   const YearView({
     required this.year,
@@ -86,8 +82,6 @@ class _MonthCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(SageRadius.card),
       child: Opacity(
-        // A month with nothing in it is still a month: present, and clearly
-        // not carrying an answer.
         opacity: empty ? 0.45 : 1,
         child: DecoratedBox(
           decoration: BoxDecoration(
@@ -140,8 +134,7 @@ class _MonthCard extends StatelessWidget {
   }
 }
 
-/// One figure on a month card. Tabular, so the three lines and the twelve
-/// cards all align.
+/// Tabular.
 class _Line extends StatelessWidget {
   const _Line({
     required this.text,
@@ -152,7 +145,7 @@ class _Line extends StatelessWidget {
   final String text;
   final Color color;
 
-  /// The net, which is the figure the card is about.
+  /// Net, at title weight.
   final bool emphasised;
 
   @override

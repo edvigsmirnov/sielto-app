@@ -19,12 +19,8 @@ import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 
-/// The dashboard of a Regular-income Space (spec 4.7).
-///
-/// Three states, and the two that are not the happy one are the point: a Space
-/// with no anchor income yet is a valid, permanent state rather than an error,
-/// and an anchor whose amount is unknown gets an honest "cannot compute this"
-/// instead of a fabricated figure.
+/// Regular-income Space dashboard: no anchor yet, anchor without an amount, or
+/// the period figures.
 class PeriodDashboardBody extends ConsumerWidget {
   const PeriodDashboardBody({required this.space, super.key});
 
@@ -48,10 +44,7 @@ class PeriodDashboardBody extends ConsumerWidget {
   }
 }
 
-/// A Space with no regular income yet.
-///
-/// Not an error and not a blocked screen: the Feed and Calendar keep working,
-/// and the hint about the other two modes suggests without pushing (spec 4.7).
+/// No regular income yet. The Feed and Calendar still work.
 class _NoAnchorState extends StatelessWidget {
   const _NoAnchorState();
 
@@ -126,8 +119,7 @@ class _PeriodBody extends ConsumerWidget {
         FreezeBanner(period: ledger.period),
         if (!ledger.isComputable)
           _FloatingAnchorCard(ledger: ledger, money: money)
-        // No income in the cycle: a remainder would only be the payments
-        // negated.
+        // No income in the cycle: show the spent total.
         else if (!ledger.hasIncome)
           SpentFigure(amount: ledger.totalPaid, money: money)
         else ...<Widget>[
@@ -150,7 +142,6 @@ class _PeriodBody extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: SageSpace.md),
-        // What is already late, whichever period it belongs to.
         OverdueChip(
           money: money,
           margin: const EdgeInsets.only(bottom: SageSpace.md),
@@ -172,8 +163,6 @@ class _PeriodBody extends ConsumerWidget {
                     openIncomeForm(context, incomeId: ledger.nearestIncome!.id),
         ),
         const SizedBox(height: SageSpace.md),
-        // The salary is what the whole cycle rests on, and its schedule lived
-        // only under Space settings until now.
         SageCard(
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -210,10 +199,7 @@ class _PeriodBody extends ConsumerWidget {
   }
 }
 
-/// An anchor income whose amount is not known yet (spec 4.7).
-///
-/// The expense side is fully computed and shown; the remainder is not, and the
-/// screen says which rather than printing a number that would be wrong.
+/// Anchor income without an amount: expenses shown, remainder not computed.
 class _FloatingAnchorCard extends StatelessWidget {
   const _FloatingAnchorCard({required this.ledger, required this.money});
 
@@ -244,9 +230,6 @@ class _FloatingAnchorCard extends StatelessWidget {
                   value: money.format(ledger.totalPlanned),
                 ),
               ),
-              // Always a way to the row that is missing its figure. Reaching
-              // this card with no income at all is no longer possible: a cycle
-              // without income computes from zero.
               TextButton(
                 onPressed: () => openIncomeForm(
                   context,
@@ -263,5 +246,4 @@ class _FloatingAnchorCard extends StatelessWidget {
   }
 }
 
-/// Free money for the period, or the day the money runs out.
 Decimal? freeCashOf(PeriodLedger ledger) => ledger.freeCash;

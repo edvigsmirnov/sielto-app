@@ -10,11 +10,7 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_cell.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
 
-/// The Week view: seven full-width rows, Monday at the top (spec 8.1).
-///
-/// Roomier than a Month cell, so each row carries the weekday, the date, the
-/// day's figure and — where there is one — the categories it went to. Names
-/// only, no amounts per name: the amounts are the Day view's job.
+/// Seven rows, Monday first: date, figures and top categories.
 class WeekView extends StatelessWidget {
   const WeekView({
     required this.week,
@@ -30,14 +26,14 @@ class WeekView extends StatelessWidget {
     super.key,
   });
 
-  /// The Monday the week starts on.
+  /// Always a Monday.
   final CalendarDate week;
 
   final CalendarDate selected;
   final Map<CalendarDate, DayTotals> totals;
   final DayMarks marks;
 
-  /// Up to [maxCategoryNames] category titles per day, in spend order.
+  /// Up to [maxCategoryNames] titles per day, in spend order.
   final Map<CalendarDate, List<String>> categories;
 
   final CalendarDate today;
@@ -46,7 +42,6 @@ class WeekView extends StatelessWidget {
   final ValueChanged<CalendarDate> onOpenDay;
   final void Function(CalendarDate date, Offset at) onHoldDay;
 
-  /// What fits on one line under the date (spec 8.1).
   static const int maxCategoryNames = 3;
 
   @override
@@ -169,7 +164,6 @@ class _WeekRow extends StatelessWidget {
   }
 }
 
-/// The day's figures, or the words for a day with nothing on it.
 class _Figures extends StatelessWidget {
   const _Figures({
     required this.totals,
@@ -211,7 +205,7 @@ class _Figures extends StatelessWidget {
         ),
     ];
 
-    // Only a floating income, so there is a record but no figure (spec 4.7).
+    // Only an income without amount.
     if (figures.isEmpty) {
       return Text(
         tr('income.amountUnknown'),

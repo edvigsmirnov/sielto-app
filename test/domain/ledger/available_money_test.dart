@@ -38,8 +38,6 @@ void main() {
     });
 
     test('a floating salary leaves the figure uncomputable, not wrong', () {
-      // The dashboard says the amount is unknown rather than inventing one
-      // (spec 4.7).
       final IncomeDrivenContext ctx = IncomeDrivenContext(
         anchorAmount: null,
         arrivedSecondary: m('200'),
@@ -66,8 +64,6 @@ void main() {
   });
 
   group('flow, and the double-count rule', () {
-    // manual_balance is a snapshot of real money, so it already reflects
-    // everything paid before it was set (plan G1).
     final List<LedgerEntry> entries = <LedgerEntry>[
       expense('rent', '2026-03-01', '600', isPaid: true),
       expense('internet', '2026-03-05', '40', isPaid: true),
@@ -86,7 +82,7 @@ void main() {
         available: ctx.available,
         entries: ctx.entries,
       );
-      // Without the rule this would read 160: rent and internet charged twice.
+      // Without the rule: 160, rent and internet charged twice.
       expect(run.finalBalance, m('800'));
     });
 
@@ -102,7 +98,7 @@ void main() {
     });
 
     test('an unpaid expense before the balance date still counts', () {
-      // Overdue but unpaid: the money has not left the account.
+      // Unpaid: the money is still there.
       final LedgerContext ctx = FlowContext.build(
         manualBalance: m('1000'),
         entries: <LedgerEntry>[expense('overdue', '2026-03-01', '150')],
@@ -112,7 +108,7 @@ void main() {
     });
 
     test('an expense due exactly on the balance date is dropped', () {
-      // The boundary is inclusive: the balance was set after paying it.
+      // Inclusive boundary.
       final LedgerContext ctx = FlowContext.build(
         manualBalance: m('1000'),
         entries: <LedgerEntry>[
@@ -132,7 +128,6 @@ void main() {
     });
 
     test('the excluded count is reportable', () {
-      // Shown in the balance tooltip so the exclusion is visible (plan G1).
       expect(
         FlowContext.excludedCount(
           entries: entries,
@@ -173,7 +168,7 @@ void main() {
     });
 
     test('with no fund there is nothing to measure against', () {
-      // Pure expense tracking; no cutoff is drawn (spec 4.8).
+      // No fund: no cutoff.
       final BudgetContext ctx = BudgetContext(
         budgetTarget: null,
         contributions: Decimal.zero,
@@ -206,7 +201,6 @@ void main() {
     });
 
     test('pulling a deadline back marks entries, never deletes them', () {
-      // Moving the deadline backwards must not lose data (spec 4.8).
       final BudgetContext ctx = BudgetContext(
         budgetTarget: m('2000'),
         contributions: Decimal.zero,

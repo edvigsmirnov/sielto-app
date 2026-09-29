@@ -12,11 +12,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 
-/// Runs a write that a frozen period may refuse, and reports the refusal.
-///
-/// The screens disable what they can, but the guard is the authority and a
-/// period can freeze while a form is open. Catching it here turns the last
-/// case into a message instead of a crash.
+/// Runs [write] and reports a freeze or deadline refusal as a message.
 Future<bool> guardFreeze(
   BuildContext context,
   Future<void> Function() write,
@@ -28,8 +24,6 @@ Future<bool> guardFreeze(
     if (context.mounted) _say(context, tr('freeze.refused'));
     return false;
   } on BeyondHardDeadline catch (e) {
-    // The other rule the data layer enforces on a date (spec 4.8). One place
-    // to report both, because every write goes through here.
     if (context.mounted) {
       _say(
         context,
@@ -49,11 +43,8 @@ void _say(BuildContext context, String message) => ScaffoldMessenger.of(context)
   ..hideCurrentSnackBar()
   ..showSnackBar(SnackBar(content: Text(message)));
 
-/// The state of the period a screen is showing (spec 5.5).
-///
-/// Nothing while it is open, a warning two days before it closes, and a
-/// standing notice once it has. The warning is the point of the rule: a wrong
-/// figure is still correctable while it shows.
+/// State of the shown period: nothing while open, a warning before it
+/// freezes, a notice once frozen.
 class FreezeBanner extends ConsumerWidget {
   const FreezeBanner({required this.period, super.key});
 
@@ -70,7 +61,7 @@ class FreezeBanner extends ConsumerWidget {
     final bool frozen = state == FreezeState.frozen;
     final Color ink = frozen ? sage.inkSecondary : sage.warning;
 
-    // Only the Space creator may reopen a closed period (spec 5.5, level 3).
+    // Only the Space creator may reopen a frozen period.
     final Space? space = ref.watch(currentSpaceProvider);
     final bool isOwner =
         space != null && space.ownerId == ref.watch(userIdProvider);
@@ -139,8 +130,7 @@ class FreezeBanner extends ConsumerWidget {
   }
 }
 
-/// The reason a period was reopened, which the spec requires and stores
-/// (spec 5.5). Returns null when the dialog is dismissed.
+/// Null when dismissed.
 Future<String?> askUnfreezeReason(BuildContext context) async {
   final TextEditingController reason = TextEditingController();
   try {
@@ -202,8 +192,7 @@ class _UnfreezeDialogState extends State<_UnfreezeDialog> {
           child: Text(tr('common.cancel')),
         ),
         TextButton(
-          // A reason is required, not optional: the record of why a closed
-          // period was reopened is the whole safeguard (spec 5.5).
+          // A reason is required.
           onPressed: reason.isEmpty
               ? null
               : () => Navigator.of(context).pop(reason),
@@ -214,7 +203,7 @@ class _UnfreezeDialogState extends State<_UnfreezeDialog> {
   }
 }
 
-/// The read-only notice a form shows in place of its protected fields.
+/// Shown in place of protected fields.
 class FreezeNotice extends StatelessWidget {
   const FreezeNotice({super.key});
 

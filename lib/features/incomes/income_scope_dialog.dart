@@ -2,17 +2,12 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// How far a change to one occurrence's amount reaches (spec 5.4).
-///
-/// Deliberately two options rather than the payments' three: an income series
-/// is driven by a rule with one amount, so "this occurrence" and "the salary
-/// from now on" are the only distinctions that mean anything.
+/// How far an amount change on one occurrence reaches.
 enum IncomeScope {
-  /// A one-off deviation — a different bonus this month — leaving the rule
-  /// alone.
+  /// This occurrence only; the rule stays.
   thisOne,
 
-  /// The salary changed: the rule and every unreceived occurrence follow.
+  /// The rule and every unreceived occurrence.
   allFuture,
 
   cancelled,

@@ -29,7 +29,7 @@ import 'package:sielto/features/periods/period_choice.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// Opens the payment form. With no [paymentId] it is a new record.
+/// Without [paymentId] it creates a record.
 Future<void> openPaymentForm(
   BuildContext context, {
   String? paymentId,
@@ -42,7 +42,7 @@ Future<void> openPaymentForm(
   ),
 );
 
-/// A prefilled but unsaved record, from "duplicate before/after" (spec 6.5).
+/// Prefilled unsaved record, from "duplicate before/after".
 @immutable
 class PaymentDraft {
   const PaymentDraft({
@@ -54,9 +54,7 @@ class PaymentDraft {
     this.notes,
   });
 
-  /// Copies a record onto a new date. `group_recurring_id` and `is_paid` are
-  /// deliberately not carried over: a duplicate is a record of its own, and
-  /// inheriting the series would let a later "all future" edit reach it.
+  /// Copies onto [date], without `group_recurring_id` and `is_paid`.
   factory PaymentDraft.from(Payment payment, CalendarDate date) => PaymentDraft(
     title: payment.title,
     amount: payment.amount,
@@ -95,7 +93,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _notes = TextEditingController();
 
-  /// What a frozen record's note gains. The existing text is never touched.
+  /// Text appended to a frozen record's note.
   final TextEditingController _addedNote = TextEditingController();
 
   CalendarDate? _date;
@@ -105,34 +103,27 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
   bool _isRecurring = false;
   RecurrenceInterval _interval = RecurrenceInterval.monthly;
 
-  /// Null means open-ended, which fills the 24-month horizon (spec 6.3).
+  /// Null: open-ended, up to [recurrenceHorizonMonths].
   int? _occurrences = 12;
 
   Payment? _existing;
   bool _loaded = false;
   bool _saving = false;
 
-  /// The state of the record's period. A frozen one leaves the category and
-  /// an appended note editable and nothing else (spec 5.5).
+  /// Frozen: only the category and an appended note are editable.
   FreezeState _freeze = FreezeState.open;
 
   bool get _isFrozen => _freeze == FreezeState.frozen;
 
-  /// Which cycle the payment is filed under (spec 5.3). Only meaningful in an
-  /// income-driven Space, and the form hides it everywhere else.
+  /// income-driven Spaces only.
   PeriodChoice _periodChoice = PeriodChoice.byDate;
   PeriodChoice _loadedPeriodChoice = PeriodChoice.byDate;
 
-  /// The two cycles the choice picks between, resolved from the date on the
-  /// form rather than from today.
+  /// Cycles around the form's date.
   PeriodPair get _periods =>
       periodsAround(ref.read(incomePeriodsProvider), _date!);
 
-  /// How many occurrences the series holds, and which of them this is.
-  ///
-  /// Read on load so the form can say it repeats before Save asks how far a
-  /// change should reach. A repeating payment has no rule to open — it is its
-  /// occurrences (spec 6.3) — so this is the only place that fact can appear.
+  /// Series length and this occurrence's position, loaded with the record.
   int _seriesLength = 0;
   int _seriesPosition = 0;
 
@@ -212,14 +203,11 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     return value;
   }
 
-  /// Title after trim and a non-negative amount (spec 6.7). Zero passes: a
-  /// zero-amount record is a dated to-do, which Budget mode uses.
+  /// Trimmed title and a non-negative amount. Zero is a dated to-do.
   bool get _isValid =>
       _title.text.trim().isNotEmpty && _parsedAmount != null && !_saving;
 
-  /// The date range the form accepts without comment (spec 6.7). Outside it
-  /// the field warns; it does not block, because old entries are sometimes
-  /// deliberate.
+  /// Dates outside this range warn but do not block.
   bool get _dateLooksOdd {
     final CalendarDate? date = _date;
     if (date == null) return false;
@@ -228,11 +216,8 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
         date.isAfter(today.addMonths(12 * 10));
   }
 
-  /// The control belongs to income-driven Spaces alone, and only where the
-  /// date genuinely leaves the cycle in doubt — inside the uncertainty window
-  /// of a boundary (spec 5.1.1). Anywhere else the date decides and the choice
-  /// is made already. A series is filed occurrence by occurrence, so it is not
-  /// offered there either (spec 5.3).
+  /// income-driven only, not for a series, and only when the date is inside a
+  /// boundary's uncertainty window.
   bool _showPeriodChoice(Space space) =>
       space.budgetMode == BudgetMode.incomeDriven &&
       !_isFrozen &&
@@ -319,8 +304,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
               await _applyPeriodChoice(repos, existing.id);
             }
           case SeriesScope.allFuture:
-            // The date is not written across a series: each occurrence keeps
-            // its own day (spec 6.3).
+            // Each occurrence keeps its own date.
             await repos.payments.updateSeriesFrom(
               existing.groupRecurringId!,
               existing.dueDate,
@@ -343,9 +327,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
             return;
         }
       }
-      // A payment's period follows its date, so writing one can move it. The
-      // recompute is what binds it; without this the Feed shows the record and
-      // the figures above it do not count it.
+      // The recompute binds the payment to its period.
       ref.invalidate(periodRefreshProvider);
       if (mounted) Navigator.of(context).pop();
     } finally {
@@ -353,10 +335,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     }
   }
 
-  /// Files the payment under the cycle the user picked (spec 5.3).
-  ///
-  /// `byDate` writes the containing period back with `auto`, which is what
-  /// returns a pinned row to following its date.
+  /// `byDate` writes the containing period back as `auto`.
   Future<void> _applyPeriodChoice(Repositories repos, String paymentId) async {
     final BudgetPeriod? target = _periods.forChoice(_periodChoice);
     if (target == null) return;
@@ -369,10 +348,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     );
   }
 
-  /// The two writes a closed period still allows (spec 5.5).
-  ///
-  /// The note is appended with its date rather than replaced: what was written
-  /// while the period was open stays exactly as it was.
+  /// A frozen period allows the title, the category and an appended note.
   Future<void> _saveFrozen() async {
     final Payment existing = _existing!;
     final String addition = _addedNote.text.trim();
@@ -380,8 +356,6 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
 
     await repos.payments.update(
       existing.id,
-      // The title and the category are not protected: neither renaming a
-      // record nor reclassifying it changes a figure.
       title: Value<String>(_title.text),
       categoryId: Value<String?>(_categoryId),
       notes: addition.isEmpty
@@ -397,11 +371,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  /// Removes the whole repeating payment, or only what has not happened yet.
-  ///
-  /// The occurrence delete in the app bar takes one row; a series needs its
-  /// own action, because deleting twelve months of rent one month at a time is
-  /// not a thing anyone should have to do (spec 6.3).
+  /// Deletes the whole series or from this occurrence on.
   Future<void> _deleteSeries() async {
     final Payment? existing = _existing;
     final String? group = existing?.groupRecurringId;
@@ -419,7 +389,6 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       final Repositories repos = ref.read(repositoriesProvider);
       await repos.payments.deleteSeries(
         group,
-        // "From here on" keeps the months already behind us: they happened.
         from: scope == SeriesScope.allFuture ? existing.dueDate : null,
       );
     });
@@ -427,8 +396,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  /// A record outside a series always edits itself; one inside asks first
-  /// (spec 6.3).
+  /// Records in a series ask for the scope.
   Future<SeriesScope> _resolveScope(Payment payment) async {
     if (payment.groupRecurringId == null) return SeriesScope.thisOne;
     if (!mounted) return SeriesScope.cancelled;
@@ -466,8 +434,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       appBar: AppBar(
         title: Text(_existing == null ? tr('payment.add') : tr('payment.edit')),
         actions: <Widget>[
-          // Deleting is a protected change, so a closed period offers no
-          // delete at all rather than one that refuses (spec 5.5).
+          // No delete in a frozen period.
           if (_existing != null && !_isFrozen)
             IconButton(
               icon: const Icon(Icons.delete_outline),
@@ -548,8 +515,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                       selectedId: _categoryId,
                       onChanged: (Category? category) => setState(() {
                         _categoryId = category?.id;
-                        // The category supplies the default, never overrides a
-                        // choice already made on the record (spec 6.2).
+                        // The category sets the default type for new records only.
                         if (category != null) _type = category.expenseType;
                       }),
                     ),
@@ -643,16 +609,8 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
   }
 }
 
-/// The Live Preview strip (spec 6.1).
-///
-/// It recomputes on every keystroke and stays in memory: nothing is written
-/// until Save. A preview that would go negative turns red immediately, which
-/// is the whole point of showing it before the record exists.
-///
-/// It walks whatever context the Space computes in — the open ledger in Flow,
-/// the selected cycle in income-driven mode. Reading Flow's walk everywhere
-/// would show a figure containing every future salary at once, which is not a
-/// number the user has to spend (spec 4.7).
+/// Live preview of the draft, in memory. Walks Flow's ledger or the draft's
+/// income cycle.
 class _LivePreview extends ConsumerWidget {
   const _LivePreview({
     required this.amount,
@@ -673,13 +631,10 @@ class _LivePreview extends ConsumerWidget {
   final RecurrenceInterval interval;
   final MoneyFormat money;
 
-  /// Where the record is filed, which decides which salary it comes out of.
   final PeriodChoice periodChoice;
 
-  /// The cycle the draft belongs to, walked from its own anchor.
-  ///
-  /// Null before there is a cycle to walk — an income-driven Space with no
-  /// regular income yet, or a date beyond the materialised horizon.
+  /// The cycle of the draft's date. Null before any cycle exists or beyond the
+  /// materialised periods.
   PeriodLedger? _ledgerForDraft(WidgetRef ref) {
     final CalendarDate? draftDate = date;
     if (draftDate == null) return null;
@@ -710,8 +665,7 @@ class _LivePreview extends ConsumerWidget {
     );
   }
 
-  /// "12.08 – 10.09" for the cycle the draft lands in, or null in a mode that
-  /// has no cycles.
+  /// "12.08 – 10.09", or null without cycles.
   String? _periodLabel(WidgetRef ref, BuildContext context) {
     final CalendarDate? draftDate = date;
     if (draftDate == null) return null;
@@ -740,9 +694,7 @@ class _LivePreview extends ConsumerWidget {
     final List<LedgerEntry> existing;
     if (ref.watch(currentSpaceProvider)?.budgetMode ==
         BudgetMode.incomeDriven) {
-      // The cycle the record is dated into, not the one on screen: money for a
-      // payment due next month comes out of next month's salary, and previewing
-      // it against this month's would answer a question nobody asked.
+      // The cycle of the draft's date, not the one on screen.
       final PeriodLedger? period = _ledgerForDraft(ref);
       if (period == null) return const SizedBox.shrink();
       available = period.anchorAmount;
@@ -753,7 +705,7 @@ class _LivePreview extends ConsumerWidget {
       available = flow.available;
       existing = flow.entries;
     }
-    // A cycle whose salary has no amount yet has nothing to preview against.
+    // No preview when the salary has no amount.
     if (available == null) return const SizedBox.shrink();
 
     final Decimal? draftAmount = amount;
@@ -774,8 +726,7 @@ class _LivePreview extends ConsumerWidget {
             date: d,
             amount: draftAmount,
             isIncome: false,
-            // Sits last within its day: a preview must not reorder what is
-            // already there.
+            // Last within its day.
             sortOrder: 1 << 30,
           ),
     ];
@@ -797,8 +748,6 @@ class _LivePreview extends ConsumerWidget {
     final Decimal? afterFree = after.freeCash;
     final Color afterColor = afterFree == null ? sage.danger : sage.ink;
 
-    // Which cycle the figures describe, so the current/next choice is legible
-    // before anything is saved (spec 6.1).
     final String? periodLabel = _periodLabel(ref, context);
 
     return Container(
@@ -850,8 +799,6 @@ class _LivePreview extends ConsumerWidget {
                   style: text.titleMedium?.copyWith(color: afterColor),
                 ),
               ),
-              // The change itself, as its own mark: the two figures say where
-              // you were and where you land, the pill says what it cost.
               if (draftAmount != null &&
                   draftAmount > Decimal.zero) ...<Widget>[
                 const SizedBox(width: SageSpace.sm),
@@ -894,12 +841,7 @@ class _LivePreview extends ConsumerWidget {
   }
 }
 
-/// Says that this payment is one of many, and offers the series-wide delete.
-///
-/// A repeating payment has no rule row to open — it is its occurrences and
-/// nothing more (spec 6.3) — so this banner is where the series exists as a
-/// thing at all. Without it the first sign is the scope question after Save,
-/// which is too late to be information.
+/// Marks a payment as part of a series and offers deleting the series.
 class _SeriesNotice extends StatelessWidget {
   const _SeriesNotice({
     required this.position,
@@ -910,7 +852,7 @@ class _SeriesNotice extends StatelessWidget {
   final int position;
   final int length;
 
-  /// Null in a closed period, where deleting anything is refused (spec 5.5).
+  /// Null in a frozen period.
   final VoidCallback? onDeleteSeries;
 
   @override
@@ -969,8 +911,7 @@ class _SeriesNotice extends StatelessWidget {
   }
 }
 
-/// The note of a record in a closed period: what is there, and a field that
-/// adds to it (spec 5.5).
+/// Existing note and a field that appends to it.
 class _AppendNoteField extends StatelessWidget {
   const _AppendNoteField({required this.existing, required this.controller});
 
@@ -1018,8 +959,7 @@ class _DateField extends StatelessWidget {
   final CalendarDate date;
   final DateLabels labels;
 
-  /// Null when the period is closed: the field reads, it does not open a
-  /// picker (spec 5.5).
+  /// Null when the period is frozen.
   final VoidCallback? onTap;
 
   final bool warn;
@@ -1053,7 +993,7 @@ class _DateField extends StatelessWidget {
   }
 }
 
-/// One-off or repeating, and for how long (spec 6.3).
+/// One-off or repeating, and how many times.
 class _RecurrenceFields extends StatelessWidget {
   const _RecurrenceFields({
     required this.isRecurring,
@@ -1071,7 +1011,7 @@ class _RecurrenceFields extends StatelessWidget {
   final ValueChanged<RecurrenceInterval> onIntervalChanged;
   final ValueChanged<int?> onOccurrencesChanged;
 
-  /// Null is "indefinitely", which materialises the 24-month horizon.
+  /// Null: indefinitely.
   static const List<int?> _choices = <int?>[3, 6, 12, 24, null];
 
   @override

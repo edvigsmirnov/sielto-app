@@ -12,7 +12,6 @@ import 'package:sielto/features/overdue/overdue.dart';
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 Decimal m(String v) => Decimal.parse(v);
 
-/// What the missed-payments chip counts.
 void main() {
   late AppDatabase db;
   late SpaceRepository spaces;

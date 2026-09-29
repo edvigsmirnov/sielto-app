@@ -2,9 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// A yes/no confirmation (spec, Sage section 17).
-///
-/// Returns false when dismissed, so a tap outside is always the safe answer.
+/// Returns false when dismissed.
 Future<bool> confirmDialog(
   BuildContext context, {
   required String title,
@@ -42,8 +40,7 @@ Future<bool> confirmDialog(
   return answer ?? false;
 }
 
-/// The guard on mandatory payments (spec 6.2). Variable payments skip it: they
-/// are meant to be moved and dropped freely.
+/// Confirmation for moving or deleting a mandatory payment.
 Future<bool> confirmMandatory(BuildContext context) => confirmDialog(
   context,
   title: tr('payment.mandatoryConfirmTitle'),
@@ -51,14 +48,9 @@ Future<bool> confirmMandatory(BuildContext context) => confirmDialog(
   confirmLabel: tr('common.continue'),
 );
 
-/// How long a delete stays reversible.
 const Duration undoWindow = Duration(seconds: 5);
 
-/// The undo window after a soft delete (spec 7).
-///
-/// The delete has already happened when this appears — the snackbar only
-/// offers a short window to reverse it, and leaving the screen early simply
-/// ends that window.
+/// Shown after a soft delete; the action restores the row.
 void showUndoSnackbar(
   BuildContext context, {
   required String message,
@@ -70,8 +62,7 @@ void showUndoSnackbar(
     ..showSnackBar(
       SnackBar(
         duration: undoWindow,
-        // The action slot takes a plain label and nothing else, so the button
-        // lives in the content row instead.
+        // The action slot takes only a label, so the button is in the content row.
         content: Row(
           children: <Widget>[
             Expanded(
@@ -94,11 +85,7 @@ void showUndoSnackbar(
     );
 }
 
-/// The undo button, wrapped in a ring that empties as the window closes.
-///
-/// A bare snackbar gives no sense of how long is left; the ring is the timer
-/// made visible, and it drains rather than fills because what it counts is
-/// what remains.
+/// Undo button inside a ring that empties over [undoWindow].
 class _UndoCountdown extends StatefulWidget {
   const _UndoCountdown({required this.onUndo});
 

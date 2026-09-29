@@ -37,11 +37,7 @@ import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// The chronological list of payments and incomes (spec 4.5).
-///
-/// The Dashboard answers "how much"; this screen answers "what exactly, and
-/// when". Both read the same walk, so the figures above the list are the same
-/// numbers the Dashboard shows, not a second calculation.
+/// Chronological list of payments and incomes.
 class FeedPage extends ConsumerStatefulWidget {
   const FeedPage({super.key});
 
@@ -49,38 +45,28 @@ class FeedPage extends ConsumerStatefulWidget {
   ConsumerState<FeedPage> createState() => _FeedPageState();
 }
 
-/// Fixed extents, so the scroll offset can be mapped onto the list without
-/// measuring every child.
+/// Fixed extents map scroll offsets to rows without measuring.
 const double _headerExtent = 40;
 const double _cutoffExtent = 34;
 
 class _FeedPageState extends ConsumerState<FeedPage> {
   final ScrollController _scroll = ScrollController();
 
-  /// Anchors the quick-add bubble to the button that opens it.
   final GlobalKey _addButton = GlobalKey();
 
-  /// The flattened list as last built, for the scroll listener and the arrows.
+  /// Last built list, for the scroll listener and the arrows.
   List<FeedItem> _items = const <FeedItem>[];
 
-  /// Where rows were just dropped, held until the query catches up.
-  ///
-  /// The reorder writes in one transaction, but the stream still emits a frame
-  /// or two later, and every rebuild in between draws the order the rows had
-  /// before the drag. Holding the new positions here means a dropped row stays
-  /// where it was dropped instead of flicking back.
+  /// Order just dropped, shown until the query reads it back.
   Map<String, int>? _dropped;
 
-  /// Set when the window widens, cleared once the wider list is built, so one
-  /// arrival at an edge widens it once rather than on every scroll event.
+  /// True from widening the window until the wider list is built.
   bool _extending = false;
 
-  /// The top item before older months were added above it, so the view can
-  /// stay on it instead of jumping three months back.
+  /// Top item before older rows were added above, to keep the view in place.
   FeedItem? _keptTop;
 
-  /// Whether the list has been placed on the selected period yet. It opens
-  /// there rather than three months back.
+  /// Whether the list has been scrolled to the selected period.
   bool _placed = false;
 
   @override
@@ -97,8 +83,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     super.dispose();
   }
 
-  /// Widens the visible window as the user reaches either end (spec 4.5), and
-  /// keeps the period the figures describe in step with where the list is.
+  /// Widens the window at either end and syncs the selected period.
   void _extendOnEdge() {
     if (!_scroll.hasClients) return;
     _syncPeriodToScroll(_items);
@@ -123,8 +108,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 .today()
                 .addMonths(PeriodService.maxReachMonths),
           )) {
-        // Nothing recorded further yet: lay out more periods, whose incomes
-        // then widen the window on the next pass.
+        // No records beyond: request more periods.
         ref
             .read(periodReachProvider.notifier)
             .reach(window.to.addMonths(PeriodService.horizonStepMonths));
@@ -132,8 +116,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     }
   }
 
-  /// Whether any record falls where [test] says. Widening past the last
-  /// record adds nothing, and the edge would ask again on the next frame.
   bool _anyRecord(bool Function(CalendarDate) test) =>
       (ref.read(spacePaymentsProvider).value ?? const <Payment>[]).any(
         (Payment p) => test(p.dueDate),
@@ -142,13 +124,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         (Income i) => test(i.expectedDate),
       );
 
-  /// Called once the list is built from a widened window.
   void _afterExtend(List<FeedItem> items) {
     _extending = false;
     final FeedItem? kept = _keptTop;
     _keptTop = null;
     if (kept == null) return;
-    // Older rows landed above the view; move down by exactly their height.
+    // Keeps the view on the same item.
     final double? y = _offsetOf(items, (FeedItem i) => _sameItem(i, kept));
     if (y == null || y == 0) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -163,7 +144,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     _ => false,
   };
 
-  /// The scroll offset of the first item [test] accepts, or null.
   double? _offsetOf(List<FeedItem> items, bool Function(FeedItem) test) {
     final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
     double y = 0;
@@ -180,11 +160,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     FeedRow() => rowHeight,
   };
 
-  /// Room under the last row, enough for the last period to reach the top.
-  ///
-  /// The selected period follows the top visible day, so without it the list
-  /// ended with an earlier period still on top: the last cycles could never
-  /// be selected by scrolling, and the arrows bounced back from them.
+  /// Room under the last row so the last period can reach the top.
   double _bottomSlack(List<FeedItem> items, double viewport, bool byPeriod) {
     const double floor = 96;
     final BudgetPeriod? last = ref.read(incomePeriodsProvider).lastOrNull;
@@ -232,8 +208,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     );
     final List<FeedItem> items = _items;
     if (_extending) _afterExtend(items);
-    // A list that fits the screen never scrolls, so no scroll event would
-    // ever reach an edge. Check once the frame is laid out.
+    // Checks the edges after layout: a list that fits never scrolls.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _extendOnEdge();
     });
@@ -285,9 +260,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         children: <Widget>[
           Expanded(
             child: items.isEmpty
-                // No button of its own: the add menu is on the button that is
-                // always there, and a second one that adds only a payment
-                // teaches the wrong shortcut on the emptiest screen.
                 ? EmptyState(message: tr('feed.empty'))
                 : LayoutBuilder(
                     builder: (BuildContext context, BoxConstraints box) =>
@@ -334,15 +306,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     );
   }
 
-  /// What the list draws, and the four figures above it.
-  ///
-  /// One continuous list in every mode: the Feed scrolls into the past and the
-  /// future and is deliberately not clipped to a period (spec 4.5).
-  ///
-  /// Every cycle contributes its own coverage and its own cutoff line, so the
-  /// list is the same whichever period is selected. Only the figures follow the
-  /// scroll — which is what keeps crossing a boundary from redrawing the rows
-  /// under the finger.
+  /// The list and its figures. One continuous list in every mode; only the
+  /// figures follow the selected period.
   _FeedSource? _source(Space space) {
     final List<Payment>? payments = ref.watch(spacePaymentsProvider).value;
     final List<Income>? incomes = ref.watch(spaceIncomesProvider).value;
@@ -368,10 +333,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         if (end != null) endsAt[end.entryId] = end.below;
       }
 
-      // Before the first regular income there are no cycles at all, which is a
-      // valid permanent state: the list still shows, with no cycle figures over
-      // it (spec 4.7). Zero, not unknown — nothing is coming, and that is what
-      // zero means.
+      // No periods before the first regular income.
       final PeriodLedger? selected = ref.watch(periodLedgerProvider).value;
       if (selected == null) {
         return _FeedSource(
@@ -412,8 +374,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         today: budget.today,
         coverage: budget.coverageByEntry,
         moneyEndsAt: budget.moneyEndsAt,
-        // With no fund there is nothing to fit into, so the figures say what
-        // the fund holds — zero — rather than pretending to a limit.
         available: budget.available,
         freeCash: budget.hasFund ? budget.remaining : budget.available,
         paid: budget.totalPaid,
@@ -441,12 +401,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     );
   }
 
-  /// Overlays the order a drag just produced, and drops the overlay once the
-  /// records read back the same way.
-  ///
-  /// Clearing here rather than after the write is deliberate: the write
-  /// finishing says nothing about the stream having emitted, and the overlay is
-  /// only stale once the rows themselves agree with it.
+  /// Drops the overlay once the records match it.
   void _applyDropped(List<FeedRecord> records) {
     final Map<String, int>? dropped = _dropped;
     if (dropped == null) return;
@@ -461,9 +416,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     if (settled) _dropped = null;
   }
 
-  /// Follows the list: the period the top visible day belongs to becomes the
-  /// selected one, so the figures above and the Dashboard both track the
-  /// scroll instead of a separate control.
+  /// Selects the period of the top visible day.
   void _syncPeriodToScroll(List<FeedItem> items) {
     final List<BudgetPeriod> periods = ref.read(incomePeriodsProvider);
     if (periods.isEmpty || !_scroll.hasClients) return;
@@ -482,11 +435,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     }
   }
 
-  /// The date of the first row at or below the top of the viewport.
-  ///
-  /// Rows are a fixed extent per density and headers a fixed height, so the
-  /// offset maps onto the flattened list arithmetically rather than by asking
-  /// every child where it is.
+  /// First row at or below the top of the viewport, from the fixed extents.
   CalendarDate? _topVisibleDate(List<FeedItem> items) {
     final double offset = _scroll.position.pixels;
     final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
@@ -513,10 +462,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     return null;
   }
 
-  /// Scrolls the list to where a period begins.
-  ///
-  /// The arrows move the list rather than filtering it: the Feed stays one
-  /// continuous run of records, and the buttons are a way to travel it.
+  /// Scrolls to where [period] begins.
   void _scrollToPeriod(
     BudgetPeriod period,
     List<FeedItem> items, {
@@ -584,14 +530,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           isBeyondDeadline: beyondDeadline.contains(record.id),
           onLongPress: () =>
               showRecordMenu(context, ref, record: record, today: today),
-          // The grip is its own gesture area beside the row, not on top of it,
-          // so a press here picks the row up on contact and holds it for as
-          // long as the finger stays down. Wrapped in a swallowing detector it
-          // competed with the row's long-press and the add menu won.
+          // The grip is outside the row's gesture area, so the row's long-press does not
+          // compete with it.
           dragHandle: ReorderableDragStartListener(
             index: index,
             child: Padding(
-              // A finger-sized target around a small glyph.
               padding: const EdgeInsets.fromLTRB(
                 SageSpace.sm,
                 SageSpace.md,
@@ -617,8 +560,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     openPaymentForm(context, paymentId: record.id, date: record.date);
   }
 
-  /// Marking something paid never asks; clearing the mark on a mandatory
-  /// payment does (spec 4.5).
+  /// Unmarking a mandatory payment asks for confirmation.
   Future<void> _togglePaid(FeedRecord record) async {
     final Repositories repos = ref.read(repositoriesProvider);
     final bool next = !record.isPaid;
@@ -630,16 +572,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
     if (record.isIncome) {
       if (next && record.amount == null) {
-        // An amount is required before a receipt can be confirmed, or the
-        // period's figures would stay uncomputable (spec 4.5).
+        // A receipt needs an amount.
         if (mounted) {
           openIncomeForm(context, incomeId: record.id, date: record.date);
         }
         return;
       }
 
-      // Confirming a receipt is not a bare flag: the spec asks for the date
-      // the money actually arrived, defaulting to the expected one (spec 5.4).
+      // Asks for the actual receipt date, defaulting to the expected one.
       CalendarDate? actual;
       if (next) {
         if (!mounted) return;
@@ -653,11 +593,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         () => repos.incomes.update(
           record.id,
           isPaid: Value<bool>(next),
-          // Clearing the receipt clears the fact with it (spec 5.4).
           actualDate: Value<CalendarDate?>(actual),
         ),
       );
-      // An anchor arriving early moves the cycle it opens (spec 5.4).
+      // An early anchor moves its cycle.
       ref.invalidate(periodRefreshProvider);
       return;
     }
@@ -712,7 +651,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
     switch (outcome) {
       case ReorderRejected():
-        // Snapback: the list rebuilds from the unchanged query.
         return;
 
       case ReorderWithinDay(orderedIds: final List<String> ids):
@@ -724,13 +662,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           for (int i = 0; i < ids.length; i++)
             ids[i]: i * PaymentRepository.sortOrderGap,
         };
-        // Drawn from here until the query agrees, so the drop is final on
-        // screen the moment the finger lifts.
         setState(() => _dropped = orders);
 
-        // One transaction for the whole day. Written row by row, the query
-        // behind the list re-emits after each one and the Feed draws every
-        // half-finished order on the way.
+        // One transaction for the whole day.
         try {
           await repos.db.transaction(() async {
             for (final MapEntry<String, int> e in orders.entries) {
@@ -747,8 +681,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             }
           });
         } catch (_) {
-          // Nothing was stored, so the overlay would hold an order that never
-          // becomes true.
           if (mounted) setState(() => _dropped = null);
           rethrow;
         }
@@ -757,8 +689,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         recordId: final String id,
         suggestedDate: final CalendarDate suggested,
       ):
-        // The picker opens prefilled and writes nothing until confirmed
-        // (spec 4.5).
         final DateTime? picked = await showDatePicker(
           context: context,
           initialDate: suggested.toUtcMidnight(),
@@ -788,11 +718,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 }
 
-/// What the Feed draws, whichever mode produced it.
-///
-/// The two modes disagree about which records belong on screen and about what
-/// the starting sum is, and about nothing else; collapsing that disagreement
-/// here keeps one list, one reorder path and one row widget.
+/// What the Feed draws, in any mode.
 @immutable
 class _FeedSource {
   const _FeedSource({
@@ -814,25 +740,21 @@ class _FeedSource {
   final CalendarDate today;
   final Map<String, bool> coverage;
 
-  /// Row id to which side of it the cutoff line falls, one entry per cycle.
+  /// Row id to the side of the row the cutoff falls on.
   final Map<String, bool> moneyEndsAt;
 
-  /// The sum the walk started from. Null when it is not known — an anchor
-  /// income with no amount yet (spec 4.7).
+  /// Null when the anchor income has no amount.
   final Decimal? available;
 
-  /// Null when the plan is not covered, or when [available] is unknown.
+  /// Null when not covered or [available] is unknown.
   final Decimal? freeCash;
 
-  /// What the starting sum is called in this mode. The figure is the same
-  /// shape everywhere; what it means is not.
   String get availableLabel => switch (mode) {
     BudgetMode.incomeDriven => 'feed.income',
     BudgetMode.flow => 'feed.currentMoney',
     BudgetMode.budget => 'budget.fund',
   };
 
-  /// Of the plan, what is settled and what is still owed (spec 4.5).
   final Decimal paid;
   final Decimal remaining;
 
@@ -840,21 +762,14 @@ class _FeedSource {
 
   final BudgetMode mode;
 
-  /// Records a hard deadline moved past. Drawn dimmed and left out of the
-  /// reckoning, never deleted (spec 4.8).
+  /// Dimmed and excluded.
   final Set<String> beyondDeadline;
 
-  /// False for a cycle with no income: a remainder there would only be the
-  /// payments negated, so the free figure is zero.
+  /// False for a cycle with no income; free money is then zero.
   final bool hasIncome;
 }
 
-/// Income and Free money for the current context, above the list (spec 4.5).
-/// The four figures of the current context, over the list (design section 4.5).
-///
-/// A 2x2 grid rather than a row of columns: four numbers side by side wrap at
-/// any real type size, and the pairing says something — what came in against
-/// what is free, what is settled against what is not.
+/// The four figures above the list, in a 2x2 grid.
 class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
   const _FeedTotals({
     required this.source,
@@ -866,11 +781,9 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
   final _FeedSource source;
   final MoneyFormat money;
 
-  /// The period arrows, when there is a period to move between.
   final Widget? selector;
 
-  /// Whether the missed-payments chip takes a row of its own. The bar has to
-  /// declare its height before the chip can decide it is empty.
+  /// The bar declares its height before the chip builds.
   final bool hasOverdue;
 
   static const double _tileHeight = 58;
@@ -887,11 +800,9 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final Decimal? available = source.available;
-    // No income is zero, not the payments negated.
     final Decimal? free = source.hasIncome ? source.freeCash : Decimal.zero;
 
-    // Not covered and not computable are different answers, and only one of
-    // them is red.
+    // Only "not covered" is red.
     final String freeText = free != null
         ? money.format(free)
         : (available == null
@@ -964,8 +875,6 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
               ],
             ),
           ),
-          // What is already late, under the figures that describe what is
-          // still ahead. Draws nothing when there is nothing missed.
           OverdueChip(
             money: money,
             margin: const EdgeInsets.only(top: SageSpace.sm),
@@ -976,7 +885,6 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// One figure on its own card: label above, amount below, both centred.
 class _Tile extends StatelessWidget {
   const _Tile({
     required this.label,
@@ -989,17 +897,15 @@ class _Tile extends StatelessWidget {
 
   final String label;
 
-  /// What to draw when there is no figure to wind to.
+  /// Shown when [value] is null.
   final String text;
 
-  /// Null where the answer is a word rather than a number.
   final Decimal? value;
 
   final MoneyFormat money;
   final Color? valueColor;
 
-  /// The income tile carries the accent tint, as the one figure the others are
-  /// measured against.
+  /// Accent tint.
   final bool highlighted;
 
   @override
@@ -1024,9 +930,6 @@ class _Tile extends StatelessWidget {
             style: style.bodySmall?.copyWith(color: sage.inkLabel),
           ),
           const SizedBox(height: 2),
-          // The tween is the point when the period changes: the figures wind
-          // rather than swap, so a move between cycles reads as a move
-          // (spec 4.5, 10.5).
           if (value != null)
             AnimatedMoney(value: value!, format: money.format)
           else
@@ -1042,7 +945,6 @@ class _Tile extends StatelessWidget {
   }
 }
 
-/// The day a group of records falls on (spec 4.5).
 class _DayHeader extends StatelessWidget {
   const _DayHeader({
     required this.header,
@@ -1061,9 +963,7 @@ class _DayHeader extends StatelessWidget {
     final TextTheme text = Theme.of(context).textTheme;
 
     final bool isToday = header.date == today;
-    // Exactly the extent the scroll arithmetic counts. Left to its padding the
-    // header came out 33px against 40, and the gap grew by a day's worth each
-    // header until the selected period lagged the list by weeks.
+    // Pinned to [_headerExtent] for the scroll arithmetic.
     return Container(
       height: _headerExtent,
       alignment: Alignment.bottomLeft,
@@ -1085,7 +985,6 @@ class _DayHeader extends StatelessWidget {
   }
 }
 
-/// The line where the money runs out (spec 4.9).
 class _CutoffLine extends StatelessWidget {
   const _CutoffLine({required this.item, super.key});
 

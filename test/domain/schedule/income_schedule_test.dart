@@ -38,7 +38,6 @@ void main() {
     });
 
     test('short months clamp to their last day', () {
-      // 31 becomes 28, 29 or 30 rather than spilling into the next month.
       const FixedDateSchedule s = FixedDateSchedule(31);
       expect(s.baseRangeFor(2026, 2).start, d('2026-02-28'));
       expect(s.baseRangeFor(2028, 2).start, d('2028-02-29'));
@@ -47,8 +46,8 @@ void main() {
     });
 
     test('clamping happens before working days are considered', () {
-      // 2026-02-28 is a Saturday: clamp first, then open the window. The
-      // window still reaches Monday, but the anchor stays in February.
+      // 2026-02-28 is a Saturday. The window reaches Monday; the anchor stays in
+      // February.
       const FixedDateSchedule s = FixedDateSchedule(31);
       final IncomeWindow w = s.resolveFor(2026, 2, calendar: weekends);
       expect(w.windowStart, d('2026-02-27'));
@@ -70,8 +69,8 @@ void main() {
 
   group('WeekdayRuleSchedule', () {
     test('finds the nth weekday', () {
-      // March 2026 starts on a Sunday, so Mondays are the 2nd, 9th, 16th, 23rd
-      // and 30th.
+      // March 2026 starts on a Sunday: Mondays are the 2nd, 9th, 16th, 23rd and
+      // 30th.
       const List<(WeekdayOrdinal, String)> cases = <(WeekdayOrdinal, String)>[
         (WeekdayOrdinal.first, '2026-03-02'),
         (WeekdayOrdinal.second, '2026-03-09'),
@@ -92,7 +91,6 @@ void main() {
     });
 
     test('last is the fifth when there is one, the fourth otherwise', () {
-      // The reason no fifth option exists: it would sometimes be missing.
       expect(
         const WeekdayRuleSchedule(
           WeekdayOrdinal.last,
@@ -110,7 +108,6 @@ void main() {
     });
 
     test('every ordinal and weekday resolves in every month of a year', () {
-      // The invariant the enum protects: a schedule can never be skipped.
       for (int month = 1; month <= 12; month++) {
         for (final WeekdayOrdinal ordinal in WeekdayOrdinal.values) {
           for (final Weekday weekday in Weekday.values) {
@@ -126,7 +123,7 @@ void main() {
     });
 
     test('a February with exactly four of a weekday still resolves', () {
-      // 2026-02 is 28 days starting on a Sunday: exactly four of each.
+      // February 2026: 28 days from a Sunday, four of each weekday.
       expect(
         const WeekdayRuleSchedule(
           WeekdayOrdinal.fourth,
@@ -161,8 +158,8 @@ void main() {
     test('the anchor is the latest day of the span within its month', () {
       const DateRangeSchedule s = DateRangeSchedule(28, 31);
       final IncomeWindow w = s.resolveFor(2026, 5, calendar: weekends);
-      // 2026-05-31 is a Sunday, so the span extends to Monday 1 June — but
-      // May's salary anchors May's cycle, on the Friday before.
+      // 2026-05-31 is a Sunday. The window reaches Monday 1 June; the anchor is the
+      // Friday before.
       expect(w.windowStart, d('2026-05-28'));
       expect(w.windowEnd, d('2026-06-01'));
       expect(w.anchorDate, d('2026-05-29'));
@@ -204,7 +201,6 @@ void main() {
     });
 
     test('the count is capped at 15', () {
-      // Past that, "the first N days" stops describing anything (spec 5.1).
       expect(
         () => const BoundaryDaysSchedule(
           BoundaryAnchor.start,

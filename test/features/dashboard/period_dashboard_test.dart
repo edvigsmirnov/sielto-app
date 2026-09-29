@@ -20,9 +20,8 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 
-/// The Regular-income Dashboard over a real database, with records written
-/// while a form covers it. The first anchor has no period until the refresh
-/// creates one, and nothing but the Dashboard was there to trigger it.
+/// Regular-income Dashboard over a real database, with records written while a
+/// form covers it.
 class _FileAssetLoader extends AssetLoader {
   const _FileAssetLoader();
 
@@ -67,8 +66,7 @@ void main() {
       spaceId: space.id,
       title: 'Groceries',
       amount: Decimal.parse('22.50'),
-      // A date in the current month, whenever the suite runs: the screen opens
-      // on today, and a fixture pinned to 2026 would fall outside the grid.
+      // Inside the current month, whenever the suite runs.
       dueDate: SpaceClock(timezone: 'Europe/Berlin').today(),
       isPaid: true,
       expenseType: ExpenseType.variable,
@@ -89,8 +87,7 @@ void main() {
       overrides: [
         databaseProvider.overrideWithValue(db),
         localSettingsProvider.overrideWithValue(settings),
-        // No Space override: with nothing stored, `resolvedSpaceProvider`
-        // falls back to the first Space on the device, which is the fixture.
+        // With nothing stored, `resolvedSpaceProvider` picks the fixture Space.
       ],
       child: Builder(
         builder: (BuildContext context) => MaterialApp(
@@ -98,9 +95,7 @@ void main() {
           locale: context.locale,
           supportedLocales: context.supportedLocales,
           localizationsDelegates: context.localizationDelegates,
-          // Gated on the Space, as main.dart gates the shell: `ref.space`
-          // throws where there is none, which is a routing mistake rather than
-          // a state a screen has to handle.
+          // `ref.space` throws without a Space.
           home: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? _) =>
                 ref.watch(currentSpaceProvider) == null
@@ -112,22 +107,13 @@ void main() {
     ),
   );
 
-  /// Tears the tree down inside the test body.
-  ///
-  /// Disposing the `ProviderScope` cancels drift's query streams, and each
-  /// cancellation posts a zero-duration timer. Left to the framework's own
-  /// teardown those timers are still pending when it checks, and the test
-  /// fails with "A Timer is still pending" instead of its real result.
+  /// See `unmount` in calendar_page_test.
   Future<void> unmount(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(Duration.zero);
   }
 
-  /// Pumps until the streams behind the screen have emitted.
-  ///
-  /// `runAsync` because the drift streams need a real event loop, and repeated
-  /// `pump` rather than `pumpAndSettle` because a screen stuck on a spinner
-  /// never settles — it would report a timeout instead of the real failure.
+  /// See `settle` in calendar_page_test.
   Future<void> settle(WidgetTester tester) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(harness());

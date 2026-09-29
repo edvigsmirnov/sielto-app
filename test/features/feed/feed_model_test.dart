@@ -40,8 +40,6 @@ void main() {
   final CalendarDate today = d('2026-03-10');
 
   group('late records stay on their own day', () {
-    // The Feed is strictly chronological. A missed payment is marked, not
-    // moved: lifting it out separated it from the date that explains it.
     test('an unpaid past expense keeps its place in the list', () {
       final List<FeedItem> items = buildFeedItems(
         records: <FeedRecord>[
@@ -76,7 +74,6 @@ void main() {
     test('a record still knows it is overdue', () {
       expect(expense('missed', '2026-03-01').isOverdue(today), isTrue);
       expect(expense('due', '2026-03-10').isOverdue(today), isFalse);
-      // No money was missed; nothing is owed to anyone.
       expect(income('salary', '2026-03-01').isOverdue(today), isFalse);
     });
   });
@@ -115,7 +112,6 @@ void main() {
     });
 
     test('a tied sort_order still orders deterministically', () {
-      // sort_order carries no uniqueness constraint by design (plan G2).
       final List<FeedRecord> tied = <FeedRecord>[
         expense('b', '2026-03-15'),
         expense('a', '2026-03-15'),

@@ -14,11 +14,7 @@ import 'package:sielto/features/settings/holidays_page.dart';
 import 'package:sielto/features/settings/language_picker.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
 
-/// Profile and app settings (spec 4.2).
-///
-/// The spec's full list runs through security, backup, linked devices and
-/// updates; those arrive with M7 and M11. What is here is what works — a row
-/// that leads nowhere is worse than an absent one.
+/// Profile and app settings.
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
@@ -75,9 +71,7 @@ class SettingsPage extends ConsumerWidget {
                   .read(controlsAtBottomProvider.notifier)
                   .set(screen, atBottom: value),
             ),
-          // A row and a sheet rather than a segmented control: the control
-          // divides its width by the number of options, which stops working
-          // the moment there are more than about three languages.
+          // A sheet, not a segmented control: the list of languages can grow.
           ListTile(
             leading: const Icon(Icons.translate_outlined),
             title: Text(tr('settings.language')),
@@ -123,8 +117,7 @@ class SettingsPage extends ConsumerWidget {
             onChanged: (bool value) =>
                 ref.read(offlineModeProvider.notifier).set(value: value),
           ),
-          // Development surface: debug builds, or a release built with
-          // --dart-define=SIELTO_DEV=true for testing on a device.
+          // Debug builds, or a release built with --dart-define=SIELTO_DEV=true.
           if (kDebugMode || const bool.fromEnvironment('SIELTO_DEV'))
             ListTile(
               leading: const Icon(Icons.science_outlined),
@@ -155,7 +148,6 @@ class _SectionLabel extends StatelessWidget {
       SageSpace.gutter,
       SageSpace.xs,
     ),
-    // Caps, like the design's list-group headers.
     child: Text(
       text.toUpperCase(),
       style: Theme.of(context).textTheme.labelSmall,

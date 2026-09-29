@@ -2,27 +2,22 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 
-/// Overridden at startup, once the store has been read. Every device-local
-/// preference goes through here.
+/// Overridden at startup.
 final Provider<LocalSettings> localSettingsProvider = Provider<LocalSettings>(
   (Ref ref) => throw StateError('localSettingsProvider was not overridden'),
 );
 
-/// The local user id. Stable for the life of the install.
 final Provider<String> userIdProvider = Provider<String>(
   (Ref ref) => ref.watch(localSettingsProvider).userId,
 );
 
-/// The first letter of the nickname, for the header avatar. Null when the
-/// onboarding step was skipped — no letter is better than a guessed one.
+/// First letter of the nickname. Null without a nickname.
 final Provider<String?> profileInitialProvider = Provider<String?>((Ref ref) {
   final String? nickname = ref.watch(localSettingsProvider).nickname?.trim();
   if (nickname == null || nickname.isEmpty) return null;
   return nickname.characters.first.toUpperCase();
 });
 
-/// Feed row height and detail level (spec 4.5). Device-local, like the theme:
-/// two members of a shared Space choose independently.
 class FeedDensityController extends Notifier<FeedDensity> {
   @override
   FeedDensity build() => ref.watch(localSettingsProvider).feedDensity;
@@ -38,8 +33,7 @@ final NotifierProvider<FeedDensityController, FeedDensity> feedDensityProvider =
       FeedDensityController.new,
     );
 
-/// The country whose public holidays apply where a Space has not set its own
-/// (spec 5.1.1, priority level 2).
+/// Holiday country for Spaces without their own.
 class DefaultCountryController extends Notifier<String?> {
   @override
   String? build() => ref.watch(localSettingsProvider).defaultCountryCode;
@@ -55,10 +49,7 @@ defaultCountryProvider = NotifierProvider<DefaultCountryController, String?>(
   DefaultCountryController.new,
 );
 
-/// Whether the holiday list may be downloaded (spec 5.1.1).
-///
-/// Null is a real state, not a missing value: the question has not been asked,
-/// which is what the one-time prompt keys off.
+/// Null means not asked yet.
 class HolidayConsentController extends Notifier<bool?> {
   @override
   bool? build() => ref.watch(localSettingsProvider).holidayFetchAllowed;
@@ -76,8 +67,7 @@ final NotifierProvider<HolidayConsentController, bool?> holidayConsentProvider =
       HolidayConsentController.new,
     );
 
-/// The master network switch (spec 1). While it is on, no feature reaches the
-/// network whatever its own consent says.
+/// When true, nothing reaches the network.
 class OfflineModeController extends Notifier<bool> {
   @override
   bool build() => ref.watch(localSettingsProvider).fullyOffline;
@@ -91,7 +81,6 @@ class OfflineModeController extends Notifier<bool> {
 final NotifierProvider<OfflineModeController, bool> offlineModeProvider =
     NotifierProvider<OfflineModeController, bool>(OfflineModeController.new);
 
-/// Where each screen's period controls sit. Device-local.
 class ControlsAtBottomController extends Notifier<Set<ControlsScreen>> {
   @override
   Set<ControlsScreen> build() =>

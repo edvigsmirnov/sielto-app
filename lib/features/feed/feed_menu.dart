@@ -14,23 +14,12 @@ import 'package:sielto/features/settings/holidays_page.dart';
 
 enum _QuickAdd { payment, income, nonWorkingDay }
 
-/// One item's height, pinned rather than left to default, and the menu's own
-/// vertical padding. `showMenu` has to be told where the bubble's top goes
-/// before the bubble is laid out, so its height has to be arithmetic — see
-/// [quickAddAnchor].
+/// Fixed item height and menu padding, for [quickAddAnchor].
 @visibleForTesting
 const double quickAddItemHeight = kMinInteractiveDimension;
 const double _menuVerticalPadding = 16;
 
-/// The FAB menu (spec 6.5).
-///
-/// A bubble beside the button rather than a sheet over the list: three short
-/// items do not need half the screen, and the menu stays attached to the thing
-/// that opened it.
-///
-/// The third item marks a non-working day. It is here as well as in Settings
-/// because that is where the user already is when they notice a day is wrong
-/// (spec 5.1.2, entry point 3).
+/// The FAB menu: a bubble beside the button.
 Future<void> showQuickAddMenu(
   BuildContext context,
   WidgetRef ref, {
@@ -43,9 +32,7 @@ Future<void> showQuickAddMenu(
     context: context,
     position: quickAddAnchor(context, anchorKey, itemCount: items.length),
     color: context.sage.card,
-    // Material's default is a half-second grow from the top of the screen. The
-    // menu belongs to the button under it, so it opens from there and it opens
-    // at the speed the rest of the app moves at.
+    // Opens from the button, fast.
     popUpAnimationStyle: const AnimationStyle(
       duration: Duration(milliseconds: 140),
       reverseDuration: Duration(milliseconds: 100),
@@ -69,7 +56,7 @@ Future<void> showQuickAddMenu(
   }
 }
 
-/// The three quick-add items, built once so [quickAddAnchor] can count them.
+/// Built once so [quickAddAnchor] can count them.
 List<PopupMenuEntry<_QuickAdd>> _quickAddItems(WidgetRef ref) =>
     <PopupMenuEntry<_QuickAdd>>[
       PopupMenuItem<_QuickAdd>(
@@ -85,8 +72,7 @@ List<PopupMenuEntry<_QuickAdd>> _quickAddItems(WidgetRef ref) =>
         height: quickAddItemHeight,
         child: _MenuLine(
           icon: Icons.add_circle_outline,
-          // Same record, different meaning: in Budget mode money arriving is
-          // not income for a period, it is a payment into the fund (spec 4.8).
+          // In Budget mode an income is a top-up of the fund.
           label: ref.space.budgetMode == BudgetMode.budget
               ? tr('budget.topUp')
               : tr('income.add'),
@@ -102,17 +88,8 @@ List<PopupMenuEntry<_QuickAdd>> _quickAddItems(WidgetRef ref) =>
       ),
     ];
 
-/// Where the bubble opens: the anchor's column, with the top edge set to where
-/// the bubble's own top has to land.
-///
-/// `showMenu` puts the menu's top at `position.top` and never reads
-/// `position.bottom` when placing it vertically — only `left` and `right`
-/// decide which way it grows sideways. Passing 0 as the top therefore pinned
-/// the bubble to the top of the screen instead of opening it above the button.
-///
-/// The height cannot be measured before layout, so it is counted from the
-/// items. A text scale large enough to stretch a row past [quickAddItemHeight]
-/// only lowers the bubble; `showMenu` keeps it on screen either way.
+/// Where the bubble opens. `showMenu` places the top at `position.top` and
+/// ignores `position.bottom`, so the top is computed from the item count.
 @visibleForTesting
 RelativeRect quickAddAnchor(
   BuildContext context,
@@ -141,8 +118,7 @@ RelativeRect quickAddAnchor(
   );
 }
 
-/// One row of a popup menu: a glyph and a label, the same pairing the sheets
-/// use so the two menus read alike.
+/// Icon and label.
 class _MenuLine extends StatelessWidget {
   const _MenuLine({required this.icon, required this.label});
 
@@ -160,10 +136,7 @@ class _MenuLine extends StatelessWidget {
   );
 }
 
-/// The long-press menu on an existing row (spec 6.5).
-///
-/// All four items only prefill a date — none of them reorders anything. The
-/// list stays chronological, and position within a day is changed by dragging.
+/// Long-press menu on a row. Every item only prefills a date.
 Future<void> showRecordMenu(
   BuildContext context,
   WidgetRef ref, {
@@ -229,8 +202,7 @@ Future<void> showRecordMenu(
   ),
 );
 
-/// An empty form on the neighbouring day. Only the date is carried over
-/// (spec 6.5).
+/// Empty form on the neighbouring day.
 void _addOn(BuildContext context, FeedRecord record, CalendarDate date) {
   if (record.isIncome) {
     openIncomeForm(context, date: date);
@@ -239,8 +211,7 @@ void _addOn(BuildContext context, FeedRecord record, CalendarDate date) {
   openPaymentForm(context, date: date);
 }
 
-/// A full copy on the neighbouring day, opened unsaved so the one field that
-/// differs — usually the amount — can be corrected before it exists.
+/// Unsaved copy on the neighbouring day.
 Future<void> _duplicate(
   BuildContext context,
   WidgetRef ref,

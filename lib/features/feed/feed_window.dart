@@ -3,16 +3,13 @@ import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// The slice of dates the Feed renders.
-///
-/// The list opens on three months either side of today and widens as the user
-/// reaches an end (spec 4.5). A Space with years of history must not pay for
-/// all of it on the first frame.
+/// The date range the Feed renders: three months either side of today,
+/// widened at the ends.
 @immutable
 class FeedWindow {
   const FeedWindow({required this.from, required this.to});
 
-  /// Months added each time an edge is reached.
+  /// Months added per widening.
   static const int stepMonths = 3;
 
   final CalendarDate from;

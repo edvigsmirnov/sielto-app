@@ -12,19 +12,10 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/analytics/analytics_page.dart';
 import 'package:sielto/features/shell/shell_tab.dart';
 
-/// The dashboard blocks the three modes share (spec 4.4).
-///
-/// They take plain values rather than a mode's ledger type, which is what lets
-/// Flow and Regular income render the same cards from different arithmetic.
+/// Dashboard blocks shared by the three modes. They take plain values.
 
-/// The hero figure (design section 2).
-///
-/// Centred on the page ground rather than inside a card: it is the answer the
-/// screen exists to give, and a card around it makes it read as one item in a
-/// list of equals.
-///
-/// While everything is covered this is a sum. Once it is not, the useful
-/// answer is a date — how far the money reaches — and the figure turns red.
+/// Hero figure. Shows the remainder while covered, otherwise the day the money
+/// runs out, in red.
 class MainFigure extends StatelessWidget {
   const MainFigure({
     required this.label,
@@ -42,22 +33,20 @@ class MainFigure extends StatelessWidget {
 
   final String label;
 
-  /// Null when the money does not cover everything, or is unknown.
+  /// Null when not covered or unknown.
   final Decimal? amount;
 
   final Coverage? coverage;
   final MoneyFormat money;
 
-  /// The final balance, shown as an overspend when it went negative.
+  /// Final balance; shown as overspend when negative.
   final Decimal overspend;
 
   final CalendarDate? lastCoveredDay;
   final DateLabels dates;
   final CalendarDate today;
 
-  /// The line under the figure that says what it rests on — Flow puts its
-  /// average daily spend here, because the date only means something once you
-  /// know the rate it was computed at (spec 4.6).
+  /// Line under the figure, e.g. Flow's average daily spend.
   final String? subtitle;
 
   final VoidCallback? onTap;
@@ -101,16 +90,13 @@ class MainFigure extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Beside the figure, not beside the label: the dot qualifies
-                // the number it sits next to.
                 if (coverage != null) ...<Widget>[
                   const SizedBox(width: SageSpace.sm),
                   CoverageDot(coverage!),
                 ],
               ],
             ),
-            // The plan fits, and the money still ends inside it. The figure
-            // above is the remainder at the end; this is the day it reaches.
+            // Covered, but the money runs out before the end.
             if (!short && lastCoveredDay != null) ...<Widget>[
               const SizedBox(height: SageSpace.xs),
               Text(
@@ -132,9 +118,6 @@ class MainFigure extends StatelessWidget {
                 style: text.bodySmall?.copyWith(color: sage.inkLabel),
               ),
             ],
-            // How far past the money the plan goes. The date says when it runs
-            // out; this says by how much, which is the figure you need to know
-            // what to move.
             if (short && overspend < Decimal.zero) ...<Widget>[
               const SizedBox(height: SageSpace.xs),
               Text(
@@ -155,8 +138,7 @@ class MainFigure extends StatelessWidget {
   }
 }
 
-/// What has been paid, in place of a remainder when there is nothing to take
-/// one from: a Budget with no fund, a cycle with no income.
+/// Spent total, where there is no fund or income to subtract from.
 class SpentFigure extends StatelessWidget {
   const SpentFigure({required this.amount, required this.money, super.key});
 
@@ -182,11 +164,7 @@ class SpentFigure extends StatelessWidget {
   }
 }
 
-/// Mandatory first, then everything: two answers from one walk (spec 4.4).
-///
-/// Only the base remainder appears here. The net figure is the hero above, and
-/// printing it twice on one screen invites the reader to look for a difference
-/// that is not there.
+/// Base remainder after mandatory payments, with an explanation toggle.
 class CascadeCard extends ConsumerStatefulWidget {
   const CascadeCard({
     required this.available,
@@ -196,13 +174,12 @@ class CascadeCard extends ConsumerStatefulWidget {
     super.key,
   });
 
-  /// What the walk started from, so the bar has something to be a share of.
+  /// Starting sum; the bar shows the remainder as its share.
   final Decimal available;
 
   final Decimal? baseRemainder;
 
-  /// Null when the cycle is not judged — no income and nothing owed. The
-  /// remainder is then a plain figure rather than a verdict.
+  /// Null when the cycle is not judged.
   final Coverage? baseCoverage;
 
   final MoneyFormat money;
@@ -212,14 +189,11 @@ class CascadeCard extends ConsumerStatefulWidget {
 }
 
 class _CascadeCardState extends ConsumerState<CascadeCard> {
-  /// Closed until asked. The explanation is three lines that stop being news
-  /// after the first read, and the figure below is the point of the card.
   bool _explained = false;
 
   @override
   Widget build(BuildContext context) {
-    // The tab is kept alive, so an explanation left open would greet the
-    // next visit. It closes as the Dashboard is left.
+    // Closes the explanation when the Dashboard tab is left.
     ref.listen<int>(shellTabProvider, (int? _, int tab) {
       if (tab != ShellTabController.dashboard && _explained) {
         setState(() => _explained = false);
@@ -294,7 +268,6 @@ class _CascadeCardState extends ConsumerState<CascadeCard> {
   }
 }
 
-/// The "?" that opens the explanation.
 class _HelpToggle extends StatelessWidget {
   const _HelpToggle({required this.open, required this.onTap});
 
@@ -326,10 +299,7 @@ class _HelpToggle extends StatelessWidget {
   }
 }
 
-/// How much of the money survives the mandatory payments.
-///
-/// The share is what the base remainder means, so it is drawn rather than left
-/// for the reader to divide two numbers in their head.
+/// Share of the money left after mandatory payments.
 class _RemainderBar extends StatelessWidget {
   const _RemainderBar({
     required this.available,
@@ -344,8 +314,7 @@ class _RemainderBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    // Nothing survived, or there was nothing to start with: an empty bar is
-    // the honest drawing of both.
+    // Empty when nothing is left or nothing was available.
     final double share = (remainder == null || available <= Decimal.zero)
         ? 0
         : (remainder!.toDouble() / available.toDouble()).clamp(0.0, 1.0);
@@ -364,7 +333,7 @@ class _RemainderBar extends StatelessWidget {
   }
 }
 
-/// Planned, paid, still to pay (spec 4.4).
+/// Planned, paid, still to pay.
 class TotalsCard extends StatelessWidget {
   const TotalsCard({
     required this.planned,
@@ -394,11 +363,7 @@ class TotalsCard extends StatelessWidget {
   );
 }
 
-/// "In 5 days — Salary: 2 400 €" (spec 4.4).
-///
-/// On the accent tint rather than the plain card ground: money arriving is the
-/// one thing on this screen that is unambiguously good news, and the tint is
-/// what separates it from the three cards of obligations above.
+/// "In 5 days — Salary: 2 400 €", on the accent tint.
 class NearestIncomeCard extends StatelessWidget {
   const NearestIncomeCard({
     required this.income,
@@ -412,8 +377,6 @@ class NearestIncomeCard extends StatelessWidget {
   final CalendarDate today;
   final MoneyFormat money;
 
-  /// Opens the income this card names. The salary is the figure the whole
-  /// cycle rests on, and until now the only way to it was the Feed.
   final VoidCallback? onTap;
 
   @override
@@ -475,10 +438,7 @@ class NearestIncomeCard extends StatelessWidget {
   }
 }
 
-/// The Space's mode, as a quiet badge under the header (design §2).
-///
-/// It answers "why does this screen look like this" — the three modes compute
-/// different things, and the badge is what names which one is running.
+/// The Space's mode.
 class ModeBadge extends StatelessWidget {
   const ModeBadge(this.mode, {super.key});
 
@@ -507,13 +467,7 @@ class ModeBadge extends StatelessWidget {
   }
 }
 
-/// The way into Analytics, at the foot of every mode's Dashboard
-/// (design section 2).
-///
-/// A link rather than a fourth tab: Analytics opens from here and its level 1
-/// closes back to here, so the bottom bar keeps the three screens it has
-/// (design section 11). It sits last because it looks backwards at what was
-/// spent, while everything above it looks forward.
+/// Link to Analytics at the foot of the Dashboard.
 class AnalyticsLink extends StatelessWidget {
   const AnalyticsLink({super.key});
 

@@ -2,30 +2,25 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// How far an edit to one occurrence of a repeating payment reaches
-/// (spec 6.3).
+/// How far an edit to one occurrence of a series reaches.
 enum SeriesScope {
-  /// This occurrence only — the common case of a single month differing.
+  /// This occurrence only.
   thisOne,
 
-  /// This one and every later occurrence, leaving paid rows alone.
+  /// This and every later occurrence, except paid ones.
   allFuture,
 
-  /// Every occurrence, past included, again leaving paid rows alone.
+  /// Every occurrence, except paid ones.
   wholeSeries,
 
   cancelled,
 }
 
-/// Asked whenever a record that belongs to a series is saved.
 Future<SeriesScope> askSeriesScope(BuildContext context) =>
     _askScope(context, title: tr('series.title'), body: tr('series.body'));
 
-/// Asked before removing a repeating payment.
-///
-/// Only two answers: the whole thing, or everything from this occurrence on.
-/// "This one only" is the app bar's delete, and offering it twice under
-/// different words is how a user ends up deleting the wrong thing.
+/// Whole series or from this occurrence on. Single-occurrence delete is in the
+/// app bar.
 Future<SeriesScope> askSeriesDeleteScope(BuildContext context) => _askScope(
   context,
   title: tr('series.deleteTitle'),

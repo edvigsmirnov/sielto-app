@@ -20,11 +20,7 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/analytics/analytics_page.dart';
 import 'package:sielto/features/analytics/donut_chart.dart';
 
-/// The three Analytics levels over a real database (spec 8.2).
-///
-/// The repository tests cover the arithmetic; this walks the drill-down the way
-/// a person does, which is the only way to catch a level that opens onto the
-/// wrong slice.
+/// Analytics drill-down over a real database.
 class _FileAssetLoader extends AssetLoader {
   const _FileAssetLoader();
 
@@ -73,8 +69,7 @@ void main() {
       title: 'Transport',
     );
 
-    // Inside the current month, whenever the suite runs: the screen opens on
-    // the month, and a fixture pinned to a year would fall outside the range.
+    // Inside the current month, whenever the suite runs.
     final CalendarDate today = SpaceClock(timezone: 'Europe/Berlin').today();
     Future<void> spend(String title, String amount, String? categoryId) =>
         repos.payments.create(
@@ -126,9 +121,7 @@ void main() {
     ),
   );
 
-  /// See the note in calendar_page_test: disposing the scope leaves drift's
-  /// stream-cancellation timers pending, and the framework's own teardown
-  /// checks before they fire.
+  /// See `unmount` in calendar_page_test.
   Future<void> unmount(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(Duration.zero);
@@ -149,15 +142,13 @@ void main() {
     expect(tester.takeException(), isNull);
 
     expect(find.byType(DonutChart), findsOneWidget);
-    // Each name appears twice — once in the ring's legend, once in the list
-    // below it — so the row is the last of the two.
+    // Each name shows twice: legend and list.
     expect(find.text('Transport'), findsNWidgets(2));
     final double transport = tester.getRect(find.text('Transport').last).top;
     final double groceries = tester.getRect(find.text('Groceries').last).top;
-    // Transport is 1320 against Groceries' 980, so its row leads.
+    // Transport 1320, Groceries 980.
     expect(transport, lessThan(groceries));
 
-    // The record count under each name, through the plural block.
     expect(find.text('2 records'), findsNWidgets(2));
     await unmount(tester);
   });
@@ -166,7 +157,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await settle(tester);
-    // Only Rent is mandatory, so Groceries drops out of the list entirely.
+    // Only Rent is mandatory.
     await tester.tap(find.text('Mandatory'));
     await settle(tester, pumpWidget: false);
 
@@ -184,18 +175,14 @@ void main() {
     await tester.tap(find.text('Groceries').last);
     await settle(tester, pumpWidget: false);
     expect(tester.takeException(), isNull);
-    // Level 2 groups by title inside the category, largest first.
     expect(find.text('Rewe'), findsOneWidget);
     expect(find.text('Lidl'), findsOneWidget);
     expect(
       tester.getRect(find.text('Rewe')).top,
       lessThan(tester.getRect(find.text('Lidl')).top),
     );
-    // And nothing from the other category leaked in.
     expect(find.text('Ticket'), findsNothing);
 
-    // The average ticket sits in the summary card up top — no second level
-    // to tap into.
     expect(find.text('Average payment in the range'), findsOneWidget);
     // 980 over two payments.
     expect(find.textContaining('490'), findsWidgets);

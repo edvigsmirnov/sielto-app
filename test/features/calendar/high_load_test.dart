@@ -2,20 +2,18 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
 
-/// The high-load threshold (spec 8.1).
 void main() {
   Decimal d(String v) => Decimal.parse(v);
 
   List<Decimal> of(List<String> values) => values.map(d).toList();
 
   test('too little history sets no threshold', () {
-    // Better no mark than a mark derived from three figures.
     expect(highLoadThreshold(of(<String>['10', '20', '30'])), isNull);
     expect(highLoadThreshold(const <Decimal>[]), isNull);
   });
 
   test('an odd sample takes the middle figure', () {
-    // Median 40, so the bar is 60.
+    // Median 40, threshold 60.
     expect(
       highLoadThreshold(of(<String>['10', '20', '30', '40', '50', '60', '70'])),
       d('60'),
@@ -23,7 +21,7 @@ void main() {
   });
 
   test('an even sample averages the two middle figures', () {
-    // 30 and 40 -> 35, so the bar is 52.50.
+    // Median 35, threshold 52.50.
     expect(
       highLoadThreshold(of(<String>['10', '20', '30', '40', '50', '60'])),
       d('52.50'),
@@ -38,8 +36,7 @@ void main() {
   });
 
   test('days with nothing spent are left out of the median', () {
-    // The whole point: a Space that records on eight days a month has a
-    // median of zero across the calendar, and every day would clear 1.5x zero.
+    // Only spending days count; the median over all days would be zero.
     final List<Decimal> sparse = <Decimal>[
       ...of(<String>['10', '20', '30', '40', '50', '60']),
       ...List<Decimal>.filled(40, Decimal.zero),
@@ -52,8 +49,7 @@ void main() {
   });
 
   test('the threshold is exact money, not a float', () {
-    // 0.01 -> median 0.015 -> 0.0225, rounded to the cent rather than carried
-    // as a binary fraction.
+    // Median 0.015, threshold 0.0225, exact.
     expect(
       highLoadThreshold(
         of(<String>['0.01', '0.01', '0.01', '0.02', '0.02', '0.02']),

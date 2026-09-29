@@ -3,9 +3,8 @@ import 'package:flutter/widgets.dart';
 import 'package:sielto/core/l10n/app_locales.dart';
 import 'package:sielto/core/l10n/pseudolocalize.dart';
 
-/// Serves [AppLocales.pseudo] by pseudolocalizing the fallback dictionary at
-/// load time, so no pseudo translations are checked in and the harness cannot
-/// drift from the real strings. Every other locale goes straight to [base].
+/// Serves [AppLocales.pseudo] by pseudolocalizing the fallback dictionary.
+/// Other locales go to [base].
 class PseudoAssetLoader extends AssetLoader {
   const PseudoAssetLoader({this.base = const RootBundleAssetLoader()});
 
@@ -21,7 +20,7 @@ class PseudoAssetLoader extends AssetLoader {
     return source == null ? null : _walk(source);
   }
 
-  /// Rewrites every string leaf. Plural forms are nested maps, so recurse.
+  /// Plural forms are nested maps.
   Map<String, dynamic> _walk(Map<String, dynamic> node) {
     return node.map(
       (String key, dynamic value) =>

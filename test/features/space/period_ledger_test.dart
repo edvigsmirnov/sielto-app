@@ -15,11 +15,8 @@ import 'package:sielto/features/space/period_ledger.dart';
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 Decimal m(String v) => Decimal.parse(v);
 
-/// One income cycle, read from the tables the service wrote.
-///
-/// These pin the two ways the figures above the Feed can disagree with the
-/// list under it: a record the ledger ignores, and an anchor counted more than
-/// once.
+/// One income cycle from the tables. Every listed record counts, and the
+/// anchor counts once.
 void main() {
   late AppDatabase db;
   late Repositories repos;
@@ -77,12 +74,7 @@ void main() {
     );
   }
 
-  /// A salary already on file before the cycle under test opened.
-  ///
-  /// Written through a repository on an earlier clock on purpose: a rule
-  /// created today materialises nothing behind it, so a rule stamped today
-  /// would leave the current cycle without the salary that opened it — true
-  /// to the rules, but not the case these tests are about.
+  /// A salary rule created before the cycle under test opened.
   Future<void> addSalary({String? amount = '3224'}) async {
     await IncomeRuleRepository(
       db: db,
@@ -103,7 +95,6 @@ void main() {
   }
 
   test('the anchor is counted once, not once per materialised month', () async {
-    // The order the bug was reported in: expenses first, then the salary.
     await repos.payments.create(
       spaceId: space.id,
       title: 'Rent',
@@ -119,8 +110,7 @@ void main() {
 
   test('a payment written before the recompute still counts', () async {
     await addSalary();
-    // Written straight to the table with no period, which is what every form
-    // does: the binding happens on the next refresh.
+    // No period: binding happens on the next refresh.
     await repos.payments.create(
       spaceId: space.id,
       title: 'Rent',
@@ -135,11 +125,9 @@ void main() {
   });
 
   group('no figure', () {
-    // Two ways to have no anchor figure, and they are different answers.
     test('a cycle with no income at all computes from zero', () async {
       await addSalary();
-      // Every occurrence removed: nothing is coming, and nothing is what it
-      // is worth.
+      // Every occurrence removed.
       for (final Income i in await repos.incomes.inSpace(space.id)) {
         await repos.incomes.softDelete(i.id);
       }
@@ -151,8 +139,7 @@ void main() {
     });
 
     test('an anchor with no amount stays uncomputable', () async {
-      // A floating salary: money is coming and its size is not known, so any
-      // figure would be invented (spec 4.7).
+      // Amount unknown.
       await addSalary(amount: null);
 
       final PeriodLedger ledger = await ledgerOf(await currentPeriod());
@@ -174,7 +161,6 @@ void main() {
       );
 
       final PeriodLedger ledger = await ledgerOf(await currentPeriod());
-      // Zero income against a real bill is not covered, and says so.
       expect(ledger.totalPlanned, m('900'));
       expect(ledger.freeCash, isNull);
     });
@@ -203,7 +189,7 @@ void main() {
       dueDate: d('2026-03-12'),
       expenseType: ExpenseType.mandatory,
     );
-    // The recompute binds it; the answer must not change when it does.
+    // Binding does not change the result.
     await service.refresh(space, today);
 
     final PeriodLedger ledger = await ledgerOf(await currentPeriod());
@@ -211,8 +197,7 @@ void main() {
   });
 
   group('a cycle with no income of its own', () {
-    /// Leaves the current cycle with no inflow at all, the way a gap period
-    /// before the salary rule starts has none.
+    /// Removes every income from the current cycle.
     Future<BudgetPeriod> emptyOfIncome() async {
       await addSalary();
       final BudgetPeriod period = await currentPeriod();
@@ -236,13 +221,11 @@ void main() {
       final PeriodLedger ledger = await ledgerOf(period);
       expect(ledger.hasIncome, isFalse);
       expect(ledger.isJudged, isFalse);
-      // No dot, no cutoff, no date the money runs out on.
       expect(ledger.coverage, isNull);
       expect(ledger.baseCoverage, isNull);
       expect(ledger.moneyEndsAt, isNull);
       expect(ledger.lastCoveredDay, isNull);
       expect(ledger.coverageByEntry, isEmpty);
-      // The remainder is still arithmetic, and still shown.
       expect(ledger.freeCash, m('-900'));
     });
 

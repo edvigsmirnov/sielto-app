@@ -9,8 +9,7 @@ import 'package:sielto/features/periods/holiday_service.dart';
 
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 
-/// A bundle that answers from a map instead of the asset directory, so the
-/// tests pin the resolution order rather than the shipped data.
+/// Answers from a map, not from assets.
 class _FakeBundle extends HolidayBundle {
   const _FakeBundle(this.data);
 
@@ -34,11 +33,7 @@ class _FakeApi extends NagerHolidayApi {
   }
 }
 
-/// Where the working-day calendar comes from (spec 5.1.1).
-///
-/// The order is the whole point: cache, then the shipped data, then the
-/// network — last because it is the only source that can fail and the only one
-/// that needs permission.
+/// Holiday resolution order: cache, bundle, network.
 void main() {
   late AppDatabase db;
   late HolidayRepository holidays;
@@ -99,7 +94,6 @@ void main() {
         api: api,
       ).resolve(countryCode: 'DE', years: <int>{2026}, mayFetch: true);
 
-      // Shipped data comes before the network, so nothing was requested.
       expect(api.calls, 0);
       expect(resolved.isComplete, isTrue);
       expect(await holidays.has('DE', 2026), isTrue);
@@ -132,7 +126,6 @@ void main() {
       final ResolvedCalendar resolved = await serviceWith(api: api)
           .resolve(countryCode: 'DE', years: <int>{2029}, mayFetch: false);
 
-      // Nothing was requested, and the caller is told the window is wide.
       expect(api.calls, 0);
       expect(resolved.missingYears, <int>{2029});
     });
@@ -144,8 +137,7 @@ void main() {
         mayFetch: true,
       );
       expect(resolved.missingYears, <int>{2029});
-      // The run continues on weekends alone: May Day, a Tuesday that year,
-      // reads as an ordinary working day rather than stopping the walk.
+      // 2029-05-01, a Tuesday, is a working day without data.
       expect(resolved.calendar.isNonWorkingDay(d('2029-05-01')), isFalse);
     });
   });
@@ -160,7 +152,7 @@ void main() {
         mayFetch: true,
       );
 
-      // A New Year's Day that belongs to a country nobody selected.
+      // Belongs to a country not selected.
       expect(resolved.calendar.isNonWorkingDay(d('2026-01-01')), isFalse);
       expect(resolved.missingYears, isEmpty);
     });

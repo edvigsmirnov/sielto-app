@@ -8,7 +8,6 @@ void main() {
   });
 
   test('rejects anything carrying a time', () {
-    // A value with a time has already lost the distinction this type keeps.
     expect(
       () => CalendarDate.parse('2026-03-09T00:00:00Z'),
       throwsFormatException,
@@ -51,8 +50,7 @@ void main() {
   });
 
   test('day arithmetic ignores DST', () {
-    // Berlin's clocks move on 2026-03-29, but a calendar day is a calendar
-    // day; UTC midnight anchors the arithmetic.
+    // Berlin changes clocks on 2026-03-29; calendar arithmetic is unaffected.
     expect(
       const CalendarDate(2026, 3, 28).addDays(1),
       const CalendarDate(2026, 3, 29),
@@ -122,7 +120,6 @@ void main() {
     });
 
     test('clamps into a short month instead of overflowing', () {
-      // Overflow would silently move a monthly series into the next month.
       expect(
         CalendarDate.parse('2026-01-31').addMonths(1),
         CalendarDate.parse('2026-02-28'),

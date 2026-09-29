@@ -4,16 +4,8 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 
-/// The payment title, completing on what this Space has been charged before
-/// (spec 8.2).
-///
-/// Half of the fragmentation defence: Analytics level 2 groups by free text, so
-/// the cheapest fix is to stop a second spelling of "Klarna" from being typed.
-/// The other half is the `lower(trim(title))` grouping itself.
-///
-/// [RawAutocomplete] rather than `Autocomplete`, because the form owns the
-/// controller — it is loaded from the record and read back on save, and the
-/// convenience widget insists on making its own.
+/// Payment title with autocomplete from this Space's earlier titles. Uses
+/// [RawAutocomplete] with the form's controller.
 class TitleField extends ConsumerStatefulWidget {
   const TitleField({
     required this.controller,
@@ -26,8 +18,6 @@ class TitleField extends ConsumerStatefulWidget {
   final String spaceId;
   final bool enabled;
 
-  /// Below this a prefix matches most of the Space, and the list is noise
-  /// rather than a shortcut.
   static const int minimumPrefix = 2;
 
   @override
@@ -35,12 +25,10 @@ class TitleField extends ConsumerStatefulWidget {
 }
 
 class _TitleFieldState extends ConsumerState<TitleField> {
-  /// Owned here, not built in `build`: [RawAutocomplete] needs the same node
-  /// across rebuilds to know whether the field still has focus.
+  /// Kept across rebuilds; [RawAutocomplete] tracks focus through it.
   final FocusNode _focus = FocusNode();
 
-  /// How tall the suggestion list may grow before it scrolls. Four rows leaves
-  /// the amount field under it visible.
+  /// About four rows.
   static const double _maxOverlayHeight = 200;
 
   @override
@@ -65,8 +53,7 @@ class _TitleFieldState extends ConsumerState<TitleField> {
             .read(repositoriesProvider)
             .payments
             .titleSuggestions(widget.spaceId, prefix);
-        // What was just typed is not a suggestion: offering it back is a row
-        // that does nothing.
+        // The exact typed text is not suggested.
         return matches.where(
           (String m) => m.toLowerCase() != prefix.toLowerCase(),
         );

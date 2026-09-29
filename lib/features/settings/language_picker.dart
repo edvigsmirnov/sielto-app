@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:sielto/core/l10n/app_locales.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// The language picker (spec 9.2).
-///
-/// A scrolling sheet, so the list grows with the number of translations without
-/// the screen having to change. Each language is listed under its own name,
-/// never a translated one — see [AppLocale.name].
+/// Language sheet. Each language is listed under its own name.
 Future<void> showLanguagePicker(BuildContext context) async {
   final Locale? picked = await showModalBottomSheet<Locale>(
     context: context,
@@ -46,8 +42,7 @@ class _LanguagePicker extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleSmall,
               ),
             ),
-            // Bounded so a long list scrolls inside the sheet instead of
-            // pushing it past the top of the screen.
+            // Scrolls inside the sheet.
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,

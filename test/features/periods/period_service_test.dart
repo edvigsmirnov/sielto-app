@@ -14,9 +14,7 @@ import 'package:sielto/features/periods/period_service.dart';
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 Decimal m(String v) => Decimal.parse(v);
 
-/// The period service is where the M2 engine meets the tables. These tests pin
-/// the rules that make history trustworthy: closed periods are never touched,
-/// open ones move in place, and a received income is immovable.
+/// Closed periods stay; open ones move in place; received incomes never move.
 void main() {
   late AppDatabase db;
   late Repositories repos;
@@ -67,8 +65,6 @@ void main() {
 
   group('with no anchor', () {
     test('a Space with no income at all is a valid state', () async {
-      // Not an error, and not a blocked screen: the dashboard says to add an
-      // anchor and the rest of the app keeps working (spec 4.7).
       final PeriodRefresh result = await service.refresh(space, today);
       expect(result.isEmpty, isTrue);
       expect(await periods(), isEmpty);
@@ -121,7 +117,6 @@ void main() {
     });
 
     test('coincident anchors merge into one period', () async {
-      // The invariant that rules out zero-length periods (spec 4.7).
       await anchorOn(15, title: 'Mine');
       await anchorOn(15, title: 'Partner');
       await service.refresh(space, today);
@@ -156,15 +151,14 @@ void main() {
     test(
       'each rule materialises its occurrences up to the last boundary',
       () async {
-        // Occurrences stop where the periods do, so every row has a period to
-        // belong to; the two horizons move forward together.
+        // Occurrences stop at the last period.
         await anchorOn(26);
         await service.refresh(space, today);
 
         final List<Income> rows = await repos.incomes.inSpace(space.id);
         final CalendarDate lastBoundary = (await periods()).last.endDate!;
         expect(rows, isNotEmpty);
-        // Nothing before the rule existed: it was written today.
+        // The rule was created today.
         expect(rows.first.expectedDate, d('2026-03-26'));
         expect(
           rows.every((Income i) => !i.expectedDate.isAfter(lastBoundary)),
@@ -175,8 +169,8 @@ void main() {
     );
 
     test('history before the current cycle is not invented', () async {
-      // A 1st-of-month rule: March 1 opened the cycle we are in and is
-      // written; February and everything before it are history and are not.
+      // The 1 March occurrence opens the current cycle; earlier ones are not
+      // written.
       await anchorOn(1);
       await service.refresh(space, today);
 
@@ -188,9 +182,7 @@ void main() {
     });
 
     test('a rule written today invents nothing behind it', () async {
-      // A 1st-of-month rule entered on the 10th. The cycle it lands in opened
-      // on the 2nd, but that salary arrived before this schedule existed and
-      // is not the app's to record.
+      // Rule created on the 10th; the cycle opened on the 2nd, before the rule.
       await anchorOn(1);
       await service.refresh(space, today);
 
@@ -203,9 +195,7 @@ void main() {
     });
 
     test('a rule that predates its cycle fills that cycle', () async {
-      // The other half of the same rule: a schedule already on file when the
-      // cycle opened does get the salary that opened it, or the period the
-      // user is looking at has no amount at all (spec 4.7).
+      // A rule created before the cycle opened gets its anchor occurrence.
       final IncomeRuleRepository older = IncomeRuleRepository(
         db: db,
         clock: SpaceClock(
@@ -250,9 +240,7 @@ void main() {
     });
 
     test('a deleted occurrence stays deleted', () async {
-      // The gap-filling read counts deleted rows, or the next recompute would
-      // read the date as missing and put the occurrence straight back — which
-      // looks exactly like the delete button doing nothing.
+      // Deleted rows count as materialised.
       await anchorOn(26);
       await service.refresh(space, today);
       final List<Income> rows = await repos.incomes.inSpace(space.id);
@@ -283,7 +271,7 @@ void main() {
     });
 
     test('a floating salary materialises with no amount', () async {
-      // Unknown, not zero (spec 4.7).
+      // Unknown, not zero.
       await anchorOn(26, amount: null);
       await service.refresh(space, today);
 
@@ -347,11 +335,9 @@ void main() {
         before.map((Income i) => i.expectedDate).toList(),
       );
       expect(after[1].amount, m('3000'));
-      // Received money is a fact: its own figure stays.
       expect(after[3].isPaid, isTrue);
       expect(after[3].amount, m('2900'));
 
-      // Nothing left to do the second time.
       expect(await service.regenerate(space, rule.id, today), 0);
     });
 
@@ -387,7 +373,6 @@ void main() {
       await service.refresh(space, today);
       final BudgetPeriod closed = (await periods()).first;
 
-      // Move time past the end of that first period and reshape the schedule.
       final CalendarDate later = d('2026-05-10');
       await service.refresh(space, later);
 
@@ -402,8 +387,6 @@ void main() {
       await service.refresh(space, today);
       final BudgetPeriod current = (await periods()).first;
 
-      // The user corrects the payday: the current, still-open period is
-      // recomputed (spec 5.4).
       await repos.incomeRules.softDelete(
         (await repos.incomeRules.inSpace(space.id)).first.id,
       );
@@ -438,7 +421,7 @@ void main() {
     test(
       'a payment due on the next anchor belongs to the next period',
       () async {
-        // The money has arrived that day, so it is the new cycle's (spec 4.7).
+        // A payment on the anchor date belongs to the new cycle.
         await anchorOn(26);
         final Payment payment = await repos.payments.create(
           spaceId: space.id,
@@ -499,8 +482,7 @@ void main() {
         assignment: PeriodAssignment.manual,
       );
 
-      // What a merge of two anchors looks like from here: the row the pin
-      // pointed at is gone.
+      // The pinned period is gone, as after a merge.
       await repos.periods.softDelete(doomed.id);
 
       final PeriodRefresh result = await service.refresh(space, today);
@@ -520,8 +502,7 @@ void main() {
   });
 
   group('incomplete holiday data', () {
-    // The flag is per period, keyed on the year its anchor falls in: the
-    // window can only ever narrow once the data arrives (spec 5.1.1).
+    // Flagged per period, by its anchor's year.
     PeriodService serviceMissing(Set<int> years) => PeriodService(
       repos: repos,
       calendar: WorkingDayCalendar.weekendsOnly(),
@@ -551,8 +532,7 @@ void main() {
       await anchorOn(5);
       await serviceMissing(<int>{today.year, today.year + 1})
           .refresh(space, today);
-      // Open periods move in place, so the same rows lose the flag rather
-      // than being replaced (spec 5.4).
+      // Same rows, flag cleared.
       await service.refresh(space, today);
       expect(
         (await periods()).any((BudgetPeriod p) => p.holidayDataIncomplete),
@@ -562,9 +542,6 @@ void main() {
   });
 
   group('a settled anchor moves the cycle it opens', () {
-    // A salary that arrived early means the days between belong to the cycle
-    // it opened: money spent on them came out of that salary, not the
-    // previous one (spec 5.4, as refined).
     Future<Income> anchorIncomeOf(BudgetPeriod period) async {
       final List<Income> rows = await repos.incomes.inSpace(space.id);
       return rows.firstWhere((Income i) => i.budgetPeriodId == period.id);
@@ -576,8 +553,7 @@ void main() {
       await anchorOn(15);
       await service.refresh(space, today);
 
-      // The cycle after the current one, so both it and its predecessor are
-      // still open and may move.
+      // The next cycle: it and its predecessor are both open.
       final BudgetPeriod second = await periodAt(1);
       final Income salary = await anchorIncomeOf(second);
       await repos.incomes.update(
@@ -623,7 +599,7 @@ void main() {
       );
       await service.refresh(space, today);
 
-      // One early payment does not shift the timetable (spec 5.4).
+      // Later periods keep their scheduled dates.
       expect((await periodAt(2)).startDate, thirdStart);
     });
 
@@ -641,7 +617,6 @@ void main() {
       );
       await service.refresh(space, today);
 
-      // Nothing is uncertain about a day that has already happened.
       final BudgetPeriod moved = await periodAt(1);
       expect(moved.windowStart, actual);
       expect(moved.windowEnd, actual);
@@ -652,7 +627,7 @@ void main() {
       await service.refresh(space, today);
       final CalendarDate before = (await periodAt(1)).startDate;
 
-      // Marked received, but no date given: there is no fact to move to.
+      // Received without a date: nothing to move to.
       final Income salary = await anchorIncomeOf(await periodAt(1));
       await repos.incomes.update(salary.id, isPaid: const Value<bool>(true));
       await service.refresh(space, today);

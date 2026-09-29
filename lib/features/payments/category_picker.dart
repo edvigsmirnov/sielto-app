@@ -10,10 +10,7 @@ import 'package:sielto/features/categories/category_form_page.dart';
 import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// The category on the payment form: a row that opens the picker (spec 7).
-///
-/// Never a free-text field. Typing the name again is exactly how the
-/// duplicates and misspellings this app exists to avoid get in.
+/// Category row on the payment form; opens the picker. Never free text.
 class CategoryPickerField extends ConsumerWidget {
   const CategoryPickerField({
     required this.selectedId,
@@ -77,8 +74,7 @@ class CategoryPickerField extends ConsumerWidget {
   }
 }
 
-/// What the picker returns. Null [category] is the "no category" row, which is
-/// a choice — distinct from backing out, which returns null overall.
+/// Null [category] is the "no category" choice; null overall is a cancel.
 @immutable
 class CategoryChoice {
   const CategoryChoice(this.category);
@@ -95,12 +91,7 @@ Future<CategoryChoice?> pickCategory(
   ),
 );
 
-/// The picker screen (design section 6.2): search, then the categories grouped
-/// by the type they default to.
-///
-/// Grouped rather than one flat list because the two behave differently in the
-/// cascade — mandatory first, then variable — so the grouping is the same
-/// distinction the figures are built on, not a filing convenience.
+/// Search, then categories grouped by default type.
 class _CategoryPickerPage extends ConsumerStatefulWidget {
   const _CategoryPickerPage({required this.selectedId});
 

@@ -10,11 +10,8 @@ import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 
-/// "Set current balance" (spec 4.6).
-///
-/// The figure is a snapshot of real money, and the moment it was taken matters
-/// as much as the number: expenses already paid on or before that day are left
-/// out of the walk so they are not charged twice (plan G1).
+/// "Set current balance". Paid expenses dated on or before the snapshot day
+/// are excluded from the walk.
 Future<void> showBalanceSheet(
   BuildContext context,
   WidgetRef ref, {

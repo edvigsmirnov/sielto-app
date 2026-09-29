@@ -14,12 +14,8 @@ import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
 
-/// The dashboard of a Budget Space (spec 4.8).
-///
-/// The question is "does this fit", and both halves of it are optional. With a
-/// fund the hero figure is what is left of it; without one there is nothing to
-/// fit into, so the screen reports what has been spent and says so plainly
-/// rather than inventing a limit.
+/// Budget Space dashboard. With a fund: what is left of it. Without: what is
+/// spent.
 class BudgetDashboardBody extends ConsumerWidget {
   const BudgetDashboardBody({required this.space, super.key});
 
@@ -96,12 +92,7 @@ class _Body extends ConsumerWidget {
   }
 }
 
-/// No fund was set, so there is nothing to fit into (spec 4.8).
-///
-/// What is spent is still a real figure and leads the screen; the invitation to
-/// set a target sits under it rather than in place of it, because tracking
-/// spend with no limit is a valid way to use the mode, not a half-finished
-/// setup.
+/// Spent figure, with an invitation to set a fund.
 class _NoFundFigure extends ConsumerWidget {
   const _NoFundFigure({required this.ledger, required this.money});
 
@@ -122,7 +113,7 @@ class _NoFundFigure extends ConsumerWidget {
   }
 }
 
-/// The event date and how far off it is (spec 4.8).
+/// Event date and countdown.
 class _DeadlineCard extends ConsumerWidget {
   const _DeadlineCard({required this.ledger, required this.dates});
 
@@ -162,8 +153,6 @@ class _DeadlineCard extends ConsumerWidget {
                   style: text.bodyLarge,
                 ),
                 Text(
-                  // Past, today, or a countdown — the three things a date can
-                  // be when you are working towards it.
                   days < 0
                       ? plural('budget.daysAgo', -days)
                       : (days == 0
@@ -189,7 +178,7 @@ class _DeadlineCard extends ConsumerWidget {
   }
 }
 
-/// What the fund is made of: the planned figure and what has been paid in.
+/// Planned figure and top-ups.
 class _FundCard extends ConsumerWidget {
   const _FundCard({required this.ledger, required this.money});
 

@@ -1,12 +1,7 @@
 import 'package:intl/intl.dart';
 
-/// Currency selection for Space creation (spec 9.2).
-///
-/// The list is a convenience, not a constraint: the stored value is a plain
-/// ISO 4217 code, and the detected one is always offered even when it is not
-/// in the list below.
+/// Currency choices for Space creation. Any ISO 4217 code is valid.
 abstract final class Currencies {
-  /// Common codes, in no particular order of preference.
   static const List<String> common = <String>[
     'EUR',
     'USD',
@@ -34,20 +29,19 @@ abstract final class Currencies {
     'ILS',
   ];
 
-  /// The currency the device locale implies. Falls back to EUR when intl has
-  /// no data for the locale.
+  /// EUR when intl has no data for the locale.
   static String forLocale(String locale) {
     try {
       final String? name = NumberFormat.simpleCurrency(locale: locale)
           .currencyName;
       if (name != null && name.length == 3) return name;
     } on Exception {
-      // No currency data for this locale; the fallback below applies.
+      // No currency data for this locale.
     }
     return 'EUR';
   }
 
-  /// "EUR €" — the code plus its symbol, for a picker row.
+  /// "EUR €".
   static String label(String code, String locale) {
     try {
       final String symbol = NumberFormat.simpleCurrency(
@@ -60,7 +54,7 @@ abstract final class Currencies {
     }
   }
 
-  /// [detected] first, then the common list without duplicates.
+  /// [detected] first, then [common] without duplicates.
   static List<String> offered(String detected) => <String>[
     detected,
     ...common.where((String code) => code != detected),

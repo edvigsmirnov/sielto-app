@@ -6,9 +6,7 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/analytics/analytics_range.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// Level 1: what each category cost over the selected range (spec 8.2).
-///
-/// Rebuilt when the range, the type filter or any payment changes.
+/// Level 1: totals per category over the selected range.
 final FutureProvider<List<AnalyticsSlice>> categoryTotalsProvider =
     FutureProvider<List<AnalyticsSlice>>((Ref ref) async {
       final Space? space = ref.watch(currentSpaceProvider);
@@ -27,14 +25,8 @@ final FutureProvider<List<AnalyticsSlice>> categoryTotalsProvider =
           );
     });
 
-/// Levels 2 and 3: what each title cost inside one category.
-///
-/// Keyed by category id, with the empty string standing for the uncategorised
-/// slice — the same key [AnalyticsRepository.uncategorisedKey] uses, so the
-/// level-1 row can hand its own key straight through.
-///
-/// The type is inferred: `flutter_riverpod` does not export
-/// `FutureProviderFamily`.
+/// Levels 2 and 3, keyed by category id or
+/// [AnalyticsRepository.uncategorisedKey].
 final titleTotalsProvider = FutureProvider.family<List<AnalyticsSlice>, String>(
   (Ref ref, String categoryKey) async {
     final Space? space = ref.watch(currentSpaceProvider);
@@ -57,8 +49,7 @@ final titleTotalsProvider = FutureProvider.family<List<AnalyticsSlice>, String>(
   },
 );
 
-/// The filter as the label the screens print. Null is "everything", and that
-/// is a state worth naming rather than leaving blank.
+/// Translation key for the filter. Null is "everything".
 String expenseTypeKey(ExpenseType? type) => switch (type) {
   null => 'analytics.allTypes',
   ExpenseType.mandatory => 'expenseType.mandatory',

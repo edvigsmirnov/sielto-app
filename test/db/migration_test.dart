@@ -6,17 +6,8 @@ import 'package:sielto/core/db/app_database.dart';
 
 import 'generated_migrations/schema.dart';
 
-/// Migration harness (spec 10.6).
-///
-/// Two jobs. Today it pins the shipped schema against its snapshot, so a table
-/// edited without bumping [AppDatabase.currentSchemaVersion] fails here rather
-/// than on a user's device. From v2 on, the loop below walks every prior
-/// version forward — the part that must not rot, so it exists before it is
-/// needed.
-///
-/// Regenerate after any schema change:
-///   dart run drift_dev schema dump lib/core/db/app_database.dart drift_schemas/
-///   dart run drift_dev schema generate drift_schemas/ test/db/generated_migrations/
+/// Regenerate snapshots after a schema change: `drift_dev schema dump`, then
+/// `drift_dev schema generate`.
 void main() {
   late SchemaVerifier verifier;
 
@@ -25,7 +16,6 @@ void main() {
   });
 
   test('the shipped schema matches its snapshot', () async {
-    // Catches a column added or a constraint changed without a version bump.
     final InitializedSchema schema = await verifier.schemaAt(
       AppDatabase.currentSchemaVersion,
     );
@@ -35,14 +25,12 @@ void main() {
     await verifier.migrateAndValidate(
       db,
       AppDatabase.currentSchemaVersion,
-      // Also fail if the database grew a table, view or trigger the snapshot
-      // does not know about.
+      // Also fails on unknown tables, views or triggers.
       options: const ValidationOptions(validateDropped: true),
     );
   });
 
   test('every prior version migrates forward', () async {
-    // Empty at v1, deliberately: this covers v2 the day it lands.
     for (int from = 1; from < AppDatabase.currentSchemaVersion; from++) {
       final InitializedSchema schema = await verifier.schemaAt(from);
       final AppDatabase db = AppDatabase(schema.newConnection());
@@ -52,9 +40,7 @@ void main() {
   });
 
   test('upgrading from v1 creates the indexes v2 added', () async {
-    // The snapshot carries no indexes, so `migrateAndValidate` above cannot
-    // see this. A v2 branch that forgot the statement would leave every
-    // existing install without the index the autocomplete needs.
+    // Snapshots carry no indexes, so this checks it directly.
     final InitializedSchema schema = await verifier.schemaAt(1);
     final AppDatabase db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
@@ -73,9 +59,7 @@ void main() {
   });
 
   test('upgrading to v3 keys the starter categories v2 wrote', () async {
-    // A v2 install holds its starters as bare titles in the language it was
-    // created in. The upgrade recognises them so they follow the reader's
-    // language; a category the user named is left as named.
+    // v2 starter titles get keys; user-named categories do not.
     final InitializedSchema schema = await verifier.schemaAt(2);
     schema.rawDatabase
       ..execute(

@@ -9,8 +9,7 @@ void main() {
       SpaceClock(timezone: timezone, now: () => instant);
 
   test('today follows the Space timezone, not the device', () {
-    // 23:30 UTC is already tomorrow in Berlin (UTC+1 in March) and still
-    // early evening in New York.
+    // 23:30 UTC is the next day in Berlin, the same day in New York.
     final DateTime instant = DateTime.utc(2026, 3, 10, 23, 30);
 
     expect(
@@ -24,8 +23,6 @@ void main() {
   });
 
   test('two members in different places share one Space date', () {
-    // The clock is the Space's, so a Berlin member and a New York member
-    // reading the same Space agree on which day it is.
     final DateTime instant = DateTime.utc(2026, 3, 10, 23, 30);
     final SpaceClock berlinSpace = at('Europe/Berlin', instant);
     final SpaceClock sameSpaceOtherDevice = SpaceClock(
@@ -48,8 +45,7 @@ void main() {
   });
 
   test('a spring-forward day is 23 hours, not 24', () {
-    // Berlin loses an hour on 2026-03-29. Adding 24h to midnight would land
-    // on the wrong instant; the range is built from dates instead.
+    // Berlin moves to summer time on 2026-03-29.
     final SpaceClock clock = at('Europe/Berlin', DateTime.utc(2026, 3, 1));
     const CalendarDate dst = CalendarDate(2026, 3, 29);
 

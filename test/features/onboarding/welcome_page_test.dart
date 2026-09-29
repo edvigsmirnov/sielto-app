@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/features/onboarding/welcome_page.dart';
 
-/// The intro holds the way in until it has played, and a tap skips it.
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();

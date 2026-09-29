@@ -15,8 +15,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     required super.userId,
   });
 
-  /// Gap between manual positions. Sparse so a drag between two neighbours
-  /// usually needs one write instead of renumbering the day (plan G2).
+  /// Gap between manual positions, so a drag usually needs one write.
   static const int sortOrderGap = 1024;
 
   @override
@@ -25,10 +24,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
   late final FreezeGuard _freeze = FreezeGuard(db: db, clock: clock);
   late final DeadlineGuard _deadline = DeadlineGuard(db: db);
 
-  /// Which fields a frozen period protects (spec 5.5).
-  ///
-  /// Category and notes are absent on purpose: reclassifying a payment does
-  /// not change the fact of it, and notes may only be appended.
+  /// Fields a frozen period protects. Category and notes stay editable.
   static bool _touchesProtected({
     required bool amount,
     required bool dueDate,
@@ -36,21 +32,14 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     required bool isPaid,
   }) => amount || dueDate || expenseType || isPaid;
 
-  /// The Feed's day order: date, then manual position, then id.
-  ///
-  /// `sort_order` carries no uniqueness constraint — one would break the
-  /// moment the Space switches feed mode (plan G2) — so id breaks ties and
-  /// keeps the order stable across rebuilds.
+  /// Ordered by date, manual position, then id. `sort_order` is not unique.
   Future<List<Payment>> inSpace(String spaceId) =>
       _selectInSpace(spaceId).get();
 
-  /// The same list as [inSpace], re-emitted on every change. The Feed and the
-  /// Dashboard both read this so a write anywhere refreshes both.
   Stream<List<Payment>> watchInSpace(String spaceId) =>
       _selectInSpace(spaceId).watch();
 
-  /// The window the Feed opens with: three months either side of [around]
-  /// (spec 4.5). Rows outside it load only when the user scrolls that far.
+  /// Three months either side of [around].
   Stream<List<Payment>> watchAround(
     String spaceId,
     CalendarDate from,
@@ -82,8 +71,6 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
             ]))
           .get();
 
-  /// One day's rows, live. The Calendar's Day view (spec 8.1); the aggregate
-  /// views never call this.
   Stream<List<Payment>> watchOnDay(String spaceId, CalendarDate day) =>
       (_selectInSpace(
         spaceId,
@@ -93,7 +80,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
       (selectAlive()..where(($PaymentsTable t) => t.id.equals(id)))
           .getSingleOrNull();
 
-  /// Appends a payment to the end of its day.
+  /// Appends to the end of its day.
   Future<Payment> create({
     required String spaceId,
     required String title,
@@ -130,7 +117,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     return db.into(db.payments).insertReturning(row);
   }
 
-  /// Applies only the fields passed, and always re-stamps the row.
+  /// Applies only the given fields and re-stamps the row.
   Future<int> update(
     String id, {
     Value<String> title = const Value<String>.absent(),
@@ -142,8 +129,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     Value<bool> isPaid = const Value<bool>.absent(),
     Value<int> sortOrder = const Value<int>.absent(),
   }) async {
-    // Reordering is not restricted by the freeze: it changes no protected
-    // field and distorts no history (spec 4.5).
+    // Reordering is allowed in a frozen period.
     if (_touchesProtected(
       amount: amount.present,
       dueDate: dueDate.present,
@@ -182,8 +168,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
   Future<int> setPaid(String id, {required bool isPaid}) =>
       update(id, isPaid: Value<bool>(isPaid));
 
-  /// Deleting is a protected change too: a frozen period keeps its rows
-  /// (spec 5.5).
+  /// Throws [PeriodFrozen] in a frozen period.
   @override
   Future<int> softDelete(String id) async {
     final Payment? row = await byId(id);
@@ -191,18 +176,12 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     return super.softDelete(id);
   }
 
-  /// The freeze state of one payment, for a screen deciding what to enable.
   Future<FreezeState> freezeStateOf(String id) async {
     final Payment? row = await byId(id);
     return _freeze.stateOf(row?.budgetPeriodId);
   }
 
-  /// Materialises a repeating payment as one row per occurrence, sharing a
-  /// `group_recurring_id` (spec 6.3).
-  ///
-  /// Physical rows, not a rule evaluated at read time: it is what lets one
-  /// month be corrected — a final instalment that is a little smaller — without
-  /// rebuilding the series.
+  /// One row per occurrence, sharing a `group_recurring_id`.
   Future<String> createSeries({
     required String spaceId,
     required String title,
@@ -239,10 +218,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     return groupId;
   }
 
-  /// The "all future" branch of the series edit dialog (spec 6.3).
-  ///
-  /// Rows already marked paid are left alone: they record what happened, and
-  /// a change to the plan does not rewrite history.
+  /// Skips paid rows.
   Future<int> updateSeriesFrom(
     String groupRecurringId,
     CalendarDate from, {
@@ -261,8 +237,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     notes: notes,
   );
 
-  /// The "whole series" branch: every occurrence, past ones included, except
-  /// those already paid.
+  /// Every occurrence except paid ones.
   Future<int> updateWholeSeries(
     String groupRecurringId, {
     Value<String> title = const Value<String>.absent(),
@@ -279,11 +254,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     notes: notes,
   );
 
-  /// Every live occurrence of a series, in date order.
-  ///
-  /// A repeating payment has no rule row of its own — it is these rows and
-  /// nothing else (spec 6.3) — so counting them is the only way to say how
-  /// long the series runs.
+  /// Live occurrences in date order. A series has no rule row.
   Future<List<Payment>> seriesOf(String groupRecurringId) =>
       (selectAlive()
             ..where(
@@ -294,7 +265,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
             ]))
           .get();
 
-  /// Soft-deletes a whole series, or its future half.
+  /// Soft-deletes a whole series, or from [from] on.
   Future<int> deleteSeries(String groupRecurringId, {CalendarDate? from}) {
     final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(db.payments)..where(
@@ -352,11 +323,8 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
         : base & t.dueDate.isBiggerOrEqualValue(from.toIso());
   }
 
-  /// Binds a payment to a period.
-  ///
-  /// [assignment] records *how* it was bound, which decides what a later
-  /// recompute may do: an `auto` row is rebound by date, a `manual` one holds
-  /// the period the user chose (spec 5.3).
+  /// `auto` rows are rebound by date on recompute; `manual` rows keep their
+  /// period.
   Future<int> setPeriod(
     String id,
     String? periodId, {
@@ -378,8 +346,6 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     );
   }
 
-  /// Every live payment bound by date rather than by hand. These are the rows
-  /// a recompute is allowed to rebind.
   Future<List<Payment>> autoAssignedIn(String spaceId) =>
       (selectAliveInSpace(spaceId)..where(
             ($PaymentsTable t) =>
@@ -387,8 +353,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
           ))
           .get();
 
-  /// Rows pinned to a period that no longer exists. They return to `auto`
-  /// rather than dangling (spec 5.3).
+  /// Manual rows whose period is deleted.
   Future<List<Payment>> manuallyAssignedIn(String spaceId) =>
       (selectAliveInSpace(spaceId)..where(
             ($PaymentsTable t) =>
@@ -396,22 +361,14 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
           ))
           .get();
 
-  /// One gap past the last row of that day.
   Future<int> nextSortOrder(String spaceId, CalendarDate day) async {
     final List<Payment> rows = await onDay(spaceId, day);
     if (rows.isEmpty) return 0;
     return rows.last.sortOrder + sortOrderGap;
   }
 
-  /// Titles this Space has used before, starting with [prefix].
-  ///
-  /// The defence against level-2 fragmentation in Analytics (spec 8.2): the
-  /// second level groups by free text, so the cheapest fix is to stop variant
-  /// spellings being typed in the first place.
-  ///
-  /// Grouped by `lower(trim(title))` and returning the most frequent spelling
-  /// of each — the same key the breakdown groups on, so what is offered here
-  /// is exactly what will be merged there.
+  /// Titles used before in this Space that start with [prefix], one per
+  /// `lower(trim(title))` key, most frequent spelling.
   Future<List<String>> titleSuggestions(
     String spaceId,
     String prefix, {
@@ -430,7 +387,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
           variables: <Variable<Object>>[
             Variable<String>(spaceId),
             Variable<String>(trimmed.toLowerCase()),
-            // Over-fetch: several spellings of one title collapse below.
+            // Several spellings collapse into one below.
             Variable<int>(limit * 4),
           ],
           readsFrom: <ResultSetImplementation<HasResultSet, Object>>{
@@ -448,8 +405,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     return best.values.toList();
   }
 
-  /// Whether any visible payment uses [categoryId]. Drives the category title
-  /// freeze (spec 7); soft-deleted payments do not count.
+  /// Soft-deleted payments do not count.
   Future<bool> anyVisibleInCategory(String categoryId) async {
     final Payment? hit =
         await (selectAlive()

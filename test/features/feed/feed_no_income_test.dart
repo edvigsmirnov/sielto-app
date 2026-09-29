@@ -21,8 +21,7 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/feed/feed_page.dart';
 import 'package:sielto/features/periods/period_service.dart';
 
-/// The Feed's figures for a cycle with no income: zero, not the payments
-/// negated.
+/// Feed figures for a cycle without income.
 class _FileAssetLoader extends AssetLoader {
   const _FileAssetLoader();
 

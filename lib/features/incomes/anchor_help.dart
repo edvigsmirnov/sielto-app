@@ -2,7 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// What an anchor income is, in plain words (spec 4.7).
+/// Explains the anchor income.
 Future<void> showAnchorHelp(BuildContext context) => showDialog<void>(
   context: context,
   builder: (BuildContext context) => AlertDialog(
@@ -27,9 +27,8 @@ Future<void> showAnchorHelp(BuildContext context) => showDialog<void>(
   ),
 );
 
-/// Says so when an income has just become the anchor, with the way to the
-/// explanation. Survives the form closing: the messenger and the navigator
-/// are the app's.
+/// Snackbar that an income became the anchor, with a link to [showAnchorHelp].
+/// Uses the app's messenger and navigator, so it outlives the form.
 void announceAnchor(BuildContext context, String title) {
   final NavigatorState navigator = Navigator.of(context);
   ScaffoldMessenger.of(context)
@@ -50,7 +49,6 @@ void announceAnchor(BuildContext context, String title) {
     );
 }
 
-/// The "i" beside an anchor badge or hint.
 class AnchorHelpButton extends StatelessWidget {
   const AnchorHelpButton({super.key});
 

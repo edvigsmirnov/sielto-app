@@ -10,15 +10,8 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// The figures for a Budget Space (spec 4.8).
-///
-/// The same chronological walk as everywhere else; only the starting sum
-/// differs — here it is the fund: the planned target plus every top-up paid
-/// into it.
-///
-/// Both limits are optional and independent. With no fund there is nothing to
-/// measure a fit against, so the screen reports what has been spent and draws
-/// no cutoff; with no deadline the list simply has no end.
+/// Budget Space figures. The walk starts from the fund: target plus top-ups.
+/// Without a fund there is no walk.
 @immutable
 class BudgetLedger {
   const BudgetLedger({
@@ -33,29 +26,27 @@ class BudgetLedger {
     required this.totalPaid,
   });
 
-  /// The Space's one continuous row, which carries the fund and the deadline.
+  /// The continuous period, which holds the fund and the deadline.
   final BudgetPeriod period;
 
-  /// The planned figure. Null when no fund was set.
+  /// Null without a fund.
   final Decimal? target;
 
-  /// Everything paid into the fund so far.
+  /// Top-ups so far.
   final Decimal contributions;
 
-  /// Null exactly when there is no fund: with no starting sum there is nothing
-  /// to walk.
+  /// Null without a fund.
   final LedgerCascade? cascade;
 
-  /// The expenses the walk saw — those inside the deadline.
+  /// Expenses within the deadline.
   final List<LedgerEntry> entries;
 
-  /// Ids of records left outside by a deadline that moved backwards. Drawn
-  /// dimmed and left out of the reckoning, never deleted (spec 4.8).
+  /// Ids of records after the hard deadline. Dimmed and excluded.
   final Set<String> beyondDeadline;
 
   final CalendarDate today;
 
-  /// Every expense inside the deadline, paid or not.
+  /// Expenses within the deadline, paid or not.
   final Decimal totalPlanned;
   final Decimal totalPaid;
 
@@ -65,21 +56,18 @@ class BudgetLedger {
 
   bool get hasFund => target != null;
 
-  /// The fund: what was planned plus what has been paid in.
   Decimal get available => (target ?? Decimal.zero) + contributions;
 
   Decimal get totalRemaining => totalPlanned - totalPaid;
 
-  /// What is left of the fund once everything planned is taken off. Null when
-  /// the plan does not fit, and when there is no fund to measure against.
+  /// Null when the plan does not fit or there is no fund.
   Decimal? get remaining => cascade?.all.freeCash;
 
   Coverage? get coverage => cascade?.coverage;
 
   CalendarDate? get lastCoveredDay => cascade?.lastCoveredDay;
 
-  /// Days left until the event, or null when there is no date to count to.
-  /// Negative once it has passed.
+  /// Null without a deadline; negative once passed.
   int? get daysToDeadline =>
       deadline == null ? null : today.daysUntil(deadline!);
 
@@ -94,11 +82,7 @@ class BudgetLedger {
   }
 }
 
-/// Builds [BudgetLedger] from the continuous period and the Space's records.
-///
-/// A top-up is an ordinary income row read differently: in Budget mode money
-/// arriving is not a period's income, it is a payment into the fund, so every
-/// receipt joins the starting sum rather than the walk (spec 4.8).
+/// In Budget mode every income is a top-up and joins the fund.
 BudgetLedger buildBudgetLedger({
   required BudgetPeriod period,
   required List<Payment> payments,
@@ -156,7 +140,7 @@ BudgetLedger buildBudgetLedger({
   );
 }
 
-/// The Space's one continuous period, which Budget and Flow both hold.
+/// The continuous period of a Flow or Budget Space.
 final Provider<AsyncValue<BudgetPeriod?>> continuousPeriodProvider =
     Provider<AsyncValue<BudgetPeriod?>>((Ref ref) {
       final Space? space = ref.watch(currentSpaceProvider);
@@ -172,7 +156,6 @@ final Provider<AsyncValue<BudgetPeriod?>> continuousPeriodProvider =
           );
     });
 
-/// The live figures for a Budget Space.
 final Provider<AsyncValue<BudgetLedger>>
 budgetLedgerProvider = Provider<AsyncValue<BudgetLedger>>((Ref ref) {
   final AsyncValue<List<Payment>> payments = ref.watch(spacePaymentsProvider);

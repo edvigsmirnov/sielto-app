@@ -14,18 +14,7 @@ import 'package:sielto/features/spaces/space_avatar.dart';
 import 'package:sielto/features/spaces/space_coverage.dart';
 import 'package:sielto/features/spaces/space_form_page.dart';
 
-/// The Spaces switcher (spec 3.1).
-///
-/// A sheet over the current screen rather than a screen of its own: switching
-/// Space is a change of context, not a journey somewhere, and it closes by
-/// swiping down or tapping the dimmed area behind it.
-///
-/// There is deliberately **no combined total** across Spaces. They can be in
-/// different currencies, and adding those together would need exchange rates —
-/// which would mean a network call this app does not make (spec 3.1).
-///
-/// The spec's swipe-up gesture belongs to M10; until then the entry point is
-/// the tap on the Space name in the header, which the spec requires anyway.
+/// Spaces switcher sheet. No combined total: Spaces can differ in currency.
 Future<void> showSpaceSwitcher(BuildContext context) =>
     showModalBottomSheet<void>(
       context: context,
@@ -104,7 +93,6 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
               ),
             ),
             if (archived.isNotEmpty)
-              // Collapsed: the way back, not a second list to read.
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 shape: const Border(),
@@ -137,8 +125,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
             ),
             const SizedBox(height: SageSpace.md),
             const Hairline(),
-            // The general settings, reachable without closing the sheet first
-            // and hunting for the profile icon (spec 3.1).
+            // General settings.
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(tr('settings.accountSettings')),
@@ -160,11 +147,8 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
   }
 
   Future<void> _open(Space space) async {
-    // In memory, and instant: a local Space needs no network (spec 3.1).
     await ref.read(currentSpaceIdProvider.notifier).select(space.id);
-    // Back to the shell, closing whatever the switcher was opened over: the
-    // point of switching is to look at the other Space, not at the screen that
-    // belonged to the last one.
+    // Pops to the shell.
     if (mounted) {
       Navigator.of(context).popUntil((Route<void> r) => r.isFirst);
     }
@@ -210,8 +194,7 @@ class _SpaceRow extends StatelessWidget {
   final Space space;
   final bool isCurrent;
 
-  /// Null when the Space has nothing to compute yet — no dot rather than a
-  /// guessed one.
+  /// Null when there is nothing to compute.
   final Coverage? coverage;
 
   final VoidCallback onOpen;
@@ -253,9 +236,7 @@ class _SpaceRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: SageSpace.sm),
-            // Cloud or device, so where the data lives reads at a glance
-            // (spec 3.1). Beside the mode rather than beside the name, which
-            // the design keeps for the name alone.
+            // Cloud or device.
             Icon(
               space.storageMode == StorageMode.cloud
                   ? Icons.cloud_outlined
@@ -273,8 +254,7 @@ class _SpaceRow extends StatelessWidget {
             CoverageDot(coverage!, size: 10),
             const SizedBox(width: SageSpace.md),
           ],
-          // Opens that Space's settings without switching to it — the second
-          // of the spec's three entry points (spec 3.4).
+          // Opens that Space's settings without switching.
           SoftIconButton(
             icon: Icons.settings_outlined,
             tooltip: tr('spaceSettings.title'),

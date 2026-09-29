@@ -15,12 +15,7 @@ import 'package:sielto/features/onboarding/welcome_page.dart';
 import 'package:sielto/features/settings/language_picker.dart';
 import 'package:sielto/features/spaces/space_form_page.dart';
 
-/// First run (spec 2.1): one screen of basics, then the first Space.
-///
-/// No account, no email, no network call — the user id was generated locally
-/// before this screen was built. App lock and the Recovery Key are steps 3 and
-/// 4 of the spec's flow; they arrive with M7, and the progress bar counts the
-/// steps that exist rather than pretending they are already there.
+/// First run: basics, then the first Space.
 class OnboardingPage extends ConsumerStatefulWidget {
   const OnboardingPage({super.key});
 
@@ -31,15 +26,13 @@ class OnboardingPage extends ConsumerStatefulWidget {
 class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   final PageController _controller = PageController();
 
-  /// The basics, then the Space. The Space form is the last one.
   static const int _stepCount = 2;
 
   bool _started = false;
 
   final GlobalKey _welcome = GlobalKey();
 
-  /// The welcome screen as it was when left, blowing away over the first
-  /// step; null once it has.
+  /// Snapshot of the welcome screen while it scatters.
   ui.Image? _leaving;
   Offset? _leavingFrom;
 
@@ -108,12 +101,8 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   }
 }
 
-/// Nickname, currency, theme and language on one screen.
-///
-/// Every answer here is changeable later in Settings, so none of them earns a
-/// screen of its own. The currency is stored as the device default, so every
-/// later Space starts from the same answer instead of asking again (spec 2.1,
-/// step 2). Theme and language apply the moment they are picked.
+/// Nickname, currency, theme and language. The currency becomes the default
+/// for new Spaces; theme and language apply immediately.
 class _ProfileStep extends ConsumerStatefulWidget {
   const _ProfileStep({required this.stepCount, required this.onContinue});
 
@@ -202,8 +191,7 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
         const SizedBox(height: SageSpace.lg),
         LabelledField(
           label: tr('settings.language'),
-          // Drawn as a field, the same width and height as the currency one
-          // above it; the picker is a sheet because the list grows.
+          // Same size as the currency field.
           child: InkWell(
             onTap: () => showLanguagePicker(context),
             borderRadius: BorderRadius.circular(SageRadius.button),

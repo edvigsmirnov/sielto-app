@@ -12,21 +12,7 @@ import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/periods/holiday_service.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// The threshold above which a day is drawn as heavily loaded (spec 8.1).
-///
-/// Spec 8.1 offers two ways to set it: a figure in Space settings, or 1.5x the
-/// median of recent daily spending. The median is what is implemented — it
-/// needs no configuration, adapts to how much the Space actually moves, and a
-/// number that has to be guessed at before the first month of data is a
-/// setting nobody can fill in usefully.
-///
-/// The median of *spending days*, not of every day: a Space with records on
-/// eight days a month has a median of zero across the calendar, and every
-/// single day would clear 1.5x zero.
-///
-/// Null when there is too little to compare against. Below [minimumSample]
-/// days the median is one or two figures, and marking half of them as heavy
-/// says nothing.
+/// 1.5x the median of spending days. Null below [minimumSample] spending days.
 Decimal? highLoadThreshold(Iterable<Decimal> dailyExpenses) {
   final List<Decimal> spent = <Decimal>[
     for (final Decimal d in dailyExpenses)
@@ -42,13 +28,11 @@ Decimal? highLoadThreshold(Iterable<Decimal> dailyExpenses) {
   return (median * Decimal.parse('1.5')).round(scale: 2);
 }
 
-/// Spending days needed before the threshold means anything.
 const int minimumSample = 6;
 
-/// Months of history the median is taken over (spec 8.1).
 const int loadSampleMonths = 3;
 
-/// What decorates one cell beyond its figures (spec 8.1).
+/// Cell decorations beyond the figures.
 @immutable
 class DayMark {
   const DayMark({
@@ -61,25 +45,18 @@ class DayMark {
 
   static const DayMark none = DayMark();
 
-  /// Weekend, public holiday or a day the user marked. Drawn as a wash.
+  /// Weekend, public holiday or user-marked day.
   final bool isNonWorking;
 
-  /// A public holiday or a custom non-working day, as opposed to a plain
-  /// weekend. Earns the corner dot on top of the wash.
+  /// Public holiday or user-marked day, not a plain weekend.
   final bool isHoliday;
 
-  /// Inside an anchor income's `[windowStart, windowEnd]` span — the money
-  /// might arrive on this day (spec 5.2).
-  ///
-  /// Income-driven Spaces only, and that needs no check: a `continuous`
-  /// period carries no window at all.
+  /// Inside an anchor income's `[windowStart, windowEnd]`.
   final bool isUncertainIncome;
 
-  /// A Budget deadline falls here. Hard and soft are drawn differently: solid
-  /// against dashed (spec 4.8, 8.1).
   final DeadlineKind? deadline;
 
-  /// Expenses over the threshold (spec 8.1). See [highLoadThreshold].
+  /// See [highLoadThreshold].
   final bool isHighLoad;
 
   bool get isPlain =>
@@ -100,10 +77,7 @@ class DayMark {
 
 enum DeadlineKind { soft, hard }
 
-/// Every decoration for the range one view covers.
-///
-/// Keyed by date, and absent means undecorated: the map holds only the days
-/// that carry something.
+/// Only days with a decoration are present.
 @immutable
 class DayMarks {
   const DayMarks(this._marks, {required this.threshold});
@@ -115,34 +89,26 @@ class DayMarks {
 
   final Map<CalendarDate, DayMark> _marks;
 
-  /// The high-load cutoff in force, or null where there is too little history
-  /// to set one. Exposed so a screen can say what the mark means.
+  /// Null without enough history.
   final Decimal? threshold;
 
   DayMark operator [](CalendarDate date) => _marks[date] ?? DayMark.none;
 }
 
-/// The decorations for [view] around the selected date.
-///
-/// One provider for all of it rather than one per decoration: they share the
-/// range and the calendar lookup, and a cell needs them together anyway.
-///
-/// The type is inferred: `flutter_riverpod` does not export
-/// `FutureProviderFamily`.
+/// Decorations for [view] around the selected date. Type inferred:
+/// `flutter_riverpod` does not export `FutureProviderFamily`.
 final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
   Ref ref,
   CalendarView view,
 ) async {
   final Space? space = ref.watch(currentSpaceProvider);
-  // The Year view draws none of this — twelve cards carry three figures each —
-  // so it does not pay for a walk over 365 days.
+  // The Year view draws none.
   if (space == null || view == CalendarView.year) return DayMarks.empty;
 
   final CalendarDate around = ref.watch(selectedDateProvider);
   final ({CalendarDate from, CalendarDate to}) range = rangeOf(view, around);
 
-  // The browsed year, not the materialisation horizon: the screen scrolls
-  // past it in either direction (spec 8.1).
+  // The browsed year, which can be outside the materialisation years.
   final ResolvedCalendar resolved = await ref.watch(
     calendarForYearProvider(around.year).future,
   );
@@ -155,7 +121,6 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
     if (!calendar.isNonWorkingDay(d)) continue;
     marks[d] = DayMark(
       isNonWorking: true,
-      // A weekend is expected; a holiday is the thing worth pointing at.
       isHoliday: !calendar.weekendDays.contains(d.weekday),
     );
   }
@@ -165,7 +130,7 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
   for (final BudgetPeriod p in periods) {
     final CalendarDate? start = p.windowStart;
     final CalendarDate? end = p.windowEnd;
-    // A one-day window is certain, and hatching it would say otherwise.
+    // A one-day window is certain.
     if (start != null && end != null && start != end) {
       for (CalendarDate d = start; !d.isAfter(end); d = d.addDays(1)) {
         if (d.isBefore(range.from) || d.isAfter(range.to)) continue;
@@ -181,8 +146,7 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
     }
   }
 
-  // The threshold is read off recent history, not off the range on screen: a
-  // quiet month must not lower the bar for what counts as a heavy day.
+  // The threshold comes from recent history, not from the range on screen.
   ref.watch(spacePaymentsProvider);
   final CalendarDate today = ref.watch(spaceClockProvider).today();
   final Map<CalendarDate, DayTotals> history = await ref
@@ -207,7 +171,6 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
   return DayMarks(marks, threshold: threshold);
 });
 
-/// Bundled holiday names for the country the calendar resolves to.
 final FutureProvider<Map<CalendarDate, List<String>>> holidayNamesProvider =
     FutureProvider<Map<CalendarDate, List<String>>>((Ref ref) {
       final String? code =
@@ -217,11 +180,8 @@ final FutureProvider<Map<CalendarDate, List<String>>> holidayNamesProvider =
       return const HolidayBundle().namesFor(code);
     });
 
-/// Why [day] is off, for the Day view: null on a working day or a plain
-/// weekend, otherwise the custom day's title or the holiday's names — empty
-/// when none are known.
-///
-/// The type is inferred: `flutter_riverpod` does not export `ProviderFamily`.
+/// Null on a working day or plain weekend; else the custom day's title or the
+/// holiday names, empty when unknown.
 final dayOffNamesProvider = Provider.family<List<String>?, CalendarDate>((
   Ref ref,
   CalendarDate day,

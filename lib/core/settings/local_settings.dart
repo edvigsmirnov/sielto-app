@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-/// Feed row height and how much detail a row carries (spec 4.5).
 enum FeedDensity {
   /// Amount and title on one line.
   compact,
@@ -12,12 +11,8 @@ enum FeedDensity {
   spacious,
 }
 
-/// Settings that belong to this device rather than to a Space or to the synced
-/// profile: theme, feed density, the local user id, and which Space was open
-/// last. None of it is ever uploaded (plan section 5, rule 5).
-///
-/// Backed by shared_preferences rather than the encrypted database: none of it
-/// is sensitive, and the theme has to be readable before the database opens.
+/// Device-local settings, never uploaded. In shared_preferences so the theme
+/// is readable before the database opens.
 class LocalSettings {
   LocalSettings._(this._prefs, this.userId);
 
@@ -36,11 +31,10 @@ class LocalSettings {
 
   final SharedPreferences _prefs;
 
-  /// Generated at first install and never replaced by a server value
-  /// (plan section 2, invariant 4). Recorded as the author of every edit.
+  /// Generated at first install; author of every edit.
   final String userId;
 
-  /// Reads the store and mints the user id if this is the first launch.
+  /// Creates the user id on first launch.
   static Future<LocalSettings> load() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String? id = prefs.getString(_keyUserId);
@@ -51,8 +45,7 @@ class LocalSettings {
     return LocalSettings._(prefs, id);
   }
 
-  /// Local until the first cloud action, when it becomes the public nickname
-  /// (spec 2.1). Null means the onboarding step was skipped.
+  /// Null when skipped at onboarding.
   String? get nickname => _prefs.getString(_keyNickname);
 
   Future<void> setNickname(String? value) async {
@@ -76,18 +69,13 @@ class LocalSettings {
   Future<void> setFeedDensity(FeedDensity density) =>
       _prefs.setString(_keyFeedDensity, density.name);
 
-  /// The currency answered at onboarding, used as the default for every Space
-  /// created afterwards (spec 2.1). Null before that answer exists, where the
-  /// device locale decides instead.
-  ///
-  /// Device-local rather than a Space field: each Space stores its own frozen
-  /// currency, and this is only the starting point offered for the next one.
+  /// Default currency for new Spaces. Null until onboarding sets it.
   String? get currencyCode => _prefs.getString(_keyCurrencyCode);
 
   Future<void> setCurrencyCode(String code) =>
       _prefs.setString(_keyCurrencyCode, code);
 
-  /// The Space to reopen at launch. Cleared when that Space is gone.
+  /// Cleared when that Space is gone.
   String? get currentSpaceId => _prefs.getString(_keyCurrentSpaceId);
 
   Future<void> setCurrentSpaceId(String? id) async {
@@ -98,10 +86,7 @@ class LocalSettings {
     await _prefs.setString(_keyCurrentSpaceId, id);
   }
 
-  /// The country whose public holidays apply to every Space that has not set
-  /// its own (spec 5.1.1, priority level 2). Null means weekends and the
-  /// user's own non-working days decide, and holidays are ignored entirely —
-  /// a supported state, not a missing setting.
+  /// Holiday country for Spaces without their own. Null ignores holidays.
   String? get defaultCountryCode => _prefs.getString(_keyDefaultCountry);
 
   Future<void> setDefaultCountryCode(String? code) async {
@@ -112,11 +97,7 @@ class LocalSettings {
     await _prefs.setString(_keyDefaultCountry, code.trim().toUpperCase());
   }
 
-  /// Whether the holiday list may be downloaded (spec 5.1.1).
-  ///
-  /// Three states, and the third is the point: null means the question has not
-  /// been asked yet, which is what the one-time prompt keys off. A refusal is
-  /// remembered as false and never re-asked on its own.
+  /// Null means not asked yet.
   bool? get holidayFetchAllowed => _prefs.getBool(_keyHolidayConsent);
 
   Future<void> setHolidayFetchAllowed({required bool? allowed}) async {
@@ -127,15 +108,13 @@ class LocalSettings {
     await _prefs.setBool(_keyHolidayConsent, allowed);
   }
 
-  /// The master switch (spec 1). While it is on nothing reaches the network,
-  /// whatever the per-feature consents say.
+  /// When true, nothing reaches the network.
   bool get fullyOffline => _prefs.getBool(_keyOfflineMode) ?? false;
 
   Future<void> setFullyOffline({required bool value}) =>
       _prefs.setBool(_keyOfflineMode, value);
 
-  /// Screens whose period controls sit above the bottom bar. The Calendar by
-  /// default: it is browsed more than it is read.
+  /// Screens with period controls above the bottom bar.
   Set<ControlsScreen> get controlsAtBottom {
     final List<String>? names = _prefs.getStringList(_keyControlsAtBottom);
     if (names == null) return const <ControlsScreen>{ControlsScreen.calendar};
@@ -150,8 +129,7 @@ class LocalSettings {
         for (final ControlsScreen s in screens) s.name,
       ]);
 
-  /// Enums are stored by name, not index: a reordered enum would otherwise
-  /// reinterpret a stored value.
+  /// Stored by name, not index.
   T? _readEnum<T extends Enum>(String key, List<T> values) {
     final String? name = _prefs.getString(key);
     if (name == null) return null;
@@ -162,5 +140,4 @@ class LocalSettings {
   }
 }
 
-/// The screens that have period controls to place.
 enum ControlsScreen { dashboard, feed, calendar }

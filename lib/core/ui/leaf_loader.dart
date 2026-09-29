@@ -3,21 +3,15 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// The app's loading indicator: a leaf that breaks into a spinning whirlwind
-/// of smaller leaves and gathers back into one.
-///
-/// Stand-in artwork. The leaf is one path in [leafPath], so the delivered
-/// shape replaces it without touching the motion.
+/// Loading indicator: a leaf splits into a whirl of leaves and gathers back.
 class LeafLoader extends StatefulWidget {
   const LeafLoader({this.size = 88, this.onBrand = false, super.key});
 
   final double size;
 
-  /// Light on the wordmark's green, for the launch screen, whatever the
-  /// theme.
+  /// Light on [SageBrand.night], regardless of theme.
   final bool onBrand;
 
-  /// One full leaf → whirlwind → leaf cycle.
   static const Duration period = Duration(milliseconds: 3200);
 
   @override
@@ -34,7 +28,6 @@ class _LeafLoaderState extends State<LeafLoader>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Reduced motion gets the leaf at rest rather than a spin.
     if (MediaQuery.disableAnimationsOf(context)) {
       _controller.stop();
     } else if (!_controller.isAnimating) {
@@ -72,7 +65,7 @@ class _LeafLoaderState extends State<LeafLoader>
   }
 }
 
-/// A leaf of unit length pointing up, centred on the origin.
+/// Unit length, pointing up, centred on the origin.
 Path leafPath() => Path()
   ..moveTo(0, 0.5)
   ..cubicTo(-0.44, 0.3, -0.36, -0.3, 0, -0.5)
@@ -95,7 +88,7 @@ class _WhirlPainter extends CustomPainter {
   static const int _count = 5;
   static final Path _leaf = leafPath();
 
-  /// How far apart the leaves are: 0 is one leaf, 1 the full whirlwind.
+  /// 0 is one leaf, 1 the full whirl.
   static double _spread(double t) {
     if (t < 0.1) return 0;
     if (t < 0.24) return Curves.easeInOut.transform((t - 0.1) / 0.14);
@@ -104,8 +97,7 @@ class _WhirlPainter extends CustomPainter {
     return 0;
   }
 
-  /// The whirl's rotation. Whole turns across the cycle, so the leaf that
-  /// gathers back is the one that set out.
+  /// Whole turns, so the cycle loops seamlessly.
   static double _spin(double t) {
     if (t <= 0.06) return 0;
     if (t >= 0.96) return 6 * math.pi;
@@ -126,15 +118,12 @@ class _WhirlPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..color = vein.withValues(alpha: 0.7);
-    // Back to front, so the leaf that becomes the whole one is drawn last.
+    // Drawn back to front; leaf 0 is the one at rest.
     for (int i = _count - 1; i >= 0; i--) {
       final double share = i / _count;
       final double angle = spin + share * 2 * math.pi;
-      // The orbit and the leaf size are kept inside the square together.
       final double radius = spread * unit * (0.14 + 0.2 * (1 - share));
       final double scale = unit * (0.7 - 0.42 * spread) * (1 - 0.12 * share);
-      // At rest every leaf leans the same way; in the whirl each lies along
-      // its orbit.
       final double lean = -math.pi / 5 + spread * (angle + math.pi / 2);
 
       canvas

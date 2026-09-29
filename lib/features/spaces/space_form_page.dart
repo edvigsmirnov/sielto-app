@@ -13,21 +13,15 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/spaces/starter_categories.dart';
 
-/// The modes a Space can be created in, in the order the spec presents them
-/// (spec 3.1). The choice is permanent, so all three have to be real before
-/// any of them is offered — which they now are.
+/// In the order shown on the form.
 const List<BudgetMode> offeredBudgetModes = <BudgetMode>[
   BudgetMode.incomeDriven,
   BudgetMode.flow,
   BudgetMode.budget,
 ];
 
-/// Creating a Space (spec 3.1).
-///
-/// Two of the choices here are permanent in different ways: the budget mode
-/// has no update path anywhere in the app, and the currency freezes as soon as
-/// the Space holds its first record. Everything else is editable later, in the
-/// Space settings.
+/// Creates a Space. The budget mode is permanent; the currency freezes at the
+/// first record.
 class SpaceFormPage extends ConsumerStatefulWidget {
   const SpaceFormPage({
     this.isFirstSpace = false,
@@ -36,13 +30,10 @@ class SpaceFormPage extends ConsumerStatefulWidget {
     super.key,
   });
 
-  /// The onboarding entry point drops the app bar and its Back button: there
-  /// is nothing to go back to.
+  /// Onboarding: no app bar.
   final bool isFirstSpace;
 
-  /// Set when this form is the last step of onboarding, so it carries the same
-  /// progress bar as the steps before it. Null when reached from the Spaces
-  /// list, where there is no flow to show progress through.
+  /// Onboarding step number. Null outside onboarding.
   final int? step;
   final int? stepCount;
 
@@ -74,7 +65,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
     setState(() => _saving = true);
     final Repositories repos = ref.read(repositoriesProvider);
     final String locale = context.locale.toString();
-    // The onboarding answer first, the device locale only as a fallback.
+    // Onboarding answer, else the device locale.
     final String currency =
         _currency ??
         ref.read(localSettingsProvider).currencyCode ??
@@ -83,7 +74,6 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
     try {
       final Space space = await repos.spaces.create(
         title: _title.text,
-        // Cosmetic only; the mode is what drives the engine.
         spaceType: SpaceType.personal,
         budgetMode: _mode,
         ownerId: ref.read(userIdProvider),
@@ -108,16 +98,13 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
             type: c.expenseType,
           ),
       ]);
-      // Flow and Budget each hold exactly one open period, created here so
-      // every later read can assume it exists (spec 4.7).
+      // Flow and Budget hold exactly one continuous period.
       await repos.periods.ensureContinuous(
         spaceId: space.id,
         startDate: repos.spaces.clockFor(space).today(),
       );
       await ref.read(currentSpaceIdProvider.notifier).select(space.id);
-      // All the way back to the shell, not one step. The form can be reached
-      // from Settings, and returning there after making a Space leaves the
-      // user two screens away from the thing they just created.
+      // Pops to the shell.
       if (mounted && !widget.isFirstSpace) {
         Navigator.of(context).popUntil((Route<void> r) => r.isFirst);
       }
@@ -126,8 +113,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
     }
   }
 
-  /// The Space timezone is seeded from the device and edited later in settings
-  /// (spec 3.1). UTC is the fallback when the platform gives an unknown name.
+  /// From the device; UTC when the platform name is unknown.
   Future<String> _deviceTimezone() async {
     try {
       final String name = (await FlutterTimezone.getLocalTimezone()).identifier;
@@ -141,7 +127,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final String locale = context.locale.toString();
-    // The onboarding answer first, the device locale only as a fallback.
+    // Onboarding answer, else the device locale.
     final String currency =
         _currency ??
         ref.read(localSettingsProvider).currencyCode ??
@@ -150,8 +136,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
     final int? step = widget.step;
     final int? stepCount = widget.stepCount;
 
-    // As the last onboarding step this shares that flow's frame: the same
-    // progress bar, and the primary action pinned rather than scrolling.
+    // Onboarding frame: progress bar and pinned primary action.
     if (step != null && stepCount != null) {
       return Scaffold(
         backgroundColor: sage.surface,
@@ -162,8 +147,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
           body: tr('space.firstBody'),
           primaryLabel: tr('space.create'),
           onPrimary: _canSave ? _create : null,
-          // Currency was step 2; asking again here would read as a second,
-          // different question.
+          // Currency was asked in the previous step.
           children: _fields(locale, currency, showCurrency: false),
         ),
       );
@@ -188,7 +172,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
     );
   }
 
-  /// The form body, shared by the onboarding frame and the standalone screen.
+  /// Form body, shared by the onboarding frame and the standalone screen.
   List<Widget> _fields(
     String locale,
     String currency, {
@@ -205,9 +189,6 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
     ),
     const SizedBox(height: SageSpace.lg),
     FieldLabel(tr('space.fieldMode')),
-    // Budget mode is absent rather than offered and broken: the mode is fixed
-    // for the life of a Space (spec 3.1), so a Space created in a mode that
-    // does not compute yet could never be moved out of it.
     for (final BudgetMode mode in offeredBudgetModes) ...<Widget>[
       _ModeCard(
         mode: mode,
@@ -249,7 +230,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
   ];
 }
 
-/// One of the three modes, with the explanation and examples from spec 3.1.
+/// A mode with its description and examples.
 class _ModeCard extends StatelessWidget {
   const _ModeCard({
     required this.mode,
@@ -294,8 +275,7 @@ class _ModeCard extends StatelessWidget {
   }
 }
 
-/// Local versus cloud (spec 3.1). Cloud storage arrives in M8, so the choice
-/// is shown but only one side of it can be taken.
+/// Local or cloud. Cloud is shown disabled.
 class _StorageChoice extends StatelessWidget {
   const _StorageChoice();
 

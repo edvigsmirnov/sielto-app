@@ -16,11 +16,7 @@ import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// The dashboard of a Flow Space (spec 4.6).
-///
-/// Flow has one open context and no periods, so the question it answers is
-/// "how far does the money reach", and the projection under the figure is that
-/// answer drawn out day by day.
+/// Flow Space dashboard: how far the money reaches, and a 10-day projection.
 class FlowDashboardBody extends ConsumerWidget {
   const FlowDashboardBody({required this.space, super.key});
 
@@ -70,8 +66,6 @@ class _Body extends ConsumerWidget {
           lastCoveredDay: ledger.lastCoveredDay,
           dates: dates,
           today: ledger.today,
-          // The date the money runs out means nothing without the rate it was
-          // computed at (spec 4.6).
           subtitle: tr(
             'dashboard.atAverageSpend',
             namedArgs: <String, String>{
@@ -81,7 +75,6 @@ class _Body extends ConsumerWidget {
           onTap: () => editBalance(context, ref, space: space, money: money),
         ),
         const SizedBox(height: SageSpace.md),
-        // What is already late, before the projection of what is ahead.
         OverdueChip(
           money: money,
           margin: const EdgeInsets.only(bottom: SageSpace.md),
@@ -99,13 +92,9 @@ class _Body extends ConsumerWidget {
               child: _FigureTile(
                 value: money.format(ledger.available),
                 label: tr('dashboard.currentMoney'),
-                // When the figure was last true, so a stale balance shows as
-                // stale (spec 4.6). It belongs on the figure rather than in a
-                // block of its own underneath, which said the same number
-                // twice in a row.
+                // When the balance was set, so a stale one shows as stale.
                 caption: _balanceCaption(space, ledger, dates),
-                // The balance is Flow's one hand-entered number, so the tile
-                // showing it is also where it is edited.
+                // Tapping the balance edits it.
                 onTap: () =>
                     editBalance(context, ref, space: space, money: money),
               ),
@@ -130,12 +119,6 @@ class _Body extends ConsumerWidget {
                     openIncomeForm(context, incomeId: ledger.nearestIncome!.id),
         ),
         const SizedBox(height: SageSpace.md),
-        // No cascade here. Spec 4.6 mentions one, but Flow's question is how
-        // far the money reaches and the answer is already the date above and
-        // the Feed's cutoff line; splitting the same walk into mandatory and
-        // everything adds a second reading of it and no new fact. It stays in
-        // income-driven mode, where the cycle's base remainder is a figure of
-        // its own.
         TotalsCard(
           planned: ledger.totalPlanned,
           paid: ledger.totalPaid,
@@ -148,8 +131,7 @@ class _Body extends ConsumerWidget {
   }
 }
 
-/// When the hand-entered balance was last true, and how many records the walk
-/// left out (spec 4.6).
+/// When the balance was set, and how many records the walk excluded.
 String? _balanceCaption(Space space, FlowLedger ledger, DateLabels dates) {
   final DateTime? setAt = space.manualBalanceUpdatedAt;
   return <String>[
@@ -169,10 +151,7 @@ extension on String {
   String? ifEmptyNull() => isEmpty ? null : this;
 }
 
-/// One figure on a card, amount over label (design section 4.6).
-///
-/// The inverse of the label-first blocks elsewhere: these two sit under the
-/// projection as its readings, so the number leads and the word explains it.
+/// Amount over label.
 class _FigureTile extends StatelessWidget {
   const _FigureTile({
     required this.value,
@@ -184,7 +163,7 @@ class _FigureTile extends StatelessWidget {
   final String value;
   final String label;
 
-  /// A third line, for what qualifies the figure rather than names it.
+  /// Qualifies the figure.
   final String? caption;
 
   final VoidCallback? onTap;
@@ -227,5 +206,5 @@ class _FigureTile extends StatelessWidget {
   }
 }
 
-/// Free money, or null once the money stops covering everything.
+/// Null once not everything is covered.
 Decimal? flowFreeCash(FlowLedger ledger) => ledger.freeCash;

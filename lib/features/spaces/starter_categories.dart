@@ -3,7 +3,6 @@ import 'package:meta/meta.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 
-/// One of the categories a new Space starts with.
 @immutable
 class StarterCategory {
   const StarterCategory({
@@ -14,7 +13,7 @@ class StarterCategory {
     required this.expenseType,
   });
 
-  /// Stable across languages; the title is shown from it until a rename.
+  /// Stable across languages; see `Category.shownTitle`.
   final String key;
   final String title;
   final String icon;
@@ -22,15 +21,7 @@ class StarterCategory {
   final ExpenseType expenseType;
 }
 
-/// The category set written at Space creation (spec 7).
-///
-/// Each carries its key, and is shown in the reader's language until it is
-/// renamed; the stored title is the creation-language fallback. A renamed
-/// category is user data and shows exactly as typed.
-///
-/// They arrive with an icon, a colour and a default type rather than as bare
-/// names — a starter set exists to show what a filled-in category looks like,
-/// and five identical grey rows teach nothing.
+/// Categories written at Space creation, with icons, colours and default types.
 List<StarterCategory> starterCategories() => <StarterCategory>[
   StarterCategory(
     key: 'rent',

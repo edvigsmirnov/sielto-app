@@ -10,8 +10,7 @@ import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// Analytics' three levels and the title autocomplete that feeds them
-/// (spec 8.2).
+/// Analytics levels and title suggestions.
 void main() {
   late AppDatabase db;
   late SpaceRepository spaces;
@@ -93,8 +92,6 @@ void main() {
     });
 
     test('uncategorised payments make a slice of their own', () async {
-      // Dropping them would make the level disagree with the Feed about what
-      // the range cost.
       final Category food = await category('Groceries');
       await spend('Rewe', '600', on: summerStart, categoryId: food.id);
       await spend('Cash', '40', on: summerStart);
@@ -178,7 +175,6 @@ void main() {
     });
 
     test('incomes are not part of it', () async {
-      // All three levels are about where money goes.
       final List<AnalyticsSlice> slices = await analytics.byCategory(
         spaceId: space.id,
         from: summerStart,
@@ -274,8 +270,7 @@ void main() {
       await spend('Rewe', '10', on: summerStart, categoryId: food.id);
       await spend('Rewe', '1', on: summerStart, categoryId: food.id);
 
-      // 31 / 4 = 7.75 exactly; the guard is that it is not a repeating binary
-      // fraction dressed up as money.
+      // 31 / 4 = 7.75 exactly.
       expect(
         (await analytics.byTitle(
           spaceId: space.id,
@@ -327,17 +322,19 @@ void main() {
       ]);
     });
 
-    test('one suggestion per grouping key, in its commonest spelling', () async {
-      // What is offered has to be what level 2 will merge, or the autocomplete
-      // would hand the user a second variant of a title it already has.
-      await spend('Klarna', '10', on: summerStart);
-      await spend('Klarna', '10', on: summerStart);
-      await spend('klarna', '10', on: summerStart);
+    test(
+      'one suggestion per grouping key, in its commonest spelling',
+      () async {
+        // Suggestions use the level 2 grouping key.
+        await spend('Klarna', '10', on: summerStart);
+        await spend('Klarna', '10', on: summerStart);
+        await spend('klarna', '10', on: summerStart);
 
-      expect(await payments.titleSuggestions(space.id, 'k'), <String>[
-        'Klarna',
-      ]);
-    });
+        expect(await payments.titleSuggestions(space.id, 'k'), <String>[
+          'Klarna',
+        ]);
+      },
+    );
 
     test('an empty prefix offers nothing', () async {
       await spend('Klarna', '10', on: summerStart);

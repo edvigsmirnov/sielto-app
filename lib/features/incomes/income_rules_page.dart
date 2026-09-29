@@ -14,11 +14,8 @@ import 'package:sielto/features/incomes/anchor_help.dart';
 import 'package:sielto/features/incomes/income_rule_form_page.dart';
 import 'package:sielto/features/periods/schedule_mapping.dart';
 
-/// The regular incomes of a Space and their schedules (spec 5.1, 5.2).
-///
-/// The anchor badge is not decoration: anchors are what period boundaries are
-/// computed from. Removing the last one is refused by the repository, and this
-/// screen reports that refusal rather than pre-empting it.
+/// Regular incomes of a Space. The repository refuses removing the last
+/// anchor; this screen reports it.
 class IncomeRulesPage extends ConsumerWidget {
   const IncomeRulesPage({super.key});
 
@@ -92,8 +89,6 @@ class IncomeRulesPage extends ConsumerWidget {
           .deleteRule(rule.id, mode: space.budgetMode);
       ref.invalidate(periodRefreshProvider);
     } on LastAnchorRequired {
-      // The guarantee lives in the repository, so this screen only reports it
-      // (spec 4.7).
       if (context.mounted) _sayAnchorRequired(context);
     }
   }
@@ -124,7 +119,6 @@ class IncomeRulesPage extends ConsumerWidget {
   }
 }
 
-/// Live rules of the open Space.
 final StreamProvider<List<IncomeRecurrenceRule>> incomeRulesProvider =
     StreamProvider<List<IncomeRecurrenceRule>>((Ref ref) {
       final Space? space = ref.watch(currentSpaceProvider);
@@ -134,12 +128,7 @@ final StreamProvider<List<IncomeRecurrenceRule>> incomeRulesProvider =
       return ref.watch(repositoriesProvider).incomeRules.watchInSpace(space.id);
     });
 
-/// One regular income, as a card.
-///
-/// A Space has a handful of these, not a hundred, so the screen spends the room
-/// it has: the title reads at body size, the schedule and the amount sit under
-/// it, and each sits in its own softly outlined block rather than in a run of
-/// list rows separated by hairlines.
+/// One regular income as a card.
 class _RuleTile extends StatelessWidget {
   const _RuleTile({
     required this.rule,
@@ -162,8 +151,7 @@ class _RuleTile extends StatelessWidget {
     final bool anchored = isIncomeDriven && rule.isAnchor;
 
     return SageCard(
-      // The rule is what a regular income really is, so tapping it edits the
-      // whole series rather than one month of it (spec 5.4).
+      // Tapping edits the rule.
       onTap: () => openIncomeRuleForm(context, rule: rule),
       padding: const EdgeInsets.fromLTRB(
         SageSpace.lg,
@@ -242,7 +230,6 @@ class _RuleTile extends StatelessWidget {
   }
 }
 
-/// What marks the income the cycle boundaries are computed from (spec 4.7).
 class _AnchorBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

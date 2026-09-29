@@ -7,14 +7,10 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// One raw payment as Analytics reads it: what it groups under, how it is
-/// spelt, what it cost.
-///
-/// Strings, not `Decimal`: these cross an isolate boundary, and only types the
-/// standard message codec understands may. The parse happens on the far side.
+/// A payment row for Analytics. Amount is a string: rows cross an isolate
+/// boundary.
 typedef AnalyticsRow = ({String key, String label, String amount});
 
-/// One line of an Analytics level: what it is, what it cost, how often.
 @immutable
 class AnalyticsSlice {
   const AnalyticsSlice({
@@ -24,53 +20,36 @@ class AnalyticsSlice {
     required this.count,
   });
 
-  /// The grouping key. A category id at level 1, `lower(trim(title))` at
-  /// level 2 — never the label, which is only the spelling chosen for display.
+  /// Category id at level 1, `lower(trim(title))` at level 2.
   final String key;
 
   final String label;
   final Decimal total;
   final int count;
 
-  /// Mean per record. The level-3 figure (spec 8.2).
   Decimal get average => count == 0
       ? Decimal.zero
       : (total / Decimal.fromInt(count)).toDecimal(scaleOnInfinitePrecision: 2);
 }
 
-/// Analytics' reads (spec 8.2).
-///
-/// Calendar ranges, never `budget_period_id`: the Dashboard and the Feed are
-/// tied to the income cycle and Analytics deliberately is not. The two
-/// therefore disagree about totals for the same-looking month, which is why
-/// every screen here states its range (plan G9).
-///
-/// Incomes are absent by design — all three levels are about where money goes.
+/// Analytics reads by calendar range, never by `budget_period_id`. Payments
+/// only.
 class AnalyticsRepository {
   AnalyticsRepository({required this.db});
 
-  /// The key a payment with no category groups under. Not a real id, so it
-  /// cannot collide with one: ids are UUIDv4.
+  /// Groups payments without a category.
   static const String uncategorisedKey = '';
 
   final AppDatabase db;
 
-  /// Level 1: totals per category over [from]..[to], largest first.
-  ///
-  /// The slice label is the category id — the display name lives in
-  /// `categories` and is resolved by the screen, which also has to handle a
-  /// category that was since deleted (spec 7).
-  ///
-  /// Uncategorised payments make a slice of their own rather than being
-  /// dropped, or the levels would disagree with the Feed about what a month
-  /// cost.
+  /// Level 1: totals per category over [from]..[to], largest first. Label is the
+  /// category id. Uncategorised payments form their own slice.
   Future<List<AnalyticsSlice>> byCategory({
     required String spaceId,
     required CalendarDate from,
     required CalendarDate to,
     ExpenseType? expenseType,
   }) => _slices(
-    // Both columns are the id: level 1 has no spelling to choose between.
     columns:
         "coalesce(category_id, '$uncategorisedKey') AS grouping_key, "
         "coalesce(category_id, '$uncategorisedKey') AS label",
@@ -80,15 +59,8 @@ class AnalyticsRepository {
     expenseType: expenseType,
   );
 
-  /// Levels 2 and 3: totals and averages per title inside one category.
-  ///
-  /// Grouped by `lower(trim(title))` and labelled with the most frequent
-  /// spelling, so "Klarna" and "klarna " are one line. Full normalisation is
-  /// deliberately not attempted — typical divergence is what this removes, and
-  /// the autocomplete on the payment form is the other half of the defence.
-  ///
-  /// A null [categoryId] means the uncategorised slice, not "any category":
-  /// level 2 is always reached through one slice of level 1.
+  /// Levels 2 and 3, grouped by `lower(trim(title))` under the most frequent
+  /// spelling. Null [categoryId] is the uncategorised slice.
   Future<List<AnalyticsSlice>> byTitle({
     required String spaceId,
     required CalendarDate from,
@@ -104,14 +76,8 @@ class AnalyticsRepository {
     category: (id: categoryId, present: true),
   );
 
-  /// One query, then folded in Dart.
-  ///
-  /// The sum cannot happen in SQL: money is TEXT and `SUM` over it would go
-  /// through REAL. SQL does the filtering, which is where the cost is.
-  ///
-  /// The optional filters are appended as clauses rather than passed as
-  /// nullable placeholders, because drift's `Variable` does not admit null as
-  /// a bound value.
+  /// SQL filters, Dart sums. Optional filters are appended as clauses: drift's
+  /// `Variable` rejects null.
   Future<List<AnalyticsSlice>> _slices({
     required String columns,
     required String spaceId,
@@ -165,27 +131,18 @@ class AnalyticsRepository {
         ),
     ];
 
-    // Above the threshold the fold moves off the main thread; below it, the
-    // isolate spawn and the message copy cost more than the work (spec 8.2).
-    // `Isolate.run` rather than Flutter's `compute` so nothing under core/db
-    // needs a Flutter import.
+    // `Isolate.run`, not `compute`: core/db has no Flutter import.
     return raw.length > isolateRowThreshold
         ? Isolate.run(() => foldSlices(raw))
         : foldSlices(raw);
   }
 
-  /// Rows above which the fold is handed to an isolate (spec 8.2).
-  ///
-  /// Approximate and named here rather than inlined, because the spec is
-  /// explicit that it wants profiling against real data and not a blanket
-  /// rule.
+  /// Rows above which the fold runs in an isolate.
   static const int isolateRowThreshold = 500;
 }
 
-/// Collapses raw rows into one slice per grouping key, largest total first.
-///
-/// Pure and top-level: an isolate body may only close over sendable state,
-/// and this closes over nothing but its argument.
+/// One slice per grouping key, largest total first. Top-level so an isolate can
+/// run it.
 List<AnalyticsSlice> foldSlices(List<AnalyticsRow> rows) {
   final Map<String, Decimal> totals = <String, Decimal>{};
   final Map<String, int> counts = <String, int>{};
@@ -211,7 +168,6 @@ List<AnalyticsSlice> foldSlices(List<AnalyticsRow> rows) {
         count: counts[key]!,
       ),
   ];
-  // Ties break on the label so the order does not shuffle between rebuilds.
   slices.sort((AnalyticsSlice a, AnalyticsSlice b) {
     final int byTotal = b.total.compareTo(a.total);
     return byTotal != 0 ? byTotal : a.label.compareTo(b.label);
@@ -219,7 +175,7 @@ List<AnalyticsSlice> foldSlices(List<AnalyticsRow> rows) {
   return slices;
 }
 
-/// The spelling used most often, and the alphabetically first of a tie.
+/// Ties go to the alphabetically first spelling.
 String _mostFrequent(Map<String, int> spellings) {
   String best = spellings.keys.first;
   for (final MapEntry<String, int> e in spellings.entries) {

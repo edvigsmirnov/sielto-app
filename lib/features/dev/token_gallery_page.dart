@@ -8,12 +8,8 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 
-/// Renders every token and primitive for visual comparison against the design
-/// canvas, and switches theme and locale so both audits run from one screen.
-/// Development surface only; dropped from release builds at M3.
-///
-/// Section labels and sample rows are fixtures, deliberately not localized.
-/// Only real product copy goes through `tr()`.
+/// Every token and primitive, with theme and locale switches. Development
+/// only. Labels are fixtures, not localized.
 class TokenGalleryPage extends ConsumerWidget {
   const TokenGalleryPage({super.key});
 
@@ -124,8 +120,6 @@ class TokenGalleryPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: SageSpace.sm,
               children: <Widget>[
-                // Russian needs one/few/many; English needs two forms. Both
-                // resolve from the same key.
                 for (final int n in <int>[1, 2, 5])
                   Text(
                     'balance.excludedFromWalker'.plural(
@@ -246,7 +240,7 @@ class TokenGalleryPage extends ConsumerWidget {
   }
 }
 
-/// Steps through the supported locales, pseudo included in debug.
+/// Cycles supported locales, pseudo included in debug.
 Future<void> _cycleLocale(BuildContext context) {
   final List<Locale> locales = context.supportedLocales;
   final int next = (locales.indexOf(context.locale) + 1) % locales.length;
@@ -445,8 +439,7 @@ class _Card extends StatelessWidget {
   }
 }
 
-/// The loader at three sizes, slowed down on demand, and alone on a screen
-/// the way a loading page shows it.
+/// Loader at three sizes, with slow motion and full screen.
 class _LoaderPreview extends StatefulWidget {
   const _LoaderPreview();
 

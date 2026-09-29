@@ -5,9 +5,7 @@ import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// Raised when the currency is changed after the Space already holds a record.
-/// Re-denominating existing figures would silently rewrite what they mean
-/// (spec 9.2).
+/// A currency change after the Space's first record.
 class CurrencyFrozen implements Exception {
   const CurrencyFrozen(this.spaceId);
 
@@ -17,9 +15,7 @@ class CurrencyFrozen implements Exception {
   String toString() => 'CurrencyFrozen: $spaceId';
 }
 
-/// Spaces are device-scoped rows, not synced records — they carry no sync
-/// columns — so this does not extend [SyncedRepository]. Archiving is local
-/// and never uploaded (spec 3.1).
+/// Spaces are device rows without sync columns. Archiving is local.
 class SpaceRepository {
   SpaceRepository({required this.db, required this.clock});
 
@@ -28,11 +24,8 @@ class SpaceRepository {
 
   Future<List<Space>> all() => _selectAll().get();
 
-  /// The same list as [all], re-emitted whenever the table changes. The UI
-  /// reads this rather than re-querying after every write.
   Stream<List<Space>> watchAll() => _selectAll().watch();
 
-  /// Archived Spaces, for the switcher's way back (spec 3.4).
   Stream<List<Space>> watchArchived() =>
       (db.select(db.spaces)
             ..where(($SpacesTable t) => t.isArchived.equals(true))
@@ -75,8 +68,6 @@ class SpaceRepository {
             id: SyncedRepository.newId(),
             title: title.trim(),
             spaceType: spaceType,
-            // No update path exists for budgetMode anywhere, by design
-            // (spec 3.1).
             budgetMode: budgetMode,
             ownerId: ownerId,
             storageMode: storageMode,
@@ -88,15 +79,11 @@ class SpaceRepository {
         );
   }
 
-  /// Cosmetic, so it is editable forever and needs no confirmation
-  /// (spec 3.4).
   Future<int> setTitle(String spaceId, String title) =>
       (db.update(db.spaces)..where(($SpacesTable t) => t.id.equals(spaceId)))
           .write(SpacesCompanion(title: Value<String>(title.trim())));
 
-  /// Changes which "today" every date comparison in this Space resolves
-  /// against (spec 9.2). Rejected for an unknown zone rather than silently
-  /// storing a name nothing can look up.
+  /// Throws [ArgumentError] on an unknown zone.
   Future<int> setTimezone(String spaceId, String timezone) {
     if (!SpaceClock.isKnownTimezone(timezone)) {
       throw ArgumentError.value(timezone, 'timezone', 'unknown IANA zone');
@@ -106,8 +93,7 @@ class SpaceRepository {
         .write(SpacesCompanion(timezone: Value<String>(timezone)));
   }
 
-  /// True until the Space holds its first payment or income. "First record"
-  /// means any non-deleted payment or income (plan G9).
+  /// True until the Space has a live payment or income.
   Future<bool> canChangeCurrency(String spaceId) async {
     final Payment? payment =
         await (db.select(db.payments)
@@ -137,9 +123,8 @@ class SpaceRepository {
         .write(SpacesCompanion(currencyCode: Value<String>(currencyCode)));
   }
 
-  /// Flow's live snapshot of real money. The timestamp matters as much as the
-  /// figure: the walker excludes expenses already paid on or before it
-  /// (plan G1).
+  /// Paid expenses dated on or before the snapshot time are excluded from the
+  /// walk.
   Future<int> setManualBalance(String spaceId, Decimal balance) =>
       (db.update(
         db.spaces,
@@ -158,7 +143,5 @@ class SpaceRepository {
       (db.update(db.spaces)..where(($SpacesTable t) => t.id.equals(spaceId)))
           .write(SpacesCompanion(feedOrderMode: Value<FeedOrderMode>(mode)));
 
-  /// A clock bound to this Space's timezone. Every "today" in the app for this
-  /// Space comes from here (plan section 2, invariant 7).
   SpaceClock clockFor(Space space) => SpaceClock(timezone: space.timezone);
 }

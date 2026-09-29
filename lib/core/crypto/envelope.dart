@@ -4,14 +4,7 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:sielto/core/crypto/database_key.dart';
 
-/// A DEK wrapped under some other key, as a self-describing byte blob.
-///
-/// The blob is a plain file next to the database rather than a keystore entry,
-/// which is the point: system backups copy files but not hardware-bound keys,
-/// so the envelope survives a device migration that destroys the keystore
-/// (spec 2.2). The wrapping key never leaves the keystore, so the file alone
-/// reveals nothing.
-///
+/// A DEK wrapped under another key. A plain file, so system backups copy it.
 /// Layout: `v1` | nonce (12) | ciphertext (32) | MAC (16).
 class Envelope {
   const Envelope(this.bytes);
@@ -24,7 +17,7 @@ class Envelope {
 
   final Uint8List bytes;
 
-  /// Wraps [dek] under [wrappingKey], which must be 32 bytes.
+  /// [wrappingKey] must be 32 bytes.
   static Future<Envelope> seal(
     DatabaseKey dek, {
     required Uint8List wrappingKey,
@@ -43,9 +36,7 @@ class Envelope {
     );
   }
 
-  /// Unwraps the DEK. Throws [EnvelopeException] on a wrong key or a damaged
-  /// blob — the caller cannot tell those apart, and does not need to: both
-  /// mean this envelope will not open (spec 2.2).
+  /// Throws [EnvelopeException] on a wrong key or a damaged blob.
   Future<DatabaseKey> open(Uint8List wrappingKey) async {
     if (bytes.length < _magic.length + _nonceLength + _macLength) {
       throw const EnvelopeException('envelope is truncated');
@@ -80,8 +71,7 @@ class Envelope {
   static Envelope fromBase64(String encoded) => Envelope(base64Decode(encoded));
 }
 
-/// An envelope would not open. Distinct from an I/O failure: the file was read
-/// fine, it just does not yield a key.
+/// The envelope was read but yields no key.
 class EnvelopeException implements Exception {
   const EnvelopeException(this.message);
 

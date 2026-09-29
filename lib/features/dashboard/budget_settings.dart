@@ -12,11 +12,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
 
-/// The fund's planned figure (spec 4.8).
-///
-/// Optional, and clearable: emptying the field puts the Space back to tracking
-/// spend with nothing to fit into, which is a way to use the mode rather than
-/// an unfinished state.
+/// Edits the fund target. Empty clears it.
 Future<void> editBudgetFund(
   BuildContext context,
   WidgetRef ref, {
@@ -53,8 +49,6 @@ class _FundSheetState extends ConsumerState<_FundSheet> {
     super.dispose();
   }
 
-  /// Null for an empty field, which is the clear; the outer flag says which of
-  /// the two an empty parse means.
   bool get _isValid {
     if (_amount.text.trim().isEmpty) return true;
     final Decimal? value = parseMoney(_amount.text);
@@ -125,7 +119,7 @@ class _FundSheetState extends ConsumerState<_FundSheet> {
   }
 }
 
-/// The event date and whether it binds (spec 4.8).
+/// Edits the event date and whether it is hard.
 Future<void> editBudgetDeadline(
   BuildContext context,
   WidgetRef ref, {
@@ -229,8 +223,7 @@ class _DeadlineSheetState extends ConsumerState<_DeadlineSheet> {
             ),
           ),
           const SizedBox(height: SageSpace.md),
-          // A soft deadline is a marker and never blocks input; a hard one
-          // refuses records dated after it (spec 4.8).
+          // Soft: a marker only. Hard: refuses later records.
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: _isHard,

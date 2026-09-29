@@ -4,9 +4,7 @@ import 'package:sielto/core/db/repositories/payment_repository.dart';
 import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// Raised when a rename is attempted on a category that already has visible
-/// payments. Renaming then would rewrite history the user actually recorded
-/// (spec 7).
+/// A rename of a category that has visible payments.
 class CategoryTitleFrozen implements Exception {
   const CategoryTitleFrozen(this.categoryId);
 
@@ -29,7 +27,7 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
   @override
   TableInfo<$CategoriesTable, Category> get table => db.categories;
 
-  /// The picker list: active categories in drag order.
+  /// Active categories in drag order.
   Future<List<Category>> inSpace(String spaceId) =>
       _selectInSpace(spaceId).get();
 
@@ -45,8 +43,7 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
           ($CategoriesTable t) => OrderingTerm(expression: t.title),
         ]);
 
-  /// Including soft-deleted ones. Analytics still names them, suffixed
-  /// "(deleted)" (spec 7).
+  /// Includes soft-deleted categories.
   Future<List<Category>> allEverInSpace(String spaceId) =>
       _selectAllEver(spaceId).get();
 
@@ -87,13 +84,7 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
         );
   }
 
-  /// The starter set, written in one batch at Space creation (spec 7).
-  /// Titles come from the caller, already translated.
-  /// Writes the set a new Space opens with, in the order given.
-  ///
-  /// Each carries its own icon, colour and default type: the starter set is
-  /// the user's first sight of what a category can be, and blanks would teach
-  /// them it is only a name (spec 7).
+  /// Writes the starter set in the given order. Titles come translated.
   Future<void> createStarterSet(
     String spaceId,
     List<
@@ -129,8 +120,7 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
     });
   }
 
-  /// False once any visible payment binds to the category. The UI greys the
-  /// field, but the guarantee is here — [rename] throws either way.
+  /// False once a visible payment uses the category. [rename] enforces it.
   Future<bool> canRename(String categoryId) async =>
       !await payments.anyVisibleInCategory(categoryId);
 
@@ -144,7 +134,6 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
     )..where(($CategoriesTable t) => t.id.equals(categoryId))).write(
       CategoriesCompanion(
         title: Value<String>(title.trim()),
-        // Renamed, so no longer the app's name for it: shown as typed.
         starterKey: const Value<String?>(null),
         syncStatus: const Value<SyncStatus>(SyncStatus.pending),
         lastModifiedBy: Value<String?>(s.author),
@@ -153,9 +142,7 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
     );
   }
 
-  /// Colour, icon and default type are editable forever: changing them cannot
-  /// distort a recorded figure, and existing payments keep their own
-  /// `expense_type` (spec 7).
+  /// Existing payments keep their own `expense_type`.
   Future<int> updateAppearance(
     String categoryId, {
     Value<String?> color = const Value<String?>.absent(),

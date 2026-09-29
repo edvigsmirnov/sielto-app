@@ -12,11 +12,7 @@ import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_icons.dart';
 import 'package:sielto/features/categories/category_title.dart';
 
-/// Add or edit a category (spec 7, design section 7).
-///
-/// A screen rather than a sheet: the editor carries a colour row, an icon row
-/// and a delete, and a sheet holding all of that is a screen wearing the wrong
-/// clothes.
+/// Add or edit a category.
 Future<void> openCategoryForm(BuildContext context, {Category? category}) =>
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -41,8 +37,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   late String? _icon = sanitiseCategoryIcon(widget.category?.icon);
   late ExpenseType _type = widget.category?.expenseType ?? ExpenseType.variable;
 
-  /// Null until the freeze check has run; the title field stays disabled
-  /// meanwhile rather than flickering from editable to locked.
+  /// Null until the freeze check runs; the title field stays disabled.
   bool? _canRename;
 
   @override
@@ -84,8 +79,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
         expenseType: _type,
       );
     } else {
-      // Colour, icon and type are always editable; the title only while
-      // nothing visible binds to it (spec 7).
+      // The title is editable only while no visible payment uses the category.
       await repo.updateAppearance(
         existing.id,
         color: Value<String?>(_color),
@@ -179,7 +173,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                     selected: _icon == glyph,
                     onTap: () => setState(() => _icon = glyph),
                   ),
-                // Anything the list does not carry, typed in.
+                // Custom emoji.
                 _IconChoice(
                   glyph: '+',
                   selected: false,
@@ -211,7 +205,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   }
 }
 
-/// A colour, as a disc that shows the chosen icon on it.
+/// Colour disc showing the chosen icon.
 class _Swatch extends StatelessWidget {
   const _Swatch({
     required this.hex,
@@ -277,7 +271,7 @@ class _IconChoice extends StatelessWidget {
   }
 }
 
-/// One emoji, typed rather than chosen.
+/// Dialog for a custom emoji.
 class _CustomIconDialog extends StatefulWidget {
   const _CustomIconDialog();
 

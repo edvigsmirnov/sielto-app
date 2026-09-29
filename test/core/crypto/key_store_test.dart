@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/core/crypto/database_key.dart';
 import 'package:sielto/core/crypto/key_store.dart';
 
-/// Stands in for the platform keystore, which no test can reach.
+/// In-memory keystore.
 class _MemoryKeyStore implements WrappingKeyStore {
   Uint8List? _key;
 
@@ -49,8 +49,7 @@ void main() {
 
   test('a lost keystore entry reports the recoverable failure', () async {
     await manager().resolve();
-    // What a device migration or a keystore invalidation looks like: the file
-    // survived, the hardware-bound key did not (spec 2.2).
+    // Keystore entry lost, envelope kept.
     await keyStore.delete();
 
     expect(

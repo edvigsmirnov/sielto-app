@@ -17,7 +17,7 @@ void main() {
       );
 
   group('the 14-day rule', () {
-    // A period ending 2026-03-25 freezes once 2026-04-08 is behind us.
+    // Ends 2026-03-25; freezes after 2026-04-08.
     const String end = '2026-03-25';
 
     test('open well before the deadline', () {
@@ -37,7 +37,7 @@ void main() {
     });
 
     test('the boundary day itself is still editable', () {
-      // The rule is `end_date + 14 < today`, so day 14 is not yet frozen.
+      // Day 14 is not yet frozen.
       expect(
         evaluator.isFrozen(
           endDate: d(end),
@@ -59,8 +59,6 @@ void main() {
 
   group('open contexts never freeze', () {
     test('a null end date stays open forever', () {
-      // Flow and Budget have no end, so history stays editable. A consequence
-      // of their open nature, not an exemption (spec 4.7).
       expect(stateOn('2030-01-01'), FreezeState.open);
       expect(
         evaluator.isFrozen(endDate: null, today: d('2030-01-01'), nowUtc: now),
@@ -104,7 +102,6 @@ void main() {
     });
 
     test('an addition never touches the original text', () {
-      // A frozen period allows additions, never edits (spec 5.5).
       const String existing = 'Prepaid six months';
       final String result = FreezeEvaluator.appendNote(
         existing,

@@ -2,9 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/analytics/analytics_range.dart';
 
-/// The calendar ranges Analytics reads over (spec 8.2).
-///
-/// Bounds derived from an anchor rather than stored, so stepping cannot drift.
+/// Analytics calendar ranges.
 void main() {
   AnalyticsRange range(RangeUnit unit, CalendarDate anchor) =>
       AnalyticsRange(unit: unit, anchor: anchor);
@@ -27,9 +25,7 @@ void main() {
     });
 
     test('stepping from the 31st does not skip a month', () {
-      // The bug this guards: addMonths on the 31st clamps, and stepping an
-      // anchor that had already clamped would land two months on. The step
-      // normalises to the first before it moves.
+      // addMonths on the 31st clamps; stepping normalises to the first.
       AnalyticsRange r = range(
         RangeUnit.month,
         const CalendarDate(2026, 1, 31),
@@ -121,8 +117,7 @@ void main() {
   });
 
   test('changing the unit keeps the anchor', () {
-    // The point of the anchor: switching from March to the quarter shows the
-    // quarter March is in, not the first of the year.
+    // Switching unit keeps the anchor's quarter.
     final AnalyticsRange month = range(
       RangeUnit.month,
       const CalendarDate(2026, 3, 20),
@@ -133,8 +128,6 @@ void main() {
   });
 
   test('no unit exceeds a year, so the isolate arm never fires on span', () {
-    // Spec 8.2 names ">1 year" as one arm of the isolate threshold; with these
-    // units it is unreachable and the row count decides alone.
     for (final RangeUnit unit in RangeUnit.values) {
       expect(
         range(unit, const CalendarDate(2026, 8, 14)).exceedsAYear,

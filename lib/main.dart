@@ -19,30 +19,21 @@ import 'package:sielto/features/shell/main_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Reads the saved locale and the device locale before the first frame.
   await EasyLocalization.ensureInitialized();
 
-  // Device-local preferences, and the local user id if this is a first run.
   final LocalSettings settings = await LocalSettings.load();
 
-  // Before the first frame: an unreadable database is a screen, not a crash.
   final Startup startup = await openDatabase();
 
   await LaunchCurtain.arm();
 
-  // BudgetAppRoot.build returns the ProviderScope; the rule does not see
-  // through a custom root widget.
+  // BudgetAppRoot.build returns the ProviderScope.
   // ignore: riverpod_lint/missing_provider_scope
   runApp(BudgetAppRoot(startup: startup, settings: settings));
 }
 
-/// Holds whatever [openDatabase] returned and rebuilds when "Start over"
-/// replaces it.
-///
-/// The [ProviderScope] sits above [EasyLocalization], not below it. Loading a
-/// dictionary rebuilds everything under the localization widget; with the
-/// scope down there, that rebuild disposes the provider container and every
-/// database subscription it holds.
+/// [ProviderScope] must stay above [EasyLocalization]: dictionary loads
+/// rebuild everything below it.
 class BudgetAppRoot extends StatefulWidget {
   const BudgetAppRoot({
     required this.startup,
@@ -78,8 +69,7 @@ class _BudgetAppRootState extends State<BudgetAppRoot> {
         supportedLocales: AppLocales.supported,
         path: AppLocales.path,
         fallbackLocale: AppLocales.fallback,
-        // Defaults to true, which resolves plurals by counting instead of by
-        // the language's CLDR rules. Russian needs few and many.
+        // Default true ignores CLDR plural rules.
         ignorePluralRules: false,
         assetLoader: const PseudoAssetLoader(),
         child: switch (startup) {
@@ -94,9 +84,6 @@ class _BudgetAppRootState extends State<BudgetAppRoot> {
 }
 
 /// Chooses between onboarding and the main shell.
-///
-/// Public so tests can boot the same routing the app boots, rather than
-/// mounting a screen that assumes a Space the providers have not resolved yet.
 class AppGate extends ConsumerWidget {
   const AppGate({super.key});
 
@@ -119,8 +106,6 @@ class _StartupLoading extends StatelessWidget {
   const _StartupLoading();
 
   @override
-  // Under the launch curtain, the same green, so nothing flashes if the
-  // curtain has already gone.
   Widget build(BuildContext context) =>
       const ColoredBox(color: SageBrand.night);
 }
@@ -141,7 +126,6 @@ class BudgetApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      // Product name, not UI copy: the same in every locale.
       title: 'Sielto',
       debugShowCheckedModeBanner: false,
       theme: SageTheme.light,
@@ -151,8 +135,7 @@ class BudgetApp extends ConsumerWidget {
       supportedLocales: context.supportedLocales,
       localizationsDelegates: context.localizationDelegates,
       builder: (BuildContext context, Widget? child) {
-        // The system bars follow the theme wherever a screen does not set
-        // them, or the welcome screen's light icons outlive it.
+        // System bars follow the theme where a screen sets none.
         final bool dark = Theme.of(context).brightness == Brightness.dark;
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)

@@ -10,14 +10,8 @@ import 'package:sielto/features/calendar/calendar_cell.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
 
-/// The Month grid (spec 8.1).
-///
-/// Aggregate sums only — no payment or category names, which is what keeps it a
-/// calendar rather than a second Feed. Tapping a cell opens the Day view;
-/// holding one opens the quick-add menu.
-///
-/// Six fixed rows filling the available height, so the tiles are large enough
-/// to read at a glance (spec 8.1) and the grid does not resize between months.
+/// Month grid of sums. Tap opens the Day view; long-press opens the menu.
+/// Six rows fill the height.
 class MonthView extends StatelessWidget {
   const MonthView({
     required this.month,
@@ -32,10 +26,9 @@ class MonthView extends StatelessWidget {
     super.key,
   });
 
-  /// Any date in the month being drawn.
+  /// Any date in the month.
   final CalendarDate month;
 
-  /// The shared selected date, which the accent fill marks.
   final CalendarDate selected;
 
   final Map<CalendarDate, DayTotals> totals;
@@ -89,12 +82,11 @@ class MonthView extends StatelessWidget {
   );
 }
 
-/// Mon-Sun, with the weekend columns in the warning accent (design section 7).
+/// Weekend columns in `warningAccent`.
 class _WeekdayHeader extends StatelessWidget {
   const _WeekdayHeader({required this.first, required this.dates});
 
-  /// The first cell of the grid, which is always a Monday — the labels are read
-  /// off real dates so they follow the interface language.
+  /// Always a Monday. Labels come from real dates, in the interface language.
   final CalendarDate first;
 
   final DateLabels dates;
@@ -153,8 +145,7 @@ class _DayCell extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      // The position is carried through so the menu opens under the finger
-      // rather than at the corner of the grid.
+      // Opens the menu at the finger.
       onLongPressStart: (LongPressStartDetails d) {
         HapticFeedback.mediumImpact();
         onHold(d.globalPosition);
@@ -186,8 +177,7 @@ class _DayCell extends StatelessWidget {
                 text: money.shortSigned(day.income),
                 color: isToday ? ink : sage.accentStrong,
               ),
-            // A day whose only record is a floating income has no figure to
-            // draw, and drawing nothing would read as an empty day (spec 4.7).
+            // A dot for a day with only an income without amount.
             if (day != null &&
                 day.expenses == Decimal.zero &&
                 day.income == Decimal.zero)
@@ -199,7 +189,7 @@ class _DayCell extends StatelessWidget {
   }
 }
 
-/// One figure inside a Month cell: small, and tabular so a column lines up.
+/// Small tabular figure.
 class _CellFigure extends StatelessWidget {
   const _CellFigure({required this.text, required this.color});
 

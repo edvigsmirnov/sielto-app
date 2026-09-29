@@ -15,9 +15,7 @@ import 'package:sielto/features/space/space_ledger.dart';
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 Decimal m(String v) => Decimal.parse(v);
 
-/// Flow, end to end from the tables: repositories write, the ledger reads.
-/// Where the domain tests pin the arithmetic, these pin the wiring — which
-/// rows reach the walk and what the available sum is built from.
+/// Flow from the tables: which rows reach the walk and the starting sum.
 void main() {
   late AppDatabase db;
   late SpaceRepository spaces;
@@ -27,8 +25,7 @@ void main() {
 
   final CalendarDate today = d('2026-03-10');
 
-  // Before any SpaceClock is constructed: the constructor resolves its zone
-  // eagerly, and the IANA database has to be loaded by then.
+  // Before any SpaceClock is built.
   SpaceClock.initialize();
   final SpaceClock clock = SpaceClock(
     timezone: 'UTC',
@@ -75,13 +72,15 @@ void main() {
   );
 
   group('available money', () {
-    test('with no balance set, available is zero and nothing is judged', () async {
-      // No money and no plan is not "spent to the last unit". There is nothing
-      // to compute a verdict from, so the dot has none to show.
-      final FlowLedger ledger = await build();
-      expect(ledger.available, Decimal.zero);
-      expect(ledger.coverage, isNull);
-    });
+    test(
+      'with no balance set, available is zero and nothing is judged',
+      () async {
+        // No money and no plan: no verdict.
+        final FlowLedger ledger = await build();
+        expect(ledger.available, Decimal.zero);
+        expect(ledger.coverage, isNull);
+      },
+    );
 
     test('with no money but something planned, the verdict is short', () async {
       await addExpense('rent', '2026-03-20', '600');
@@ -114,8 +113,7 @@ void main() {
     });
 
     test('a receipt before the snapshot is already inside it', () async {
-      // The mirror of the double-count rule for expenses (plan G1): the
-      // balance was taken after that money landed.
+      // The balance was set after this income arrived.
       await incomes.create(
         spaceId: space.id,
         title: 'salary',
@@ -141,13 +139,12 @@ void main() {
 
       final FlowLedger ledger = await build();
       expect(ledger.available, m('100'));
-      // The money arrives too late to cover the rent (spec 4.9, rule 3).
+      // The income arrives after the rent is due.
       expect(ledger.coverage, Coverage.short);
       expect(ledger.lastCoveredDay, d('2026-03-14'));
     });
 
     test('an income with no amount contributes nothing', () async {
-      // A floating salary is unknown, not zero (spec 4.7).
       await spaces.setManualBalance(space.id, m('100'));
       await incomes.create(
         spaceId: space.id,
@@ -168,7 +165,7 @@ void main() {
       await addExpense('food', '2026-03-20', '200');
 
       final FlowLedger ledger = await build();
-      // Without the rule this would read 200: rent charged twice.
+      // Without the rule: 200, rent charged twice.
       expect(ledger.freeCash, m('800'));
       expect(ledger.excludedCount, 1);
     });

@@ -1,10 +1,9 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-/// WCAG 2.1 contrast helpers for the theme tests.
+/// WCAG 2.1 contrast helpers.
 
 /// Composites a translucent [foreground] over an opaque [background].
-/// Ink tokens carry alpha, so contrast must use the composited result.
 Color composite(Color foreground, Color background) {
   final double a = foreground.a;
   double mix(double f, double b) => f * a + b * (1 - a);
@@ -19,12 +18,11 @@ Color composite(Color foreground, Color background) {
 double _channel(double v) =>
     v <= 0.03928 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
 
-/// Relative luminance per WCAG 2.1. Assumes an opaque colour.
+/// Opaque colours only.
 double relativeLuminance(Color c) =>
     0.2126 * _channel(c.r) + 0.7152 * _channel(c.g) + 0.0722 * _channel(c.b);
 
-/// Contrast ratio between [foreground] (composited over [background]) and
-/// [background]. Ranges from 1.0 to 21.0.
+/// [foreground] composited over [background]; 1.0 to 21.0.
 double contrastRatio(Color foreground, Color background) {
   final Color fg = composite(foreground, background);
   final double a = relativeLuminance(fg);

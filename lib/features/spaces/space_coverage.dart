@@ -7,22 +7,14 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// The coverage dot for every Space, so the switcher shows each one's state
-/// without opening it (spec 4.4).
-///
-/// One walk per Space. That is affordable because Spaces are few — a person
-/// keeps a household, a trip and a freelance ledger, not hundreds — and each
-/// walk is linear in the records it sees.
-///
-/// A Space whose figure is uncomputable (a floating salary with no amount yet)
-/// is absent from the map rather than guessed at: no dot is the honest answer.
+/// Coverage per Space for the switcher. One walk per Space. Uncomputable
+/// Spaces are absent.
 final FutureProvider<Map<String, Coverage>> spaceCoverageProvider =
     FutureProvider<Map<String, Coverage>>((Ref ref) async {
       final List<Space> spaces =
           ref.watch(spaceListProvider).value ?? const <Space>[];
       final Repositories repos = ref.watch(repositoriesProvider);
 
-      // Re-run when the records change, not only when the Space list does.
       ref.watch(spacePaymentsProvider);
       ref.watch(spaceIncomesProvider);
 
@@ -58,8 +50,7 @@ Future<Coverage?> _coverageOf(Repositories repos, Space space) async {
             (p.endDate == null || !p.endDate!.isBefore(today)),
       )
       .firstOrNull;
-  // No period yet means no anchor income yet, which is a valid state with
-  // nothing to report (spec 4.7).
+  // No period yet: nothing to report.
   if (current == null) return null;
 
   final List<IncomeRecurrenceRule> rules = await repos.incomeRules.inSpace(

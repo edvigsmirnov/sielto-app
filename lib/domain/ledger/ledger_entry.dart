@@ -3,12 +3,7 @@ import 'package:meta/meta.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// One row on the ledger, whether it started life as a payment or an income.
-///
-/// The walker treats both the same way — a dated amount that moves the running
-/// balance — so it needs one type, not two. Payments and incomes differ only
-/// in [isIncome] and in which date column they came from (`due_date` versus
-/// `expected_date`).
+/// A payment or an income on the ledger.
 @immutable
 class LedgerEntry {
   const LedgerEntry({
@@ -25,19 +20,15 @@ class LedgerEntry {
   final String id;
   final CalendarDate date;
 
-  /// Always positive. Direction comes from [isIncome], never from the sign —
-  /// the same rule the input validation enforces (spec 6.7).
+  /// Always positive; direction comes from [isIncome].
   final Decimal amount;
 
   final bool isIncome;
 
-  /// Manual position within the day. Not just cosmetic: when the day's money
-  /// runs out, the rows below this order are the ones that fall past the
-  /// cutoff (spec 4.9).
+  /// Manual position within the day. Decides which entries fall past the cutoff.
   final int sortOrder;
 
-  /// Null for incomes; categories and the mandatory/variable split apply to
-  /// payments only.
+  /// Null for incomes.
   final ExpenseType? expenseType;
 
   final bool isPaid;
@@ -52,13 +43,7 @@ class LedgerEntry {
       'LedgerEntry($date ${isIncome ? '+' : '-'}$amount $title)';
 }
 
-/// Orders entries the way the walker consumes them.
-///
-/// Date first, then incomes before expenses on the same day — money that
-/// arrives today can be spent today, and putting the expense first would
-/// invent a cutoff that never happens. Then the manual order, then id so the
-/// result is stable across rebuilds; `sort_order` carries no uniqueness
-/// constraint, by design (plan G2).
+/// Date, then incomes before expenses, then manual order, then id.
 int compareLedgerEntries(LedgerEntry a, LedgerEntry b) {
   final int byDate = a.date.compareTo(b.date);
   if (byDate != 0) return byDate;

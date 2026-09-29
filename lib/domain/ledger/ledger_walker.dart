@@ -3,19 +3,17 @@ import 'package:meta/meta.dart';
 import 'package:sielto/domain/ledger/ledger_entry.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// The dashboard's coloured dot (spec 4.9).
 enum Coverage {
-  /// Everything is covered and money is left over.
+  /// Money left over.
   covered,
 
-  /// Covered to the last unit. Nothing spare.
+  /// Covered exactly.
   exact,
 
-  /// Something falls past the cutoff, or the balance ends negative.
+  /// Something falls past the cutoff.
   short,
 }
 
-/// One entry, with the balance after it was applied.
 @immutable
 class LedgerStep {
   const LedgerStep({
@@ -26,15 +24,13 @@ class LedgerStep {
 
   final LedgerEntry entry;
 
-  /// Running balance once this entry was applied. Keeps going negative past
-  /// the cutoff so the overspend total stays visible.
+  /// Keeps going negative past the cutoff.
   final Decimal balanceAfter;
 
   /// False for this entry and every expense after it.
   final bool isCovered;
 }
 
-/// What the walk found.
 @immutable
 class LedgerRun {
   const LedgerRun({
@@ -48,22 +44,19 @@ class LedgerRun {
     required this.coverage,
   });
 
-  /// The sum the walk started from.
   final Decimal available;
 
   final List<LedgerStep> steps;
 
-  /// Balance after every entry. Negative means overspend.
+  /// Negative means overspend.
   final Decimal finalBalance;
 
-  /// The first expense that could not be paid, or null when everything fits.
+  /// First expense that cannot be paid. Null when everything fits.
   final String? cutoffEntryId;
 
-  /// The date of that expense. "Money lasts until ..." is the day before.
   final CalendarDate? cutoffDate;
 
-  /// The expense that is paid in full and leaves nothing, when that happens
-  /// before any cutoff. Null when the balance never lands exactly on zero.
+  /// Expense that leaves exactly zero, before any cutoff.
   final String? exhaustedEntryId;
 
   final CalendarDate? exhaustedDate;
@@ -72,14 +65,8 @@ class LedgerRun {
 
   bool get hasCutoff => cutoffEntryId != null;
 
-  /// The row the "money runs out" line attaches to, and which side of it the
-  /// line falls on.
-  ///
-  /// Spec 4.9 puts the line where the balance first goes negative, which draws
-  /// nothing at all when the plan lands exactly on zero — the money has ended
-  /// and the Feed says so nowhere. The line marks reaching zero instead: above
-  /// an expense that cannot be paid, below one that is paid with nothing left.
-  /// The two cannot both be the first, so there is never more than one line.
+  /// Row that the "money runs out" line attaches to: above the cutoff expense,
+  /// or below the one that leaves zero.
   ({String entryId, bool below})? get moneyEndsAt {
     final String? exhausted = exhaustedEntryId;
     if (exhausted != null) return (entryId: exhausted, below: true);
@@ -88,33 +75,20 @@ class LedgerRun {
     return null;
   }
 
-  /// The last day the money reaches, or null while it reaches everything.
-  ///
-  /// An emptied balance covered its own day; a cutoff did not, so that one
-  /// counts back a day.
+  /// Last day the money reaches; null when it reaches everything.
   CalendarDate? get lastCoveredDay => exhaustedDate ?? cutoffDate?.addDays(-1);
 
-  /// Money left when everything is covered; null once there is a cutoff,
-  /// because "free money" is not a meaningful figure then.
+  /// Null once there is a cutoff.
   Decimal? get freeCash => hasCutoff ? null : finalBalance;
 
-  /// Entries that fell past the cutoff.
   List<LedgerEntry> get uncovered => steps
       .where((LedgerStep s) => !s.isCovered)
       .map((LedgerStep s) => s.entry)
       .toList();
 }
 
-/// Chronological running balance over the ledger (spec 4.9).
-///
-/// The rule that makes this more than a `SUM`: a future income joins the
-/// available money **only on its own date**. If the money on hand cannot reach
-/// the next income, the cutoff falls before it — even though the totals would
-/// balance on paper. A single aggregate cannot express that, and cannot say
-/// where the balance first crossed zero.
-///
-/// Linear in the number of entries, over a list already filtered to the
-/// context (`is_deleted = false`, the right date range).
+/// Chronological running balance. A future income joins only on its own date,
+/// so the cutoff can fall before it. Expects entries already filtered.
 abstract final class LedgerWalker {
   static LedgerRun walk({
     required Decimal available,
@@ -134,26 +108,18 @@ abstract final class LedgerWalker {
       if (entry.isIncome) {
         balance += entry.amount;
         steps.add(
-          LedgerStep(
-            entry: entry,
-            balanceAfter: balance,
-            // An income is never "uncovered"; it is money arriving.
-            isCovered: true,
-          ),
+          LedgerStep(entry: entry, balanceAfter: balance, isCovered: true),
         );
         continue;
       }
 
       final Decimal after = balance - entry.amount;
-      // Strictly negative. Landing exactly on zero paid the expense in full,
-      // which is covered — that case is what makes the dot orange, not red.
+      // Zero is covered.
       final bool covered = cutoffEntryId == null && after >= Decimal.zero;
       if (!covered && cutoffEntryId == null) {
         cutoffEntryId = entry.id;
         cutoffDate = entry.date;
       }
-      // Paid in full, and the last unit went with it. The money has ended even
-      // though nothing fell short.
       if (covered &&
           after == Decimal.zero &&
           exhaustedEntryId == null &&
@@ -183,11 +149,7 @@ abstract final class LedgerWalker {
     );
   }
 
-  /// Runs the walk twice: mandatory expenses alone, then everything.
-  ///
-  /// Same mechanism, two answers — what is left after the bills that must be
-  /// paid, and what is left after everything planned (spec 4.9, 6.2). Incomes
-  /// take part in both, since the money arrives either way.
+  /// Walks mandatory expenses alone, then everything. Incomes join both.
   static LedgerCascade cascade({
     required Decimal available,
     required List<LedgerEntry> entries,
@@ -211,27 +173,21 @@ abstract final class LedgerWalker {
   }
 }
 
-/// The mandatory-then-everything pair the dashboard shows together.
 @immutable
 class LedgerCascade {
   const LedgerCascade({required this.mandatory, required this.all});
 
-  /// Mandatory expenses only: the base remainder.
+  /// Mandatory expenses only.
   final LedgerRun mandatory;
 
-  /// Mandatory and variable: the net free money.
+  /// Mandatory and variable.
   final LedgerRun all;
 
-  /// The dot follows the full picture, not the mandatory-only pass.
-  ///
-  /// Null when there is nothing to judge — no money and nothing planned. The
-  /// arithmetic calls that "covered to the last unit", which is a verdict on
-  /// data that does not exist.
+  /// From the full run. Null when there is no money and nothing planned.
   Coverage? get coverage => hasData ? all.coverage : null;
 
   bool get hasData => all.available != Decimal.zero || all.steps.isNotEmpty;
 
-  /// Where the money runs out, over the full plan.
   ({String entryId, bool below})? get moneyEndsAt => all.moneyEndsAt;
 
   CalendarDate? get lastCoveredDay => all.lastCoveredDay;

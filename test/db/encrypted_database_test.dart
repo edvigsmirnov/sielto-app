@@ -12,7 +12,7 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-/// A concrete repository, only so the base class rules can be exercised.
+/// Concrete repository for exercising the base class.
 class _PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
   _PaymentRepository({
     required super.db,
@@ -116,7 +116,6 @@ void main() {
       final List<Payment> alive = await repo.selectAlive().get();
       expect(alive.map((Payment p) => p.id), <String>['p1']);
 
-      // The row is still there, so the delete can propagate.
       final List<Payment> all = await db.select(db.payments).get();
       expect(all, hasLength(2));
     });
@@ -161,7 +160,7 @@ void main() {
   });
 
   test('a 10k-row Space opens in under 200 ms', () async {
-    // The M1 exit criterion. Bulk insert first, then measure.
+    // Bulk insert, then measure.
     final DatabaseKey key = DatabaseKey.generate();
     final AppDatabase db = await open(key);
     await _seedSpace(db);
@@ -185,16 +184,13 @@ void main() {
     });
     await db.close();
 
-    // The exit criterion is that the Space opens: decrypt the header, run the
-    // migration check, be ready to query.
+    // Open: decrypt, run the migration check, first query.
     final Stopwatch openWatch = Stopwatch()..start();
     final AppDatabase reopened = await open(key);
     openWatch.stop();
     addTearDown(reopened.close);
 
-    // Not the criterion, and not what any screen does — the Feed pages by day.
-    // Measured as an upper bound: if reading every row stays this cheap, no
-    // realistic query is a problem.
+    // Upper bound: read every row.
     final Stopwatch readWatch = Stopwatch()..start();
     final List<Payment> rows =
         await (reopened.select(reopened.payments)
@@ -214,11 +210,7 @@ void main() {
       reason:
           'opening a 10k-row Space took ${openWatch.elapsedMilliseconds} ms',
     );
-    // Deliberately loose. This is a smoke bound against an order-of-magnitude
-    // regression — a dropped index, per-row decryption — not a budget: the
-    // work is ~140 ms on a dev machine and around 4x that on a shared CI
-    // runner, so a tight bound measures the runner rather than the code. The
-    // open time above is the number that matters, and it has room to spare.
+    // Loose smoke bound; CI runners are several times slower.
     expect(
       readWatch.elapsedMilliseconds,
       lessThan(2000),

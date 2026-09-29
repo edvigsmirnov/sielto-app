@@ -12,12 +12,7 @@ import 'package:sielto/features/settings/holidays_page.dart';
 
 enum _DayAction { payment, income, nonWorkingDay }
 
-/// The long-press menu on a calendar day (spec 8.1).
-///
-/// The same three actions as the Feed's quick-add menu and in the same order,
-/// with one difference: here the date is the day that was held, so nothing is
-/// asked twice — the form opens on that day and the non-working day is marked
-/// on it directly.
+/// Long-press menu on a calendar day; the Feed's quick-add items on that day.
 Future<void> showDayMenu(
   BuildContext context,
   WidgetRef ref, {
@@ -29,9 +24,7 @@ Future<void> showDayMenu(
 
   final _DayAction? choice = await showMenu<_DayAction>(
     context: context,
-    // Anchored on the finger. A day cell is small and there are forty-two of
-    // them, so a menu placed relative to the grid would cover the day it is
-    // about.
+    // Anchored at the finger.
     position: RelativeRect.fromLTRB(
       at.dx,
       at.dy,
@@ -59,8 +52,7 @@ Future<void> showDayMenu(
         value: _DayAction.income,
         child: _MenuLine(
           icon: Icons.add_circle_outline,
-          // Same record, different meaning: in Budget mode money arriving is
-          // not income for a period, it is a payment into the fund (spec 4.8).
+          // In Budget mode an income is a top-up of the fund.
           label: ref.space.budgetMode == BudgetMode.budget
               ? tr('budget.topUp')
               : tr('income.add'),
@@ -84,13 +76,10 @@ Future<void> showDayMenu(
     case _DayAction.income:
       await openIncomeForm(context, date: date);
     case _DayAction.nonWorkingDay:
-      // M4's one deferred item: the Calendar is the third entry point
-      // spec 5.1.2 asks for, and the only one where the date is already known.
       await markNonWorkingDay(context, ref, initial: date, askDate: false);
   }
 }
 
-/// One row of the menu: a glyph and a label, matching the Feed's.
 class _MenuLine extends StatelessWidget {
   const _MenuLine({required this.icon, required this.label});
 

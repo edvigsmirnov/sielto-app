@@ -7,11 +7,7 @@ import 'package:sielto/core/holidays/holiday_source.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/payments/recurrence.dart';
 
-/// The bundled holidays, read through the real asset bundle.
-///
-/// `HolidayService`'s tests inject a fake bundle, so nothing else exercises
-/// the assets themselves — a renamed file or a reshaped JSON would only show up
-/// on a device, as an empty holiday list.
+/// Bundled holidays, read through the real asset bundle.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -42,8 +38,7 @@ void main() {
         .map((FileSystemEntity e) => e.uri.pathSegments.last)
         .where((String n) => n.endsWith('.json'))
         .map((String n) => n.substring(0, n.length - 5))
-        // index.json is the manifest; countries.json and its per-locale name
-        // overlays are not holiday data.
+        // Manifest and country-name files, not holiday data.
         .where((String n) => n != 'index' && !n.startsWith('countries'))
         .toSet();
     expect(onDisk, codes.toSet(), reason: 'index.json and the files disagree');
@@ -70,20 +65,14 @@ void main() {
   test(
     'a country outside the bundle returns null, not an empty list',
     () async {
-      // Null is the signal to try the network; an empty list would read as
-      // "this country genuinely has no holidays" and stop the fallback.
-      //
-      // Every country the source knows is bundled now, so this needs a code
-      // that is not one — the path still has to work when a Space carries a
-      // country the bundle was regenerated without.
+      // Null, not empty: the caller then tries the network.
       expect(await bundle.datesFor('ZZ', 2026), isNull);
       expect(await bundle.datesFor('QQ', 2026), isNull);
     },
   );
 
   test('the bundled span stays ahead of the recurrence horizon', () async {
-    // A 24-month horizon reaches into the year after next, and the resolver
-    // needs holiday data that far out or it reports the year missing.
+    // Bundled years must cover the recurrence horizon.
     final int needed =
         DateTime.now().year + (recurrenceHorizonMonths / 12).ceil();
     final List<CalendarDate>? dates = await bundle.datesFor('DE', needed);
@@ -97,8 +86,6 @@ void main() {
   });
 
   test('countries.json is a superset of the bundled codes', () async {
-    // The picker offers everything in countries.json, so anything listed there
-    // without bundled data depends on the network.
     final Object? parsed = jsonDecode(
       await rootBundle.loadString('assets/holidays/countries.json'),
     );

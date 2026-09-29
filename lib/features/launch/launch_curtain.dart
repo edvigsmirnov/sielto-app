@@ -15,8 +15,7 @@ import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// Whether the first screen has something to show: the welcome screen, or a
-/// Dashboard past its loading state.
+/// True once the first screen has content: welcome, or a loaded Dashboard.
 final Provider<bool> launchReadyProvider = Provider<bool>((Ref ref) {
   final AsyncValue<Space?> resolved = ref.watch(resolvedSpaceProvider);
   if (resolved.hasError) return true;
@@ -40,33 +39,24 @@ final Provider<bool> launchReadyProvider = Provider<bool>((Ref ref) {
   };
 });
 
-/// The Android splash, carried on in Flutter until the first screen is ready.
-///
-/// The first frame draws exactly what the system splash drew — the icon in
-/// its 192 dp circle on the wordmark's green — so the handoff does not show.
-/// Loading that takes longer turns the icon into the loader, light on dark.
-/// Then the curtain goes: blown away as leaves right to left over the
-/// Dashboard, or faded into the welcome screen, which is the same green.
-///
-/// Cold start only: [armed] is set by `main`, once, and nothing else.
+/// Continues the Android splash until the first screen is ready. Cold start
+/// only.
 class LaunchCurtain extends ConsumerStatefulWidget {
   const LaunchCurtain({required this.child, super.key});
 
   final Widget child;
 
-  /// Set by [arm], from `main` before the first frame. Tests never call it
-  /// and get no curtain.
+  /// Set by [arm]. Tests do not call it and get no curtain.
   static bool armed = false;
 
-  /// The system splash's icon circle (Android 12+, adaptive icon).
+  /// Android 12+ splash icon diameter for an adaptive icon.
   static const double iconSize = 192;
 
   static ui.Image? _icon;
 
   static bool _held = false;
 
-  /// True while the curtain is up, so a screen under it can hold its own
-  /// entrance until it is seen.
+  /// True while the curtain is up.
   static final ValueNotifier<bool> covering = ValueNotifier<bool>(false);
 
   static void _release() {
@@ -75,18 +65,12 @@ class LaunchCurtain extends ConsumerStatefulWidget {
     WidgetsBinding.instance.allowFirstFrame();
   }
 
-  /// Arms the curtain and decodes its icon, so the first frame already has
-  /// it: an asset loaded the usual way arrives a frame or more late, and the
-  /// icon would blink out at the handoff.
-  ///
-  /// Also holds Flutter's first frame back until the curtain is in it: the
-  /// localization loads its dictionary first and draws an empty frame
-  /// meanwhile, and that empty frame is what the system takes down its
-  /// splash for.
+  /// Defers the first frame until the curtain builds: EasyLocalization's empty
+  /// first frame would end the system splash.
   static Future<void> arm() async {
     WidgetsBinding.instance.deferFirstFrame();
     _held = true;
-    // Never held for good, whatever fails to build.
+    // Releases the frame even if the curtain never builds.
     Timer(const Duration(seconds: 2), _release);
     final ByteData data = await rootBundle.load('assets/brand/splash_icon.png');
     final ui.Codec codec = await ui.instantiateImageCodec(
@@ -116,18 +100,17 @@ class _LaunchCurtainState extends ConsumerState<LaunchCurtain> {
     if (_phase == _Phase.done) return;
     LaunchCurtain.armed = false;
     LaunchCurtain.covering.value = true;
-    // This frame has the curtain in it: let it through.
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => LaunchCurtain._release(),
     );
     _timers
-      // Quick loads never see the loader.
+      // Loader only for loads over 300 ms.
       ..add(
         Timer(const Duration(milliseconds: 300), () {
           if (mounted) setState(() => _loading = true);
         }),
       )
-      // Whatever happens, the app is not held behind the curtain.
+      // Reveals after 6 s at the latest.
       ..add(Timer(const Duration(seconds: 6), _reveal));
     _ready = ref.listenManual<bool>(launchReadyProvider, (bool? _, bool ready) {
       if (ready) _reveal();
@@ -154,7 +137,7 @@ class _LaunchCurtainState extends ConsumerState<LaunchCurtain> {
     if (_phase != _Phase.covering) return;
     _stopWatching();
     final bool firstRun = ref.read(currentSpaceProvider) == null;
-    // One frame for the screen underneath to lay out and paint.
+    // Lets the screen underneath paint.
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     if (firstRun) {

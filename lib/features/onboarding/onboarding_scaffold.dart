@@ -1,15 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// The frame every onboarding step shares.
-///
-/// A step is a heading, an explanation, its fields, and the way forward pinned
-/// to the bottom — so the primary action sits in the same place on every step
-/// instead of moving with the content.
-///
-/// The progress bar is computed from the real step count rather than hardcoded
-/// percentages: app lock and the Recovery Key join the flow in M7, and the bar
-/// should not have to be re-tuned when they do.
+/// Onboarding step frame: heading, explanation, fields, pinned primary action.
 class OnboardingScaffold extends StatelessWidget {
   const OnboardingScaffold({
     required this.step,
@@ -24,7 +16,7 @@ class OnboardingScaffold extends StatelessWidget {
     super.key,
   });
 
-  /// One-based, for the progress bar.
+  /// One-based.
   final int step;
   final int stepCount;
 
@@ -34,7 +26,7 @@ class OnboardingScaffold extends StatelessWidget {
 
   final String primaryLabel;
 
-  /// Null disables the button — the step is not answered yet.
+  /// Null disables the button.
   final VoidCallback? onPrimary;
 
   /// "Skip", where the step is optional.

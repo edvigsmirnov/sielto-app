@@ -1,25 +1,17 @@
 import 'package:meta/meta.dart';
 
-/// A calendar day: no time, no zone.
-///
-/// `due_date` and `expected_date` are days on a wall calendar, not instants.
-/// Holding them in a [DateTime] invites the bug this type exists to prevent —
-/// a midnight local timestamp that lands on the previous day once the Space
-/// timezone is applied. Converting to an instant is deliberate and explicit;
-/// see `SpaceClock` for resolving "today".
+/// A calendar day with no time and no zone. See `SpaceClock` for "today".
 @immutable
 class CalendarDate implements Comparable<CalendarDate> {
   const CalendarDate(this.year, this.month, this.day);
 
-  /// Normalises out-of-range values the way [DateTime] does, so
-  /// `CalendarDate.from(2026, 2, 30)` is 2026-03-02 rather than an error.
+  /// Normalises out-of-range values: 2026-02-30 is 2026-03-02.
   factory CalendarDate.from(int year, int month, int day) {
     final DateTime d = DateTime.utc(year, month, day);
     return CalendarDate(d.year, d.month, d.day);
   }
 
-  /// Parses `YYYY-MM-DD`. Rejects anything else, including timestamps: a value
-  /// carrying a time has already lost the distinction this type protects.
+  /// Parses `YYYY-MM-DD` only.
   factory CalendarDate.parse(String iso) {
     final Match? m = _isoPattern.firstMatch(iso);
     if (m == null) {
@@ -32,8 +24,7 @@ class CalendarDate implements Comparable<CalendarDate> {
     );
   }
 
-  /// Takes the year, month and day as they read on [dateTime], whatever zone
-  /// it carries. Call this only where that reading is the intended one.
+  /// Uses the year, month and day as they read on [dateTime], in its own zone.
   factory CalendarDate.fromDateTime(DateTime dateTime) =>
       CalendarDate(dateTime.year, dateTime.month, dateTime.day);
 
@@ -43,13 +34,13 @@ class CalendarDate implements Comparable<CalendarDate> {
   final int month;
   final int day;
 
-  /// `YYYY-MM-DD`. The storage format, and lexicographically sortable.
+  /// `YYYY-MM-DD`; sorts lexicographically.
   String toIso() =>
       '${year.toString().padLeft(4, '0')}-'
       '${month.toString().padLeft(2, '0')}-'
       '${day.toString().padLeft(2, '0')}';
 
-  /// Midnight UTC. Arithmetic anchor only — not a moment in any real zone.
+  /// Arithmetic anchor only.
   DateTime toUtcMidnight() => DateTime.utc(year, month, day);
 
   CalendarDate addDays(int days) {
@@ -57,9 +48,7 @@ class CalendarDate implements Comparable<CalendarDate> {
     return CalendarDate(d.year, d.month, d.day);
   }
 
-  /// The same day-of-month [months] later, clamped to the target month's
-  /// length: the 31st plus one month is 28 or 29 February, not 2 or 3 March.
-  /// Overflow would silently move a monthly series into the wrong month.
+  /// Clamps to the target month: 31 January plus one month is 28 or 29 February.
   CalendarDate addMonths(int months) {
     final int total = year * 12 + (month - 1) + months;
     final int targetYear = total ~/ 12;
@@ -72,11 +61,11 @@ class CalendarDate implements Comparable<CalendarDate> {
     return CalendarDate(targetYear, targetMonth, day > lastDay ? lastDay : day);
   }
 
-  /// Whole days from this date to [other]; negative if [other] is earlier.
+  /// Negative when [other] is earlier.
   int daysUntil(CalendarDate other) =>
       other.toUtcMidnight().difference(toUtcMidnight()).inDays;
 
-  /// 1 = Monday through 7 = Sunday, matching [DateTime.weekday].
+  /// 1 = Monday through 7 = Sunday.
   int get weekday => toUtcMidnight().weekday;
 
   CalendarDate get firstOfMonth => CalendarDate(year, month, 1);
@@ -86,11 +75,7 @@ class CalendarDate implements Comparable<CalendarDate> {
 
   int get daysInMonth => lastOfMonth.day;
 
-  /// The Monday of this date's week.
-  ///
-  /// Monday-first is fixed rather than read from the locale: the grid is seven
-  /// columns wide and a locale-dependent first column would move every cell
-  /// under a language switch, while the design draws Mon-Sun.
+  /// Weeks start on Monday regardless of locale.
   CalendarDate get startOfWeek => addDays(1 - weekday);
 
   bool isSameMonth(CalendarDate other) =>

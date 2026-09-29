@@ -13,10 +13,7 @@ import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
 import 'package:sielto/features/calendar/month_view.dart';
 
-/// The Month grid, drawn straight from data (spec 8.1).
-///
-/// [MonthView] takes plain values, so this needs no database and no provider
-/// scope — the grid arithmetic and the decorations are what is under test.
+/// Month grid from plain values; no database.
 void main() {
   const CalendarDate august = CalendarDate(2026, 8, 14);
   const CalendarDate today = CalendarDate(2026, 8, 14);
@@ -24,8 +21,7 @@ void main() {
   final MoneyFormat money = MoneyFormat(locale: 'en', currencyCode: 'EUR');
   late final DateLabels dates;
 
-  // The app gets its date symbols from flutter_localizations' delegate; a bare
-  // widget test has no delegate, so intl has to be told.
+  // No localization delegate here, so intl needs initialising.
   setUpAll(() {
     initializeDateFormatting();
     dates = DateLabels('en');
@@ -68,7 +64,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpMonth(tester);
-    // August 2026 opens on a Saturday, so the grid's first cell is 27 July.
+    // August 2026 starts on a Saturday; the first cell is 27 July.
     final Rect first = tester.getRect(find.byType(CellDecoration).first);
     final Rect twentySeven = tester.getRect(find.text('27').first);
     expect(first.contains(twentySeven.center), isTrue);
@@ -114,8 +110,6 @@ void main() {
   testWidgets('a day with a record but no figure still shows something', (
     WidgetTester tester,
   ) async {
-    // A floating income sits on the day with no amount yet (spec 4.7); an
-    // empty cell would read as an empty day.
     await pumpMonth(
       tester,
       totals: <CalendarDate, DayTotals>{
@@ -164,7 +158,6 @@ void main() {
     final List<CellDecoration> cells = tester
         .widgetList<CellDecoration>(find.byType(CellDecoration))
         .toList();
-    // Exactly one of each, and not the same cell here.
     final CellDecoration filled = cells.singleWhere(
       (CellDecoration c) => c.isToday,
     );
@@ -189,8 +182,7 @@ void main() {
     const CalendarDate holiday = CalendarDate(2026, 8, 17);
     await pumpMonth(
       tester,
-      // Not a const map: CalendarDate overrides `==`, and Dart refuses such a
-      // key in a constant collection.
+      // Not const: CalendarDate overrides `==`.
       marks: DayMarks(<CalendarDate, DayMark>{
         saturday: const DayMark(isNonWorking: true),
         holiday: const DayMark(isNonWorking: true, isHoliday: true),
@@ -224,8 +216,7 @@ void main() {
         .widgetList<CellDecoration>(find.byType(CellDecoration))
         .where((CellDecoration c) => c.dimmed)
         .length;
-    // August 2026 runs Sat-Mon, so the grid carries 5 days of July and
-    // 6 of September.
+    // 5 days of July and 6 of September.
     expect(dimmed, monthGridDays - 31);
   });
 }

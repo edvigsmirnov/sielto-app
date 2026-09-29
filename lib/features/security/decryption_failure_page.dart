@@ -2,12 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// Shown when the database file is present but its key is not.
-///
-/// The alternative would be a crash or an endless spinner over unreadable
-/// data; this states plainly what happened and offers the three ways out
-/// (spec 2.2). Only "Start over" works in M1 — the other two need the Recovery
-/// Key and the backup container, which arrive in M7.
+/// Shown when the database exists but its key does not. Only "Start over"
+/// works for now.
 class DecryptionFailurePage extends StatelessWidget {
   const DecryptionFailurePage({required this.onStartOver, super.key});
 
@@ -65,9 +61,7 @@ class DecryptionFailurePage extends StatelessWidget {
                   ),
                   const SizedBox(height: SageSpace.md),
 
-                  // Both land in M7. Shown disabled rather than hidden: the
-                  // recovery path is the point of the envelope scheme, and a
-                  // user who has a Recovery Key should see it is coming.
+                  // Shown disabled until recovery is implemented.
                   _Unavailable(label: 'decryption.enterRecoveryKey'.tr()),
                   _Unavailable(label: 'decryption.restoreFromBackup'.tr()),
 

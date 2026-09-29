@@ -11,11 +11,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/analytics/analytics_data.dart';
 import 'package:sielto/features/analytics/analytics_parts.dart';
 
-/// Analytics level 2: one category, broken down by title (spec 8.2).
-///
-/// The average ticket sits in the summary card up top rather than behind a
-/// separate level: planning needs it the moment the category opens, not after
-/// another tap.
+/// Analytics level 2: one category by title, with the average payment.
 class CategoryBreakdownPage extends ConsumerWidget {
   const CategoryBreakdownPage({
     required this.categoryKey,
@@ -23,8 +19,7 @@ class CategoryBreakdownPage extends ConsumerWidget {
     super.key,
   });
 
-  /// The category id, or [AnalyticsRepository.uncategorisedKey] for the slice
-  /// of payments filed under nothing.
+  /// Category id, or [AnalyticsRepository.uncategorisedKey].
   final String categoryKey;
 
   final String title;
@@ -60,8 +55,7 @@ class CategoryBreakdownPage extends ConsumerWidget {
       Decimal.zero,
       (Decimal sum, AnalyticsSlice s) => sum + s.total,
     );
-    // The mean payment across the category, not the mean of the means: a
-    // payee billed once must not weigh as much as one billed thirty times.
+    // Mean over all payments, not the mean of per-title means.
     final Decimal average = count == 0
         ? Decimal.zero
         : (total / Decimal.fromInt(count)).toDecimal(

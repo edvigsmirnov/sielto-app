@@ -26,11 +26,7 @@ import 'package:sielto/features/periods/period_choice.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// Opens the income form (spec 5.1, 5.4).
-///
-/// One form for both shapes, as the spec asks: the "make regular" switch is
-/// what decides whether saving writes a single row or a recurrence rule that
-/// materialises many.
+/// One form for one-off and regular incomes. "Make regular" saves a rule.
 Future<void> openIncomeForm(
   BuildContext context, {
   String? incomeId,
@@ -57,33 +53,30 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _notes = TextEditingController();
 
-  /// What a frozen occurrence's note gains. The existing text stays as it is.
+  /// Text appended to a frozen occurrence's note.
   final TextEditingController _addedNote = TextEditingController();
 
   CalendarDate? _date;
   bool _isReceived = false;
 
-  /// Filled in when the receipt is confirmed; defaults to the expected date
-  /// but is the user's to correct (spec 5.4).
+  /// Defaults to the expected date.
   CalendarDate? _actualDate;
 
   bool _isRegular = false;
   ScheduleDraft _schedule = const ScheduleDraft();
 
-  /// Only meaningful in income_driven Spaces, and only once one anchor exists.
+  /// income_driven Spaces only, once an anchor exists.
   bool _isAnchor = true;
   bool _anchorChoiceApplies = false;
 
-  /// This row is one materialised salary of an anchor rule, so the cycle it
-  /// sits in was built around it.
+  /// This row is an occurrence of an anchor rule.
   bool _isAnchorOccurrence = false;
 
   Income? _existing;
   bool _loaded = false;
   bool _saving = false;
 
-  /// The state of the occurrence's period. Amount, both dates and the receipt
-  /// flag are read-only once it has closed (spec 5.5).
+  /// Frozen: amount, both dates and the receipt flag are read-only.
   FreezeState _freeze = FreezeState.open;
 
   bool get _isFrozen => _freeze == FreezeState.frozen;
@@ -137,8 +130,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         }
       }
     } else if (space.budgetMode == BudgetMode.incomeDriven) {
-      // The first regular income of the Space becomes the anchor with no
-      // question asked; from the second on the choice is real (spec 5.2).
+      // The first regular income becomes the anchor without asking.
       final List<IncomeRecurrenceRule> anchors = await repos.incomeRules
           .anchorsInSpace(space.id);
       _anchorChoiceApplies = anchors.isNotEmpty;
@@ -148,8 +140,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     if (mounted) setState(() => _loaded = true);
   }
 
-  /// Null is a legitimate answer: an inflow whose figure is not known yet
-  /// stays honest rather than inventing one (spec 4.7).
+  /// Null: amount not known yet.
   Decimal? get _parsedAmount {
     final Decimal? value = parseMoney(_amount.text);
     if (value == null || value <= Decimal.zero) return null;
@@ -159,8 +150,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   bool get _amountFieldIsWellFormed =>
       _amount.text.trim().isEmpty || _parsedAmount != null;
 
-  /// An income saves without an amount, but cannot be marked received without
-  /// one — the period's figures would stay uncomputable (spec 4.7).
+  /// Saves without an amount, but a received income needs one.
   bool get _isValid =>
       _title.text.trim().isNotEmpty &&
       _amountFieldIsWellFormed &&
@@ -198,8 +188,6 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         );
       }
 
-      // Periods and future occurrences follow from the rules, so any change
-      // here can move them.
       ref.invalidate(periodRefreshProvider);
       if (mounted) Navigator.of(context).pop();
     } finally {
@@ -238,8 +226,6 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
               : null,
         );
 
-    // createFirstAsAnchor anchors the first rule of the Space on its own; a
-    // later one takes the role the user picked.
     if (_anchorChoiceApplies && _isAnchor) {
       await repos.incomeRules.setAnchor(
         rule.id,
@@ -254,8 +240,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     }
   }
 
-  /// The two writes a closed period still allows (spec 5.5): the title, and a
-  /// note appended below what is already there.
+  /// A frozen period allows the title and an appended note.
   Future<void> _saveFrozen(Income existing, Repositories repos) async {
     final String addition = _addedNote.text.trim();
     await repos.incomes.update(
@@ -273,11 +258,8 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     );
   }
 
-  /// Editing one materialised occurrence.
-  ///
-  /// When it belongs to a series, changing the amount asks how far the change
-  /// reaches; the date and the note are always this occurrence alone
-  /// (spec 5.4).
+  /// Amount changes on a series ask how far they reach; date and note change
+  /// this occurrence only.
   Future<void> _saveExisting(
     Income existing,
     Repositories repos,
@@ -299,8 +281,6 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       expectedDate: Value<CalendarDate>(date),
       notes: Value<String?>(notes),
       isPaid: Value<bool>(_isReceived),
-      // Clearing the receipt clears the fact with it: the expected date stays,
-      // the actual one no longer exists (spec 5.4).
       actualDate: Value<CalendarDate?>(_isReceived ? _actualDate : null),
     );
 
@@ -324,7 +304,6 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  /// Opens the rule this occurrence was materialised from.
   Future<void> _openRule() async {
     final String? ruleId = _existing?.recurrenceRuleId;
     if (ruleId == null) return;
@@ -387,11 +366,8 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                     : tr('income.add')),
         ),
         actions: <Widget>[
-          // Deleting is protected, so a closed period offers no delete rather
-          // than one that refuses (spec 5.5). An anchor occurrence has none
-          // either: the cycle is built around it, and removing it would leave
-          // a period with no income to define it. The rule is what goes, from
-          // the regular income list (spec 5.2).
+          // No delete in a frozen period or for an anchor occurrence; the rule is
+          // deleted from the regular income list.
           if (isOccurrence && !_isFrozen && !_isAnchorOccurrence)
             IconButton(
               icon: const Icon(Icons.delete_outline),
@@ -405,10 +381,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
           padding: const EdgeInsets.all(SageSpace.formGutter),
           children: <Widget>[
             if (_isFrozen) const FreezeNotice(),
-            // This screen edits one month of a regular income; the schedule and
-            // the standing amount live on the rule behind it. The link is here
-            // because this is where someone looking at their salary already
-            // is (spec 5.4).
+            // Link to the rule behind this occurrence.
             if (partOfSeries)
               Padding(
                 padding: const EdgeInsets.only(bottom: SageSpace.md),
@@ -475,8 +448,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
             ),
             const SizedBox(height: SageSpace.lg),
 
-            // A regular income has no single date: its dates come from the
-            // schedule (spec 5.1, step 3).
+            // Regular incomes take dates from the schedule.
             if (!_isRegular) ...<Widget>[
               LabelledField(
                 label: tr('income.fieldDate'),
@@ -505,9 +477,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                   onChanged: (ScheduleDraft next) =>
                       setState(() => _schedule = next),
                 ),
-                // Anchoring decides period boundaries, so it means nothing
-                // outside income_driven and the form does not offer it there
-                // (spec 5.2).
+                // income_driven only.
                 if (_anchorChoiceApplies &&
                     space.budgetMode == BudgetMode.incomeDriven) ...<Widget>[
                   const SizedBox(height: SageSpace.lg),
@@ -575,8 +545,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                         _actualDate ??= _date;
                       }),
               ),
-              // The date the money actually arrived, which the expected date
-              // is not for. It changes no calculation (spec 5.4).
+              // Actual receipt date. Changes no calculation.
               if (_isReceived) ...<Widget>[
                 const SizedBox(height: SageSpace.sm),
                 LabelledField(
@@ -609,8 +578,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   }
 }
 
-/// The note of an occurrence in a closed period: what is there, and a field
-/// that adds to it (spec 5.5).
+/// Existing note and a field that appends to it.
 class _AppendNoteField extends StatelessWidget {
   const _AppendNoteField({required this.existing, required this.controller});
 
@@ -647,13 +615,7 @@ class _AppendNoteField extends StatelessWidget {
   );
 }
 
-/// Which cycle a one-off income joins, and what it does to that cycle's free
-/// money (spec 5.4, 6.1).
-///
-/// Told rather than asked: a one-off income is always additional — anchoring
-/// requires a repeating schedule — so it never moves a boundary, and its date
-/// alone decides which cycle it lands in. There is nothing here for the user
-/// to choose, only something for them to see.
+/// Which cycle a one-off income joins and its effect on free money.
 class _LandsIn extends ConsumerWidget {
   const _LandsIn({
     required this.date,
@@ -683,9 +645,7 @@ class _LandsIn extends ConsumerWidget {
     final TextTheme text = Theme.of(context).textTheme;
     final DateLabels dates = DateLabels(context.locale.toString());
 
-    // The figure the cycle would carry once this arrives. Null while the
-    // amount is empty, which is allowed: an inflow of unknown size is a real
-    // answer (spec 4.7).
+    // Null while the amount is empty.
     final PeriodLedger ledger = buildPeriodLedger(
       period: period,
       payments: ref.watch(spacePaymentsProvider).value ?? const <Payment>[],
@@ -752,14 +712,13 @@ class _LandsIn extends ConsumerWidget {
   }
 }
 
-/// A tappable date, shown as a field. Shared with the receipt dialog.
+/// Tappable date field. Shared with the receipt dialog.
 class DateField extends StatelessWidget {
   const DateField({required this.label, required this.onTap, super.key});
 
   final String label;
 
-  /// Null when the period is closed: the field reads, it does not open a
-  /// picker (spec 5.5).
+  /// Null when the period is frozen.
   final VoidCallback? onTap;
 
   @override

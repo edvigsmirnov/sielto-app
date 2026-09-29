@@ -13,15 +13,8 @@ import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/spaces/space_avatar.dart';
 
-/// Settings for one Space (spec 3.4).
-///
-/// The Space is passed in rather than read from the app state: the Spaces list
-/// opens this screen for a Space without switching to it (spec 3.4, entry
-/// point 2).
-///
-/// Members, storage mode and the delete branch belong to M8 and M9 and are
-/// absent. What is here is the base every member sees: name, the locked mode
-/// badge, currency and timezone, and the Feed order.
+/// Settings for one Space, passed in so it can be any Space, not only the open
+/// one.
 class SpaceSettingsPage extends ConsumerStatefulWidget {
   const SpaceSettingsPage({required this.space, super.key});
 
@@ -36,7 +29,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     text: widget.space.title,
   );
 
-  /// Null while the check is in flight.
+  /// Null while the check runs.
   bool? _currencyEditable;
 
   @override
@@ -61,7 +54,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Re-read so an edit made here is reflected without leaving the screen.
+    // Re-read so edits show immediately.
     final Space space =
         ref
             .watch(spaceListProvider)
@@ -82,8 +75,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           vertical: SageSpace.md,
         ),
         children: <Widget>[
-          // The Space's identity: its mark and its name on one line, as the
-          // design opens the screen (design section 3.4).
           Row(
             children: <Widget>[
               SpaceAvatar(spaceId: space.id, title: space.title, size: 48),
@@ -102,8 +93,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           ),
           const SizedBox(height: SageSpace.lg),
 
-          // Facts read as label-left, value-right rows; only what can be
-          // changed gets a control of its own.
+          // Facts as label-value rows; only editable settings get controls.
           _FactRow(
             label: tr('space.fieldMode'),
             value: _LockedPill(text: tr('mode.${space.budgetMode.name}.name')),
@@ -147,8 +137,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
               ),
             )
           else
-            // Frozen by the first record, so it reads as a fact rather than a
-            // disabled control (spec 9.2).
+            // Frozen by the first record.
             _FactRow(
               label: tr('space.fieldCurrency'),
               value: _LockedPill(text: space.currencyCode),
@@ -164,8 +153,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           ),
           const Hairline(),
 
-          // Categories and income rules are read for the open Space, so these
-          // links only make sense when this screen is showing that Space.
+          // Categories and income rules are for the open Space only.
           if (isCurrent) ...<Widget>[
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -206,9 +194,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     );
   }
 
-  /// Archiving is local and never uploaded (spec 3.1). Deleting a Space
-  /// outright arrives with the cloud work in M8, where the consequences of
-  /// removing shared data are defined.
+  /// Archiving is local.
   Future<void> _archive(Space space) async {
     final bool confirmed = await confirmDialog(
       context,
@@ -231,7 +217,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   }
 }
 
-/// A read-only setting: what it is on the left, what it says on the right.
+/// Read-only setting: label left, value right.
 class _FactRow extends StatelessWidget {
   const _FactRow({required this.label, required this.value});
 
@@ -253,7 +239,7 @@ class _FactRow extends StatelessWidget {
   );
 }
 
-/// A value that cannot change, and says so.
+/// A value that cannot change.
 class _LockedPill extends StatelessWidget {
   const _LockedPill({required this.text});
 
@@ -285,7 +271,7 @@ class _LockedPill extends StatelessWidget {
   }
 }
 
-/// A destructive action, on its own tint rather than as a red list row.
+/// Destructive action on a tinted button.
 class _DangerButton extends StatelessWidget {
   const _DangerButton({required this.label, required this.onTap});
 

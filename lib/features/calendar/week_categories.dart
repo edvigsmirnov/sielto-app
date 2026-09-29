@@ -8,15 +8,8 @@ import 'package:sielto/features/calendar/week_view.dart';
 import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// The category names the Week view puts under each date (spec 8.1).
-///
-/// The one place the Calendar reads rows outside the Day view, and it is worth
-/// it: a week is seven days, and the names are what make a week row say
-/// something a month cell cannot. The Month view gets none of this — forty-two
-/// days of titles is the detail load the aggregate query exists to avoid.
-///
-/// Largest spend first, capped at [WeekView.maxCategoryNames]. Uncategorised
-/// payments contribute nothing rather than a placeholder name.
+/// Category names per day for the Week view, largest spend first, at most
+/// [WeekView.maxCategoryNames]. Uncategorised payments are skipped.
 final StreamProvider<Map<CalendarDate, List<String>>>
 weekCategoryNamesProvider = StreamProvider<Map<CalendarDate, List<String>>>((
   Ref ref,
@@ -31,8 +24,7 @@ weekCategoryNamesProvider = StreamProvider<Map<CalendarDate, List<String>>>((
     ref.watch(selectedDateProvider),
   );
 
-  // Categories can be soft-deleted and a payment keeps showing the one it
-  // was filed under, so this reads the index that includes them (spec 7).
+  // Includes soft-deleted categories.
   final Map<String, Category> categories =
       ref.watch(categoryIndexProvider).value ?? const <String, Category>{};
 
@@ -66,8 +58,6 @@ Map<CalendarDate, List<String>> _namesByDay(
       e.key:
           (e.value.keys.toList()..sort((String a, String b) {
                 final int byAmount = e.value[b]!.compareTo(e.value[a]!);
-                // Ties break on the name, so the row does not reshuffle between
-                // rebuilds.
                 return byAmount != 0 ? byAmount : a.compareTo(b);
               }))
               .take(WeekView.maxCategoryNames)

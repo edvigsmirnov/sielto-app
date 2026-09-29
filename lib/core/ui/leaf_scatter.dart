@@ -5,9 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 
-/// A picture of what [key] currently shows, at the screen's resolution.
-///
-/// [key] must sit on a [RepaintBoundary]. Null when it has not been painted.
+/// Captures [key]'s [RepaintBoundary] at device resolution. Null before first
+/// paint.
 Future<ui.Image?> snapshotOf(GlobalKey key) async {
   final BuildContext? context = key.currentContext;
   final RenderObject? box = context?.findRenderObject();
@@ -17,17 +16,7 @@ Future<ui.Image?> snapshotOf(GlobalKey key) async {
   return box.toImage(pixelRatio: View.of(context).devicePixelRatio);
 }
 
-/// A screen blown away as leaves, uncovering whatever is under it.
-///
-/// [image] is the screen as it was ([snapshotOf]). It is cut into cells; each
-/// cell holds still until the wave reaches it, then leaves as a leaf-shaped
-/// piece of the picture, carried by its own gust: speed, lift, spin and
-/// flutter all differ, so the whole never moves as one.
-///
-/// With [origin] null the wave runs from the right edge to the left and the
-/// wind blows leftwards. With an [origin] the wave spreads out from it and
-/// the pieces fly outwards and up.
-///
+/// Blows [image] away as leaves: right to left, or outwards from [origin].
 /// Reduced motion: a short fade.
 class LeafScatter extends StatefulWidget {
   const LeafScatter({
@@ -121,10 +110,10 @@ class _Piece {
   final Path leaf;
   final Offset centre;
 
-  /// Seconds after the start at which the piece lets go.
+  /// Seconds from the start.
   final double release;
 
-  /// Seconds it stays in sight once it has.
+  /// Seconds in flight.
   final double life;
 
   final Offset direction;
@@ -151,8 +140,7 @@ class _ScatterPainter extends CustomPainter {
   final double ratio;
   final Offset? origin;
 
-  /// The wave's run across the screen, the stagger on top of it, and the
-  /// longest a piece stays in flight. Their sum is the whole effect.
+  /// Wave duration, extra random delay and maximum flight time, in seconds.
   static const double _wave = 0.5;
   static const double _stagger = 0.16;
   static const double _maxLife = 0.8;
@@ -162,7 +150,7 @@ class _ScatterPainter extends CustomPainter {
   List<_Piece> _pieces = const <_Piece>[];
 
   List<_Piece> _cut(Size size) {
-    // Seeded, so a repaint never reshuffles the pieces mid-flight.
+    // Fixed seed: pieces stay the same across repaints.
     final math.Random random = math.Random(7);
     double between(double a, double b) => a + random.nextDouble() * (b - a);
 
@@ -186,8 +174,7 @@ class _ScatterPainter extends CustomPainter {
           () {
             final Rect cell = Rect.fromLTWH(c * side, r * side, side, side);
             final Offset centre = cell.center;
-            // How far the wave has to travel to get here, 0 to 1, with a
-            // ragged front: a gust never arrives in a straight line.
+            // Wave arrival, 0 to 1, with a wavy front.
             final double reached = from == null
                 ? 1 -
                       centre.dx / size.width +
@@ -196,8 +183,7 @@ class _ScatterPainter extends CustomPainter {
             final Offset away = from == null
                 ? Offset(-1, between(-0.45, 0.15))
                 : () {
-                    // Wider than it is tall, so the burst also goes left
-                    // and right rather than only up the screen.
+                    // Stretched sideways.
                     final Offset d = centre - from;
                     final Offset o = Offset(
                       d.dx * 1.8 + between(-40, 40),
@@ -206,8 +192,7 @@ class _ScatterPainter extends CustomPainter {
                     final double n = o.distance;
                     return n == 0 ? const Offset(0, -1) : o / n;
                   }();
-            // Longer than the cell and turned across it, so the leaf covers
-            // most of the square it came out of.
+            // Leaf longer than the cell so it covers most of it.
             final double length = side * between(1.7, 2.1);
             final Matrix4 place = Matrix4.identity()
               ..translateByDouble(centre.dx, centre.dy, 0, 1)
@@ -252,8 +237,7 @@ class _ScatterPainter extends CustomPainter {
         Matrix4.diagonal3Values(1 / ratio, 1 / ratio, 1).storage,
       );
 
-    // What is still in place, in one pass: cells tile, so nothing shows
-    // through before its turn.
+    // Cells not yet released.
     final Path still = Path();
     for (final _Piece p in _pieces) {
       if (t < p.release) still.addRect(p.cell);
@@ -265,8 +249,6 @@ class _ScatterPainter extends CustomPainter {
       if (s < 0 || s > p.life) continue;
       final double k = s / p.life;
 
-      // Pushed along its way by a gust that keeps building, lifted or
-      // dropping, and rocked sideways as it goes.
       final double along = p.speed * s + 0.5 * p.gust * s * s;
       final Offset side = Offset(-p.direction.dy, p.direction.dx);
       final Offset moved =
@@ -274,7 +256,6 @@ class _ScatterPainter extends CustomPainter {
           Offset(0, -0.5 * p.lift * s * s) +
           side * (p.flutter * math.sin(p.flutterRate * s + p.phase));
       final double turn = p.spin * s + 0.35 * math.sin(p.flutterRate * s);
-      // Turning over in the air: the face narrows and widens.
       final double flip = math.cos(p.flipRate * s + p.phase);
       final double shrink = 1 - 0.3 * k;
 

@@ -10,22 +10,8 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// The figures for one income cycle (spec 4.7).
-///
-/// The mechanism is the same chronological walk every mode uses. What differs
-/// is only where it starts and what it may see: it starts from the anchor
-/// income, which lands on the first day of the period by construction, and it
-/// sees that period's payments plus its non-anchor incomes.
-///
-/// Two consequences worth stating, because both are easy to get wrong:
-///
-/// - **A non-anchor income joins on its own date, not before.** The walk
-///   reaches it when it reaches its day, exactly as the cutoff rule requires
-///   (spec 4.9, rule 3). Nothing is spendable in advance of arriving.
-/// - **`is_paid` changes no figure here.** It records what happened; the
-///   forecast is about dates. Gating the arithmetic on it would mean future
-///   income never counted at all, since nothing can be marked received before
-///   it arrives.
+/// One income cycle, walked from its anchor income. `is_paid` changes no
+/// figure.
 @immutable
 class PeriodLedger {
   const PeriodLedger({
@@ -44,13 +30,10 @@ class PeriodLedger {
 
   final BudgetPeriod period;
 
-  /// The period's anchor income. Null when the salary floats and no figure has
-  /// been given yet — the dashboard then says so instead of inventing one
-  /// (spec 4.7).
+  /// Null when the anchor income has no amount.
   final Decimal? anchorAmount;
 
-  /// Null exactly when [anchorAmount] is: with no starting sum there is
-  /// nothing to walk.
+  /// Null when [anchorAmount] is.
   final LedgerCascade? cascade;
 
   final List<LedgerEntry> entries;
@@ -60,51 +43,41 @@ class PeriodLedger {
   final Decimal totalPlanned;
   final Decimal totalPaid;
 
-  /// The next inflow not arrived yet, from today or the period's start,
-  /// whichever is later — in this period or a later one.
+  /// Next income not yet arrived, from today or the period start, in any later
+  /// period.
   final Income? nearestIncome;
 
-  /// Incomes in the period whose amount is unknown, so they contribute
-  /// nothing. Reported rather than silently ignored (spec 4.7).
+  /// Incomes in the period without an amount.
   final int unknownIncomeCount;
 
-  /// Whether any income at all is recorded against this cycle.
   final bool hasIncome;
 
-  /// Whether anything in it is still owed.
   final bool hasUnpaidExpense;
 
   bool get isComputable => cascade != null;
 
-  /// Whether the walk's verdict says anything about this cycle.
-  ///
-  /// A cycle with no income and nothing outstanding is not overspent: the
-  /// money already moved, and there was no figure it was meant to come out of.
-  /// The remainder is still arithmetic and still shown — it is simply not
-  /// judged, so no dot, no cutoff and no date the money runs out on.
+  /// Without income and without anything owed, the cycle is not judged: no
+  /// coverage dot, cutoff or end date.
   bool get isJudged => hasIncome || hasUnpaidExpense;
 
   Decimal get totalRemaining => totalPlanned - totalPaid;
 
   Coverage? get coverage => isJudged ? cascade?.coverage : null;
 
-  /// Money left once everything planned is covered; null when it is not, or
-  /// when the anchor amount is unknown. An unjudged cycle reports the plain
-  /// remainder instead, which is a fact rather than a forecast.
+  /// Null when not covered or the anchor amount is unknown. An unjudged cycle
+  /// reports the plain remainder.
   Decimal? get freeCash =>
       isJudged ? cascade?.all.freeCash : cascade?.all.finalBalance;
 
-  /// After the mandatory payments alone (spec 4.4).
+  /// After mandatory payments only.
   Decimal? get baseRemainder =>
       isJudged ? cascade?.mandatory.freeCash : cascade?.mandatory.finalBalance;
 
-  /// After the mandatory payments alone, as a verdict.
   Coverage? get baseCoverage => isJudged ? cascade?.mandatory.coverage : null;
 
-  /// The last day the money reaches, when it does not reach the whole period.
+  /// Last day the money reaches, when short of the period end.
   CalendarDate? get lastCoveredDay => isJudged ? cascade?.lastCoveredDay : null;
 
-  /// Where this cycle's money runs out, for the line in the Feed.
   ({String entryId, bool below})? get moneyEndsAt =>
       isJudged ? cascade?.moneyEndsAt : null;
 
@@ -117,7 +90,6 @@ class PeriodLedger {
         };
 }
 
-/// Builds the figures for one period from its records.
 PeriodLedger buildPeriodLedger({
   required BudgetPeriod period,
   required List<Payment> payments,
@@ -128,9 +100,7 @@ PeriodLedger buildPeriodLedger({
   bool isAnchor(Income i) =>
       i.recurrenceRuleId != null && anchorRuleIds.contains(i.recurrenceRuleId);
 
-  // Bound to this period, or bound nowhere and dated inside it. The second
-  // case is every record between being written and the next recompute placing
-  // it: without it the Feed lists a payment the figures above it ignore.
+  // Bound to this period, or unbound and dated inside it.
   final CalendarDate? end = period.endDate;
   bool inPeriod(String? boundTo, CalendarDate date) {
     if (boundTo != null) return boundTo == period.id;
@@ -142,11 +112,7 @@ PeriodLedger buildPeriodLedger({
       .where((Payment p) => inPeriod(p.budgetPeriodId, p.dueDate))
       .toList();
 
-  // The anchor is the exception, and deliberately strict: it is not a record
-  // inside the period, it is the record the period was built around. Counting
-  // an unbound one by date lets a materialisation still in flight — or a
-  // schedule that puts two occurrences near one boundary — add a second and
-  // third salary to the base the whole cycle is measured from.
+  // Anchor incomes count only when bound to this period.
   final List<Income> inflows = incomes
       .where(
         (Income i) => isAnchor(i)
@@ -155,17 +121,8 @@ PeriodLedger buildPeriodLedger({
       )
       .toList();
 
-  // Anchors that resolved to the same date merged into this one period, so
-  // their amounts add (spec 4.7).
-  //
-  // Two ways to end up without a figure, and they are not the same answer:
-  //
-  // - **No anchor income at all** is zero. Nothing is coming, and zero is what
-  //   that is worth; the cycle computes normally from it, and the expenses
-  //   below show as uncovered because they are.
-  // - **An anchor with no amount** is unknown. Money is coming and its size is
-  //   not known yet, so any figure would be invented — a floating salary makes
-  //   the cycle uncomputable, and that is not zero (spec 4.7).
+  // Merged anchors add. No anchor income is zero; an anchor without amount
+  // makes the cycle uncomputable.
   Decimal anchorTotal = Decimal.zero;
   bool anchorKnown = false;
   bool anchorUnknown = false;
@@ -203,8 +160,6 @@ PeriodLedger buildPeriodLedger({
     if (p.isPaid) paid += p.amount;
   }
 
-  // Across every cycle: a period with no income of its own still has a next
-  // one, in the period after.
   final CalendarDate from = period.startDate.isAfter(today)
       ? period.startDate
       : today;
@@ -233,14 +188,11 @@ PeriodLedger buildPeriodLedger({
   );
 }
 
-/// The period the three screens are showing (spec 4.3).
-///
-/// One selection shared across Dashboard, Feed and Calendar: paging forward on
-/// one and switching to another shows the same cycle, not today's.
+/// Period shown on Dashboard, Feed and Calendar.
 class SelectedPeriodController extends Notifier<String?> {
   @override
   String? build() {
-    // Following the Space resets the choice, which is what should happen.
+    // Resets when the Space changes.
     ref.watch(currentSpaceProvider);
     return null;
   }
@@ -253,7 +205,7 @@ selectedPeriodIdProvider = NotifierProvider<SelectedPeriodController, String?>(
   SelectedPeriodController.new,
 );
 
-/// The income cycles of the open Space, oldest first.
+/// Oldest first.
 final Provider<List<BudgetPeriod>> incomePeriodsProvider =
     Provider<List<BudgetPeriod>>((Ref ref) {
       final List<BudgetPeriod> all =
@@ -263,7 +215,7 @@ final Provider<List<BudgetPeriod>> incomePeriodsProvider =
           .toList();
     });
 
-/// The selected period, defaulting to the one containing today.
+/// Defaults to the period containing today.
 final Provider<BudgetPeriod?> selectedPeriodProvider = Provider<BudgetPeriod?>((
   Ref ref,
 ) {
@@ -284,14 +236,9 @@ final Provider<BudgetPeriod?> selectedPeriodProvider = Provider<BudgetPeriod?>((
   return periods.first;
 });
 
-/// Every cycle's figures, oldest first.
-///
-/// Deliberately blind to which period is selected: the Feed draws each cycle's
-/// own coverage and its own cutoff line, so scrolling from one into the next
-/// must not recompute — or redraw — the list under the finger.
+/// Every cycle's figures, oldest first. Independent of the selection.
 final Provider<AsyncValue<List<PeriodLedger>>> periodLedgersProvider =
     Provider<AsyncValue<List<PeriodLedger>>>((Ref ref) {
-      // Periods have to exist before they can be shown.
       ref.watch(periodRefreshProvider);
 
       final AsyncValue<List<Payment>> payments = ref.watch(
@@ -332,11 +279,9 @@ final Provider<AsyncValue<List<PeriodLedger>>> periodLedgersProvider =
       ]);
     });
 
-/// The figures for the selected period, picked out of the set above.
 final Provider<AsyncValue<PeriodLedger>> periodLedgerProvider =
     Provider<AsyncValue<PeriodLedger>>((Ref ref) {
-      // Watched before the period: it is what triggers the refresh, and the
-      // first anchor has no period until the refresh creates one.
+      // Watched first: it triggers the refresh that creates the first period.
       final AsyncValue<List<PeriodLedger>> all = ref.watch(
         periodLedgersProvider,
       );

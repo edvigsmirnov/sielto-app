@@ -9,14 +9,10 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/analytics/analytics_data.dart';
 import 'package:sielto/features/analytics/analytics_range.dart';
 
-/// The blocks the three Analytics levels share.
+/// Blocks shared by the Analytics levels.
 
-/// The range, with arrows and a unit picker (spec 8.2).
-///
-/// Mandatory on every level, not decoration (plan G9): Analytics counts
-/// calendar ranges while the Dashboard counts income cycles, so the same-looking
-/// month legitimately gives two different totals and the screen has to say
-/// which one it is showing.
+/// Range with arrows and a unit picker. Shown on every level: Analytics uses
+/// calendar ranges, the Dashboard uses income cycles.
 class RangeHeader extends ConsumerWidget {
   const RangeHeader({super.key});
 
@@ -101,8 +97,7 @@ class RangeHeader extends ConsumerWidget {
   }
 }
 
-/// The range as words. The full span for a quarter, the month or the year
-/// alone otherwise — a month printed as two dates says the same thing twice.
+/// Full span for a quarter; the month or year alone otherwise.
 String rangeLabel(AnalyticsRange range, String locale) {
   final DateLabels dates = DateLabels(locale);
   return switch (range.unit) {
@@ -112,10 +107,7 @@ String rangeLabel(AnalyticsRange range, String locale) {
   };
 }
 
-/// Everything / mandatory / variable (spec 8.2).
-///
-/// The second cut through the same range: what is fixed against where the
-/// budget is still flexible.
+/// Everything, mandatory or variable.
 class ExpenseTypeFilter extends ConsumerWidget {
   const ExpenseTypeFilter({super.key});
 
@@ -136,7 +128,7 @@ class ExpenseTypeFilter extends ConsumerWidget {
   }
 }
 
-/// The range as a caption, for the levels that have no picker of their own.
+/// Range caption for levels without a picker.
 class RangeCaption extends ConsumerWidget {
   const RangeCaption({super.key});
 
@@ -149,8 +141,7 @@ class RangeCaption extends ConsumerWidget {
   );
 }
 
-/// A label and its figure on one hairlined row: the shape levels 2 and 3 are
-/// both lists of.
+/// Label and figure on a hairlined row.
 class SliceRow extends StatelessWidget {
   const SliceRow({
     required this.label,
@@ -162,7 +153,7 @@ class SliceRow extends StatelessWidget {
   final String label;
   final String value;
 
-  /// Null where the row is a figure rather than a way further down.
+  /// Null for a row that leads nowhere.
   final VoidCallback? onTap;
 
   @override
@@ -202,9 +193,7 @@ class SliceRow extends StatelessWidget {
   }
 }
 
-/// A right-swipe leaves the level, next to whatever button the header offers
-/// (spec 8.2, design section 11) — a shortcut, not a second visible exit, so a
-/// quiet line at the foot says it exists.
+/// Right swipe pops the level; a hint at the foot says so.
 class SwipeBack extends StatelessWidget {
   const SwipeBack({required this.child, super.key});
 

@@ -4,24 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
 
-/// How a decorated cell is drawn (design section 7).
-///
-/// One place for the whole scheme, so the Month grid and the Week rows decorate
-/// the same day the same way:
-///
-///   - non-working day: a `warningAccent` wash, the figures in `warning`
-///   - holiday or custom day: that wash plus a corner dot, which is what
-///     separates a public holiday from an ordinary weekend
-///   - high load: a `danger` dot in the other corner
-///   - income uncertainty: diagonal `sand` hatching across the cell
-///   - deadline: a border — solid for hard, dashed for soft (spec 4.8)
-///   - today: the solid `accent` fill, which overrides every wash
-///   - selected: a thin outline, the day the Day view would open on
-///
-/// The corners carry the two dots and the border carries the deadline, so no
-/// two decorations compete for the same pixels. All of it comes out of the
-/// existing token set; the plan considered a dedicated `loadTint` pair and it
-/// turned out not to be needed, because load is a dot rather than a wash.
+/// Shared by the Month and Week views. [showCalendarLegend] documents every
+/// decoration.
 class CellDecoration extends StatelessWidget {
   const CellDecoration({
     required this.mark,
@@ -39,11 +23,9 @@ class CellDecoration extends StatelessWidget {
   final bool isToday;
   final double radius;
 
-  /// A day from a neighbouring month in the Month grid: present, and clearly
-  /// not part of what is being read.
+  /// A neighbouring month's day in the Month grid.
   final bool dimmed;
 
-  /// The corner marker, and the room the cell has to leave for it.
   static const double dotSize = 5;
 
   @override
@@ -55,8 +37,7 @@ class CellDecoration extends StatelessWidget {
         color: groundOf(sage, mark, isToday: isToday),
         borderRadius: BorderRadius.circular(radius),
         border: switch (mark.deadline) {
-          // Solid against dashed, so a hard deadline is visibly the one that
-          // refuses records (spec 4.8). The dashed one is painted below.
+          // The soft deadline's dashed border is painted below.
           DeadlineKind.hard => Border.all(color: sage.accentStrong, width: 1.5),
           DeadlineKind.soft || null => null,
         },
@@ -81,7 +62,6 @@ class CellDecoration extends StatelessWidget {
               ),
             ),
           child,
-          // Inside the deadline border, so the two never share a stroke.
           if (isSelected)
             Positioned.fill(
               child: DecoratedBox(
@@ -114,8 +94,6 @@ class CellDecoration extends StatelessWidget {
     return dimmed ? Opacity(opacity: 0.35, child: body) : body;
   }
 
-  /// The cell ground. Today wins over every wash: it is the one day that is
-  /// always worth finding at a glance.
   static Color groundOf(
     SageColors sage,
     DayMark mark, {
@@ -126,7 +104,6 @@ class CellDecoration extends StatelessWidget {
     return sage.card;
   }
 
-  /// The ink for a cell's own figures, following the ground.
   static Color inkOf(SageColors sage, DayMark mark, {required bool isToday}) {
     if (isToday) return sage.accentOn;
     if (mark.isNonWorking) return sage.warning;
@@ -147,11 +124,7 @@ class _Dot extends StatelessWidget {
   );
 }
 
-/// Diagonal hatching for the income-uncertainty span (spec 5.2, 8.1).
-///
-/// Stripes rather than a flat tint: the span is not a state of the day, it is a
-/// "might be here", and a hatch reads as provisional where a fill reads as
-/// settled.
+/// Diagonal hatching for the income-uncertainty span.
 class _HatchPainter extends CustomPainter {
   const _HatchPainter({required this.color});
 
@@ -162,9 +135,6 @@ class _HatchPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
-      // 0.45 read as near-invisible on the light card background (sand over
-      // white barely moves the channels); dark theme's light-on-dark stripe
-      // had headroom to spare.
       ..color = color.withValues(alpha: 0.75)
       ..strokeWidth = 1.5;
     for (double x = -size.height; x < size.width; x += _spacing) {
@@ -180,11 +150,7 @@ class _HatchPainter extends CustomPainter {
   bool shouldRepaint(_HatchPainter old) => old.color != color;
 }
 
-/// A dashed rounded rectangle: the soft deadline's border.
-///
-/// Flutter strokes no dashed border of its own, and `DashedButton` in the UI
-/// kit paints an outline of a whole card — this one takes a cell's radius and
-/// stroke.
+/// Dashed rounded rectangle for a soft deadline.
 class _DashedRectPainter extends CustomPainter {
   const _DashedRectPainter({required this.color, required this.radius});
 

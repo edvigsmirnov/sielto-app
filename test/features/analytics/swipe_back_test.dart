@@ -3,8 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/features/analytics/analytics_parts.dart';
 
-/// [SwipeBack] in isolation, no database involved: a fast rightward swipe
-/// pops the route it wraps, and a leftward one leaves it alone.
+/// A fast right swipe pops the route; a left one does not.
 void main() {
   Future<void> pumpPushed(WidgetTester tester) async {
     await tester.pumpWidget(

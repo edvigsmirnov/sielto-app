@@ -7,8 +7,7 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/calendar/calendar_cell.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
 
-/// What each colour and mark on a day cell means, drawn with the cell's own
-/// decoration so the key cannot drift from the grid.
+/// Explains the cell decorations using [CellDecoration] itself.
 Future<void> showCalendarLegend(
   BuildContext context, {
   required BudgetMode mode,

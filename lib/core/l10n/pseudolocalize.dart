@@ -1,6 +1,4 @@
-/// Substitution table, as two parallel strings so the pairing stays readable.
-/// Restricted to Latin-1 Supplement and Latin Extended-A, which the bundled
-/// fonts cover. Letters with no entry pass through.
+/// Substitutions within Latin-1 Supplement and Latin Extended-A.
 const String _plain = 'acdeghijklnorstuwyzACDEGHIJKLNORSTUWYZ';
 const String _accented = 'áçðéğĥíĵķłñóřšťúŵýžÁÇÐÉĞĤÍĴĶŁÑÓŘŠŤÚŴÝŽ';
 
@@ -11,12 +9,8 @@ final Map<String, String> _accents = Map<String, String>.fromIterables(
 
 final RegExp _letter = RegExp('[A-Za-z]');
 
-/// Rewrites [source] for layout testing: accents the letters, pads the result
-/// by [expansion] and brackets it.
-///
-/// The brackets expose truncation at either end; the padding stands in for
-/// languages that run longer than English. Text inside `{}` is copied
-/// verbatim — accenting a placeholder name would break interpolation.
+/// Accents letters, pads by [expansion] and brackets the result. Text inside
+/// `{}` is kept.
 String pseudolocalize(String source, {double expansion = 0.35}) {
   assert(_plain.length == _accented.length, 'substitution table is unpaired');
 

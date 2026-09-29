@@ -5,13 +5,8 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/incomes/income_form_page.dart' show DateField;
 
-/// Confirms when an income actually arrived (spec 5.4).
-///
-/// The expected date is a forecast; this is the fact. They are usually the
-/// same, so the dialog opens with the expected date filled in and one tap
-/// accepts it — the correction is there for the day the salary comes early.
-///
-/// Returns null when the dialog is dismissed, which leaves the record unmarked.
+/// Asks when an income arrived, prefilled with the expected date. Null when
+/// dismissed.
 Future<CalendarDate?> askReceiptDate(
   BuildContext context, {
   required CalendarDate expected,

@@ -15,11 +15,7 @@ import 'package:sielto/features/categories/category_form_page.dart';
 import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// The category list (spec 7): add, reorder, recolour, soft-delete with undo.
-///
-/// Renaming is missing from most rows on purpose — a title freezes once a
-/// visible payment binds to it, and the repository refuses the write even if
-/// the screen were routed around.
+/// Categories: add, reorder, edit, soft-delete with undo.
 class CategoriesPage extends ConsumerWidget {
   const CategoriesPage({super.key});
 
@@ -109,11 +105,7 @@ class CategoriesPage extends ConsumerWidget {
     );
   }
 
-  /// Renumbers the whole list with the standard gap. Cheap — a Space has tens
-  /// of categories, not thousands — and it avoids hunting for a free slot.
-  ///
-  /// [newIndex] comes from `onReorderItem`, which reports the position after
-  /// the dragged row was lifted out; no off-by-one correction is needed.
+  /// Renumbers the whole list. [newIndex] is already corrected for the removal.
   Future<void> _reorder(
     WidgetRef ref,
     List<Category> categories,
@@ -133,11 +125,7 @@ class CategoriesPage extends ConsumerWidget {
   }
 }
 
-/// One category: grip, mark, name, its default type, and a way in.
-///
-/// The grip leads rather than trails, because reordering categories is what
-/// sets the order they are offered in when filing a payment — it is the row's
-/// most-used control, not an afterthought (design section 7).
+/// Grip, mark, name, default type.
 class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
     required this.index,
@@ -168,8 +156,7 @@ class _CategoryTile extends StatelessWidget {
       ),
       confirmDismiss: (DismissDirection _) async {
         onDelete();
-        // The undo snackbar puts the row back, so the list is what decides
-        // whether it is gone, not the dismiss animation.
+        // The query decides removal, so undo restores the row.
         return false;
       },
       child: InkWell(

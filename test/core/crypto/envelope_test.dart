@@ -35,7 +35,7 @@ void main() {
       final DatabaseKey key = DatabaseKey(
         Uint8List.fromList(<int>[0, 15, 255]),
       );
-      // Single quotes, doubled to escape: this build rejects double quotes.
+      // Single quotes doubled: this build rejects double quotes.
       expect(key.toPragmaLiteral(), "'x''000fff'''");
     });
   });
@@ -67,8 +67,7 @@ void main() {
         wrappingKey: wrapping,
       );
 
-      // Flip one ciphertext bit. AES-GCM authenticates, so this must fail
-      // rather than yield a wrong key that silently corrupts the database.
+      // One flipped ciphertext bit must fail authentication.
       final Uint8List damaged = Uint8List.fromList(sealed.bytes);
       damaged[20] ^= 0x01;
 

@@ -20,15 +20,12 @@ import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// What is past due and still unpaid (spec 4.5).
-///
-/// Not scoped to a period: a payment missed two cycles ago is still missed,
-/// and the whole point of the figure is that it does not scroll away.
+/// Past-due unpaid payments, in any period.
 @immutable
 class OverdueSummary {
   const OverdueSummary({required this.payments, required this.total});
 
-  /// Oldest first — the order the list reads in.
+  /// Oldest first.
   final List<Payment> payments;
 
   final Decimal total;
@@ -38,8 +35,7 @@ class OverdueSummary {
   bool get isEmpty => payments.isEmpty;
 }
 
-/// Due before today and still unpaid (spec 4.5). Incomes are left out: an
-/// income that has not arrived is late, not missed — nothing is owed.
+/// Unpaid and due before today. Incomes are excluded.
 OverdueSummary summariseOverdue(List<Payment> payments, CalendarDate today) {
   final List<Payment> missed =
       payments
@@ -64,18 +60,13 @@ final Provider<OverdueSummary> overduePaymentsProvider =
       ),
     );
 
-/// The wide chip that says how much is owed late, on the Dashboard and under
-/// the Feed's figures. Draws nothing when there is nothing missed.
-///
-/// One figure and a way through to the detail: the sum is what a glance needs,
-/// and which payments make it up is a screen of its own.
+/// Total owed late, opening [OverduePage]. Draws nothing when empty.
 class OverdueChip extends ConsumerWidget {
   const OverdueChip({required this.money, this.margin, super.key});
 
   final MoneyFormat money;
 
-  /// Applied only when the chip has something to say, so an empty one leaves
-  /// no gap behind it.
+  /// Applied only when the chip shows.
   final EdgeInsets? margin;
 
   @override
@@ -140,12 +131,7 @@ Future<void> openOverduePage(
   ),
 );
 
-/// Every missed payment, oldest first.
-///
-/// The rows are the Feed's rows, gestures and all — tap to edit, the circle to
-/// settle, swipe to delete, long-press for the menu — because this is the same
-/// list of the same records, filtered. Settling one drops it out and off the
-/// total, and the screen empties as the debt is cleared.
+/// Every missed payment, oldest first, as Feed rows.
 class OverduePage extends ConsumerWidget {
   const OverduePage({required this.money, super.key});
 
@@ -188,8 +174,7 @@ class OverduePage extends ConsumerWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    // One heading per day, as in the Feed: how late a payment
-                    // is is half of what the row says.
+                    // One heading per day.
                     if (previous == null || previous.dueDate != payment.dueDate)
                       _DayHeading(
                         label: dates.dayMonth(
@@ -226,8 +211,7 @@ class OverduePage extends ConsumerWidget {
     );
   }
 
-  /// Marking paid never asks. It is the action the screen exists for, and
-  /// every row here is already unpaid, so there is no mark to clear.
+  /// Marks paid without asking.
   Future<void> _settle(
     BuildContext context,
     WidgetRef ref,
@@ -266,7 +250,7 @@ class OverduePage extends ConsumerWidget {
   }
 }
 
-/// How many, and how much, under the title.
+/// Count and total.
 class _Total extends StatelessWidget {
   const _Total({required this.summary, required this.money});
 
@@ -305,8 +289,7 @@ class _Total extends StatelessWidget {
   }
 }
 
-/// The day a group of missed payments fell on. Red, because every one of them
-/// is already in the past.
+/// Day heading, in red.
 class _DayHeading extends StatelessWidget {
   const _DayHeading({required this.label});
 

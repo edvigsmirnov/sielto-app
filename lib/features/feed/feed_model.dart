@@ -4,12 +4,8 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// One row of the Feed, whichever table it came from.
-///
-/// The Feed shows payments and incomes in one chronological list, so it needs
-/// one row type. This is the display twin of `LedgerEntry`, which the walker
-/// uses: this one keeps the fields a row draws (category, notes) and admits an
-/// unknown amount, which the walker cannot.
+/// A Feed row, from a payment or an income. Unlike `LedgerEntry`, the amount
+/// may be unknown.
 @immutable
 class FeedRecord {
   const FeedRecord({
@@ -46,7 +42,7 @@ class FeedRecord {
     id: i.id,
     date: i.expectedDate,
     title: i.title,
-    // Null is a floating amount, not zero: the figure is unknown (spec 4.7).
+    // Null: amount not known yet.
     amount: i.amount,
     isIncome: true,
     isPaid: i.isPaid,
@@ -67,13 +63,9 @@ class FeedRecord {
   final String? notes;
   final String? groupRecurringId;
 
-  /// The period the row is bound to, which decides whether it is frozen
-  /// (spec 5.5). Null until a recompute has placed it.
+  /// Null until a recompute binds it.
   final String? budgetPeriodId;
 
-  /// The same record at another position in its day.
-  ///
-  /// Used to hold a just-dropped order locally while the write lands.
   FeedRecord withSortOrder(int order) => FeedRecord(
     id: id,
     date: date,
@@ -91,24 +83,19 @@ class FeedRecord {
 
   bool get isMandatory => expenseType == ExpenseType.mandatory;
 
-  /// Overdue: due before today and still unpaid (spec 4.5). An unpaid income
-  /// is late, not overdue — no money has been missed.
+  /// Unpaid and due before today. Incomes are never overdue.
   bool isOverdue(CalendarDate today) =>
       !isIncome && !isPaid && date.isBefore(today);
 }
 
-/// The three groups a day splits into in `grouped` order mode (spec 4.5).
-/// Incomes first, then mandatory payments, then variable ones.
+/// Incomes, then mandatory, then variable.
 int _groupRank(FeedRecord r) {
   if (r.isIncome) return 0;
   return r.isMandatory ? 1 : 2;
 }
 
-/// Row order within one day.
-///
-/// In `grouped` mode the type decides the block and `sort_order` the position
-/// inside it; in `free` mode `sort_order` alone decides. Id breaks ties either
-/// way, because `sort_order` carries no uniqueness constraint (plan G2).
+/// `grouped`: type block, then `sort_order`. `free`: `sort_order`. Id breaks
+/// ties.
 int compareInDay(FeedRecord a, FeedRecord b, FeedOrderMode mode) {
   if (mode == FeedOrderMode.grouped) {
     final int byGroup = _groupRank(a).compareTo(_groupRank(b));
@@ -119,16 +106,13 @@ int compareInDay(FeedRecord a, FeedRecord b, FeedOrderMode mode) {
   return a.id.compareTo(b.id);
 }
 
-/// An entry in the flattened list the Feed renders.
 sealed class FeedItem {
   const FeedItem();
 
-  /// Stable across rebuilds, which is what keeps reorder animations and
-  /// dismiss gestures attached to the right row.
+  /// Stable across rebuilds for reorder and dismiss.
   String get key;
 }
 
-/// The day a group of records falls on.
 class FeedHeader extends FeedItem {
   const FeedHeader.day(this.date);
 
@@ -143,17 +127,14 @@ class FeedRow extends FeedItem {
 
   final FeedRecord record;
 
-  /// False for this row and every expense after it once the money runs out.
+  /// False for this row and every expense after it.
   final bool isCovered;
 
   @override
   String get key => 'row:${record.id}';
 }
 
-/// The line between what the money covers and what it does not (spec 4.9).
-///
-/// Keyed by the row it hangs off, because there is one per cycle: the list runs
-/// through many, and each says for itself where its own money ran out.
+/// Where the money runs out. One per cycle, keyed by its row.
 class FeedCutoff extends FeedItem {
   const FeedCutoff(this.date, this.entryId);
 
@@ -164,18 +145,13 @@ class FeedCutoff extends FeedItem {
   String get key => 'cutoff:$entryId';
 }
 
-/// Flattens records into the list the Feed draws.
-///
-/// Strictly chronological. An overdue payment stays on the day it was due —
-/// lifting the late ones into a section of their own moved them away from the
-/// dates that explain them, and the row already says it is late by drawing
-/// itself in red (spec 4.5). What is owed in total is the chip above the list.
+/// Chronological; overdue rows stay on their due day.
 List<FeedItem> buildFeedItems({
   required List<FeedRecord> records,
   required FeedOrderMode orderMode,
   Map<String, bool> coverage = const <String, bool>{},
 
-  /// Row id to which side of it the cutoff line falls on, one entry per cycle.
+  /// Row id to the side of the row the cutoff falls on.
   Map<String, bool> moneyEndsAt = const <String, bool>{},
 }) {
   final Map<String, List<FeedRecord>> byDay = <String, List<FeedRecord>>{};
@@ -190,8 +166,7 @@ List<FeedItem> buildFeedItems({
     final List<FeedRecord> rows = byDay[day]!
       ..sort((FeedRecord a, FeedRecord b) => compareInDay(a, b, orderMode));
     for (final FeedRecord r in rows) {
-      // Above the row when the money could not pay it, below when it paid it
-      // and stopped there (spec 4.9, and the zero rule over it).
+      // True: below the row. False: above.
       final bool? below = moneyEndsAt[r.id];
       if (below == false) items.add(FeedCutoff(r.date, r.id));
       items.add(FeedRow(r, isCovered: coverage[r.id] ?? true));

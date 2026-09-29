@@ -10,19 +10,18 @@ void main() {
   });
 
   test('both decimal separators mean the same thing', () {
-    // A Russian keyboard's comma and a numpad's dot must not disagree.
     expect(parse('12.50'), parse('12,50'));
     expect(parse('12,50'), Decimal.parse('12.5'));
   });
 
   test('group separators are stripped', () {
     expect(parse('1 200,50'), Decimal.parse('1200.5'));
-    // Including the non-breaking space intl emits.
+    // Includes intl's non-breaking space.
     expect(parse('1 200.50'), Decimal.parse('1200.5'));
   });
 
   test('zero parses', () {
-    // A zero-amount record is a dated to-do, not an invalid entry (spec 4.8).
+    // Zero is a dated to-do.
     expect(parse('0'), Decimal.zero);
   });
 
@@ -38,7 +37,7 @@ void main() {
   });
 
   test('a negative value parses, and is the form s job to refuse', () {
-    // The sign comes from the record type, never from the number (spec 6.7).
+    // Negative parses; the form rejects it.
     expect(parse('-5'), Decimal.fromInt(-5));
   });
 }

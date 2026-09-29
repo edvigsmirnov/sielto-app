@@ -8,7 +8,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_entry.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// The balance at the end of each of the next few days.
+/// End-of-day balances for the next few days.
 @immutable
 class DailyProjection {
   const DailyProjection({
@@ -21,15 +21,10 @@ class DailyProjection {
 
   final List<CalendarDate> days;
 
-  /// The running balance at the close of each day in [days].
   final List<Decimal> balances;
 
-  /// Planned spend across the window divided by its length.
-  ///
-  /// A planner records what is *going* to be spent, not what was — so this is
-  /// a forecast of the coming days, never an average of past behaviour. It is
-  /// zero when nothing is planned, which is honest: the app knows of no
-  /// spending, not that there will be none.
+  /// Planned spend over the window divided by its length. Zero when nothing is
+  /// planned.
   final Decimal averageSpendPerDay;
 
   bool get isEmpty => days.isEmpty;
@@ -43,10 +38,7 @@ class DailyProjection {
       : balances.reduce((Decimal a, Decimal b) => a > b ? a : b);
 }
 
-/// Walks the ledger day by day over the projection window.
-///
-/// The same chronological rule as everywhere else: an entry lands on its own
-/// date, so income raises the line on the day it arrives and not before.
+/// Day-by-day walk over the window; entries land on their own dates.
 DailyProjection projectDays({
   required Decimal available,
   required List<LedgerEntry> entries,
@@ -58,8 +50,7 @@ DailyProjection projectDays({
   ];
   final CalendarDate last = days.last;
 
-  // Everything already behind us is part of the opening balance: the walk
-  // starts from where the money actually stands today.
+  // Entries before the window are in the opening balance.
   Decimal balance = available;
   for (final LedgerEntry e in entries) {
     if (!e.date.isBefore(from)) continue;
@@ -90,7 +81,7 @@ DailyProjection projectDays({
   );
 }
 
-/// The next ten days as a column chart, with the average spend beside it.
+/// Next ten days as columns.
 class ProjectionCard extends StatelessWidget {
   const ProjectionCard({
     required this.projection,
@@ -114,8 +105,6 @@ class ProjectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          // The average sits under the main figure, where it qualifies the
-          // date; repeating it here would say the same thing twice.
           Center(
             child: Text(
               plural('dashboard.projection', DailyProjection.horizonDays),
@@ -156,8 +145,7 @@ class _Columns extends StatelessWidget {
     final Decimal highest = projection.highest;
     final Decimal lowest = projection.lowest;
 
-    // The scale spans zero whenever the balance crosses it, so a column that
-    // goes negative reads as below the line rather than merely short.
+    // The scale includes zero so negative columns go below the line.
     final Decimal top = highest > Decimal.zero ? highest : Decimal.zero;
     final Decimal bottom = lowest < Decimal.zero ? lowest : Decimal.zero;
     final double span = (top - bottom).toDouble();

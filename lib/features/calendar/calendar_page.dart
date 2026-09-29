@@ -36,13 +36,7 @@ import 'package:sielto/features/periods/freeze_ui.dart' show guardFreeze;
 import 'package:sielto/features/shell/app_header.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// The Calendar screen: Day / Week / Month / Year over one shared date
-/// (spec 8.1).
-///
-/// A real calendar rather than a helper widget. The four scales are one screen
-/// because they share [selectedDateProvider]: switching scale reframes the
-/// same date instead of starting over, which is what makes the switcher feel
-/// like a zoom.
+/// Day, Week, Month and Year over one [selectedDateProvider].
 class CalendarPage extends ConsumerWidget {
   const CalendarPage({super.key});
 
@@ -84,8 +78,7 @@ class CalendarPage extends ConsumerWidget {
       backgroundColor: context.sage.surface,
       appBar: AppHeader(title: tr('nav.calendar')),
       floatingActionButton: view == CalendarView.day
-          // Only the Day view has one date to add to. Elsewhere the entry point
-          // is a long press on the day itself (spec 8.1).
+          // Only the Day view has a FAB; other views add through a long press.
           ? FloatingActionButton(
               backgroundColor: context.sage.accent,
               foregroundColor: context.sage.accentOn,
@@ -94,7 +87,6 @@ class CalendarPage extends ConsumerWidget {
               child: const Icon(Icons.add),
             )
           : null,
-      // Above the bottom bar, where a thumb browsing the grid already is.
       bottomNavigationBar: atBottom
           ? SafeArea(
               top: false,
@@ -112,9 +104,7 @@ class CalendarPage extends ConsumerWidget {
               controls,
               const SizedBox(height: SageSpace.sm),
             ],
-            // No freeze banner. The banner speaks for one period and the
-            // Calendar is not bound to one; a frozen record still says so
-            // itself in the Day view (spec 5.5).
+            // No freeze banner: the Calendar is not bound to one period.
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -140,11 +130,8 @@ class CalendarPage extends ConsumerWidget {
   }
 }
 
-/// A horizontal swipe steps the scale on screen, like the arrows (spec 8.1).
-///
-/// Not in the Day view, where a swipe on a row marks or deletes it, nor with
-/// the controls at the bottom, where a horizontal swipe belongs to the shell's
-/// tabs.
+/// A horizontal swipe steps the view, like the arrows. Off in the Day view and
+/// with the controls at the bottom.
 class _Swipe extends ConsumerWidget {
   const _Swipe({
     required this.view,
@@ -176,7 +163,6 @@ class _Swipe extends ConsumerWidget {
   }
 }
 
-/// Day / Week / Month / Year. The scale, never the date.
 class _ViewSwitcher extends ConsumerWidget {
   const _ViewSwitcher({required this.view});
 
@@ -193,11 +179,7 @@ class _ViewSwitcher extends ConsumerWidget {
       );
 }
 
-/// Arrows either side of the label, and a tap on the label opens a picker
-/// (spec 8.1).
-///
-/// One control for all four scales, because the arrows mean the same thing
-/// everywhere — one step of whatever is on screen.
+/// Arrows step the view; tapping the label opens a picker.
 class _DateNavigator extends ConsumerWidget {
   const _DateNavigator({
     required this.view,
@@ -213,8 +195,7 @@ class _DateNavigator extends ConsumerWidget {
   final DateLabels dates;
   final MoneyFormat money;
 
-  /// The two outer slots are the same width either way, so the arrows and the
-  /// label never shift when one of them empties.
+  /// Fixed width, so the label does not shift when an arrow hides.
   static const double _slot = 48;
 
   @override
@@ -270,7 +251,6 @@ class _DateNavigator extends ConsumerWidget {
         ),
         SizedBox(
           width: _slot,
-          // Only the scales that draw decorated cells have anything to key.
           child: view == CalendarView.month || view == CalendarView.week
               ? IconButton(
                   onPressed: () => showCalendarLegend(
@@ -305,7 +285,7 @@ class _DateNavigator extends ConsumerWidget {
     };
   }
 
-  /// The picker jumps rather than steps, at the grain of the scale on screen.
+  /// Jumps at the grain of the current view.
   Future<void> _pick(BuildContext context, WidgetRef ref) async {
     final CalendarDate? picked = await pickCalendarDate(
       context,
@@ -407,12 +387,8 @@ class _Body extends ConsumerWidget {
   }
 }
 
-/// Slides the range on screen sideways when it steps, in the direction of
-/// travel, so the arrows and the swipe read as moving through time.
-///
-/// Wraps the views themselves, not [_Body]: the views take their data as
-/// arguments, so the one sliding out keeps its own figures instead of
-/// redrawing with the incoming range's. A change of scale fades instead.
+/// Slides the view sideways on a step, in the direction of travel; fades on a
+/// change of view. Wraps the views so the outgoing one keeps its own data.
 class _StepSlide extends StatefulWidget {
   const _StepSlide({
     required this.view,
@@ -422,7 +398,7 @@ class _StepSlide extends StatefulWidget {
 
   final CalendarView view;
 
-  /// The first day of the range on screen.
+  /// First day of the range on screen.
   final CalendarDate anchor;
   final Widget child;
 
@@ -431,7 +407,7 @@ class _StepSlide extends StatefulWidget {
 }
 
 class _StepSlideState extends State<_StepSlide> {
-  /// 1 forward in time, -1 back, 0 for a change of scale.
+  /// 1 forward, -1 back, 0 for a change of view.
   int _direction = 0;
 
   @override
@@ -458,8 +434,7 @@ class _StepSlideState extends State<_StepSlide> {
           alignment: Alignment.topCenter,
           children: <Widget>[...previous, ?child],
         ),
-        // A fresh closure each build, so the outgoing child is rebuilt with
-        // the latest direction too — it leaves the way the new one arrives.
+        // Rebuilt each time, so the outgoing child also uses the latest direction.
         transitionBuilder: (Widget child, Animation<double> animation) {
           if (_direction == 0) {
             return FadeTransition(opacity: animation, child: child);
@@ -481,11 +456,7 @@ class _StepSlideState extends State<_StepSlide> {
   }
 }
 
-/// The Day view and the four things a row can do there.
-///
-/// The handlers mirror the Feed's exactly — including the confirmations and the
-/// freeze guard — because the record is the same record; only the list around
-/// it differs.
+/// Day view actions; same behaviour as the Feed.
 class _DayBody extends ConsumerWidget {
   const _DayBody({required this.day, required this.today, required this.money});
 
@@ -526,8 +497,7 @@ class _DayBody extends ConsumerWidget {
     openPaymentForm(context, paymentId: record.id, date: record.date);
   }
 
-  /// Marking something paid never asks; clearing the mark on a mandatory
-  /// payment does (spec 4.5).
+  /// Unmarking a mandatory payment asks for confirmation.
   Future<void> _togglePaid(
     BuildContext context,
     WidgetRef ref,
@@ -550,8 +520,7 @@ class _DayBody extends ConsumerWidget {
     }
 
     if (next && record.amount == null) {
-      // The figure has to exist before a receipt can be confirmed, or the
-      // period's arithmetic stays uncomputable (spec 4.5).
+      // A receipt needs an amount.
       openIncomeForm(context, incomeId: record.id, date: record.date);
       return;
     }
@@ -567,11 +536,10 @@ class _DayBody extends ConsumerWidget {
       () => repos.incomes.update(
         record.id,
         isPaid: Value<bool>(next),
-        // Clearing the receipt clears the fact with it (spec 5.4).
         actualDate: Value<CalendarDate?>(actual),
       ),
     );
-    // An anchor arriving early moves the cycle it opens (spec 5.4).
+    // An early anchor moves its cycle.
     ref.invalidate(periodRefreshProvider);
   }
 

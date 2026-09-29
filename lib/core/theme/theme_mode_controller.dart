@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 
-/// Theme selection. Device-local, not synced: members of a shared Space set
-/// this independently (plan section 5, rule 5).
+/// Device-local theme mode.
 class ThemeModeController extends Notifier<ThemeMode> {
   @override
   ThemeMode build() => ref.watch(localSettingsProvider).themeMode;
@@ -13,8 +12,7 @@ class ThemeModeController extends Notifier<ThemeMode> {
     state = mode;
   }
 
-  /// Cycles system -> light -> dark. Used by the token gallery; Settings
-  /// offers the three as an explicit choice.
+  /// System, light, dark.
   Future<void> cycle() => set(switch (state) {
     ThemeMode.system => ThemeMode.light,
     ThemeMode.light => ThemeMode.dark,

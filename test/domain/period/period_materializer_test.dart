@@ -38,8 +38,6 @@ void main() {
         fixed('salary', 15),
       ]);
       for (int i = 0; i < periods.length - 1; i++) {
-        // end = next anchor - 1: a payment due on the next anchor belongs to
-        // the next period (spec 4.7).
         expect(periods[i].endDate!.addDays(1), periods[i + 1].startDate);
       }
     });
@@ -48,7 +46,6 @@ void main() {
       final List<MaterializedPeriod> periods = run(<AnchorSchedule>[
         fixed('salary', 26),
       ], from: '2026-03-10');
-      // The 10th of March sits in the cycle that began on 26 February.
       expect(periods.first.startDate, d('2026-02-26'));
       expect(periods.first.endDate, d('2026-03-25'));
     });
@@ -88,8 +85,7 @@ void main() {
       final List<String> anchors = periods
           .map((MaterializedPeriod p) => p.anchorDate.toIso())
           .toList();
-      // 31 clamps to the 29th in a leap February, then resolves forward off
-      // the weekend: 2028-02-29 is a Tuesday, so it stays.
+      // 31 clamps to 29 in a leap February; 2028-02-29 is a Tuesday.
       expect(anchors, contains('2028-02-29'));
     });
 
@@ -121,7 +117,6 @@ void main() {
     });
 
     test('coincident anchors merge instead of making a zero-length period', () {
-      // The invariant that rules out degenerate periods (spec 4.7).
       final List<MaterializedPeriod> periods = run(<AnchorSchedule>[
         fixed('mine', 15),
         fixed('partner', 15),
@@ -134,7 +129,7 @@ void main() {
     });
 
     test('anchors that only sometimes coincide merge only then', () {
-      // The 30th clamps to the 28th in February, colliding with the 28th.
+      // The 30th clamps to the 28th in February and merges with it.
       final List<MaterializedPeriod> periods = run(
         <AnchorSchedule>[fixed('a', 28), fixed('b', 30)],
         from: '2026-02-01',
@@ -168,8 +163,6 @@ void main() {
 
   group('edge cases', () {
     test('no anchors means no periods, which is a valid state', () {
-      // A Space with no income yet is allowed to exist indefinitely
-      // (spec 4.7).
       expect(run(const <AnchorSchedule>[]), isEmpty);
     });
 
@@ -186,7 +179,7 @@ void main() {
       final MaterializedPeriod may = periods.firstWhere(
         (MaterializedPeriod p) => p.anchorDate.month == 5,
       );
-      // 1 May is a holiday and a Friday, so the anchor moves to Monday.
+      // 1 May is a Friday and a holiday: the anchor moves to Monday.
       expect(may.anchorDate, d('2026-05-04'));
       expect(may.windowStart, d('2026-04-30'));
     });

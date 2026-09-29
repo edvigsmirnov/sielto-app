@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/core/ui/leaf_scatter.dart';
 
-/// The scatter runs to its end and says so, whichever way the wind blows.
 void main() {
   Future<ui.Image> blank() async {
     final ui.PictureRecorder recorder = ui.PictureRecorder();

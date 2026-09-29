@@ -1,44 +1,30 @@
 import 'package:meta/meta.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// What may still be edited in a period (spec 5.5).
 enum FreezeState {
-  /// Everything is editable.
   open,
 
-  /// Freezes within [FreezeEvaluator.warningDays] days. The dashboard warns,
-  /// so a wrong figure can still be caught.
+  /// Freezes within [FreezeEvaluator.warningDays] days.
   closingSoon,
 
-  /// Amount, date, paid status, type and deletion are read-only. The category
-  /// of a payment and appended notes are still allowed.
+  /// Amount, date, paid status, type and deletion are read-only. Category and
+  /// appended notes stay editable.
   frozen,
 }
 
-/// Decides whether a period is frozen.
-///
-/// The flag is never stored. Computing it on demand removes the background job
-/// that would otherwise have to stamp it, and removes the window in which a
-/// stored flag and the real date disagree (spec 5.5).
-///
-/// "Today" always comes from the Space timezone. Two members in different
-/// countries must not disagree about whether a period froze overnight.
+/// Computes the freeze state on demand; it is never stored. "Today" is in the
+/// Space's timezone.
 @immutable
 class FreezeEvaluator {
   const FreezeEvaluator({this.freezeAfterDays = 14, this.warningDays = 2});
 
-  /// Days after a period ends before it freezes.
+  /// Days after a period ends until it freezes.
   final int freezeAfterDays;
 
-  /// How long the warning shows before that.
+  /// Days of warning before that.
   final int warningDays;
 
-  /// [endDate] null means an open context — Flow and Budget. Those never
-  /// freeze, and that is a consequence of having no end, not an exemption
-  /// (spec 4.7).
-  ///
-  /// [unfrozenUntil] is the creator's 48-hour override; while it is in the
-  /// future the period is open again.
+  /// Null [endDate] never freezes. [unfrozenUntil] reopens the period until then.
   FreezeState evaluate({
     required CalendarDate? endDate,
     required CalendarDate today,
@@ -52,8 +38,6 @@ class FreezeEvaluator {
     }
 
     final CalendarDate freezesOn = endDate.addDays(freezeAfterDays);
-    // Frozen once the deadline is behind us; the SQL form is
-    // `(end_date + 14 days) < today`.
     if (freezesOn.isBefore(today)) return FreezeState.frozen;
 
     if (!freezesOn.addDays(-warningDays).isAfter(today)) {
@@ -76,13 +60,10 @@ class FreezeEvaluator {
       ) ==
       FreezeState.frozen;
 
-  /// When an unfreeze started now would lapse.
   DateTime unfreezeExpiry(DateTime nowUtc) =>
       nowUtc.add(const Duration(hours: 48));
 
-  /// Appends to a note without touching what is already there. A frozen period
-  /// allows additions, never edits, so the original text stays as written
-  /// (spec 5.5).
+  /// Appends without changing the existing text.
   static String appendNote(String? existing, String addition, CalendarDate on) {
     final String stamped = '[added ${on.toIso()}]: $addition';
     if (existing == null || existing.trim().isEmpty) return stamped;

@@ -1,17 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Sage design tokens.
-///
-/// Light values come from the design canvas. Dark values are derived by role,
-/// not inverted. See docs/IMPLEMENTATION_PLAN.md section 5.
-///
-/// Rules, enforced by test/core/theme/sage_theme_test.dart:
-///   1. Roles swap, hues don't.
-///   2. [accent] and [accentOn] are the wordmark's pair ([SageBrand]),
-///      swapped between the themes; [warningAccent] is identical in both.
-///   3. Elevation: shadow on light, [cardRaised] on dark.
-///   4. Dark grounds keep a green bias.
-///   5. No colour literals outside this file. Use `context.sage.<token>`.
+/// Sage design tokens. Dark values are derived by role, not inverted.
+/// Invariants are checked in test/core/theme/sage_theme_test.dart.
 @immutable
 class SageColors extends ThemeExtension<SageColors> {
   const SageColors({
@@ -49,7 +39,7 @@ class SageColors extends ThemeExtension<SageColors> {
   /// Cards, inputs, rows.
   final Color card;
 
-  /// Raised surface. Equals [card] on light, where shadow carries elevation.
+  /// Raised surface. Equals [card] on light.
   final Color cardRaised;
 
   /// Primary text.
@@ -61,7 +51,7 @@ class SageColors extends ThemeExtension<SageColors> {
   /// Secondary text.
   final Color inkSecondary;
 
-  /// Field labels. Holds 4.5:1 at 10px in both themes.
+  /// Field labels. 4.5:1 at 10px in both themes.
   final Color inkLabel;
 
   /// Row dividers.
@@ -70,24 +60,17 @@ class SageColors extends ThemeExtension<SageColors> {
   /// Input and segment borders.
   final Color border;
 
-  /// Solid fills: filled buttons, switches, the FAB, a selected segment,
-  /// today in the Calendar. The wordmark's green on light, its letters' pale
-  /// green on dark.
+  /// Solid fills: filled buttons, switches, FAB, selected segment, today.
   final Color accent;
 
-  /// Positive figures, primary action text. Green coverage dot.
+  /// Positive figures, primary action text, green coverage dot.
   final Color accentStrong;
 
-  /// Filled surface sitting behind accent text.
-  ///
-  /// It has **no theme-invariant foreground**: it is a light green on light
-  /// and a dark green on dark, so it needs [accentOn] in one theme and
-  /// [accentStrong] in the other. A widget that wants one fill and one
-  /// foreground across both themes uses [accent] with [accentOn] instead —
-  /// pairing this token with [accentOn] renders dark-on-dark.
+  /// Fill behind accent text. Pair with [accentOn] on light and [accentStrong] on
+  /// dark.
   final Color accentFill;
 
-  /// Foreground on a solid [accent] fill: the other half of the pair.
+  /// Foreground on [accent].
   final Color accentOn;
 
   /// Selected-card background.
@@ -96,7 +79,7 @@ class SageColors extends ThemeExtension<SageColors> {
   /// Icon chips, secondary tint.
   final Color accentTintAlt;
 
-  /// Overspend, destructive actions. Red coverage dot.
+  /// Overspend, destructive actions, red coverage dot.
   final Color danger;
 
   /// Overdue section background.
@@ -105,7 +88,7 @@ class SageColors extends ThemeExtension<SageColors> {
   /// Warning text.
   final Color warning;
 
-  /// Theme-invariant. Orange coverage dot: covered exactly, nothing spare.
+  /// Orange coverage dot. Same in both themes.
   final Color warningAccent;
 
   /// Warning wash.
@@ -117,7 +100,6 @@ class SageColors extends ThemeExtension<SageColors> {
   /// Band fill.
   final Color sandTint;
 
-  /// From the design canvas.
   static const SageColors light = SageColors(
     canvas: Color(0xFFEEF1EA),
     surface: Color(0xFFF5F7F1),
@@ -125,8 +107,6 @@ class SageColors extends ThemeExtension<SageColors> {
     cardRaised: Color(0xFFFFFFFF),
     ink: Color(0xFF2B2F28),
     inkHeading: Color(0xFF243226),
-    // Raised from canvas .60/.50, which measured 3.69:1 and 3.0:1 against a
-    // 4.5:1 AA bar. Ordering preserved: secondary darker than labels.
     inkSecondary: Color(0xC72B2F28), // ink @ .78 -> 6.20:1 on canvas
     inkLabel: Color(0xAC2B2F28), // ink @ .675 -> 4.55:1 on canvas
     hairline: Color(0x142B2F28), // ink @ .08
@@ -146,7 +126,6 @@ class SageColors extends ThemeExtension<SageColors> {
     sandTint: Color(0xFFD8C9A8),
   );
 
-  /// Derived by role. Not an inversion.
   static const SageColors dark = SageColors(
     canvas: Color(0xFF131813),
     surface: Color(0xFF171D18),
@@ -258,15 +237,12 @@ class SageColors extends ThemeExtension<SageColors> {
   }
 }
 
-/// Corner radii from the Sage design canvas.
-/// The brand's own colours, taken from the wordmark artwork. Theme-independent:
-/// the welcome screen and the Android splash are the same green in light and
-/// dark, because the artwork is.
+/// Wordmark colours. Theme-independent.
 abstract final class SageBrand {
-  /// The wordmark's background. Also `splash_background` on Android.
+  /// Wordmark background; Android `splash_background`.
   static const Color night = Color(0xFF213627);
 
-  /// The wordmark's letters.
+  /// Wordmark letters.
   static const Color leaf = Color(0xFFBDC9A7);
 }
 
@@ -279,9 +255,8 @@ abstract final class SageRadius {
   static const double sheet = 30;
 }
 
-/// Spacing rhythm from the Sage design canvas.
 abstract final class SageSpace {
-  /// Vertical padding on a list row, above its hairline.
+  /// Vertical padding of a list row.
   static const double row = 9;
 
   /// Horizontal content gutter.
@@ -297,7 +272,6 @@ abstract final class SageSpace {
   static const double xl = 28;
 }
 
-/// Shorthand for `Theme.of(context).extension<SageColors>()!`.
 extension SageColorsX on BuildContext {
   SageColors get sage => Theme.of(this).extension<SageColors>()!;
 }

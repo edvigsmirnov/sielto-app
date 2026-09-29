@@ -5,19 +5,14 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-/// M1 exit criterion: the file on disk is unreadable by a third-party client.
-///
-/// Also proves the SQLCipher build is actually linked. Plain SQLite ignores
-/// `PRAGMA key` silently and would leave a readable file, so these assertions
-/// fail loudly if the `hooks` block in pubspec.yaml stops taking effect.
+/// The database file is unreadable without the key, and SQLCipher is linked:
+/// plain SQLite ignores `PRAGMA key`.
 void main() {
   late Directory dir;
   late String path;
 
-  /// SQLCipher takes a raw key as the string `x'<hex>'`, skipping its
-  /// passphrase KDF — the DEK is already random, deriving from it adds nothing.
-  /// The documented spelling wraps that in double quotes, which this build
-  /// rejects (SQLITE_DQS=0), so the quotes are single and doubled to escape.
+  /// `x'<hex>'` in single quotes; this build rejects double quotes
+  /// (SQLITE_DQS=0).
   String rawKeyLiteral(Uint8List bytes) {
     final String hex = bytes
         .map((int b) => b.toRadixString(16).padLeft(2, '0'))
@@ -43,8 +38,7 @@ void main() {
   });
 
   tearDown(() {
-    // Windows keeps a lock until every handle is gone; a failed test can leave
-    // one behind, and a stale temp directory is not worth failing over.
+    // Windows may keep a lock; a stale temp directory is ignored.
     try {
       dir.deleteSync(recursive: true);
     } on FileSystemException {
@@ -53,7 +47,7 @@ void main() {
   });
 
   test('SQLCipher is the linked build', () {
-    // cipher_version is absent from plain SQLite.
+    // Plain SQLite has no cipher_version.
     final Database db = sqlite3.openInMemory();
     addTearDown(db.close);
     final ResultSet result = db.select('PRAGMA cipher_version');

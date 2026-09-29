@@ -14,18 +14,13 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/periods/holiday_service.dart';
 import 'package:sielto/features/periods/period_service.dart';
 
-/// Set once the database is open, by the startup path in main.dart.
+/// Overridden at startup once the database is open.
 final Provider<AppDatabase> databaseProvider = Provider<AppDatabase>(
   (Ref ref) => throw StateError('databaseProvider was not overridden'),
 );
 
-/// Every repository.
-///
-/// The clock here is UTC on purpose. Repositories ask it for one thing only —
-/// `nowUtc`, the stamp on every write — and that instant is the same in every
-/// zone. "Today" is a different question, belongs to a Space, and is answered
-/// by [spaceClockProvider]; keeping the two apart is also what stops the
-/// repository graph from depending on which Space is open.
+/// Every repository. The clock is UTC: repositories only stamp writes. "Today"
+/// comes from [spaceClockProvider].
 class Repositories {
   Repositories({
     required this.db,
@@ -55,13 +50,9 @@ class Repositories {
   final IncomeRuleRepository incomeRules;
   final BudgetPeriodRepository periods;
 
-  /// Reference data about a country rather than a user's records, so neither
-  /// of these carries sync columns (spec 5.1.1, 5.1.2).
   final HolidayRepository holidays;
   final CustomNonWorkingDayRepository customDays;
 
-  /// Read-only aggregates over the tables above. Neither writes anything, so
-  /// neither takes the clock or the user id (spec 8.1, 8.2).
   final CalendarRepository calendar;
   final AnalyticsRepository analytics;
 
@@ -76,7 +67,6 @@ final Provider<Repositories> repositoriesProvider = Provider<Repositories>(
   ),
 );
 
-/// Every Space on this device, live.
 final StreamProvider<List<Space>> spaceListProvider =
     StreamProvider<List<Space>>(
       (Ref ref) => ref.watch(repositoriesProvider).spaces.watchAll(),
@@ -87,7 +77,7 @@ final StreamProvider<List<Space>> archivedSpacesProvider =
       (Ref ref) => ref.watch(repositoriesProvider).spaces.watchArchived(),
     );
 
-/// Which Space to open. Persisted so a relaunch lands where the user left off.
+/// Persisted across launches.
 class CurrentSpaceIdController extends Notifier<String?> {
   @override
   String? build() => ref.watch(localSettingsProvider).currentSpaceId;
@@ -103,9 +93,7 @@ currentSpaceIdProvider = NotifierProvider<CurrentSpaceIdController, String?>(
   CurrentSpaceIdController.new,
 );
 
-/// The stored selection resolved against the Spaces that actually exist. Falls
-/// back to the first Space when the stored id is gone, and to null when there
-/// are none — which is what sends the user to onboarding.
+/// The stored selection, else the first Space, else null (onboarding).
 final Provider<AsyncValue<Space?>> resolvedSpaceProvider =
     Provider<AsyncValue<Space?>>((Ref ref) {
       final String? selected = ref.watch(currentSpaceIdProvider);
@@ -118,18 +106,12 @@ final Provider<AsyncValue<Space?>> resolvedSpaceProvider =
       });
     });
 
-/// The Space the app is showing, or null before one exists.
-///
-/// Deliberately a root-level provider rather than something scoped per
-/// subtree: a scoped override reaches only the widgets that read it directly,
-/// while every provider derived from it would still resolve against the root —
-/// and silently see no Space at all.
+/// The open Space, or null. Root-level: never scope it with an override.
 final Provider<Space?> currentSpaceProvider = Provider<Space?>(
   (Ref ref) => ref.watch(resolvedSpaceProvider).value,
 );
 
-/// One definition of "today" per Space (plan section 2, invariant 7). Falls
-/// back to UTC before a Space exists.
+/// UTC before a Space exists.
 final Provider<SpaceClock> spaceClockProvider = Provider<SpaceClock>((Ref ref) {
   final Space? space = ref.watch(currentSpaceProvider);
   return SpaceClock(timezone: space?.timezone ?? 'UTC');
@@ -144,57 +126,37 @@ final Provider<HolidayService> holidayServiceProvider =
       );
     });
 
-/// The days the user marked by hand, live. App-level, not per Space
-/// (spec 5.1.2).
 final StreamProvider<List<CustomNonWorkingDay>> customNonWorkingDaysProvider =
     StreamProvider<List<CustomNonWorkingDay>>(
       (Ref ref) => ref.watch(repositoriesProvider).customDays.watchAll(),
     );
 
-/// Which days count as non-working when an income date is resolved
-/// (spec 5.1.1).
-///
-/// The country is the Space's own if it set one, otherwise the global default,
-/// otherwise none — the spec's three priority levels, resolved here so the
-/// engine below never has to know about settings.
+/// Non-working days for income dates. Country: the Space's, else the default,
+/// else none.
 final FutureProvider<ResolvedCalendar> resolvedCalendarProvider =
     FutureProvider<ResolvedCalendar>((Ref ref) {
       final CalendarDate today = ref.watch(spaceClockProvider).today();
       return _resolveCalendar(ref, <int>{
-        // The horizon, not the calendar year: a monthly cycle materialised in
-        // July already reaches into January (spec 5.1.1).
+        // Materialisation reaches into next year.
         today.year,
         today.addMonths(PeriodService.incomeHorizonMonths).year,
       });
     });
 
-/// The same calendar resolved for one arbitrary year.
-///
-/// The Calendar screen browses to any year, and [resolvedCalendarProvider]
-/// only covers the materialisation horizon — outside it, holidays would go
-/// unmarked (spec 8.1).
-///
-/// The type is inferred: `flutter_riverpod` does not export
-/// `FutureProviderFamily`.
+/// The calendar for one year, for browsing outside the materialisation years.
+/// Type inferred: `flutter_riverpod` does not export `FutureProviderFamily`.
 final calendarForYearProvider = FutureProvider.family<ResolvedCalendar, int>(
   (Ref ref, int year) => _resolveCalendar(ref, <int>{year}),
 );
 
-/// Resolves the country and the fetch permission, then the calendar.
-///
-/// The country is the Space's own if it set one, otherwise the global default,
-/// otherwise none — the spec's three priority levels, resolved here so the
-/// engine below never has to know about settings.
 Future<ResolvedCalendar> _resolveCalendar(Ref ref, Set<int> years) {
   final Space? space = ref.watch(currentSpaceProvider);
 
-  // Through the controllers, not the store: a store read would not rebuild
-  // this when the setting changes.
+  // Watched through the controllers, which notify on change.
   final String? defaultCountry = ref.watch(defaultCountryProvider);
   final bool consented = ref.watch(holidayConsentProvider) ?? false;
   final bool offline = ref.watch(offlineModeProvider);
 
-  // Marking a day non-working has to change the answer immediately.
   ref.watch(customNonWorkingDaysProvider);
 
   return ref
@@ -206,8 +168,7 @@ Future<ResolvedCalendar> _resolveCalendar(Ref ref, Set<int> years) {
       );
 }
 
-/// How far ahead the open Space's periods are asked to reach. Null until
-/// the Feed scrolls past what exists; it only ever moves forward.
+/// How far ahead periods must reach. Null until asked; only moves forward.
 class PeriodReachController extends Notifier<CalendarDate?> {
   @override
   CalendarDate? build() {
@@ -226,18 +187,12 @@ periodReachProvider = NotifierProvider<PeriodReachController, CalendarDate?>(
   PeriodReachController.new,
 );
 
-/// Brings periods and future occurrences up to date for the open Space.
-///
-/// Watched by the screens that need periods, so opening a Space is what
-/// triggers the recompute. It reads the Space row and the clock, and neither
-/// changes when it writes — so this cannot feed itself.
+/// Recomputes periods and future occurrences for the open Space.
 final FutureProvider<PeriodRefresh> periodRefreshProvider =
     FutureProvider<PeriodRefresh>((Ref ref) async {
       final Space? space = ref.watch(currentSpaceProvider);
       if (space == null) return const PeriodRefresh();
 
-      // The calendar decides where every anchor lands, so it is resolved
-      // before anything is written, not alongside.
       final ResolvedCalendar resolved = await ref.watch(
         resolvedCalendarProvider.future,
       );
@@ -252,7 +207,6 @@ final FutureProvider<PeriodRefresh> periodRefreshProvider =
       );
     });
 
-/// Every period of the open Space, live.
 final StreamProvider<List<BudgetPeriod>> spacePeriodsProvider =
     StreamProvider<List<BudgetPeriod>>((Ref ref) {
       final Space? space = ref.watch(currentSpaceProvider);
@@ -260,8 +214,7 @@ final StreamProvider<List<BudgetPeriod>> spacePeriodsProvider =
       return ref.watch(repositoriesProvider).periods.watchInSpace(space.id);
     });
 
-/// The open Space. Throws where there is none, which is a routing mistake
-/// rather than a state a screen has to handle.
+/// The open Space. Throws when none is open.
 extension CurrentSpaceX on WidgetRef {
   Space get space =>
       watch(currentSpaceProvider) ?? (throw StateError('no Space is open'));

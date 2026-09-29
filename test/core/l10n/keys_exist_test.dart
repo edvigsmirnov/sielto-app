@@ -3,13 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Every `tr()` and `plural()` key the app names has to exist in the
-/// dictionaries.
-///
-/// `useFallbackTranslations` is off, so a missing key renders as the raw key
-/// on screen — `payment.fieldPeriod` where a label should be. The parity test
-/// next door catches en and ru drifting apart; this one catches a key that was
-/// used but never written down.
+/// Every literal `tr()` and `plural()` key exists in the dictionaries.
 void main() {
   test('every key used in lib exists in en.json', () {
     final Map<String, dynamic> dictionary = jsonDecode(
@@ -26,9 +20,7 @@ void main() {
       return true;
     }
 
-    // Only literal keys are checked. A key built by interpolation —
-    // `mode.${space.budgetMode.name}.name` — cannot be resolved statically,
-    // and guessing at its shape would report failures that are not real.
+    // Interpolated keys cannot be checked statically.
     final RegExp call = RegExp(r"""(?:tr|plural)\(\s*'([a-zA-Z0-9_.]+)'""");
 
     final List<String> missing = <String>[];

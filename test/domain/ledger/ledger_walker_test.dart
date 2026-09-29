@@ -51,7 +51,6 @@ void main() {
     });
 
     test('landing exactly on zero is covered, not short', () {
-      // This is the orange dot: paid in full, nothing spare (spec 4.9).
       final LedgerRun run = LedgerWalker.walk(
         available: m('640'),
         entries: <LedgerEntry>[
@@ -77,7 +76,6 @@ void main() {
       expect(run.cutoffDate, d('2026-03-07'));
       expect(run.coverage, Coverage.short);
       expect(run.freeCash, isNull);
-      // The balance keeps going so the overspend total stays visible.
       expect(run.finalBalance, m('-20'));
     });
 
@@ -90,7 +88,7 @@ void main() {
           expense('c', '2026-03-03', '10'),
         ],
       );
-      // 'c' would fit on its own, but the money ran out before it.
+      // 'c' fits on its own, but comes after the cutoff.
       expect(run.uncovered.map((LedgerEntry e) => e.id), <String>['b', 'c']);
     });
 
@@ -121,8 +119,7 @@ void main() {
           expense('card', '2026-03-10', '300'),
         ],
       );
-      // Everything fits, so there is no cutoff — but there is nothing left
-      // after the 10th either, and the Feed says so under that row.
+      // No cutoff, but nothing left after the 10th.
       expect(run.cutoffEntryId, isNull);
       expect(run.moneyEndsAt, (entryId: 'card', below: true));
       expect(run.lastCoveredDay, d('2026-03-10'));
@@ -163,8 +160,7 @@ void main() {
     });
 
     test('an income that lands on zero is not an ending', () {
-      // Only an expense empties the balance; an income arriving at zero is
-      // money coming in, not running out.
+      // An income arriving at zero does not end the money.
       final LedgerRun run = LedgerWalker.walk(
         available: m('-100'),
         entries: <LedgerEntry>[income('salary', '2026-03-05', '100')],
@@ -202,8 +198,7 @@ void main() {
 
   group('future income joins only on its own date', () {
     test('money that arrives too late does not prevent a cutoff', () {
-      // The rule that makes this more than a SUM: totals balance on paper
-      // (100 + 900 - 500 - 400 = 100) but the money is not there in time.
+      // Totals balance (100 + 900 - 500 - 400 = 100), but the income comes too late.
       final LedgerRun run = LedgerWalker.walk(
         available: m('100'),
         entries: <LedgerEntry>[
@@ -231,8 +226,6 @@ void main() {
     });
 
     test('income on the same day as an expense is available that day', () {
-      // Ordering incomes first within a date avoids inventing a cutoff that
-      // never happens in reality.
       final LedgerRun run = LedgerWalker.walk(
         available: Decimal.zero,
         entries: <LedgerEntry>[
@@ -247,8 +240,6 @@ void main() {
 
   group('order within a day', () {
     test('sort_order decides which expense falls past the cutoff', () {
-      // Feed position is not cosmetic: it sets the coverage priority when the
-      // day's money runs out (spec 4.9).
       final LedgerRun run = LedgerWalker.walk(
         available: m('100'),
         entries: <LedgerEntry>[
@@ -271,7 +262,6 @@ void main() {
     });
 
     test('a tied sort_order still orders deterministically', () {
-      // sort_order carries no uniqueness constraint by design (plan G2).
       List<String> idsFor(List<LedgerEntry> entries) => LedgerWalker.walk(
         available: m('1000'),
         entries: entries,
@@ -328,7 +318,6 @@ void main() {
       );
       expect(c.mandatory.coverage, Coverage.covered);
       expect(c.all.coverage, Coverage.short);
-      // The dot follows the full picture.
       expect(c.coverage, Coverage.short);
     });
 
@@ -385,7 +374,6 @@ void main() {
 
   group('zero-amount entries', () {
     test('a zero expense never causes a cutoff', () {
-      // Budget mode uses these as dated to-dos (spec 4.8).
       final LedgerRun run = LedgerWalker.walk(
         available: Decimal.zero,
         entries: <LedgerEntry>[expense('book flights', '2026-03-01', '0')],

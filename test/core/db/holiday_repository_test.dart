@@ -7,8 +7,7 @@ import 'package:sielto/domain/value/calendar_date.dart';
 
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 
-/// The two device-local tables behind the working-day calendar (spec 5.1.1,
-/// 5.1.2). Neither carries sync columns, so neither ever leaves the device.
+/// Holiday cache and custom non-working days.
 void main() {
   late AppDatabase db;
   late HolidayRepository holidays;
@@ -34,7 +33,7 @@ void main() {
         d('2026-01-01'),
         d('2026-05-01'),
       ]);
-      // Written lower case, read upper: the code is normalised on both sides.
+      // Country codes are normalised to upper case.
       expect(await holidays.cached('DE', 2026), <CalendarDate>[
         d('2026-01-01'),
         d('2026-05-01'),
@@ -98,7 +97,7 @@ void main() {
     test("a country's day is invisible to another", () async {
       await customDays.add(date: d('2026-03-12'), countryCode: 'FR');
       expect(await customDays.forCountry('DE'), isEmpty);
-      // With no country set, only the everywhere-days apply.
+      // Without a country only country-less days apply.
       expect(await customDays.forCountry(null), isEmpty);
     });
 

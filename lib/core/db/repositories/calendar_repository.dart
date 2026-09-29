@@ -4,11 +4,7 @@ import 'package:meta/meta.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// What one calendar cell knows: the sums, and how many records made them.
-///
-/// Expenses and incomes are held apart and both positive. The calendar draws
-/// them on separate lines in opposite colours, so a single net figure would
-/// have to be split again to be shown.
+/// Sums for one calendar cell. Expenses and incomes are separate and positive.
 @immutable
 class DayTotals {
   const DayTotals({
@@ -19,7 +15,7 @@ class DayTotals {
     required this.hasUnknownAmount,
   });
 
-  /// Not a `const`: [Decimal.zero] is a final field, not a constant.
+  /// Not `const`: [Decimal.zero] is not a constant.
   static final DayTotals empty = DayTotals(
     expenses: Decimal.zero,
     income: Decimal.zero,
@@ -32,12 +28,11 @@ class DayTotals {
   final Decimal income;
   final int recordCount;
 
-  /// Paid expenses and received incomes together. The Day view splits them
-  /// again; a cell only needs to know whether the day is settled.
+  /// Paid expenses plus received incomes.
   final int paidCount;
 
-  /// A floating income sits on the day with no figure yet (spec 4.7), so the
-  /// income line is a lower bound rather than the total.
+  /// An income without an amount is on this day; the income sum is a lower
+  /// bound.
   final bool hasUnknownAmount;
 
   bool get isEmpty => recordCount == 0;
@@ -58,22 +53,13 @@ class DayTotals {
   );
 }
 
-/// The Calendar's aggregate reads (spec 8.1).
-///
-/// Sums only. The Month, Week and Year views draw no titles, so they never
-/// load a row: one grouping query answers a whole range, and the detail query
-/// runs when a single day is opened.
-///
-/// Money is TEXT, so the sums are added up in Dart over [Decimal] — SQL's
-/// `SUM` over that column would go through REAL. What SQL does here is the
-/// grouping and the range filter, which is where the cost is.
+/// Calendar aggregates. SQL groups and filters, Dart sums.
 class CalendarRepository {
   CalendarRepository({required this.db});
 
   final AppDatabase db;
 
-  /// One row per day that has anything on it, between [from] and [to]
-  /// inclusive. Days with no records are simply absent.
+  /// Days without records are absent.
   Stream<Map<CalendarDate, DayTotals>> watchDailyTotals(
     String spaceId,
     CalendarDate from,
@@ -86,10 +72,7 @@ class CalendarRepository {
     CalendarDate to,
   ) => _combined(spaceId, from, to).get().then(_foldByDay);
 
-  /// The Year view: the same figures grouped by month (spec 8.1).
-  ///
-  /// Keyed by the first of each month, so a key is a [CalendarDate] like every
-  /// other and the view does not carry a second kind of key.
+  /// Keyed by the first of each month.
   Stream<Map<CalendarDate, DayTotals>> watchMonthlyTotals(
     String spaceId,
     int year,
@@ -100,10 +83,6 @@ class CalendarRepository {
             _fold(rows, (CalendarDate d) => d.firstOfMonth),
       );
 
-  /// Payments and incomes over one range, as one date-and-amount stream.
-  ///
-  /// `UNION ALL` rather than two queries: the two tables answer the same
-  /// question here and merging them in SQL keeps one pass and one sort.
   Selectable<QueryRow> _combined(
     String spaceId,
     CalendarDate from,
@@ -139,8 +118,6 @@ class CalendarRepository {
       final CalendarDate key = bucket(
         CalendarDate.parse(row.read<String>('due_date')),
       );
-      // A floating income has no figure yet (spec 4.7). It still counts as a
-      // record, so the day is not drawn as empty.
       final String? raw = row.read<String?>('amount');
       final Decimal amount = raw == null
           ? Decimal.zero

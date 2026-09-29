@@ -3,9 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Guards the dictionaries against the failure that shows up only at runtime:
-/// a key added to one locale and forgotten in the other renders as the raw
-/// key, because useFallbackTranslations is off.
+/// en and ru dictionaries have the same keys.
 void main() {
   const Set<String> pluralCategories = <String>{
     'zero',
@@ -25,8 +23,7 @@ void main() {
   bool isPluralNode(Map<String, dynamic> node) =>
       node.isNotEmpty && node.keys.every(pluralCategories.contains);
 
-  /// Leaf paths. A plural block counts as one leaf: its categories differ by
-  /// language and must not be compared across locales.
+  /// A plural block counts as one leaf.
   void collect(Map<String, dynamic> node, String prefix, Set<String> out) {
     if (isPluralNode(node)) {
       out.add('$prefix (plural)');
@@ -97,8 +94,7 @@ void main() {
   });
 
   test('pubspec declares the dictionaries as assets', () {
-    // The widget tests read these off disk rather than through rootBundle, so
-    // nothing else proves the running app can find them.
+    // Asset paths the app loads exist.
     expect(
       File('pubspec.yaml').readAsStringSync(),
       contains('- assets/translations/'),

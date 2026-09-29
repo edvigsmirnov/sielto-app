@@ -27,7 +27,6 @@ void main() {
     });
 
     test('with no country only weekends apply', () {
-      // A supported state, not a degraded one (spec 5.1.1).
       final WorkingDayCalendar calendar = WorkingDayCalendar.weekendsOnly();
       expect(calendar.isWorkingDay(d('2026-01-01')), isTrue);
     });
@@ -67,8 +66,6 @@ void main() {
     });
 
     test('a Saturday opens Friday to Monday and anchors on Monday', () {
-      // The spec's own example (5.1.1). Monday, not Friday: never plan a
-      // payment against money that may not have arrived.
       final IncomeWindow w = resolveIncomeWindow(
         start: d('2026-03-14'),
         calendar: weekends,
@@ -94,7 +91,6 @@ void main() {
     });
 
     test('a range keeps its own start and only extends right', () {
-      // The left edge was the user's choice, not the calendar's (spec 4.7).
       final IncomeWindow w = resolveIncomeWindow(
         start: d('2026-03-11'),
         end: d('2026-03-14'),
@@ -129,8 +125,8 @@ void main() {
     });
 
     test('an anchor that would leave the month falls back instead', () {
-      // 28 February 2026 is a Saturday. Forward is Monday 2 March, which would
-      // open March's cycle with February's salary; the Friday before does not.
+      // 2026-02-28 is a Saturday. Monday 2 March would leave February, so the
+      // anchor is the Friday before.
       final IncomeWindow w = resolveIncomeWindow(
         start: d('2026-02-28'),
         calendar: weekends,
@@ -152,8 +148,7 @@ void main() {
     });
 
     test('a window crossing into the next year anchors in the old one', () {
-      // The span still reaches into January — the money might genuinely arrive
-      // then — but December's salary anchors December's cycle.
+      // The window reaches January; the anchor stays in December.
       final WorkingDayCalendar calendar = WorkingDayCalendar(
         holidays: <CalendarDate>{d('2025-12-31'), d('2026-01-01')},
       );

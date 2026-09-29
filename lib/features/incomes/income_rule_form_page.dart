@@ -15,12 +15,7 @@ import 'package:sielto/features/incomes/schedule_editor.dart';
 import 'package:sielto/features/periods/holiday_service.dart';
 import 'package:sielto/features/periods/period_service.dart';
 
-/// Editing a regular income as a whole (spec 5.4).
-///
-/// The occurrence form edits one month; this edits the rule behind all of
-/// them. The two are separate on purpose — "the salary was different in March"
-/// and "my salary changed" are different statements, and only the second
-/// should reach next year.
+/// Edits a regular income's rule. The occurrence form edits one month.
 Future<void> openIncomeRuleForm(
   BuildContext context, {
   required IncomeRecurrenceRule rule,
@@ -94,7 +89,6 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
       _schedule.isValid &&
       !_saving;
 
-  /// Whether the dates this rule produces would change.
   bool get _scheduleChanged => _schedule != _draftOf(widget.rule);
 
   Future<void> _save() async {
@@ -131,12 +125,9 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
             : null,
       );
 
-      // The amount reaches every occurrence that has not arrived yet. A month
-      // already confirmed keeps the figure it was confirmed with (spec 5.4).
+      // Applies to every occurrence not yet received.
       await repos.incomes.updateFutureAmounts(widget.rule.id, amount);
 
-      // New dates mean the old rows are on the wrong days, so they are laid
-      // out again; received ones are history and stay (spec 5.4).
       if (_scheduleChanged) await _regenerateOccurrences();
 
       ref.invalidate(periodRefreshProvider);
@@ -146,8 +137,7 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
     }
   }
 
-  /// Puts the rule's upcoming occurrences back on its schedule. Returns how
-  /// many rows changed.
+  /// Puts upcoming occurrences back on the schedule. Returns rows changed.
   Future<int> _regenerateOccurrences() async {
     final ResolvedCalendar resolved = await ref.read(
       resolvedCalendarProvider.future,

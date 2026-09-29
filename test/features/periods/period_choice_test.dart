@@ -11,10 +11,7 @@ import 'package:sielto/features/periods/period_choice.dart';
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 Decimal m(String v) => Decimal.parse(v);
 
-/// "Current period / Next period" on the payment form (spec 5.3).
-///
-/// The control offers two targets, so what it shows for a row pinned to
-/// neither of them matters as much as the happy path.
+/// "Current period / Next period" on the payment form.
 void main() {
   late AppDatabase db;
   late Repositories repos;
@@ -90,7 +87,7 @@ void main() {
     });
 
     test('the continuous period is not a candidate', () async {
-      // Flow's open row overlaps every date and would swallow the search.
+      // Flow's continuous row overlaps every date.
       await repos.periods.ensureContinuous(
         spaceId: space.id,
         startDate: d('2020-01-01'),
@@ -135,8 +132,7 @@ void main() {
     });
 
     test('a pin to some third cycle falls back to byDate', () async {
-      // The control has two targets and this is neither; claiming one of them
-      // would misreport where the payment actually sits.
+      // Pinned to neither offered period.
       final BudgetPeriod may = await repos.periods.createIncomeDriven(
         spaceId: space.id,
         startDate: d('2026-05-05'),
@@ -156,8 +152,6 @@ void main() {
   });
 
   group('periodIsAmbiguousOn', () {
-    // The control is only worth showing where the boundary is genuinely in
-    // doubt — inside an anchor's uncertainty window (spec 5.1.1).
     Future<BudgetPeriod> withWindow(
       String start,
       String end,
@@ -189,7 +183,7 @@ void main() {
     });
 
     test('a window of one day resolved, so it asks nothing', () async {
-      // The anchor landed on a working day: there was never a span.
+      // The anchor is a working day: no window.
       await withWindow('2026-06-02', '2026-06-30', '2026-06-02', '2026-06-02');
       final List<BudgetPeriod> all = await repos.periods.incomeDrivenIn(
         space.id,

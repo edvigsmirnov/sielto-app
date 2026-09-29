@@ -7,13 +7,11 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-/// Guards the schema invariants the whole sync design rests on. Breaking one
-/// of these is cheap to do by accident and expensive to discover at M8.
+/// Schema invariants for sync.
 void main() {
   late AppDatabase db;
 
-  /// Tables that will be uploaded, and so must carry the sync columns
-  /// (plan section 2, invariant 2).
+  /// Tables that must carry the sync columns.
   const List<String> syncableTables = <String>[
     'payments',
     'incomes',
@@ -26,7 +24,7 @@ void main() {
 
   setUp(() async {
     db = inMemoryDatabase();
-    // Forces onCreate, so the tests run against a real migration.
+    // Forces onCreate.
     await db.customSelect('SELECT 1').get();
   });
 
@@ -37,10 +35,8 @@ void main() {
   });
 
   test('every index the queries lean on exists', () async {
-    // Drift's snapshot does not carry indexes created by raw statement, so the
-    // migration harness cannot see these: an index dropped from
-    // `_createIndexes` would pass every other test and only show up as a slow
-    // query on a real database.
+    // Raw-statement indexes are not in drift's snapshot, so they are checked
+    // here.
     final List<QueryRow> rows = await db
         .customSelect("SELECT name FROM sqlite_schema WHERE type = 'index'")
         .get();
@@ -80,7 +76,6 @@ void main() {
   });
 
   test('no table uses an autoincrementing key', () async {
-    // UUIDv4 everywhere: two offline devices must not mint the same id.
     final List<QueryRow> rows = await db
         .customSelect(
           "SELECT name, sql FROM sqlite_schema WHERE type = 'table'",
@@ -97,7 +92,7 @@ void main() {
   });
 
   test('timestamps are stored as text, not unix seconds', () async {
-    // Second precision would drop real LWW conflicts (spec 10.2).
+    // Millisecond precision for last-write-wins.
     final List<QueryRow> columns = await db
         .customSelect('PRAGMA table_info(payments)')
         .get();
@@ -134,7 +129,7 @@ void main() {
 
   test('a payment amount may be zero but never negative', () async {
     await _seedSpace(db);
-    // Zero is a Budget-mode to-do with a deadline (spec 4.8).
+    // Zero is a dated to-do.
     await _insertPayment(db, id: 'p0', amount: Decimal.zero);
 
     await expectLater(
@@ -153,7 +148,6 @@ void main() {
 
   test('money survives a round trip exactly', () async {
     await _seedSpace(db);
-    // The value that makes doubles wrong.
     final Decimal amount = Decimal.parse('0.1') + Decimal.parse('0.2');
     await _insertPayment(db, id: 'p3', amount: amount);
 

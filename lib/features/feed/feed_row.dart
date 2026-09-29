@@ -9,20 +9,15 @@ import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 
-/// What a row shows at each density (spec 4.5).
-///
-/// The spec fixes the two ends — compact is the amount and the title on one
-/// line, spacious adds category and status on a second — so standard is the
-/// step between them: the status, without the category. Three heights alone
-/// were not three densities; the detail is what makes them tell apart.
+/// Row detail per density.
 enum RowDetail {
-  /// Title and amount. Nothing else.
+  /// Title and amount.
   titleOnly,
 
   /// Plus paid or unpaid, expected or received.
   status,
 
-  /// Plus the category the record belongs to.
+  /// Plus the category.
   categoryAndStatus,
 }
 
@@ -32,24 +27,14 @@ RowDetail detailFor(FeedDensity density) => switch (density) {
   FeedDensity.spacious => RowDetail.categoryAndStatus,
 };
 
-/// The fixed extent each density gives a row.
-///
-/// Sized against the type ramp rather than the design mock's 300px frames, and
-/// far enough apart that switching is visible on a screen holding two records.
+/// Minimum row height per density.
 double rowHeightFor(FeedDensity density) => switch (density) {
   FeedDensity.compact => 48,
   FeedDensity.standard => 72,
   FeedDensity.spacious => 96,
 };
 
-/// One record in the Feed.
-///
-/// Every gesture on this row is one of four: tap to edit, the circle to toggle
-/// paid, swipe right to delete, long-press for the quick-add menu. Reordering
-/// uses the grip on the right.
-///
-/// A frozen row keeps tap and long-press and loses the rest: the record can be
-/// read and recategorised, not deleted or unmarked (spec 5.5).
+/// Frozen rows keep only tap and long-press.
 class FeedRowTile extends StatelessWidget {
   const FeedRowTile({
     required this.record,
@@ -73,7 +58,7 @@ class FeedRowTile extends StatelessWidget {
   final FeedDensity density;
   final MoneyFormat money;
 
-  /// Null when the record has no category, or is an income (spec 7).
+  /// Null without a category, and for incomes.
   final Category? category;
 
   final VoidCallback onTap;
@@ -81,32 +66,23 @@ class FeedRowTile extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onLongPress;
 
-  /// The row's period has closed, so the swipe actions and the paid circle are
-  /// inert (spec 5.5).
   final bool isFrozen;
 
-  /// Due before today and still unpaid. The row carries the warning itself
-  /// rather than sitting under a section banner, which is what lets several
-  /// late records each say so (spec 4.5).
   final bool isOverdue;
 
-  /// Past a hard deadline that was moved backwards over it. Dimmed and out of
-  /// the reckoning, but neither deleted nor blocked (spec 4.8).
+  /// Dimmed and excluded.
   final bool isBeyondDeadline;
 
-  /// The reorder grip, supplied by the list so it can attach its own listener.
   final Widget? dragHandle;
 
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    // Income reads green; an expense is plain ink until the money stops
-    // reaching it, and red is reserved for that and for being late.
+    // Incomes green; expenses red when uncovered or overdue.
     final Color amountColor = record.isIncome
         ? sage.accentStrong
         : (isOverdue || !isCovered ? sage.danger : sage.ink);
 
-    // Out of the reckoning until the deadline moves again or the record does.
     if (isBeyondDeadline) {
       return Opacity(opacity: 0.45, child: _row(context, amountColor));
     }
@@ -119,8 +95,7 @@ class FeedRowTile extends StatelessWidget {
 
     return Dismissible(
       key: ValueKey<String>('dismiss:${record.id}'),
-      // Right for delete, left for the paid toggle — the same two actions the
-      // circle and the row menu offer (spec 4.5).
+      // Right deletes, left toggles paid.
       direction: isFrozen ? DismissDirection.none : DismissDirection.horizontal,
       background: const _SwipeAction(
         alignment: Alignment.centerLeft,
@@ -131,8 +106,6 @@ class FeedRowTile extends StatelessWidget {
       secondaryBackground: _SwipeAction(
         alignment: Alignment.centerRight,
         icon: Icons.check_circle_outline,
-        // Money arriving is received, not paid. The two are opposite
-        // directions of the same fact and must not share a word.
         labelKey: record.isIncome ? 'income.received' : 'payment.togglePaid',
         isDestructive: false,
       ),
@@ -143,22 +116,18 @@ class FeedRowTile extends StatelessWidget {
         } else {
           onTogglePaid();
         }
-        // Both act through the query rather than the dismiss animation, so an
-        // undone delete brings the row straight back.
+        // The query removes the row, so an undo brings it back.
         return false;
       },
       child: Ink(
         color: isOverdue ? sage.dangerTint : Colors.transparent,
         child: ConstrainedBox(
-          // A floor, not a fixed height. At the spacious end the title and its
-          // subtitle together are taller than the step, and a fixed box clipped
-          // the second line instead of growing.
+          // A minimum: the spacious subtitle can be taller.
           constraints: BoxConstraints(minHeight: rowHeightFor(density)),
           child: Row(
             children: <Widget>[
-              // The grip is a sibling of the tappable area, not a child of it.
-              // Nested inside, a press-and-hold on the grip raced the row's own
-              // long-press and the quick-add menu won every time.
+              // The grip is outside the tappable area, so long-press does not compete with
+              // it.
               Expanded(
                 child: InkWell(
                   onTap: onTap,
@@ -272,7 +241,7 @@ class FeedRowTile extends StatelessWidget {
     return r.isIncome ? '+${money.format(r.amount!)}' : money.format(r.amount!);
   }
 
-  /// Null at the compact end, where the spec asks for one line only.
+  /// Null for compact rows.
   String? _subtitle(FeedRecord r, Category? category) {
     final RowDetail detail = detailFor(density);
     if (detail == RowDetail.titleOnly) return null;
@@ -302,14 +271,13 @@ class FeedRowTile extends StatelessWidget {
   }
 }
 
-/// The status circle left of the amount (spec 4.5). Filled green once paid.
+/// Filled once paid.
 class _PaidCircle extends StatelessWidget {
   const _PaidCircle({required this.record, required this.onTap});
 
   final FeedRecord record;
 
-  /// Null when the row is frozen: the mark records what happened and no longer
-  /// changes (spec 5.5).
+  /// Null when frozen.
   final VoidCallback? onTap;
 
   @override
@@ -333,8 +301,6 @@ class _PaidCircle extends StatelessWidget {
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              // Solid accent, so the tick keeps its contrast on both grounds
-              // (plan section 5, rule 2).
               color: record.isPaid ? sage.accent : Colors.transparent,
               border: Border.all(
                 color: record.isPaid ? sage.accent : sage.border,
@@ -351,8 +317,8 @@ class _PaidCircle extends StatelessWidget {
   }
 }
 
-/// Solid bar for mandatory, hollow for variable, in the category colour
-/// (spec 6.2). Incomes carry the accent.
+/// Solid for mandatory, hollow for variable, in the category colour. Incomes
+/// use the accent.
 class _TypeMarker extends StatelessWidget {
   const _TypeMarker({required this.record, required this.category});
 
@@ -376,7 +342,7 @@ class _TypeMarker extends StatelessWidget {
   }
 }
 
-/// What shows behind a row while it is swiped.
+/// Background shown while a row is swiped.
 class _SwipeAction extends StatelessWidget {
   const _SwipeAction({
     required this.alignment,

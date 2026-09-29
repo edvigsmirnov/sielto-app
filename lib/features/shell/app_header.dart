@@ -10,11 +10,7 @@ import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/settings/space_settings_page.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
 
-/// The header the three main screens share (spec 4.2).
-///
-/// Both icons push over the current screen rather than switching the root tab,
-/// so Back returns to exactly the state the user left — scroll position and
-/// any open form included.
+/// Header of the main screens. Profile and gear push over the current screen.
 class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   const AppHeader({required this.title, this.trailing, this.bottom, super.key});
 
@@ -25,12 +21,8 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
 
   final PreferredSizeWidget? bottom;
 
-  /// Taller than the Material default. The bar carries nothing but the two
-  /// controls and the Space name, and at 56 they sit against the status bar
-  /// with the whole row reading as an afterthought.
   static const double _toolbarHeight = 68;
 
-  /// The control, plus the room it needs on either side.
   static const double _controlSize = 44;
 
   @override
@@ -60,9 +52,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
           },
         ),
       ),
-      // Tapping the Space name opens the switcher. The spec names this as
-      // the required alternate to the swipe-up gesture, which lands in M10
-      // (spec 3.1).
+      // Tapping the Space name opens the switcher.
       title: InkWell(
         onTap: () => showSpaceSwitcher(context),
         borderRadius: BorderRadius.circular(SageRadius.chip),
@@ -112,8 +102,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   }
 }
 
-/// The user, as the initial of their nickname on a sage disc (design
-/// section 2). An unnamed user gets the dot rather than a stray letter.
+/// Nickname initial on a disc; an icon without a nickname.
 class _ProfileAvatar extends StatelessWidget {
   const _ProfileAvatar({
     required this.initial,

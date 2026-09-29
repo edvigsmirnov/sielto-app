@@ -14,10 +14,8 @@ import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/features/dev/token_gallery_page.dart';
 
-/// Reads dictionaries off disk instead of through rootBundle, whose asset
-/// loads never complete past the first widget test in a file. The JSON under
-/// test is the same either way; that the files are declared as assets is
-/// checked in translations_test.dart.
+/// Reads dictionaries from disk: rootBundle loads never complete after the
+/// first widget test in a file.
 class _FileAssetLoader extends AssetLoader {
   const _FileAssetLoader();
 
@@ -33,14 +31,12 @@ void main() {
 
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    // ensureInitialized reads the saved locale through shared_preferences.
     SharedPreferences.setMockInitialValues(<String, Object>{});
     await EasyLocalization.ensureInitialized();
   });
 
   setUp(() async {
-    // A fresh store per test: the theme toggle writes through to it, and one
-    // test's last state must not become the next one's first.
+    // Fresh store per test.
     SharedPreferences.setMockInitialValues(<String, Object>{});
     settings = await LocalSettings.load();
   });
@@ -67,8 +63,7 @@ void main() {
             locale: context.locale,
             supportedLocales: context.supportedLocales,
             localizationsDelegates: context.localizationDelegates,
-            // Reduced motion holds the loader still; spinning, it would never
-            // let pumpAndSettle settle.
+            // Holds the loader still so pumpAndSettle can settle.
             builder: (BuildContext context, Widget? child) => MediaQuery(
               data: MediaQuery.of(context).copyWith(disableAnimations: true),
               child: child!,
@@ -80,15 +75,12 @@ void main() {
     );
   }
 
-  /// Renders on a surface tall enough to build the whole gallery: the body is
-  /// a lazy ListView, and on the default 800x600 everything below the fold
-  /// stays unbuilt, so an overflow down there would go unnoticed.
+  /// Tall surface, so the lazy list builds everything.
   Future<void> pump(WidgetTester tester, Widget widget) async {
     tester.view.physicalSize = const Size(1000, 4000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(widget);
-    // MaterialApp builds nothing until the localization delegate resolves.
     await tester.pumpAndSettle();
   }
 
@@ -108,7 +100,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await pump(tester, harness(locale: AppLocales.pseudo));
-    // The long-string pass: every visible string is padded and bracketed.
     expect(find.text(pseudolocalize('Add expense')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -155,7 +146,7 @@ void main() {
 
     await tester.tap(find.text('en'));
     await tester.pumpAndSettle();
-    // Russian splits where English does not: 2 is "few", 5 is "many".
+    // Russian: 2 is "few", 5 is "many".
     expect(find.text('1 оплаченный расход исключён'), findsOneWidget);
     expect(find.text('2 оплаченных расхода исключены'), findsOneWidget);
     expect(find.text('5 оплаченных расходов исключены'), findsOneWidget);

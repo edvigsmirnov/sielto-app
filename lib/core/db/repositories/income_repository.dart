@@ -8,13 +8,8 @@ import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// Raised when the last anchor of an income_driven Space would be removed or
-/// demoted.
-///
-/// The invariant: an income_driven Space that has at least one regular income
-/// always has at least one anchor (spec 4.7). Enforced here rather than in a
-/// screen, because the repository is the single point every mutation passes
-/// through — a UI check can be routed around, this cannot.
+/// Removing or demoting the last anchor of an income_driven Space that has
+/// regular incomes.
 class LastAnchorRequired implements Exception {
   const LastAnchorRequired(this.ruleId);
 
@@ -24,7 +19,6 @@ class LastAnchorRequired implements Exception {
   String toString() => 'LastAnchorRequired: $ruleId';
 }
 
-/// Repetition rules for regular incomes.
 class IncomeRuleRepository
     extends
         SyncedRepository<$IncomeRecurrenceRulesTable, IncomeRecurrenceRule> {
@@ -53,8 +47,7 @@ class IncomeRuleRepository
             ..where(($IncomeRecurrenceRulesTable t) => t.isAnchor.equals(true)))
           .get();
 
-  /// Creates a rule. The caller has already resolved which schedule fields
-  /// apply; the CHECK constraints reject a mismatched set.
+  /// CHECK constraints reject schedule fields that do not match the type.
   Future<IncomeRecurrenceRule> create({
     required String spaceId,
     required String title,
@@ -97,15 +90,8 @@ class IncomeRuleRepository
         );
   }
 
-  /// Rewrites a rule's name, amount and schedule (spec 5.4).
-  ///
-  /// The schedule fields are written wholesale rather than patched: a rule
-  /// that changes from "the 5th" to "the last Friday" must not keep the 5 in
-  /// `fixed_day`, where a later read would find two answers.
-  ///
-  /// The occurrences already on the calendar are not touched here. Which of
-  /// them follow the change is the caller's decision, and a different one for
-  /// an amount than for a date (spec 5.4).
+  /// Writes every schedule field, clearing the unused ones. Existing occurrences
+  /// are left to the caller.
   Future<int> updateRule(
     String ruleId, {
     required String title,
@@ -141,8 +127,7 @@ class IncomeRuleRepository
     );
   }
 
-  /// The first regular income of an income_driven Space becomes the anchor
-  /// automatically (spec 5.2).
+  /// The first regular income of an income_driven Space becomes the anchor.
   Future<IncomeRecurrenceRule> createFirstAsAnchor({
     required String spaceId,
     required BudgetMode mode,
@@ -158,8 +143,6 @@ class IncomeRuleRepository
     int? boundaryCount,
     String? countryCode,
   }) async {
-    // Anchoring is meaningless outside income_driven: Flow and Budget have no
-    // period between incomes, so the flag stays false and no UI offers it.
     final bool anchor =
         mode == BudgetMode.incomeDriven &&
         (await anchorsInSpace(spaceId)).isEmpty;
@@ -180,9 +163,8 @@ class IncomeRuleRepository
     );
   }
 
-  /// The rule's own amount, which every occurrence materialised from now on
-  /// inherits. Existing occurrences are the caller's to update — see
-  /// [IncomeRepository.updateFutureAmounts] (spec 5.4).
+  /// Applies to occurrences materialised from now on. See
+  /// [IncomeRepository.updateFutureAmounts].
   Future<int> setAmount(String ruleId, Decimal? amount) {
     final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
@@ -197,7 +179,7 @@ class IncomeRuleRepository
     );
   }
 
-  /// Demoting the last anchor of an income_driven Space is refused.
+  /// Throws [LastAnchorRequired] on demoting the last anchor.
   Future<int> setAnchor(
     String ruleId, {
     required bool isAnchor,
@@ -217,7 +199,7 @@ class IncomeRuleRepository
     );
   }
 
-  /// Deleting the last anchor is refused for the same reason as demoting it.
+  /// Throws [LastAnchorRequired] on deleting the last anchor.
   Future<int> deleteRule(String ruleId, {required BudgetMode mode}) async {
     await _refuseIfLastAnchor(ruleId, mode);
     return softDelete(ruleId);
@@ -239,8 +221,7 @@ class IncomeRuleRepository
   }
 }
 
-/// Materialised inflows: one row per expected or received income, regular and
-/// one-off alike (spec 5.2).
+/// One row per expected or received income, regular and one-off.
 class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
   IncomeRepository({
     required super.db,
@@ -258,7 +239,6 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
       (selectAlive()..where(($IncomesTable t) => t.id.equals(id)))
           .getSingleOrNull();
 
-  /// The freeze state of one occurrence, for a screen deciding what to enable.
   Future<FreezeState> freezeStateOf(String id) async {
     final Income? row = await byId(id);
     return _freeze.stateOf(row?.budgetPeriodId);
@@ -284,8 +264,6 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
           ($IncomesTable t) => OrderingTerm(expression: t.id),
         ]);
 
-  /// One day's rows, live. The Calendar's Day view (spec 8.1); the aggregate
-  /// views never call this.
   Stream<List<Income>> watchOnDay(String spaceId, CalendarDate day) =>
       (_selectInSpace(spaceId)
             ..where(($IncomesTable t) => t.expectedDate.equals(day.toIso())))
@@ -339,8 +317,7 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
     Value<String?> notes = const Value<String?>.absent(),
     Value<bool> isPaid = const Value<bool>.absent(),
   }) async {
-    // Amount, dates and the receipt flag are what a frozen period protects;
-    // the note is appended rather than replaced and stays open (spec 5.5).
+    // A frozen period protects amount, dates and the receipt flag.
     if (amount.present ||
         expectedDate.present ||
         actualDate.present ||
@@ -372,18 +349,13 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
     );
   }
 
-  /// The occurrences already materialised for a rule, by expected date. Used
-  /// to fill only the gaps rather than re-inserting the horizon each time.
-  ///
-  /// Deleted rows count. A soft delete is a decision — "not this month" — and
-  /// leaving it out would have the next recompute read the date as a gap and
-  /// put the occurrence straight back, which is indistinguishable from the
-  /// delete having done nothing.
+  /// Expected dates of every occurrence of a rule, deleted ones included: a
+  /// deleted date is not refilled.
   Future<Set<String>> materialisedDatesFor(String ruleId) async => <String>{
     for (final Income i in await occurrencesOf(ruleId)) i.expectedDate.toIso(),
   };
 
-  /// Every row a rule has produced, deleted ones included.
+  /// Includes deleted rows.
   Future<List<Income>> occurrencesOf(String ruleId) => (db.select(
     db.incomes,
   )..where(($IncomesTable t) => t.recurrenceRuleId.equals(ruleId))).get();
@@ -402,10 +374,7 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
     );
   }
 
-  /// Rewrites the planned amount of every future occurrence of a rule.
-  ///
-  /// Received rows are skipped: money already in hand is a fact, and a change
-  /// to what the salary will be from now on must not rewrite it (spec 5.4).
+  /// Skips received rows.
   Future<int> updateFutureAmounts(String ruleId, Decimal? amount) {
     final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(db.incomes)..where(
@@ -424,7 +393,6 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
         );
   }
 
-  /// Manual position within the day, set by a drag in the Feed.
   Future<int> setSortOrder(String id, int sortOrder) {
     final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
@@ -439,8 +407,7 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
     );
   }
 
-  /// Confirms receipt. An amount is mandatory when the row has none: without
-  /// it the period's Free Cash would stay uncomputable (spec 4.7).
+  /// An amount is required when the row has none.
   Future<int> markReceived(
     String id, {
     Decimal? amount,

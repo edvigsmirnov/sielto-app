@@ -24,7 +24,6 @@ void main() {
   });
 
   test('copies placeholders verbatim', () {
-    // Accenting a placeholder name would break interpolation.
     expect(pseudolocalize('Paid {date}'), contains('{date}'));
     expect(pseudolocalize('{} paid expenses excluded'), contains('{}'));
   });

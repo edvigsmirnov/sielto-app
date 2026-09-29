@@ -6,13 +6,8 @@ import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// The freeze state of every period of the open Space, resolved from rows the
-/// screens already hold (spec 5.5).
-///
-/// The repositories refuse a frozen write on their own; this exists so a
-/// screen can say so before the user tries. Both go through the same
-/// [FreezeEvaluator], so there is one rule and two readers of it, not two
-/// rules.
+/// Freeze state of every period of the open Space, for screens. Uses the same
+/// [FreezeEvaluator] as the repositories.
 @immutable
 class FreezeLookup {
   const FreezeLookup({
@@ -22,14 +17,12 @@ class FreezeLookup {
     this.evaluator = const FreezeEvaluator(),
   });
 
-  /// The Space's periods by id.
   final Map<String, BudgetPeriod> periods;
   final CalendarDate today;
   final DateTime nowUtc;
   final FreezeEvaluator evaluator;
 
-  /// [FreezeState.open] for a record bound to nothing, and for the continuous
-  /// period Flow and Budget use: neither has an end, so neither ever freezes.
+  /// Open for unbound records and continuous periods.
   FreezeState of(String? periodId) {
     final BudgetPeriod? period = periodId == null ? null : periods[periodId];
     if (period == null) return FreezeState.open;
@@ -45,8 +38,7 @@ class FreezeLookup {
 
   bool isFrozen(String? periodId) => of(periodId) == FreezeState.frozen;
 
-  /// Days until [period] freezes, for the warning that precedes it. Negative
-  /// once it already has.
+  /// Negative once frozen.
   int daysUntilFreeze(BudgetPeriod period) {
     final CalendarDate? end = period.endDate;
     if (end == null) return 1 << 30;

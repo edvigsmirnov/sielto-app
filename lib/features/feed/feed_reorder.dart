@@ -3,13 +3,11 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 
-/// What a drag in the Feed turned out to mean.
 sealed class ReorderOutcome {
   const ReorderOutcome();
 }
 
-/// A new order within the same day. Carries the whole day so the caller
-/// renumbers it in one pass instead of hunting for a gap between neighbours.
+/// New order within the day; the whole day is renumbered.
 @immutable
 class ReorderWithinDay extends ReorderOutcome {
   const ReorderWithinDay(this.orderedIds);
@@ -17,8 +15,7 @@ class ReorderWithinDay extends ReorderOutcome {
   final List<String> orderedIds;
 }
 
-/// Dragged past the day boundary. The date picker opens prefilled with
-/// [suggestedDate] and nothing is written until it is confirmed (spec 4.5).
+/// Dropped on another day. The date picker opens with [suggestedDate].
 @immutable
 class ReorderToOtherDay extends ReorderOutcome {
   const ReorderToOtherDay(this.recordId, this.suggestedDate);
@@ -27,15 +24,12 @@ class ReorderToOtherDay extends ReorderOutcome {
   final CalendarDate suggestedDate;
 }
 
-/// Snapback. In `grouped` mode a row cannot leave its type block (spec 4.5).
+/// In `grouped` mode a row cannot leave its type block.
 class ReorderRejected extends ReorderOutcome {
   const ReorderRejected();
 }
 
-/// Resolves a drag into one of the three outcomes.
-///
-/// [insertAt] is the index the row lands on once it has been lifted out —
-/// what `onReorderItem` reports, already corrected for the removal.
+/// [insertAt] is the index after removal, as `onReorderItem` reports it.
 ReorderOutcome resolveReorder({
   required List<FeedItem> items,
   required int oldIndex,
@@ -79,8 +73,7 @@ ReorderOutcome resolveReorder({
   return ReorderWithinDay(ordered);
 }
 
-/// The day a drop position belongs to: whichever date heads the group it
-/// landed in. Null above the first header, where no day has been named yet.
+/// Null above the first header.
 CalendarDate? _dayAt(List<FeedItem> items, int insertAt) {
   for (int i = insertAt - 1; i >= 0; i--) {
     final FeedItem item = items[i];
@@ -98,8 +91,7 @@ FeedRow? _nearestRow(List<FeedItem> items, int from, {required int step}) {
   return null;
 }
 
-/// Prefill for the date picker (spec 4.5): the neighbouring day when the drop
-/// clearly belongs to one, and the later of the two when it sits between them.
+/// The neighbouring day, or the later one when between two.
 CalendarDate _suggestDate({
   required CalendarDate? previous,
   required CalendarDate? next,
@@ -111,8 +103,7 @@ CalendarDate _suggestDate({
   return previous ?? next ?? fallback;
 }
 
-/// Incomes above mandatory payments above variable ones. A row may sit between
-/// two blocks, but never inside the wrong one.
+/// Incomes, then mandatory, then variable. A row may sit between blocks.
 bool _fitsItsGroup(
   FeedRecord record, {
   required FeedRow? previous,

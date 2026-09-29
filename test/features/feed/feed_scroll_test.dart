@@ -23,8 +23,8 @@ import 'package:sielto/features/feed/feed_window.dart';
 import 'package:sielto/features/periods/period_service.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 
-/// The Feed's scroll: the selected period follows the list to its end, and
-/// the window widens only while there are records or periods beyond it.
+/// Feed scrolling: the selected period follows the list, and the window
+/// widens while records or periods lie beyond.
 class _FileAssetLoader extends AssetLoader {
   const _FileAssetLoader();
 
@@ -147,14 +147,10 @@ void main() {
       });
     }
 
-    // The last cycle can be reached by scrolling, not only the one whose
-    // rows happen to fill the last screen.
     expect(
       c.read(selectedPeriodProvider)?.id,
       c.read(incomePeriodsProvider).last.id,
     );
-    // Widening stops at the last record instead of on every frame at the
-    // edge: nothing is recorded before the window's opening months.
     final FeedWindow window = c.read(feedWindowProvider);
     final CalendarDate today = SpaceClock(timezone: 'UTC').today();
     expect(window.from, today.addMonths(-FeedWindow.stepMonths));

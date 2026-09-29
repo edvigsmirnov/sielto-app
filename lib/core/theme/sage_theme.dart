@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// Builds both [ThemeData] objects from the same [SageColors] token set, so
-/// token-based widgets need no per-theme branching.
+/// Light and dark [ThemeData] from [SageColors].
 abstract final class SageTheme {
-  // Built once: a fresh ThemeData per access made every MaterialApp rebuild
-  // compare two deep theme objects.
   static final ThemeData light = _build(SageColors.light, Brightness.light);
 
   static final ThemeData dark = _build(SageColors.dark, Brightness.dark);
@@ -13,8 +10,7 @@ abstract final class SageTheme {
   static ThemeData _build(SageColors c, Brightness brightness) {
     final ColorScheme scheme = ColorScheme(
       brightness: brightness,
-      // The solid pair, so switches, the cursor and selection match the
-      // filled buttons.
+      // Switches, cursor and selection use the filled-button pair.
       primary: c.accent,
       onPrimary: c.accentOn,
       primaryContainer: c.accentTint,
@@ -41,15 +37,7 @@ abstract final class SageTheme {
       outlineVariant: c.hairline,
     );
 
-    // System font throughout; the ramp is weight and size, not typeface.
-    // `fontFamily` stays null so each platform uses its own face.
-    //
-    // Sized for a real device, not for the design mock. The mock draws its
-    // phone frames 300px wide against a 360-412dp screen, so its type is about
-    // three quarters of what it should be — reading its px as dp made every
-    // screen render small. The ramp below is the mock scaled by ~1.2, which
-    // lands close to the Material defaults; keep it there when translating
-    // anything else from the mock.
+    // System font. Sizes are the design mock scaled by ~1.2.
     final TextTheme text = TextTheme(
       // Dashboard hero figure.
       displaySmall: TextStyle(
@@ -133,7 +121,7 @@ abstract final class SageTheme {
       dividerTheme: DividerThemeData(color: c.hairline, thickness: 1, space: 1),
       cardTheme: CardThemeData(
         color: c.card,
-        // Rule 3: shadow on light, lighter ground on dark.
+        // Shadow on light, lighter ground on dark.
         elevation: brightness == Brightness.light ? 1 : 0,
         shadowColor: brightness == Brightness.light
             ? const Color(0x14000000)
@@ -156,7 +144,6 @@ abstract final class SageTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          // Rule 2: the brand pair.
           backgroundColor: c.accent,
           foregroundColor: c.accentOn,
           textStyle: text.labelLarge,
@@ -250,11 +237,7 @@ abstract final class SageTheme {
   }
 }
 
-/// Android's default route transition at the speed the rest of the app moves.
-///
-/// Flutter's default takes 450 ms per push and pop, which made every form
-/// feel slow to open. The predictive back gesture is kept; only the plain
-/// push and pop are shortened.
+/// Android's predictive-back transition, shortened to 260/220 ms.
 class _SnappyPredictiveBack extends PredictiveBackPageTransitionsBuilder {
   const _SnappyPredictiveBack();
 

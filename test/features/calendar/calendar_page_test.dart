@@ -22,11 +22,7 @@ import 'package:sielto/features/calendar/month_view.dart';
 import 'package:sielto/features/calendar/week_view.dart';
 import 'package:sielto/features/calendar/year_view.dart';
 
-/// The Calendar over a real database and the real provider graph.
-///
-/// The unit tests next door cover the arithmetic; this one exists for the
-/// failures they cannot see — a provider that throws, a query that never
-/// resolves, a view that renders nothing at all.
+/// Calendar over a real database and the real provider graph.
 class _FileAssetLoader extends AssetLoader {
   const _FileAssetLoader();
 
@@ -71,8 +67,7 @@ void main() {
       spaceId: space.id,
       title: 'Groceries',
       amount: Decimal.parse('22.50'),
-      // A date in the current month, whenever the suite runs: the screen opens
-      // on today, and a fixture pinned to 2026 would fall outside the grid.
+      // Inside the current month, whenever the suite runs.
       dueDate: SpaceClock(timezone: 'Europe/Berlin').today(),
       expenseType: ExpenseType.variable,
     );
@@ -92,8 +87,7 @@ void main() {
       overrides: [
         databaseProvider.overrideWithValue(db),
         localSettingsProvider.overrideWithValue(settings),
-        // No Space override: with nothing stored, `resolvedSpaceProvider`
-        // falls back to the first Space on the device, which is the fixture.
+        // With nothing stored, `resolvedSpaceProvider` picks the fixture Space.
       ],
       child: Builder(
         builder: (BuildContext context) => MaterialApp(
@@ -101,9 +95,7 @@ void main() {
           locale: context.locale,
           supportedLocales: context.supportedLocales,
           localizationsDelegates: context.localizationDelegates,
-          // Gated on the Space, as main.dart gates the shell: `ref.space`
-          // throws where there is none, which is a routing mistake rather than
-          // a state a screen has to handle.
+          // `ref.space` throws without a Space.
           home: Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? _) =>
                 ref.watch(currentSpaceProvider) == null
@@ -115,22 +107,15 @@ void main() {
     ),
   );
 
-  /// Tears the tree down inside the test body.
-  ///
-  /// Disposing the `ProviderScope` cancels drift's query streams, and each
-  /// cancellation posts a zero-duration timer. Left to the framework's own
-  /// teardown those timers are still pending when it checks, and the test
-  /// fails with "A Timer is still pending" instead of its real result.
+  /// Disposing the scope posts drift's cancellation timers; unmounting here
+  /// lets them fire before teardown checks.
   Future<void> unmount(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(Duration.zero);
   }
 
-  /// Pumps until the streams behind the screen have emitted.
-  ///
-  /// `runAsync` because the drift streams need a real event loop, and repeated
-  /// `pump` rather than `pumpAndSettle` because a screen stuck on a spinner
-  /// never settles — it would report a timeout instead of the real failure.
+  /// Pumps until the streams have emitted. `runAsync` for drift's streams; not
+  /// `pumpAndSettle`, which times out on a spinner.
   Future<void> settle(WidgetTester tester) async {
     await tester.runAsync(() async {
       await tester.pumpWidget(harness());
@@ -146,7 +131,6 @@ void main() {
     await settle(tester);
     expect(tester.takeException(), isNull);
     expect(find.byType(MonthView), findsOneWidget);
-    // The figure of the fixture payment, so the aggregate query really ran.
     expect(find.textContaining('23'), findsWidgets);
     await unmount(tester);
   });
@@ -171,8 +155,7 @@ void main() {
       expect(find.byType(view), findsOneWidget, reason: label);
     }
 
-    // Day has no view class of its own to look for; the two totals over the
-    // list are what identify it.
+    // The Day view is identified by its two totals.
     await tester.runAsync(() async {
       await tester.tap(find.text('Day'));
       for (int i = 0; i < 8; i++) {
@@ -200,7 +183,6 @@ void main() {
     });
     expect(tester.takeException(), isNull);
 
-    // Next month's name is on the navigator, and the grid moved with it.
     final CalendarDate next = today.firstOfMonth.addMonths(1);
     expect(
       find.textContaining(_monthName(next.month)),

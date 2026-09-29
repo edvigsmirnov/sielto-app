@@ -10,10 +10,7 @@ import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// The Calendar's aggregate query (spec 8.1).
-///
-/// The whole screen rests on it, and every failure mode is silent: a day that
-/// merges the wrong rows still draws a plausible number.
+/// Calendar aggregate queries.
 void main() {
   late AppDatabase db;
   late SpaceRepository spaces;
@@ -98,8 +95,7 @@ void main() {
   });
 
   test('money is summed exactly, not through a float', () async {
-    // The reason the fold happens in Dart: SUM() over a TEXT column goes
-    // through REAL, and three tenths of a cent is where that shows.
+    // Sums in Dart: SUM() over TEXT goes through REAL.
     const CalendarDate day = CalendarDate(2026, 8, 12);
     for (int i = 0; i < 3; i++) {
       await spend('Coffee $i', '0.10', day);
@@ -108,8 +104,7 @@ void main() {
   });
 
   test('a floating income counts as a record with no figure', () async {
-    // An income whose amount is not known yet still puts something on the day
-    // (spec 4.7), and the cell has to be able to say so.
+    // An income without amount still marks the day.
     const CalendarDate day = CalendarDate(2026, 8, 27);
     await earn('Salary', null, day);
 

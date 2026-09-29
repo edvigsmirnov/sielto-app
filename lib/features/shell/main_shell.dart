@@ -9,11 +9,7 @@ import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/feed/feed_page.dart';
 import 'package:sielto/features/shell/shell_tab.dart';
 
-/// The three main screens and the two ways to move between them: the bottom
-/// bar and a horizontal swipe, both live at once (spec 4.1).
-///
-/// Settings is deliberately not a fourth tab — it is reached from the header
-/// (spec 4.2).
+/// Dashboard, Feed and Calendar, switched by the bottom bar or a swipe.
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
@@ -39,8 +35,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   void _goTo(int index) {
     final int distance = (index - _index).abs();
     _show(index);
-    // Sliding past a tab lays it out mid-flight for nothing; a tap two away
-    // lands straight on its target.
+    // Jumps over intermediate tabs.
     if (distance > 1) {
       _controller.jumpToPage(index);
       return;
@@ -53,18 +48,13 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   /// A newly opened Space starts on its Dashboard.
-  ///
-  /// The shell outlives the Space, so without this a switch lands on whichever
-  /// tab the previous Space was left on — and a Space created from the Feed
-  /// opened straight into an empty Feed.
   void _resetOnSpaceChange() {
     ref.listen<String?>(currentSpaceIdProvider, (
       String? previous,
       String? next,
     ) {
       if (previous == next || _index == 0) return;
-      // Jumped, not animated: a switch is a change of subject, and after a
-      // frame, because the notification can arrive mid-build.
+      // After the frame: the notification can arrive mid-build.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _show(0);
@@ -75,8 +65,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   static const int _calendarTab = 2;
 
-  /// System Back steps back inside the app before it leaves it: out of a Day
-  /// or Month the Calendar zoomed into, then to the Dashboard.
+  /// Back leaves Calendar zoom first, then returns to the Dashboard.
   void _back() {
     if (_index == _calendarTab &&
         ref.read(calendarViewProvider.notifier).back()) {
@@ -130,10 +119,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 }
 
-/// Keeps a tab built while another one is shown.
-///
-/// A PageView drops pages that scroll out of view, so every return to the
-/// Feed rebuilt the whole list and lost its scroll position.
+/// Keeps a tab alive while another is shown.
 class _KeepAlive extends StatefulWidget {
   const _KeepAlive({required this.child});
 

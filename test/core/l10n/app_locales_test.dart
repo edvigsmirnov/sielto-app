@@ -2,10 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/core/l10n/app_locales.dart';
 
-/// The picker highlights whatever [AppLocales.resolve] returns, so a locale
-/// that resolves wrongly shows the user the wrong language as selected while
-/// the app speaks another. The two-language version got away with a ternary;
-/// this is what has to hold as translations are added.
 void main() {
   test('every shipped language has a name and a distinct locale', () {
     expect(AppLocales.shipped, isNotEmpty);
@@ -31,13 +27,12 @@ void main() {
   });
 
   test('a locale with a country resolves to its language', () {
-    // A device set to ru_RU must not read as English.
     expect(AppLocales.resolve(const Locale('ru', 'RU')).locale, AppLocales.ru);
     expect(AppLocales.resolve(const Locale('en', 'GB')).locale, AppLocales.en);
   });
 
   test('en with a country never resolves to the pseudolocale', () {
-    // The pseudolocale is en_XA, so it shares a language code with English.
+    // The pseudolocale en_XA shares English's language code.
     expect(AppLocales.resolve(const Locale('en', 'US')).locale, AppLocales.en);
   });
 

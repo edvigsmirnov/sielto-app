@@ -5,8 +5,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 
-/// Picks a date at the grain of [view] (spec 8.1): a day, a week of a month,
-/// a month of a year, or a year.
+/// Picks a day, week, month or year, by [view].
 Future<CalendarDate?> pickCalendarDate(
   BuildContext context, {
   required CalendarView view,
@@ -65,7 +64,7 @@ Future<CalendarDate?> pickCalendarDate(
 }
 
 /// Month view: a year stepper over twelve months. Week view: a month stepper
-/// over that month's weeks.
+/// over its weeks.
 class _GrainPicker extends StatefulWidget {
   const _GrainPicker({
     required this.weeks,
@@ -127,8 +126,6 @@ class _GrainPickerState extends State<_GrainPicker> {
         if (widget.weeks)
           for (final CalendarDate monday in _weeksOf(_page))
             _Choice(
-              // Both months spelt out, so every row reads alike rather than
-              // only the two that cross a month.
               label:
                   '${dates.dayMonth(monday)} – '
                   '${dates.dayMonth(monday.addDays(6))}',
@@ -169,7 +166,7 @@ class _GrainPickerState extends State<_GrainPicker> {
     );
   }
 
-  /// Every week that has a day in [month], by its Monday.
+  /// Mondays of every week with a day in [month].
   static List<CalendarDate> _weeksOf(CalendarDate month) => <CalendarDate>[
     for (
       CalendarDate d = month.firstOfMonth.startOfWeek;

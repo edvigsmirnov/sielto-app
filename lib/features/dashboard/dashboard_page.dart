@@ -13,12 +13,7 @@ import 'package:sielto/features/dashboard/flow_dashboard.dart';
 import 'package:sielto/features/dashboard/period_dashboard.dart';
 import 'package:sielto/features/shell/app_header.dart';
 
-/// Aggregated figures for the current context — no individual records
-/// (spec 4.4).
-///
-/// The three modes disagree about what the available sum is and where the
-/// period ends, and about nothing else; that disagreement is the whole of the
-/// branch below.
+/// Aggregated figures for the open Space, by mode.
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
@@ -53,7 +48,6 @@ class DashboardPage extends ConsumerWidget {
   }
 }
 
-/// Opens the "set current balance" sheet for [space].
 Future<void> editBalance(
   BuildContext context,
   WidgetRef ref, {

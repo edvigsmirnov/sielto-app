@@ -8,7 +8,7 @@ import 'package:sielto/domain/ledger/ledger_entry.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// Every live payment of the current Space.
+/// Live payments of the open Space.
 final StreamProvider<List<Payment>> spacePaymentsProvider =
     StreamProvider<List<Payment>>((Ref ref) {
       final Space? space = ref.watch(currentSpaceProvider);
@@ -30,8 +30,7 @@ final StreamProvider<List<Category>> spaceCategoriesProvider =
       return ref.watch(repositoriesProvider).categories.watchInSpace(space.id);
     });
 
-/// Categories by id, including soft-deleted ones: a payment keeps showing the
-/// category it was filed under even after that category is removed (spec 7).
+/// Includes soft-deleted categories.
 final StreamProvider<Map<String, Category>> categoryIndexProvider =
     StreamProvider<Map<String, Category>>((Ref ref) {
       final Space? space = ref.watch(currentSpaceProvider);
@@ -58,8 +57,7 @@ LedgerEntry paymentEntry(Payment p) => LedgerEntry(
   title: p.title,
 );
 
-/// An income with no amount yet — a floating salary — contributes nothing to
-/// the walk until the figure is known (spec 4.7).
+/// Null for an income without an amount.
 LedgerEntry? incomeEntry(Income i) {
   final Decimal? amount = i.amount;
   if (amount == null) return null;
@@ -74,10 +72,7 @@ LedgerEntry? incomeEntry(Income i) {
   );
 }
 
-/// The Flow-mode figures every screen of a Flow Space reads.
-///
-/// One computation, shared: the Dashboard's main figure, the Feed's header
-/// numbers and the cutoff line in the list are all views of this (spec 4.9).
+/// Flow Space figures, shared by every screen.
 @immutable
 class FlowLedger {
   const FlowLedger({
@@ -91,54 +86,47 @@ class FlowLedger {
     required this.nearestIncome,
   });
 
-  /// Money on hand: the manual balance plus everything received since it was
-  /// set.
+  /// Manual balance plus incomes received since it was set.
   final Decimal available;
 
   final LedgerCascade cascade;
 
-  /// What the walk actually saw, after the double-count rule.
+  /// Entries after the double-count rule.
   final List<LedgerEntry> entries;
 
-  /// How many rows that rule removed. Shown under the balance so the exclusion
-  /// is visible rather than mysterious (plan G1).
+  /// Rows excluded by that rule.
   final int excludedCount;
 
   final CalendarDate today;
 
-  /// Every planned expense in the context, paid or not.
+  /// Every planned expense, paid or not.
   final Decimal totalPlanned;
   final Decimal totalPaid;
 
-  /// The next inflow that has not arrived yet, or null.
+  /// Next income not yet arrived.
   final Income? nearestIncome;
 
   Decimal get totalRemaining => totalPlanned - totalPaid;
 
   Coverage? get coverage => cascade.coverage;
 
-  /// Free money once everything planned is covered; null when it is not.
+  /// Null when not covered.
   Decimal? get freeCash => cascade.all.freeCash;
 
-  /// After the mandatory expenses alone. The floor to stay above (spec 4.4).
+  /// After mandatory expenses only.
   Decimal? get baseRemainder => cascade.mandatory.freeCash;
 
-  /// The last day the money reaches. Null while it reaches everything.
+  /// Null while the money reaches everything.
   CalendarDate? get lastCoveredDay => cascade.lastCoveredDay;
 
-  /// Coverage per entry id, for the cutoff line in the Feed.
   Map<String, bool> get coverageByEntry => <String, bool>{
     for (final LedgerStep step in cascade.all.steps)
       step.entry.id: step.isCovered,
   };
 }
 
-/// Builds [FlowLedger] from the Space row and its records.
-///
-/// Which inflows are already inside `manual_balance` is decided by the same
-/// date test as the expenses (plan G1): a receipt dated on or before the
-/// snapshot is part of it, one dated after is added on top. Unreceived incomes
-/// stay in the ledger and join at their own date, never before it (spec 4.6).
+/// Incomes dated on or before the balance snapshot are part of it; later ones
+/// are added.
 FlowLedger buildFlowLedger({
   required Space space,
   required List<Payment> payments,
@@ -208,16 +196,8 @@ FlowLedger buildFlowLedger({
   );
 }
 
-/// The ledger as it would stand if a draft were saved (spec 6.1).
-///
-/// Runs entirely in memory: the form recomputes this on every keystroke and
-/// the database is not touched until Save. [replacingId] takes the record
-/// being edited out first, so the preview measures the change rather than a
-/// duplicate.
-///
-/// [available] and [entries] come from whichever context the Space computes
-/// in — Flow's open walk or one income cycle — rather than from `FlowLedger`,
-/// which would put every future salary into an income-driven preview.
+/// The walk with a draft added, in memory. [replacingId] removes the record
+/// being edited.
 LedgerRun previewRun({
   required Decimal available,
   required List<LedgerEntry> entries,
@@ -232,8 +212,6 @@ LedgerRun previewRun({
   ],
 );
 
-/// The live figures for the current Space. Recomputed whenever a record, the
-/// balance or the Space itself changes (spec 4.9).
 final Provider<AsyncValue<FlowLedger>> flowLedgerProvider =
     Provider<AsyncValue<FlowLedger>>((Ref ref) {
       final Space? space = ref.watch(currentSpaceProvider);

@@ -16,8 +16,7 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/period_selector.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 
-/// The selector as a bottom bar, where the Feed puts it: it has to take its own
-/// height, not the screen's.
+/// The selector as a bottom bar takes its own height.
 class _FileAssetLoader extends AssetLoader {
   const _FileAssetLoader();
 
@@ -100,7 +99,7 @@ void main() {
   });
 }
 
-/// The reach without the open Space it resets on, which this test has none of.
+/// Without the Space dependency; this test has no Space.
 class _NoReach extends PeriodReachController {
   @override
   CalendarDate? build() => null;

@@ -5,8 +5,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 
 import 'sage_contrast.dart';
 
-/// Asserts the design rules in docs/IMPLEMENTATION_PLAN.md section 5, so a
-/// token edit that breaks one fails the build.
+/// Token and theme invariants.
 void main() {
   group('theme wiring', () {
     test('both themes expose the token set', () {
@@ -26,8 +25,6 @@ void main() {
   });
 
   group('rule 2 — the brand pair', () {
-    // The wordmark's two greens, swapped between the themes; the orange
-    // coverage dot renders identically in both.
     test('accent and accentOn swap, warningAccent does not vary', () {
       expect(SageColors.light.accent, SageBrand.night);
       expect(SageColors.light.accentOn, SageBrand.leaf);
@@ -51,14 +48,13 @@ void main() {
 
   group('rule 1 — roles swap, hues do not', () {
     test('accentStrong moves to the opposite end of the ramp', () {
-      // Dark on light, pale on dark.
       final double lightL = relativeLuminance(SageColors.light.accentStrong);
       final double darkL = relativeLuminance(SageColors.dark.accentStrong);
       expect(darkL, greaterThan(lightL));
     });
 
     test('grounds keep a green bias rather than going neutral grey', () {
-      // Green channel leads in every ground. A neutral theme has r == g == b.
+      // The green channel leads in every ground.
       for (final Color ground in <Color>[
         SageColors.dark.canvas,
         SageColors.dark.surface,
@@ -95,7 +91,7 @@ void main() {
   });
 
   group('contrast', () {
-    // No type here qualifies as WCAG "large text", so 4.5:1 applies.
+    // Nothing qualifies as WCAG large text.
     const double aaNormal = 4.5;
 
     for (final (String label, SageColors c) in <(String, SageColors)>[
@@ -141,7 +137,6 @@ void main() {
       });
 
       test('$label — secondary and label text clears AA', () {
-        // Light values were raised above the canvas alphas to reach this bar.
         for (final (String name, Color ground) in <(String, Color)>[
           ('canvas', c.canvas),
           ('surface', c.surface),
@@ -161,7 +156,6 @@ void main() {
       });
 
       test('$label — the ink hierarchy stays ordered', () {
-        // Bumping the light alphas for AA must not flatten or invert this.
         final double primary = contrastRatio(c.ink, c.card);
         final double secondary = contrastRatio(c.inkSecondary, c.card);
         final double small = contrastRatio(c.inkLabel, c.card);

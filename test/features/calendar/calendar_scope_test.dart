@@ -2,10 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 
-/// The ranges every Calendar view is built from.
-///
-/// Off-by-one here is invisible on screen — a grid still draws — but silently
-/// drops a day's figures or queries a month too few.
+/// Ranges each Calendar view covers.
 void main() {
   group('startOfWeek', () {
     test('a Monday is its own week start', () {
@@ -21,7 +18,7 @@ void main() {
     });
 
     test('crosses a month boundary backwards', () {
-      // 1 September 2026 is a Tuesday, so its week opens in August.
+      // 1 September 2026 is a Tuesday; its week starts in August.
       expect(
         const CalendarDate(2026, 9, 1).startOfWeek,
         const CalendarDate(2026, 8, 31),
@@ -75,9 +72,7 @@ void main() {
     });
 
     test('the month grid covers every day of its month', () {
-      // The reason the range is the grid and not the calendar month: the
-      // neighbouring cells carry figures too, and a range clipped to the month
-      // would draw them empty.
+      // The range is the whole grid, not the calendar month.
       for (int month = 1; month <= 12; month++) {
         final CalendarDate first = CalendarDate(2026, month, 1);
         final ({CalendarDate from, CalendarDate to}) grid = rangeOf(

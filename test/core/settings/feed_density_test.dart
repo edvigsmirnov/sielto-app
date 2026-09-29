@@ -4,17 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 
-/// The device-local preferences that a screen reads through a controller.
-///
-/// The controllers exist because a plain read of the store never rebuilds
-/// anything: these pin that setting a value both notifies and survives a
-/// restart.
+/// Settings controllers notify and persist.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<ProviderContainer> containerWith(LocalSettings settings) async {
     final ProviderContainer container = ProviderContainer(
-      // No explicit list type: flutter_riverpod does not export `Override`.
+      // `Override` is not exported by flutter_riverpod.
       overrides: [localSettingsProvider.overrideWithValue(settings)],
     );
     addTearDown(container.dispose);
@@ -46,7 +42,7 @@ void main() {
       final ProviderContainer a = await containerWith(first);
       await a.read(feedDensityProvider.notifier).set(FeedDensity.spacious);
 
-      // A second load off the same store is what the next launch does.
+      // A second load simulates the next launch.
       final ProviderContainer b = await containerWith(
         await LocalSettings.load(),
       );

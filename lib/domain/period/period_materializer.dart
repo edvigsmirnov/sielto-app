@@ -4,7 +4,6 @@ import 'package:sielto/domain/schedule/income_window.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// One anchor income's schedule, as the materializer needs it.
 @immutable
 class AnchorSchedule {
   const AnchorSchedule({required this.ruleId, required this.schedule});
@@ -13,7 +12,7 @@ class AnchorSchedule {
   final IncomeSchedule schedule;
 }
 
-/// A computed period boundary, before it becomes a `budget_periods` row.
+/// A computed period, before it becomes a `budget_periods` row.
 @immutable
 class MaterializedPeriod {
   const MaterializedPeriod({
@@ -27,21 +26,19 @@ class MaterializedPeriod {
 
   final CalendarDate startDate;
 
-  /// Inclusive, and one day before the next anchor. Null only for the last
-  /// period computed, whose successor is beyond the horizon.
+  /// Inclusive; the day before the next anchor. Null only for the last period.
   final CalendarDate? endDate;
 
   final CalendarDate anchorDate;
   final CalendarDate windowStart;
   final CalendarDate windowEnd;
 
-  /// Every anchor rule that resolved to this date. More than one means their
-  /// anchors coincided and the periods merged.
+  /// More than one when anchors coincide and periods merge.
   final List<String> ruleIds;
 
   bool get isMerged => ruleIds.length > 1;
 
-  /// Inclusive on both ends, so a one-day period has length 1.
+  /// Inclusive: a one-day period has length 1.
   int? get lengthInDays =>
       endDate == null ? null : startDate.daysUntil(endDate!) + 1;
 
@@ -51,24 +48,14 @@ class MaterializedPeriod {
       'anchor $anchorDate, rules $ruleIds)';
 }
 
-/// Turns anchor schedules into period boundaries (spec 4.7).
-///
-/// The convention is `[anchor, next anchor - 1]`, inclusive at both ends. A
-/// payment due on the next anchor's date belongs to the *next* period: the
-/// money has arrived that day, which agrees with the latest-working-day rule
-/// used to pick the anchor in the first place.
+/// Anchor schedules to periods `[anchor, next anchor - 1]`. A payment on the
+/// next anchor's date belongs to the next period.
 abstract final class PeriodMaterializer {
-  /// How far ahead periods are computed. Two periods before the edge, the app
-  /// extends by another six, so paging forward never hits an unexplained wall
-  /// (spec 4.7).
+  /// Default number of periods ahead.
   static const int horizonPeriods = 6;
 
-  /// Periods covering [from] and the next [count] anchors.
-  ///
-  /// Anchors landing on the same date merge into one period rather than
-  /// producing a zero-length one: both incomes then belong to the same cycle
-  /// and their amounts add. That is what makes the "minimum length is one day"
-  /// invariant hold by construction.
+  /// Periods covering [from] and the next [count] anchors. Anchors on the same
+  /// date merge into one period.
   static List<MaterializedPeriod> materialize({
     required List<AnchorSchedule> anchors,
     required CalendarDate from,
@@ -77,7 +64,7 @@ abstract final class PeriodMaterializer {
   }) {
     if (anchors.isEmpty) return const <MaterializedPeriod>[];
 
-    // One extra anchor beyond the horizon, so the last period gets a real end.
+    // One extra anchor gives the last period its end.
     final List<_Anchor> resolved = _anchorsFrom(
       anchors: anchors,
       from: from,
@@ -104,8 +91,7 @@ abstract final class PeriodMaterializer {
     return periods;
   }
 
-  /// True when only [remaining] periods are left ahead of today — the point
-  /// at which the next batch is materialised (spec 4.7).
+  /// True when only [remaining] periods are left ahead of [today].
   static bool needsExtension(
     List<MaterializedPeriod> periods,
     CalendarDate today, {
@@ -117,8 +103,7 @@ abstract final class PeriodMaterializer {
     return ahead <= threshold;
   }
 
-  /// Resolves each schedule month by month, merges coincident anchors and
-  /// returns them in date order.
+  /// Anchors in date order, coincident ones merged.
   static List<_Anchor> _anchorsFrom({
     required List<AnchorSchedule> anchors,
     required CalendarDate from,
@@ -127,9 +112,7 @@ abstract final class PeriodMaterializer {
   }) {
     final Map<String, _Anchor> byDate = <String, _Anchor>{};
 
-    // Start a month early: a schedule late in the previous month can resolve
-    // forward into the window, and the period containing `from` starts before
-    // it.
+    // Starts a month early: a late schedule can resolve into this month.
     int year = from.year;
     int month = from.month - 1;
     if (month == 0) {
@@ -137,8 +120,7 @@ abstract final class PeriodMaterializer {
       year -= 1;
     }
 
-    // Bounded so a schedule that somehow never lands ahead of `from` cannot
-    // spin. Each pass covers one month.
+    // Guard against a schedule that never lands ahead of `from`.
     const int maxMonths = 120;
     for (int i = 0; i < maxMonths && byDate.length < needed + 2; i++) {
       for (final AnchorSchedule anchor in anchors) {
@@ -157,7 +139,6 @@ abstract final class PeriodMaterializer {
             ruleIds: <String>[anchor.ruleId],
           );
         } else {
-          // Coincident anchors merge into one period (spec 4.7).
           existing.ruleIds.add(anchor.ruleId);
           if (window.windowStart.isBefore(existing.windowStart)) {
             byDate[key] = existing.withWindowStart(window.windowStart);
@@ -174,7 +155,6 @@ abstract final class PeriodMaterializer {
     final List<_Anchor> sorted = byDate.values.toList()
       ..sort((_Anchor a, _Anchor b) => a.date.compareTo(b.date));
 
-    // The period containing `from` starts at the last anchor on or before it.
     final int startIndex = sorted.lastIndexWhere(
       (_Anchor a) => !a.date.isAfter(from),
     );
