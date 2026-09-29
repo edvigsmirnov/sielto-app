@@ -11,6 +11,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_entry.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
@@ -457,7 +458,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     );
 
     if (!_loaded) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: LeafLoader()));
     }
 
     return Scaffold(

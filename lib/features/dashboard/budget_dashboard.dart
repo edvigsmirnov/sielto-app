@@ -6,6 +6,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/dashboard/budget_settings.dart';
@@ -28,7 +29,7 @@ class BudgetDashboardBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<BudgetLedger> ledger = ref.watch(budgetLedgerProvider);
     return ledger.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: LeafLoader()),
       error: (Object e, StackTrace _) =>
           EmptyState(message: tr('common.loadFailed')),
       data: (BudgetLedger data) => _Body(space: space, ledger: data),

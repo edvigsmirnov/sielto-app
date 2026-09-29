@@ -15,6 +15,7 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/space/period_ledger.dart';
@@ -162,7 +163,7 @@ void main() {
       await wait(tester, 30);
     });
     expect(c.read(periodLedgerProvider).hasValue, isTrue);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(LeafLoader), findsNothing);
     await unmount(tester);
   }
 
