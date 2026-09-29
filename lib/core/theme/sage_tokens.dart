@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 ///
 /// Rules, enforced by test/core/theme/sage_theme_test.dart:
 ///   1. Roles swap, hues don't.
-///   2. [accent], [accentOn] and [warningAccent] are identical in both themes.
+///   2. [accent] and [accentOn] are the wordmark's pair ([SageBrand]),
+///      swapped between the themes; [warningAccent] is identical in both.
 ///   3. Elevation: shadow on light, [cardRaised] on dark.
 ///   4. Dark grounds keep a green bias.
 ///   5. No colour literals outside this file. Use `context.sage.<token>`.
@@ -69,7 +70,9 @@ class SageColors extends ThemeExtension<SageColors> {
   /// Input and segment borders.
   final Color border;
 
-  /// Theme-invariant. Fill on light; fill and text on dark.
+  /// Solid fills: filled buttons, switches, the FAB, a selected segment,
+  /// today in the Calendar. The wordmark's green on light, its letters' pale
+  /// green on dark.
   final Color accent;
 
   /// Positive figures, primary action text. Green coverage dot.
@@ -84,7 +87,7 @@ class SageColors extends ThemeExtension<SageColors> {
   /// pairing this token with [accentOn] renders dark-on-dark.
   final Color accentFill;
 
-  /// Theme-invariant. Foreground on a solid [accent] fill.
+  /// Foreground on a solid [accent] fill: the other half of the pair.
   final Color accentOn;
 
   /// Selected-card background.
@@ -128,10 +131,10 @@ class SageColors extends ThemeExtension<SageColors> {
     inkLabel: Color(0xAC2B2F28), // ink @ .675 -> 4.55:1 on canvas
     hairline: Color(0x142B2F28), // ink @ .08
     border: Color(0x262B2F28), // ink @ .15
-    accent: Color(0xFF8FB996),
+    accent: SageBrand.night,
     accentStrong: Color(0xFF4C7A52),
-    accentFill: Color(0xFF8FB996),
-    accentOn: Color(0xFF1E3921),
+    accentFill: SageBrand.night,
+    accentOn: SageBrand.leaf,
     accentTint: Color(0xFFEEF5EC),
     accentTintAlt: Color(0xFFE6ECDF),
     danger: Color(0xFFA34B3A),
@@ -155,10 +158,10 @@ class SageColors extends ThemeExtension<SageColors> {
     inkLabel: Color(0xFF8B9889),
     hairline: Color(0x17E3EAE0), // paper @ .09
     border: Color(0x29E3EAE0), // paper @ .16
-    accent: Color(0xFF8FB996),
+    accent: SageBrand.leaf,
     accentStrong: Color(0xFFA8CFAD),
     accentFill: Color(0xFF2F5434),
-    accentOn: Color(0xFF1E3921),
+    accentOn: SageBrand.night,
     accentTint: Color(0xFF26362A),
     accentTintAlt: Color(0xFF2B382C),
     danger: Color(0xFFDD9B8C),
@@ -256,6 +259,17 @@ class SageColors extends ThemeExtension<SageColors> {
 }
 
 /// Corner radii from the Sage design canvas.
+/// The brand's own colours, taken from the wordmark artwork. Theme-independent:
+/// the welcome screen and the Android splash are the same green in light and
+/// dark, because the artwork is.
+abstract final class SageBrand {
+  /// The wordmark's background. Also `splash_background` on Android.
+  static const Color night = Color(0xFF213627);
+
+  /// The wordmark's letters.
+  static const Color leaf = Color(0xFFBDC9A7);
+}
+
 abstract final class SageRadius {
   static const double card = 14;
   static const double input = 11;

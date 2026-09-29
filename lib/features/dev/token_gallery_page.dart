@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
 
 /// Renders every token and primitive for visual comparison against the design
 /// canvas, and switches theme and locale so both audits run from one screen.
@@ -52,6 +54,9 @@ class TokenGalleryPage extends ConsumerWidget {
           SageSpace.xl * 2,
         ),
         children: <Widget>[
+          const _SectionLabel('Loader'),
+          const _LoaderPreview(),
+
           const _SectionLabel('Grounds'),
           _Swatches(<_Token>[
             _Token('canvas', c.canvas, 'Outer canvas, sheet backdrop'),
@@ -76,14 +81,14 @@ class TokenGalleryPage extends ConsumerWidget {
 
           const _SectionLabel('Accent'),
           _Swatches(<_Token>[
-            _Token('accent', c.accent, 'Invariant across themes'),
+            _Token('accent', c.accent, 'Solid fills, the brand pair'),
             _Token(
               'accentStrong',
               c.accentStrong,
               'Positive figures, action text',
             ),
             _Token('accentFill', c.accentFill, 'Surface behind accent text'),
-            _Token('accentOn', c.accentOn, 'Invariant: on a solid accent fill'),
+            _Token('accentOn', c.accentOn, 'On a solid accent fill'),
             _Token('accentTint', c.accentTint, 'Selected card'),
             _Token('accentTintAlt', c.accentTintAlt, 'Icon chips'),
           ]),
@@ -438,4 +443,53 @@ class _Card extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The loader at three sizes, slowed down on demand, and alone on a screen
+/// the way a loading page shows it.
+class _LoaderPreview extends StatefulWidget {
+  const _LoaderPreview();
+
+  @override
+  State<_LoaderPreview> createState() => _LoaderPreviewState();
+}
+
+class _LoaderPreviewState extends State<_LoaderPreview> {
+  @override
+  void dispose() {
+    timeDilation = 1;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: <Widget>[
+      const Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: <Widget>[
+          LeafLoader(size: 48),
+          LeafLoader(),
+          LeafLoader(size: 160),
+        ],
+      ),
+      SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Slow motion x5'),
+        value: timeDilation != 1,
+        onChanged: (bool slow) => setState(() => timeDilation = slow ? 5 : 1),
+      ),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: OutlinedButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (BuildContext _) =>
+                  const Scaffold(body: Center(child: LeafLoader())),
+            ),
+          ),
+          child: const Text('Full screen'),
+        ),
+      ),
+    ],
+  );
 }

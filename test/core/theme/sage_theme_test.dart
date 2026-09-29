@@ -25,29 +25,26 @@ void main() {
     });
   });
 
-  group('rule 2 — theme-invariant tokens', () {
-    // Filled sage buttons and the orange coverage dot render identically in
-    // both themes.
-    test('accent, accentOn and warningAccent do not vary by theme', () {
-      expect(SageColors.dark.accent, SageColors.light.accent);
-      expect(SageColors.dark.accentOn, SageColors.light.accentOn);
+  group('rule 2 — the brand pair', () {
+    // The wordmark's two greens, swapped between the themes; the orange
+    // coverage dot renders identically in both.
+    test('accent and accentOn swap, warningAccent does not vary', () {
+      expect(SageColors.light.accent, SageBrand.night);
+      expect(SageColors.light.accentOn, SageBrand.leaf);
+      expect(SageColors.dark.accent, SageBrand.leaf);
+      expect(SageColors.dark.accentOn, SageBrand.night);
       expect(SageColors.dark.warningAccent, SageColors.light.warningAccent);
     });
 
-    test('the filled button uses that invariant pair', () {
-      for (final ThemeData theme in <ThemeData>[
-        SageTheme.light,
-        SageTheme.dark,
+    test('the filled button and the switch use that pair', () {
+      for (final (ThemeData theme, SageColors c) in <(ThemeData, SageColors)>[
+        (SageTheme.light, SageColors.light),
+        (SageTheme.dark, SageColors.dark),
       ]) {
         final ButtonStyle? style = theme.filledButtonTheme.style;
-        expect(
-          style?.backgroundColor?.resolve(<WidgetState>{}),
-          SageColors.light.accent,
-        );
-        expect(
-          style?.foregroundColor?.resolve(<WidgetState>{}),
-          SageColors.light.accentOn,
-        );
+        expect(style?.backgroundColor?.resolve(<WidgetState>{}), c.accent);
+        expect(style?.foregroundColor?.resolve(<WidgetState>{}), c.accentOn);
+        expect(theme.colorScheme.primary, c.accent);
       }
     });
   });

@@ -4,14 +4,18 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 /// Builds both [ThemeData] objects from the same [SageColors] token set, so
 /// token-based widgets need no per-theme branching.
 abstract final class SageTheme {
-  static ThemeData get light => _build(SageColors.light, Brightness.light);
+  // Built once: a fresh ThemeData per access made every MaterialApp rebuild
+  // compare two deep theme objects.
+  static final ThemeData light = _build(SageColors.light, Brightness.light);
 
-  static ThemeData get dark => _build(SageColors.dark, Brightness.dark);
+  static final ThemeData dark = _build(SageColors.dark, Brightness.dark);
 
   static ThemeData _build(SageColors c, Brightness brightness) {
     final ColorScheme scheme = ColorScheme(
       brightness: brightness,
-      primary: c.accentStrong,
+      // The solid pair, so switches, the cursor and selection match the
+      // filled buttons.
+      primary: c.accent,
       onPrimary: c.accentOn,
       primaryContainer: c.accentTint,
       onPrimaryContainer: c.inkHeading,
@@ -22,7 +26,7 @@ abstract final class SageTheme {
       tertiary: c.sand,
       onTertiary: c.ink,
       error: c.danger,
-      onError: c.accentOn,
+      onError: c.card,
       errorContainer: c.dangerTint,
       onErrorContainer: c.ink,
       surface: c.card,
@@ -119,6 +123,13 @@ abstract final class SageTheme {
       dividerColor: c.hairline,
       textTheme: text,
       extensions: <ThemeExtension<dynamic>>[c],
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: <TargetPlatform, PageTransitionsBuilder>{
+          TargetPlatform.android: _SnappyPredictiveBack(),
+          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+        },
+      ),
       dividerTheme: DividerThemeData(color: c.hairline, thickness: 1, space: 1),
       cardTheme: CardThemeData(
         color: c.card,
@@ -145,7 +156,7 @@ abstract final class SageTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          // Rule 2: identical in both themes.
+          // Rule 2: the brand pair.
           backgroundColor: c.accent,
           foregroundColor: c.accentOn,
           textStyle: text.labelLarge,
@@ -237,4 +248,19 @@ abstract final class SageTheme {
       ),
     );
   }
+}
+
+/// Android's default route transition at the speed the rest of the app moves.
+///
+/// Flutter's default takes 450 ms per push and pop, which made every form
+/// feel slow to open. The predictive back gesture is kept; only the plain
+/// push and pop are shortened.
+class _SnappyPredictiveBack extends PredictiveBackPageTransitionsBuilder {
+  const _SnappyPredictiveBack();
+
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 260);
+
+  @override
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 220);
 }

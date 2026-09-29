@@ -147,9 +147,9 @@ class _Segment<T> extends StatelessWidget {
         duration: const Duration(milliseconds: 140),
         padding: const EdgeInsets.symmetric(vertical: 9),
         decoration: BoxDecoration(
-          // The solid sage fill, not accentFill: accentOn is legible on the
-          // invariant accent in both themes, while accentFill turns dark on a
-          // dark ground and swallows the label (plan section 5, rule 2).
+          // The solid accent, not accentFill: accentOn is legible on accent in
+          // both themes, while accentFill turns dark on a dark ground and
+          // swallows the label (plan section 5, rule 2).
           color: isSelected ? sage.accent : Colors.transparent,
           borderRadius: BorderRadius.circular(SageRadius.chip),
         ),
@@ -418,7 +418,7 @@ class AnimatedMoney extends StatelessWidget {
     required this.value,
     required this.format,
     this.style,
-    this.duration = const Duration(milliseconds: 420),
+    this.duration = const Duration(milliseconds: 300),
     super.key,
   });
 

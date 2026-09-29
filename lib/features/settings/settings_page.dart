@@ -1,4 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/l10n/app_locales.dart';
@@ -8,6 +9,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/categories/categories_page.dart';
+import 'package:sielto/features/dev/token_gallery_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
 import 'package:sielto/features/settings/language_picker.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
@@ -121,6 +123,19 @@ class SettingsPage extends ConsumerWidget {
             onChanged: (bool value) =>
                 ref.read(offlineModeProvider.notifier).set(value: value),
           ),
+          // Development surface: debug builds, or a release built with
+          // --dart-define=SIELTO_DEV=true for testing on a device.
+          if (kDebugMode || const bool.fromEnvironment('SIELTO_DEV'))
+            ListTile(
+              leading: const Icon(Icons.science_outlined),
+              title: const Text('Developer'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (BuildContext _) => const TokenGalleryPage(),
+                ),
+              ),
+            ),
         ],
       ),
     );

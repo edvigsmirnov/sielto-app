@@ -67,6 +67,12 @@ void main() {
             locale: context.locale,
             supportedLocales: context.supportedLocales,
             localizationsDelegates: context.localizationDelegates,
+            // Reduced motion holds the loader still; spinning, it would never
+            // let pumpAndSettle settle.
+            builder: (BuildContext context, Widget? child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: child!,
+            ),
             home: const TokenGalleryPage(),
           ),
         ),
