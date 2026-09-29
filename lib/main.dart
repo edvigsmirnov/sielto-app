@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/app/startup.dart';
@@ -9,7 +10,9 @@ import 'package:sielto/core/l10n/pseudo_asset_loader.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_theme.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
+import 'package:sielto/features/launch/launch_curtain.dart';
 import 'package:sielto/features/onboarding/onboarding_page.dart';
 import 'package:sielto/features/security/decryption_failure_page.dart';
 import 'package:sielto/features/shell/main_shell.dart';
@@ -24,6 +27,8 @@ Future<void> main() async {
 
   // Before the first frame: an unreadable database is a screen, not a crash.
   final Startup startup = await openDatabase();
+
+  await LaunchCurtain.arm();
 
   // BudgetAppRoot.build returns the ProviderScope; the rule does not see
   // through a custom root widget.
@@ -114,8 +119,10 @@ class _StartupLoading extends StatelessWidget {
   const _StartupLoading();
 
   @override
+  // Under the launch curtain, the same green, so nothing flashes if the
+  // curtain has already gone.
   Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: CircularProgressIndicator()));
+      const ColoredBox(color: SageBrand.night);
 }
 
 class _StartupError extends StatelessWidget {
@@ -143,6 +150,22 @@ class BudgetApp extends ConsumerWidget {
       locale: context.locale,
       supportedLocales: context.supportedLocales,
       localizationsDelegates: context.localizationDelegates,
+      builder: (BuildContext context, Widget? child) {
+        // The system bars follow the theme wherever a screen does not set
+        // them, or the welcome screen's light icons outlive it.
+        final bool dark = Theme.of(context).brightness == Brightness.dark;
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+              .copyWith(
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarIconBrightness: dark
+                    ? Brightness.light
+                    : Brightness.dark,
+                systemNavigationBarContrastEnforced: false,
+              ),
+          child: LaunchCurtain(child: child ?? const SizedBox.shrink()),
+        );
+      },
       home: home,
     );
   }

@@ -1,76 +1,295 @@
+import 'dart:math' as math;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
+import 'package:sielto/features/launch/launch_curtain.dart';
 
 /// The first screen of a fresh install.
 ///
 /// Nothing has happened yet — no account, no network call, no data — so the
 /// screen carries the name and one way in. "Sign in on this device" belongs
 /// with device linking in M9 and is absent until it works.
-class WelcomePage extends StatelessWidget {
+///
+/// On the wordmark's own green in both themes, so the Android splash, which
+/// is the same colour, runs straight into it. It opens with leaves flying in
+/// from every side and settling as the leaf over the "i"; the name, the motto
+/// and the button then fade in. A tap skips to the end.
+class WelcomePage extends StatefulWidget {
   const WelcomePage({required this.onStart, super.key});
 
-  final VoidCallback onStart;
+  /// Given where the button's centre is on screen, for the transition out.
+  final ValueChanged<Offset> onStart;
+
+  /// The whole intro, from the first leaf to the button.
+  static const Duration intro = Duration(milliseconds: 2600);
+
+  @override
+  State<WelcomePage> createState() => _WelcomePageState();
+}
+
+class _WelcomePageState extends State<WelcomePage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _intro = AnimationController(
+    vsync: this,
+    duration: WelcomePage.intro,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    LaunchCurtain.covering.addListener(_play);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reduced motion lands on the finished screen.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _intro.value = 1;
+    } else {
+      _play();
+    }
+  }
+
+  /// Starts the intro once it can be seen: not under the launch curtain.
+  void _play() {
+    if (LaunchCurtain.covering.value) return;
+    if (_intro.value == 0 && !_intro.isAnimating) _intro.forward();
+  }
+
+  @override
+  void dispose() {
+    LaunchCurtain.covering.removeListener(_play);
+    _intro.dispose();
+    super.dispose();
+  }
+
+  void _skip() {
+    if (_intro.isAnimating) _intro.value = 1;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
 
-    return Scaffold(
-      backgroundColor: sage.surface,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(SageSpace.xl),
-          child: Column(
-            children: <Widget>[
-              const Spacer(),
-              Container(
-                width: 100,
-                height: 100,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: sage.accentTintAlt,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: sage.accent, width: 1.5),
-                ),
-                child: Text(
-                  // The monogram is the product name's initial, not copy: it
-                  // stays Latin in every locale, as the name does.
-                  'S',
-                  style: text.displaySmall?.copyWith(
-                    color: sage.accentStrong,
-                    fontSize: 40,
-                  ),
-                ),
-              ),
-              const SizedBox(height: SageSpace.lg),
-              Text(
-                'Sielto',
-                style: text.displaySmall?.copyWith(
-                  fontSize: 30,
-                  color: sage.inkHeading,
-                  letterSpacing: -0.4,
-                ),
-              ),
-              const SizedBox(height: SageSpace.sm),
-              Text(
-                tr('welcome.tagline'),
-                textAlign: TextAlign.center,
-                style: text.bodyMedium?.copyWith(height: 1.6),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: onStart,
-                  child: Text(tr('welcome.start')),
-                ),
-              ),
-            ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // The navigation bar too. Edge to edge the green already runs under
+      // it; three-button navigation still lays a light contrast scrim over
+      // the buttons unless told not to.
+      value: SystemUiOverlayStyle.light.copyWith(
+        systemNavigationBarColor: SageBrand.night,
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarContrastEnforced: false,
+      ),
+      child: Scaffold(
+        backgroundColor: SageBrand.night,
+        body: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _skip,
+          child: SafeArea(
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints box) {
+                final Rect mark = _Wordmark.rectIn(box.biggest);
+                return AnimatedBuilder(
+                  animation: _intro,
+                  builder: (BuildContext context, Widget? _) {
+                    final double t = _intro.value;
+                    final double name = _phase(t, 0.44, 0.64);
+                    final double motto = _phase(t, 0.62, 0.8);
+                    final double button = _phase(t, 0.74, 0.94);
+                    return Stack(
+                      children: <Widget>[
+                        Positioned.fromRect(
+                          rect: mark,
+                          child: Opacity(
+                            opacity: name,
+                            child: Transform.scale(
+                              scale: 0.96 + 0.04 * name,
+                              child: const _Wordmark(),
+                            ),
+                          ),
+                        ),
+                        if (t < 0.7)
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _GatheringLeaves(
+                                progress: t,
+                                target:
+                                    mark.topLeft +
+                                    Offset(
+                                      mark.width * _Wordmark.leafAt.dx,
+                                      mark.height * _Wordmark.leafAt.dy,
+                                    ),
+                                leafLength: mark.width * _Wordmark.leafSize,
+                                // Fade as the wordmark's own leaf appears
+                                // under them.
+                                fade: 1 - _phase(t, 0.5, 0.68),
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          left: SageSpace.xl,
+                          right: SageSpace.xl,
+                          top: mark.bottom + SageSpace.lg,
+                          child: Opacity(
+                            opacity: motto,
+                            child: Text(
+                              tr('welcome.tagline'),
+                              textAlign: TextAlign.center,
+                              style: text.bodyLarge?.copyWith(
+                                height: 1.6,
+                                color: SageBrand.leaf.withValues(alpha: 0.85),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left: SageSpace.xl,
+                          right: SageSpace.xl,
+                          bottom: SageSpace.xl,
+                          child: Opacity(
+                            opacity: button,
+                            child: Transform.translate(
+                              offset: Offset(0, 16 * (1 - button)),
+                              child: FilledButton(
+                                onPressed: button > 0.5
+                                    ? () => widget.onStart(
+                                        Offset(
+                                          box.maxWidth / 2,
+                                          box.maxHeight -
+                                              SageSpace.xl -
+                                              _buttonHalf,
+                                        ).translate(
+                                          0,
+                                          MediaQuery.paddingOf(context).top,
+                                        ),
+                                      )
+                                    : null,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: SageBrand.leaf,
+                                  foregroundColor: SageBrand.night,
+                                ),
+                                child: Text(tr('welcome.start')),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ),
       ),
     );
   }
+
+  /// Half the filled button's height, near enough for where a transition
+  /// starts.
+  static const double _buttonHalf = 24;
+
+  /// 0 before [from], 1 after [to], eased between.
+  static double _phase(double t, double from, double to) =>
+      Curves.easeOutCubic.transform(((t - from) / (to - from)).clamp(0, 1));
+}
+
+/// The wordmark artwork, cut from the delivered master by
+/// `tools/make_icon.py`.
+class _Wordmark extends StatelessWidget {
+  const _Wordmark();
+
+  /// The crop's width over its height.
+  static const double aspect = 844 / 345;
+
+  /// Where the leaf over the "i" sits, as a fraction of the crop.
+  static const Offset leafAt = Offset(0.276, 0.229);
+
+  /// The leaf's length as a fraction of the crop's width.
+  static const double leafSize = 0.085;
+
+  /// Centred, a little above the middle, at most 360 wide.
+  static Rect rectIn(Size area) {
+    final double width = math.min(area.width * 0.78, 360);
+    final double height = width / aspect;
+    return Rect.fromCenter(
+      center: Offset(area.width / 2, area.height * 0.4),
+      width: width,
+      height: height,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    'assets/brand/wordmark.png',
+    semanticLabel: 'Sielto',
+    filterQuality: FilterQuality.medium,
+  );
+}
+
+/// Leaves coming in from every side, spinning, and landing on one point.
+class _GatheringLeaves extends CustomPainter {
+  _GatheringLeaves({
+    required this.progress,
+    required this.target,
+    required this.leafLength,
+    required this.fade,
+  });
+
+  final double progress;
+  final Offset target;
+  final double leafLength;
+  final double fade;
+
+  static const int _count = 9;
+  static final Path _leaf = leafPath();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Just past the screen's edge, so every leaf is in sight within a frame
+    // or two of starting.
+    final double reach = size.longestSide * 0.62;
+    final Paint paint = Paint()..isAntiAlias = true;
+
+    for (int i = 0; i < _count; i++) {
+      // Staggered starts, every leaf arriving by 0.5.
+      final double start = 0.12 * i / _count;
+      final double t = ((progress - start) / (0.5 - start)).clamp(0.0, 1.0);
+      if (t == 0) continue;
+      // Fast in, slow to settle, as a leaf blown onto a spot comes to rest.
+      final double eased = Curves.easeOutCubic.transform(t);
+
+      // Each comes from its own direction and curls in on a spiral.
+      final double from = i * 2 * math.pi / _count + 0.4;
+      final double angle = from + (1 - eased) * 1.6;
+      final double radius = reach * (1 - eased);
+      final Offset at =
+          target + Offset(math.cos(angle), math.sin(angle)) * radius;
+
+      final double spin = (1 - eased) * (3 + i % 3) * math.pi;
+      // Larger in flight, the size of the "i" leaf on landing.
+      final double length = leafLength * (1 + 1.6 * (1 - eased));
+
+      paint.color = Color.lerp(
+        SageBrand.leaf,
+        SageBrand.leaf.withValues(alpha: 0.5),
+        1 - eased,
+      )!.withValues(alpha: fade * math.min(1, t * 4));
+      canvas
+        ..save()
+        ..translate(at.dx, at.dy)
+        ..rotate(0.5 + spin)
+        ..scale(length)
+        ..drawPath(_leaf, paint)
+        ..restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GatheringLeaves old) =>
+      old.progress != progress || old.target != target || old.fade != fade;
 }

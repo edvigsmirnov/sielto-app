@@ -1,15 +1,21 @@
+import 'dart:ui' as ui;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/format/currencies.dart';
+import 'package:sielto/core/l10n/app_locales.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/theme/theme_mode_controller.dart';
+import 'package:sielto/core/ui/leaf_scatter.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/onboarding/welcome_page.dart';
+import 'package:sielto/features/settings/language_picker.dart';
 import 'package:sielto/features/spaces/space_form_page.dart';
 
-/// First run (spec 2.1): a nickname, a currency, then the first Space.
+/// First run (spec 2.1): one screen of basics, then the first Space.
 ///
 /// No account, no email, no network call — the user id was generated locally
 /// before this screen was built. App lock and the Recovery Key are steps 3 and
@@ -25,15 +31,40 @@ class OnboardingPage extends ConsumerStatefulWidget {
 class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   final PageController _controller = PageController();
 
-  /// Nickname, currency, Space. The Space form is the last one.
-  static const int _stepCount = 3;
+  /// The basics, then the Space. The Space form is the last one.
+  static const int _stepCount = 2;
 
   bool _started = false;
+
+  final GlobalKey _welcome = GlobalKey();
+
+  /// The welcome screen as it was when left, blowing away over the first
+  /// step; null once it has.
+  ui.Image? _leaving;
+  Offset? _leavingFrom;
 
   @override
   void dispose() {
     _controller.dispose();
+    _leaving?.dispose();
     super.dispose();
+  }
+
+  Future<void> _start(Offset from) async {
+    final ui.Image? image = await snapshotOf(_welcome);
+    if (!mounted) return;
+    setState(() {
+      _started = true;
+      _leaving = image;
+      _leavingFrom = from;
+    });
+  }
+
+  void _left() {
+    setState(() {
+      _leaving?.dispose();
+      _leaving = null;
+    });
   }
 
   void _next() => _controller.nextPage(
@@ -44,17 +75,20 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     if (!_started) {
-      return WelcomePage(onStart: () => setState(() => _started = true));
+      return RepaintBoundary(
+        key: _welcome,
+        child: WelcomePage(onStart: _start),
+      );
     }
 
-    return Scaffold(
+    final ui.Image? leaving = _leaving;
+    final Widget steps = Scaffold(
       backgroundColor: context.sage.surface,
       body: PageView(
         controller: _controller,
         physics: const NeverScrollableScrollPhysics(),
         children: <Widget>[
-          _NicknameStep(stepCount: _stepCount, onContinue: _next),
-          _CurrencyStep(stepCount: _stepCount, onContinue: _next),
+          _ProfileStep(stepCount: _stepCount, onContinue: _next),
           const SpaceFormPage(
             isFirstSpace: true,
             step: _stepCount,
@@ -63,21 +97,36 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         ],
       ),
     );
+    if (leaving == null) return steps;
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        steps,
+        LeafScatter(image: leaving, origin: _leavingFrom, onDone: _left),
+      ],
+    );
   }
 }
 
-class _NicknameStep extends ConsumerStatefulWidget {
-  const _NicknameStep({required this.stepCount, required this.onContinue});
+/// Nickname, currency, theme and language on one screen.
+///
+/// Every answer here is changeable later in Settings, so none of them earns a
+/// screen of its own. The currency is stored as the device default, so every
+/// later Space starts from the same answer instead of asking again (spec 2.1,
+/// step 2). Theme and language apply the moment they are picked.
+class _ProfileStep extends ConsumerStatefulWidget {
+  const _ProfileStep({required this.stepCount, required this.onContinue});
 
   final int stepCount;
   final VoidCallback onContinue;
 
   @override
-  ConsumerState<_NicknameStep> createState() => _NicknameStepState();
+  ConsumerState<_ProfileStep> createState() => _ProfileStepState();
 }
 
-class _NicknameStepState extends ConsumerState<_NicknameStep> {
+class _ProfileStepState extends ConsumerState<_ProfileStep> {
   final TextEditingController _nickname = TextEditingController();
+  String? _currency;
 
   @override
   void dispose() {
@@ -85,72 +134,40 @@ class _NicknameStepState extends ConsumerState<_NicknameStep> {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  Future<void> _save(String currency) async {
     await ref.read(localSettingsProvider).setNickname(_nickname.text);
+    await ref.read(localSettingsProvider).setCurrencyCode(currency);
     widget.onContinue();
   }
-
-  @override
-  Widget build(BuildContext context) => OnboardingScaffold(
-    step: 1,
-    stepCount: widget.stepCount,
-    title: tr('onboarding.nicknameTitle'),
-    body: tr('onboarding.nicknameWhy'),
-    primaryLabel: tr('common.next'),
-    onPrimary: _save,
-    // Optional, and the spec says so — the step has to be skippable rather
-    // than merely ignorable.
-    secondaryLabel: tr('common.skip'),
-    onSecondary: widget.onContinue,
-    children: <Widget>[
-      TextField(
-        controller: _nickname,
-        autofocus: true,
-        textCapitalization: TextCapitalization.words,
-        decoration: InputDecoration(hintText: tr('onboarding.nicknameHint')),
-        onSubmitted: (String _) => _save(),
-      ),
-    ],
-  );
-}
-
-/// The currency, asked once here rather than buried in the Space form
-/// (spec 2.1, step 2).
-///
-/// Stored as the device default, so every later Space starts from the same
-/// answer instead of asking again.
-class _CurrencyStep extends ConsumerStatefulWidget {
-  const _CurrencyStep({required this.stepCount, required this.onContinue});
-
-  final int stepCount;
-  final VoidCallback onContinue;
-
-  @override
-  ConsumerState<_CurrencyStep> createState() => _CurrencyStepState();
-}
-
-class _CurrencyStepState extends ConsumerState<_CurrencyStep> {
-  String? _chosen;
 
   @override
   Widget build(BuildContext context) {
     final String locale = context.locale.toString();
     final String currency =
-        _chosen ??
+        _currency ??
         ref.read(localSettingsProvider).currencyCode ??
         Currencies.forLocale(locale);
+    final ThemeMode themeMode = ref.watch(themeModeProvider);
 
     return OnboardingScaffold(
-      step: 2,
+      step: 1,
       stepCount: widget.stepCount,
-      title: tr('onboarding.currencyTitle'),
-      body: tr('onboarding.currencyWhy'),
+      title: tr('onboarding.profileTitle'),
+      body: tr('onboarding.profileWhy'),
       primaryLabel: tr('common.next'),
-      onPrimary: () async {
-        await ref.read(localSettingsProvider).setCurrencyCode(currency);
-        widget.onContinue();
-      },
+      onPrimary: () => _save(currency),
       children: <Widget>[
+        LabelledField(
+          label: tr('onboarding.fieldNickname'),
+          child: TextField(
+            controller: _nickname,
+            textCapitalization: TextCapitalization.words,
+            decoration: InputDecoration(
+              hintText: tr('onboarding.nicknameHint'),
+            ),
+          ),
+        ),
+        const SizedBox(height: SageSpace.lg),
         LabelledField(
           label: tr('space.fieldCurrency'),
           child: DropdownButtonFormField<String>(
@@ -163,7 +180,42 @@ class _CurrencyStepState extends ConsumerState<_CurrencyStep> {
                 ),
             ],
             onChanged: (String? code) =>
-                setState(() => _chosen = code ?? currency),
+                setState(() => _currency = code ?? currency),
+          ),
+        ),
+        const SizedBox(height: SageSpace.xs),
+        Text(
+          tr('onboarding.currencyWhy'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: SageSpace.lg),
+        LabelledField(
+          label: tr('settings.theme'),
+          child: SegmentedChoice<ThemeMode>(
+            values: ThemeMode.values,
+            selected: themeMode,
+            labelOf: (ThemeMode mode) => tr('theme.${mode.name}'),
+            onChanged: (ThemeMode mode) =>
+                ref.read(themeModeProvider.notifier).set(mode),
+          ),
+        ),
+        const SizedBox(height: SageSpace.lg),
+        LabelledField(
+          label: tr('settings.language'),
+          // Drawn as a field, the same width and height as the currency one
+          // above it; the picker is a sheet because the list grows.
+          child: InkWell(
+            onTap: () => showLanguagePicker(context),
+            borderRadius: BorderRadius.circular(SageRadius.button),
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                suffixIcon: Icon(Icons.arrow_drop_down),
+              ),
+              child: Text(
+                AppLocales.resolve(context.locale).name,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
           ),
         ),
       ],
