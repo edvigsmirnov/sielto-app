@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
@@ -13,6 +15,7 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -28,6 +31,7 @@ import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
+import 'package:sielto/features/periods/period_service.dart';
 import 'package:sielto/features/shell/app_header.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
@@ -67,6 +71,18 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   /// where it was dropped instead of flicking back.
   Map<String, int>? _dropped;
 
+  /// Set when the window widens, cleared once the wider list is built, so one
+  /// arrival at an edge widens it once rather than on every scroll event.
+  bool _extending = false;
+
+  /// The top item before older months were added above it, so the view can
+  /// stay on it instead of jumping three months back.
+  FeedItem? _keptTop;
+
+  /// Whether the list has been placed on the selected period yet. It opens
+  /// there rather than three months back.
+  bool _placed = false;
+
   @override
   void initState() {
     super.initState();
@@ -88,11 +104,102 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     _syncPeriodToScroll(_items);
     final ScrollPosition position = _scroll.position;
     const double margin = 400;
-    if (position.pixels <= position.minScrollExtent + margin) {
+    if (_extending) return;
+    final FeedWindow window = ref.read(feedWindowProvider);
+    if (position.pixels <= position.minScrollExtent + margin &&
+        _anyRecord((CalendarDate d) => d.isBefore(window.from))) {
+      _extending = true;
+      _keptTop = _items.firstOrNull;
       ref.read(feedWindowProvider.notifier).extendBackwards();
     } else if (position.pixels >= position.maxScrollExtent - margin) {
-      ref.read(feedWindowProvider.notifier).extendForwards();
+      if (_anyRecord((CalendarDate d) => d.isAfter(window.to))) {
+        _extending = true;
+        ref.read(feedWindowProvider.notifier).extendForwards();
+      } else if (ref.read(currentSpaceProvider)?.budgetMode ==
+              BudgetMode.incomeDriven &&
+          window.to.isBefore(
+            ref
+                .read(spaceClockProvider)
+                .today()
+                .addMonths(PeriodService.maxReachMonths),
+          )) {
+        // Nothing recorded further yet: lay out more periods, whose incomes
+        // then widen the window on the next pass.
+        ref
+            .read(periodReachProvider.notifier)
+            .reach(window.to.addMonths(PeriodService.horizonStepMonths));
+      }
     }
+  }
+
+  /// Whether any record falls where [test] says. Widening past the last
+  /// record adds nothing, and the edge would ask again on the next frame.
+  bool _anyRecord(bool Function(CalendarDate) test) =>
+      (ref.read(spacePaymentsProvider).value ?? const <Payment>[]).any(
+        (Payment p) => test(p.dueDate),
+      ) ||
+      (ref.read(spaceIncomesProvider).value ?? const <Income>[]).any(
+        (Income i) => test(i.expectedDate),
+      );
+
+  /// Called once the list is built from a widened window.
+  void _afterExtend(List<FeedItem> items) {
+    _extending = false;
+    final FeedItem? kept = _keptTop;
+    _keptTop = null;
+    if (kept == null) return;
+    // Older rows landed above the view; move down by exactly their height.
+    final double? y = _offsetOf(items, (FeedItem i) => _sameItem(i, kept));
+    if (y == null || y == 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.pixels + y);
+    });
+  }
+
+  static bool _sameItem(FeedItem a, FeedItem b) => switch ((a, b)) {
+    (final FeedHeader x, final FeedHeader y) => x.date == y.date,
+    (final FeedRow x, final FeedRow y) => x.record.id == y.record.id,
+    (final FeedCutoff x, final FeedCutoff y) => x.entryId == y.entryId,
+    _ => false,
+  };
+
+  /// The scroll offset of the first item [test] accepts, or null.
+  double? _offsetOf(List<FeedItem> items, bool Function(FeedItem) test) {
+    final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
+    double y = 0;
+    for (final FeedItem item in items) {
+      if (test(item)) return y;
+      y += _extentOf(item, rowHeight);
+    }
+    return null;
+  }
+
+  static double _extentOf(FeedItem item, double rowHeight) => switch (item) {
+    FeedHeader() => _headerExtent,
+    FeedCutoff() => _cutoffExtent,
+    FeedRow() => rowHeight,
+  };
+
+  /// Room under the last row, enough for the last period to reach the top.
+  ///
+  /// The selected period follows the top visible day, so without it the list
+  /// ended with an earlier period still on top: the last cycles could never
+  /// be selected by scrolling, and the arrows bounced back from them.
+  double _bottomSlack(List<FeedItem> items, double viewport, bool byPeriod) {
+    const double floor = 96;
+    final BudgetPeriod? last = ref.read(incomePeriodsProvider).lastOrNull;
+    if (!byPeriod || last == null) return floor;
+    final double? start = _offsetOf(
+      items,
+      (FeedItem i) => i is FeedHeader && !i.date.isBefore(last.startDate),
+    );
+    if (start == null) return floor;
+    final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
+    double total = 0;
+    for (final FeedItem item in items) {
+      total += _extentOf(item, rowHeight);
+    }
+    return math.max(floor, viewport - (total - start));
   }
 
   @override
@@ -113,7 +220,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       return Scaffold(
         backgroundColor: context.sage.surface,
         appBar: AppHeader(title: tr('nav.feed')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(child: LeafLoader()),
       );
     }
 
@@ -124,11 +231,27 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       moneyEndsAt: source.moneyEndsAt,
     );
     final List<FeedItem> items = _items;
+    if (_extending) _afterExtend(items);
+    // A list that fits the screen never scrolls, so no scroll event would
+    // ever reach an edge. Check once the frame is laid out.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _extendOnEdge();
+    });
+    if (!_placed && items.isNotEmpty) {
+      _placed = true;
+      final BudgetPeriod? selected = ref.read(selectedPeriodProvider);
+      if (source.byPeriod && selected != null) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _scrollToPeriod(selected, items, animate: false),
+        );
+      }
+    }
     final bool atBottom = ref
         .watch(controlsAtBottomProvider)
         .contains(ControlsScreen.feed);
     final Widget selector = PeriodSelector(
       onJump: (BudgetPeriod p) => _scrollToPeriod(p, items),
+      swipe: !atBottom,
     );
 
     return Scaffold(
@@ -166,33 +289,44 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 // always there, and a second one that adds only a payment
                 // teaches the wrong shortcut on the emptiest screen.
                 ? EmptyState(message: tr('feed.empty'))
-                : ReorderableListView.builder(
-                    scrollController: _scroll,
-                    buildDefaultDragHandles: false,
-                    padding: const EdgeInsets.only(bottom: 96),
-                    itemCount: items.length,
-                    itemBuilder: (BuildContext context, int index) =>
-                        _buildItem(
-                          context,
-                          items[index],
-                          index: index,
-                          density: density,
-                          money: money,
-                          locale: locale,
-                          today: source.today,
-                          categories:
-                              categories.value ?? const <String, Category>{},
-                          freeze: ref.watch(freezeLookupProvider),
-                          beyondDeadline: source.beyondDeadline,
+                : LayoutBuilder(
+                    builder: (BuildContext context, BoxConstraints box) =>
+                        ReorderableListView.builder(
+                          scrollController: _scroll,
+                          buildDefaultDragHandles: false,
+                          padding: EdgeInsets.only(
+                            bottom: _bottomSlack(
+                              items,
+                              box.maxHeight,
+                              source.byPeriod,
+                            ),
+                          ),
+                          itemCount: items.length,
+                          itemBuilder: (BuildContext context, int index) =>
+                              _buildItem(
+                                context,
+                                items[index],
+                                index: index,
+                                density: density,
+                                money: money,
+                                locale: locale,
+                                today: source.today,
+                                categories:
+                                    categories.value ??
+                                    const <String, Category>{},
+                                freeze: ref.watch(freezeLookupProvider),
+                                beyondDeadline: source.beyondDeadline,
+                              ),
+                          onReorderStart: (int index) =>
+                              HapticFeedback.mediumImpact(),
+                          onReorderItem: (int oldIndex, int newIndex) =>
+                              _onReorder(
+                                items: items,
+                                oldIndex: oldIndex,
+                                insertAt: newIndex,
+                                orderMode: space.feedOrderMode,
+                              ),
                         ),
-                    onReorderStart: (int index) =>
-                        HapticFeedback.mediumImpact(),
-                    onReorderItem: (int oldIndex, int newIndex) => _onReorder(
-                      items: items,
-                      oldIndex: oldIndex,
-                      insertAt: newIndex,
-                      orderMode: space.feedOrderMode,
-                    ),
                   ),
           ),
         ],
@@ -246,11 +380,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           coverage: coverage,
           moneyEndsAt: endsAt,
           available: Decimal.zero,
-          freeCash: Decimal.zero,
+          freeCash: null,
           paid: Decimal.zero,
           remaining: Decimal.zero,
           byPeriod: false,
           mode: space.budgetMode,
+          hasIncome: false,
         );
       }
 
@@ -265,6 +400,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         remaining: selected.totalRemaining,
         byPeriod: true,
         mode: space.budgetMode,
+        hasIncome: selected.hasIncome,
       );
     }
 
@@ -381,27 +517,30 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   ///
   /// The arrows move the list rather than filtering it: the Feed stays one
   /// continuous run of records, and the buttons are a way to travel it.
-  void _scrollToPeriod(BudgetPeriod period, List<FeedItem> items) {
-    final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
-    double y = 0;
-    for (final FeedItem item in items) {
-      if (item is FeedHeader && !item.date.isBefore(period.startDate)) {
-        _scroll.animateTo(
-          y.clamp(
-            _scroll.position.minScrollExtent,
-            _scroll.position.maxScrollExtent,
-          ),
-          duration: const Duration(milliseconds: 320),
-          curve: Curves.easeOutCubic,
-        );
-        return;
-      }
-      y += switch (item) {
-        FeedHeader() => _headerExtent,
-        FeedCutoff() => _cutoffExtent,
-        FeedRow() => rowHeight,
-      };
+  void _scrollToPeriod(
+    BudgetPeriod period,
+    List<FeedItem> items, {
+    bool animate = true,
+  }) {
+    if (!_scroll.hasClients) return;
+    final double? y = _offsetOf(
+      items,
+      (FeedItem i) => i is FeedHeader && !i.date.isBefore(period.startDate),
+    );
+    if (y == null) return;
+    final double target = y.clamp(
+      _scroll.position.minScrollExtent,
+      _scroll.position.maxScrollExtent,
+    );
+    if (!animate) {
+      _scroll.jumpTo(target);
+      return;
     }
+    _scroll.animateTo(
+      target,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   Widget _buildItem(
@@ -668,6 +807,7 @@ class _FeedSource {
     required this.byPeriod,
     required this.mode,
     this.beyondDeadline = const <String>{},
+    this.hasIncome = true,
   });
 
   final List<FeedRecord> records;
@@ -703,6 +843,10 @@ class _FeedSource {
   /// Records a hard deadline moved past. Drawn dimmed and left out of the
   /// reckoning, never deleted (spec 4.8).
   final Set<String> beyondDeadline;
+
+  /// False for a cycle with no income: a remainder there would only be the
+  /// payments negated, so the free figure is zero.
+  final bool hasIncome;
 }
 
 /// Income and Free money for the current context, above the list (spec 4.5).
@@ -743,7 +887,8 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final Decimal? available = source.available;
-    final Decimal? free = source.freeCash;
+    // No income is zero, not the payments negated.
+    final Decimal? free = source.hasIncome ? source.freeCash : Decimal.zero;
 
     // Not covered and not computable are different answers, and only one of
     // them is red.
@@ -916,10 +1061,15 @@ class _DayHeader extends StatelessWidget {
     final TextTheme text = Theme.of(context).textTheme;
 
     final bool isToday = header.date == today;
-    return Padding(
+    // Exactly the extent the scroll arithmetic counts. Left to its padding the
+    // header came out 33px against 40, and the gap grew by a day's worth each
+    // header until the selected period lagged the list by weeks.
+    return Container(
+      height: _headerExtent,
+      alignment: Alignment.bottomLeft,
       padding: const EdgeInsets.fromLTRB(
         SageSpace.gutter,
-        SageSpace.md,
+        0,
         SageSpace.gutter,
         SageSpace.xs,
       ),
@@ -944,11 +1094,9 @@ class _CutoffLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: SageSpace.gutter,
-        vertical: SageSpace.sm,
-      ),
+    return Container(
+      height: _cutoffExtent,
+      padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
       child: Row(
         children: <Widget>[
           Expanded(child: Container(height: 1, color: sage.danger)),

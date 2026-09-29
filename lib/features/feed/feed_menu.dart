@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -37,6 +38,7 @@ Future<void> showQuickAddMenu(
   required GlobalKey anchorKey,
 }) async {
   final List<PopupMenuEntry<_QuickAdd>> items = _quickAddItems(ref);
+  HapticFeedback.lightImpact();
   final _QuickAdd? choice = await showMenu<_QuickAdd>(
     context: context,
     position: quickAddAnchor(context, anchorKey, itemCount: items.length),
@@ -55,6 +57,7 @@ Future<void> showQuickAddMenu(
     items: items,
   );
   if (choice == null || !context.mounted) return;
+  HapticFeedback.lightImpact();
 
   switch (choice) {
     case _QuickAdd.payment:

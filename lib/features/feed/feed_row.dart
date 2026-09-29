@@ -6,6 +6,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/features/categories/category_colors.dart';
+import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 
 /// What a row shows at each density (spec 4.5).
@@ -281,7 +282,7 @@ class FeedRowTile extends StatelessWidget {
         : (r.isPaid ? tr('payment.paid') : tr('payment.unpaid'));
 
     if (detail == RowDetail.status || category == null) return status;
-    return '${category.title} · $status';
+    return '${category.shownTitle} · $status';
   }
 
   void _showNote(BuildContext context, String note) {
