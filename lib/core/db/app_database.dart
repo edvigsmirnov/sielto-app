@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Bumped on every schema change, with a step in [migration] and a snapshot
   /// regenerated for the migration harness (spec 10.6).
-  static const int currentSchemaVersion = 2;
+  static const int currentSchemaVersion = 3;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -57,6 +57,27 @@ class AppDatabase extends _$AppDatabase {
         // the same as running the new statement.
         await _createIndexes(m.database);
       }
+      if (from < 3) {
+        await m.addColumn(categories, categories.starterKey);
+        // Starter categories written before v3 carry only their title, in
+        // the language of the day. These are the titles v2 builds wrote, a
+        // fixed snapshot rather than a read of today's dictionaries; a row
+        // still carrying one was never renamed.
+        for (final MapEntry<String, List<String>> e
+            in _v2StarterTitles.entries) {
+          for (final String title in e.value) {
+            await customUpdate(
+              'UPDATE categories SET starter_key = ? '
+              'WHERE starter_key IS NULL AND title = ?',
+              variables: <Variable<Object>>[
+                Variable<String>(e.key),
+                Variable<String>(title),
+              ],
+              updates: <TableInfo<Table, Object?>>{categories},
+            );
+          }
+        }
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       // Drift disables it per connection, and soft deletes lean on it.
@@ -64,6 +85,16 @@ class AppDatabase extends _$AppDatabase {
     },
   );
 }
+
+/// Starter category titles as v2 wrote them, per key, in every shipped
+/// language.
+const Map<String, List<String>> _v2StarterTitles = <String, List<String>>{
+  'rent': <String>['Rent', 'Аренда'],
+  'loans': <String>['Loans', 'Кредиты'],
+  'utilities': <String>['Utilities', 'Коммуналка'],
+  'internet': <String>['Internet', 'Интернет'],
+  'flexible': <String>['Flexible spending', 'Гибкие расходы'],
+};
 
 /// Indexes that Drift's table definitions cannot express.
 Future<void> _createIndexes(DatabaseConnectionUser db) async {

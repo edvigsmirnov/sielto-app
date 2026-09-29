@@ -32,8 +32,8 @@ void main() {
 
   tearDown(() => db.close());
 
-  test('schema version is 2', () {
-    expect(db.schemaVersion, 2);
+  test('schema version is 3', () {
+    expect(db.schemaVersion, 3);
   });
 
   test('every index the queries lean on exists', () async {

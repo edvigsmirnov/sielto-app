@@ -5,6 +5,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/calendar/week_view.dart';
+import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// The category names the Week view puts under each date (spec 8.1).
@@ -51,7 +52,7 @@ Map<CalendarDate, List<String>> _namesByDay(
   for (final Payment p in payments) {
     final String? id = p.categoryId;
     if (id == null) continue;
-    final String? title = categories[id]?.title;
+    final String? title = categories[id]?.shownTitle;
     if (title == null) continue;
     final Map<String, Decimal> day = spend.putIfAbsent(
       p.dueDate,

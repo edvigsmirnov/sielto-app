@@ -328,29 +328,37 @@ void main() {
 
     test('the starter set lands in order, dressed', () async {
       final Space space = await makeSpace();
-      await categories.createStarterSet(
-        space.id,
-        <({String title, String? icon, String? color, ExpenseType type})>[
-          (
-            title: 'Rent',
-            icon: '🏠',
-            color: '#8FB996',
-            type: ExpenseType.mandatory,
-          ),
-          (
-            title: 'Utilities',
-            icon: '💡',
-            color: '#CBB98F',
-            type: ExpenseType.mandatory,
-          ),
-          (
-            title: 'Groceries',
-            icon: '🛒',
-            color: '#E29A5C',
-            type: ExpenseType.variable,
-          ),
-        ],
-      );
+      await categories.createStarterSet(space.id, <
+        ({
+          String key,
+          String title,
+          String? icon,
+          String? color,
+          ExpenseType type,
+        })
+      >[
+        (
+          key: 'rent',
+          title: 'Rent',
+          icon: '🏠',
+          color: '#8FB996',
+          type: ExpenseType.mandatory,
+        ),
+        (
+          key: 'utilities',
+          title: 'Utilities',
+          icon: '💡',
+          color: '#CBB98F',
+          type: ExpenseType.mandatory,
+        ),
+        (
+          key: 'flexible',
+          title: 'Groceries',
+          icon: '🛒',
+          color: '#E29A5C',
+          type: ExpenseType.variable,
+        ),
+      ]);
 
       final List<Category> rows = await categories.inSpace(space.id);
       expect(rows.map((Category c) => c.title), <String>[
@@ -363,6 +371,35 @@ void main() {
       expect(rows.first.color, '#8FB996');
       expect(rows.first.expenseType, ExpenseType.mandatory);
       expect(rows.last.expenseType, ExpenseType.variable);
+      expect(rows.first.starterKey, 'rent');
+    });
+
+    test('a rename makes a starter category the user\'s', () async {
+      // Until then it is shown in the reader's language; after, as typed.
+      final Space space = await makeSpace();
+      await categories.createStarterSet(space.id, <
+        ({
+          String key,
+          String title,
+          String? icon,
+          String? color,
+          ExpenseType type,
+        })
+      >[
+        (
+          key: 'rent',
+          title: 'Rent',
+          icon: null,
+          color: null,
+          type: ExpenseType.mandatory,
+        ),
+      ]);
+      final Category rent = (await categories.inSpace(space.id)).single;
+      await categories.rename(rent.id, 'Flat');
+
+      final Category after = (await categories.inSpace(space.id)).single;
+      expect(after.title, 'Flat');
+      expect(after.starterKey, isNull);
     });
   });
 

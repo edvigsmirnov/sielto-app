@@ -72,6 +72,37 @@ void main() {
     );
   });
 
+  test('upgrading to v3 keys the starter categories v2 wrote', () async {
+    // A v2 install holds its starters as bare titles in the language it was
+    // created in. The upgrade recognises them so they follow the reader's
+    // language; a category the user named is left as named.
+    final InitializedSchema schema = await verifier.schemaAt(2);
+    schema.rawDatabase
+      ..execute(
+        'INSERT INTO spaces (id, title, space_type, budget_mode, owner_id, '
+        'storage_mode, timezone, currency_code, created_at) VALUES '
+        "('s', 'S', 'personal', 'flow', 'u', 'local', 'UTC', 'EUR', 0)",
+      )
+      ..execute(
+        'INSERT INTO categories (id, space_id, title, created_at, '
+        "client_edited_at) VALUES ('a', 's', 'Аренда', 0, 0), "
+        "('b', 's', 'Groceries', 0, 0)",
+      );
+    final AppDatabase db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+    await verifier.migrateAndValidate(db, AppDatabase.currentSchemaVersion);
+
+    final List<QueryRow> rows = await db
+        .customSelect('SELECT starter_key FROM categories ORDER BY id')
+        .get();
+    expect(
+      <String?>[
+        for (final QueryRow r in rows) r.readNullable<String>('starter_key'),
+      ],
+      <String?>['rent', null],
+    );
+  });
+
   test('a fresh database reports the current user_version', () async {
     final AppDatabase db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);

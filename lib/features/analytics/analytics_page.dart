@@ -14,6 +14,7 @@ import 'package:sielto/features/analytics/analytics_parts.dart';
 import 'package:sielto/features/analytics/category_breakdown_page.dart';
 import 'package:sielto/features/analytics/donut_chart.dart';
 import 'package:sielto/features/categories/category_colors.dart';
+import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// Analytics level 1: the top categories of a calendar range (spec 8.2).
@@ -120,7 +121,7 @@ class AnalyticsPage extends ConsumerWidget {
   static String _labelOf(
     AnalyticsSlice slice,
     Map<String, Category> categories,
-  ) => categories[slice.key]?.title ?? tr('category.none');
+  ) => categories[slice.key]?.shownTitle ?? tr('category.none');
 
   /// The ring and its legend, as one block.
   static List<DonutSlice> wedges(
@@ -187,7 +188,8 @@ class _Summary extends StatelessWidget {
                   color:
                       parseCategoryColor(categories[slice.key]?.color) ??
                       sage.sand,
-                  label: categories[slice.key]?.title ?? tr('category.none'),
+                  label:
+                      categories[slice.key]?.shownTitle ?? tr('category.none'),
                   amount: money.short(slice.total),
                 ),
             ],

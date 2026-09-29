@@ -153,6 +153,12 @@ class Categories extends Table with SyncColumns {
   TextColumn get color => text().nullable()();
   TextColumn get icon => text().nullable()();
 
+  /// Which starter category this is, while its title is still the one the app
+  /// gave it. The title is then shown in the reader's language rather than
+  /// the one the Space was created in; a rename clears it, and the title is
+  /// the user's from then on (spec 7).
+  TextColumn get starterKey => text().named('starter_key').nullable()();
+
   /// Default for new payments only. Existing rows keep their own value.
   TextColumn get expenseType => textEnum<ExpenseType>()
       .named('expense_type')

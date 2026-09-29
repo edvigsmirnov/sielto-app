@@ -10,6 +10,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_icons.dart';
+import 'package:sielto/features/categories/category_title.dart';
 
 /// Add or edit a category (spec 7, design section 7).
 ///
@@ -34,7 +35,7 @@ class CategoryFormPage extends ConsumerStatefulWidget {
 
 class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   late final TextEditingController _title = TextEditingController(
-    text: widget.category?.title ?? '',
+    text: widget.category?.shownTitle ?? '',
   );
   late String? _color = widget.category?.color ?? categoryPalette.first;
   late String? _icon = sanitiseCategoryIcon(widget.category?.icon);
@@ -91,7 +92,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
         icon: Value<String?>(_icon),
         expenseType: Value<ExpenseType>(_type),
       );
-      if ((_canRename ?? false) && _title.text.trim() != existing.title) {
+      if ((_canRename ?? false) && _title.text.trim() != existing.shownTitle) {
         await repo.rename(existing.id, _title.text);
       }
     }

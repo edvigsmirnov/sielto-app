@@ -96,7 +96,15 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
   /// them it is only a name (spec 7).
   Future<void> createStarterSet(
     String spaceId,
-    List<({String title, String? icon, String? color, ExpenseType type})>
+    List<
+      ({
+        String key,
+        String title,
+        String? icon,
+        String? color,
+        ExpenseType type,
+      })
+    >
     starters,
   ) {
     final ({String author, DateTime editedAt}) s = stamp();
@@ -107,6 +115,7 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
             id: SyncedRepository.newId(),
             spaceId: spaceId,
             title: starters[i].title.trim(),
+            starterKey: Value<String?>(starters[i].key),
             icon: Value<String?>(starters[i].icon),
             color: Value<String?>(starters[i].color),
             expenseType: Value<ExpenseType>(starters[i].type),
@@ -135,6 +144,8 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
     )..where(($CategoriesTable t) => t.id.equals(categoryId))).write(
       CategoriesCompanion(
         title: Value<String>(title.trim()),
+        // Renamed, so no longer the app's name for it: shown as typed.
+        starterKey: const Value<String?>(null),
         syncStatus: const Value<SyncStatus>(SyncStatus.pending),
         lastModifiedBy: Value<String?>(s.author),
         clientEditedAt: Value<DateTime>(s.editedAt),

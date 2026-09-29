@@ -90,13 +90,24 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
         timezone: await _deviceTimezone(),
         currencyCode: currency,
       );
-      await repos.categories.createStarterSet(
-        space.id,
-        <({String title, String? icon, String? color, ExpenseType type})>[
-          for (final StarterCategory c in starterCategories())
-            (title: c.title, icon: c.icon, color: c.color, type: c.expenseType),
-        ],
-      );
+      await repos.categories.createStarterSet(space.id, <
+        ({
+          String key,
+          String title,
+          String? icon,
+          String? color,
+          ExpenseType type,
+        })
+      >[
+        for (final StarterCategory c in starterCategories())
+          (
+            key: c.key,
+            title: c.title,
+            icon: c.icon,
+            color: c.color,
+            type: c.expenseType,
+          ),
+      ]);
       // Flow and Budget each hold exactly one open period, created here so
       // every later read can assume it exists (spec 4.7).
       await repos.periods.ensureContinuous(

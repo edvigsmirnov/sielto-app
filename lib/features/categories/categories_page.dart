@@ -12,6 +12,7 @@ import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_form_page.dart';
+import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// The category list (spec 7): add, reorder, recolour, soft-delete with undo.
@@ -88,7 +89,7 @@ class CategoriesPage extends ConsumerWidget {
       title: tr('category.deleteTitle'),
       body: tr(
         'category.deleteBody',
-        namedArgs: <String, String>{'title': category.title},
+        namedArgs: <String, String>{'title': category.shownTitle},
       ),
       confirmLabel: tr('common.delete'),
       isDestructive: true,
@@ -102,7 +103,7 @@ class CategoriesPage extends ConsumerWidget {
       context,
       message: tr(
         'category.deleted',
-        namedArgs: <String, String>{'title': category.title},
+        namedArgs: <String, String>{'title': category.shownTitle},
       ),
       onUndo: () => repo.restore(category.id),
     );
@@ -193,7 +194,7 @@ class _CategoryTile extends StatelessWidget {
               const SizedBox(width: SageSpace.md),
               Expanded(
                 child: Text(
-                  category.title,
+                  category.shownTitle,
                   overflow: TextOverflow.ellipsis,
                   style: text.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),

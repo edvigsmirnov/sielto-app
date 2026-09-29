@@ -2553,6 +2553,17 @@ class $CategoriesTable extends Categories
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _starterKeyMeta = const VerificationMeta(
+    'starterKey',
+  );
+  @override
+  late final GeneratedColumn<String> starterKey = GeneratedColumn<String>(
+    'starter_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   late final GeneratedColumnWithTypeConverter<ExpenseType, String> expenseType =
       GeneratedColumn<String>(
@@ -2598,6 +2609,7 @@ class $CategoriesTable extends Categories
     title,
     color,
     icon,
+    starterKey,
     expenseType,
     sortOrder,
     createdAt,
@@ -2682,6 +2694,12 @@ class $CategoriesTable extends Categories
         icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
       );
     }
+    if (data.containsKey('starter_key')) {
+      context.handle(
+        _starterKeyMeta,
+        starterKey.isAcceptableOrUnknown(data['starter_key']!, _starterKeyMeta),
+      );
+    }
     if (data.containsKey('sort_order')) {
       context.handle(
         _sortOrderMeta,
@@ -2747,6 +2765,10 @@ class $CategoriesTable extends Categories
         DriftSqlType.string,
         data['${effectivePrefix}icon'],
       ),
+      starterKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}starter_key'],
+      ),
       expenseType: $CategoriesTable.$converterexpenseType.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -2795,6 +2817,12 @@ class Category extends DataClass implements Insertable<Category> {
   final String? color;
   final String? icon;
 
+  /// Which starter category this is, while its title is still the one the app
+  /// gave it. The title is then shown in the reader's language rather than
+  /// the one the Space was created in; a rename clears it, and the title is
+  /// the user's from then on (spec 7).
+  final String? starterKey;
+
   /// Default for new payments only. Existing rows keep their own value.
   final ExpenseType expenseType;
   final int sortOrder;
@@ -2810,6 +2838,7 @@ class Category extends DataClass implements Insertable<Category> {
     required this.title,
     this.color,
     this.icon,
+    this.starterKey,
     required this.expenseType,
     required this.sortOrder,
     required this.createdAt,
@@ -2839,6 +2868,9 @@ class Category extends DataClass implements Insertable<Category> {
     if (!nullToAbsent || icon != null) {
       map['icon'] = Variable<String>(icon);
     }
+    if (!nullToAbsent || starterKey != null) {
+      map['starter_key'] = Variable<String>(starterKey);
+    }
     {
       map['expense_type'] = Variable<String>(
         $CategoriesTable.$converterexpenseType.toSql(expenseType),
@@ -2867,6 +2899,9 @@ class Category extends DataClass implements Insertable<Category> {
           ? const Value.absent()
           : Value(color),
       icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
+      starterKey: starterKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(starterKey),
       expenseType: Value(expenseType),
       sortOrder: Value(sortOrder),
       createdAt: Value(createdAt),
@@ -2893,6 +2928,7 @@ class Category extends DataClass implements Insertable<Category> {
       title: serializer.fromJson<String>(json['title']),
       color: serializer.fromJson<String?>(json['color']),
       icon: serializer.fromJson<String?>(json['icon']),
+      starterKey: serializer.fromJson<String?>(json['starterKey']),
       expenseType: $CategoriesTable.$converterexpenseType.fromJson(
         serializer.fromJson<String>(json['expenseType']),
       ),
@@ -2916,6 +2952,7 @@ class Category extends DataClass implements Insertable<Category> {
       'title': serializer.toJson<String>(title),
       'color': serializer.toJson<String?>(color),
       'icon': serializer.toJson<String?>(icon),
+      'starterKey': serializer.toJson<String?>(starterKey),
       'expenseType': serializer.toJson<String>(
         $CategoriesTable.$converterexpenseType.toJson(expenseType),
       ),
@@ -2935,6 +2972,7 @@ class Category extends DataClass implements Insertable<Category> {
     String? title,
     Value<String?> color = const Value.absent(),
     Value<String?> icon = const Value.absent(),
+    Value<String?> starterKey = const Value.absent(),
     ExpenseType? expenseType,
     int? sortOrder,
     DateTime? createdAt,
@@ -2953,6 +2991,7 @@ class Category extends DataClass implements Insertable<Category> {
     title: title ?? this.title,
     color: color.present ? color.value : this.color,
     icon: icon.present ? icon.value : this.icon,
+    starterKey: starterKey.present ? starterKey.value : this.starterKey,
     expenseType: expenseType ?? this.expenseType,
     sortOrder: sortOrder ?? this.sortOrder,
     createdAt: createdAt ?? this.createdAt,
@@ -2977,6 +3016,9 @@ class Category extends DataClass implements Insertable<Category> {
       title: data.title.present ? data.title.value : this.title,
       color: data.color.present ? data.color.value : this.color,
       icon: data.icon.present ? data.icon.value : this.icon,
+      starterKey: data.starterKey.present
+          ? data.starterKey.value
+          : this.starterKey,
       expenseType: data.expenseType.present
           ? data.expenseType.value
           : this.expenseType,
@@ -2998,6 +3040,7 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('title: $title, ')
           ..write('color: $color, ')
           ..write('icon: $icon, ')
+          ..write('starterKey: $starterKey, ')
           ..write('expenseType: $expenseType, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt')
@@ -3017,6 +3060,7 @@ class Category extends DataClass implements Insertable<Category> {
     title,
     color,
     icon,
+    starterKey,
     expenseType,
     sortOrder,
     createdAt,
@@ -3035,6 +3079,7 @@ class Category extends DataClass implements Insertable<Category> {
           other.title == this.title &&
           other.color == this.color &&
           other.icon == this.icon &&
+          other.starterKey == this.starterKey &&
           other.expenseType == this.expenseType &&
           other.sortOrder == this.sortOrder &&
           other.createdAt == this.createdAt);
@@ -3051,6 +3096,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String> title;
   final Value<String?> color;
   final Value<String?> icon;
+  final Value<String?> starterKey;
   final Value<ExpenseType> expenseType;
   final Value<int> sortOrder;
   final Value<DateTime> createdAt;
@@ -3066,6 +3112,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.title = const Value.absent(),
     this.color = const Value.absent(),
     this.icon = const Value.absent(),
+    this.starterKey = const Value.absent(),
     this.expenseType = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3082,6 +3129,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     required String title,
     this.color = const Value.absent(),
     this.icon = const Value.absent(),
+    this.starterKey = const Value.absent(),
     this.expenseType = const Value.absent(),
     this.sortOrder = const Value.absent(),
     required DateTime createdAt,
@@ -3102,6 +3150,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? title,
     Expression<String>? color,
     Expression<String>? icon,
+    Expression<String>? starterKey,
     Expression<String>? expenseType,
     Expression<int>? sortOrder,
     Expression<DateTime>? createdAt,
@@ -3118,6 +3167,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (title != null) 'title': title,
       if (color != null) 'color': color,
       if (icon != null) 'icon': icon,
+      if (starterKey != null) 'starter_key': starterKey,
       if (expenseType != null) 'expense_type': expenseType,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (createdAt != null) 'created_at': createdAt,
@@ -3136,6 +3186,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<String>? title,
     Value<String?>? color,
     Value<String?>? icon,
+    Value<String?>? starterKey,
     Value<ExpenseType>? expenseType,
     Value<int>? sortOrder,
     Value<DateTime>? createdAt,
@@ -3152,6 +3203,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       title: title ?? this.title,
       color: color ?? this.color,
       icon: icon ?? this.icon,
+      starterKey: starterKey ?? this.starterKey,
       expenseType: expenseType ?? this.expenseType,
       sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
@@ -3194,6 +3246,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (icon.present) {
       map['icon'] = Variable<String>(icon.value);
     }
+    if (starterKey.present) {
+      map['starter_key'] = Variable<String>(starterKey.value);
+    }
     if (expenseType.present) {
       map['expense_type'] = Variable<String>(
         $CategoriesTable.$converterexpenseType.toSql(expenseType.value),
@@ -3224,6 +3279,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('title: $title, ')
           ..write('color: $color, ')
           ..write('icon: $icon, ')
+          ..write('starterKey: $starterKey, ')
           ..write('expenseType: $expenseType, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
@@ -10799,6 +10855,7 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   required String title,
   Value<String?> color,
   Value<String?> icon,
+  Value<String?> starterKey,
   Value<ExpenseType> expenseType,
   Value<int> sortOrder,
   required DateTime createdAt,
@@ -10815,6 +10872,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<String> title,
   Value<String?> color,
   Value<String?> icon,
+  Value<String?> starterKey,
   Value<ExpenseType> expenseType,
   Value<int> sortOrder,
   Value<DateTime> createdAt,
@@ -10914,6 +10972,11 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<String> get icon => $composableBuilder(
     column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get starterKey => $composableBuilder(
+    column: $table.starterKey,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11036,6 +11099,11 @@ class $$CategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get starterKey => $composableBuilder(
+    column: $table.starterKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get expenseType => $composableBuilder(
     column: $table.expenseType,
     builder: (column) => ColumnOrderings(column),
@@ -11119,6 +11187,11 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<String> get icon =>
       $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<String> get starterKey => $composableBuilder(
+    column: $table.starterKey,
+    builder: (column) => column,
+  );
 
   GeneratedColumnWithTypeConverter<ExpenseType, String> get expenseType =>
       $composableBuilder(
@@ -11219,6 +11292,7 @@ class $$CategoriesTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
+                Value<String?> starterKey = const Value.absent(),
                 Value<ExpenseType> expenseType = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -11234,6 +11308,7 @@ class $$CategoriesTableTableManager
                 title: title,
                 color: color,
                 icon: icon,
+                starterKey: starterKey,
                 expenseType: expenseType,
                 sortOrder: sortOrder,
                 createdAt: createdAt,
@@ -11251,6 +11326,7 @@ class $$CategoriesTableTableManager
                 required String title,
                 Value<String?> color = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
+                Value<String?> starterKey = const Value.absent(),
                 Value<ExpenseType> expenseType = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 required DateTime createdAt,
@@ -11266,6 +11342,7 @@ class $$CategoriesTableTableManager
                 title: title,
                 color: color,
                 icon: icon,
+                starterKey: starterKey,
                 expenseType: expenseType,
                 sortOrder: sortOrder,
                 createdAt: createdAt,

@@ -7,6 +7,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_form_page.dart';
+import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// The category on the payment form: a row that opens the picker (spec 7).
@@ -123,7 +124,7 @@ class _CategoryPickerPageState extends ConsumerState<_CategoryPickerPage> {
     final List<Category> shown = query.isEmpty
         ? all
         : all
-              .where((Category c) => c.title.toLowerCase().contains(query))
+              .where((Category c) => c.shownTitle.toLowerCase().contains(query))
               .toList();
 
     List<Category> ofType(ExpenseType type) =>
@@ -182,7 +183,7 @@ class _CategoryPickerPageState extends ConsumerState<_CategoryPickerPage> {
   }
 
   Widget _categoryRow(Category category) => _Row(
-    title: category.title,
+    title: category.shownTitle,
     mark: CategoryMark(color: category.color, icon: category.icon, size: 30),
     selected: category.id == widget.selectedId,
     onTap: () => Navigator.of(context).pop(CategoryChoice(category)),
