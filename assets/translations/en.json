@@ -31,10 +31,9 @@
     "welcomeBody": "No account, no email, no password. Your data stays on this device until you decide otherwise.",
     "fieldNickname": "Nickname",
     "nicknameHint": "Optional",
-    "nicknameWhy": "Optional, and local until you move a Space to the cloud — then the people sharing it can see it.",
-    "nicknameTitle": "What should we call you?",
-    "currencyTitle": "Currency",
-    "currencyWhy": "Taken from your device. You can change it now; afterwards only while a Space has no records in it."
+    "currencyWhy": "Taken from your device. You can change it now; afterwards only while a Space has no records in it.",
+    "profileTitle": "A few basics",
+    "profileWhy": "All of it can be changed later in Settings. The nickname is optional and stays on this device until you move a Space to the cloud."
   },
   "mode": {
     "incomeDriven": {
@@ -82,8 +81,10 @@
     "archive": "Archive Space",
     "archiveTitle": "Archive this Space?",
     "archiveConfirm": "\"{title}\" disappears from the switcher. Its records stay on this device and nothing is deleted.",
-    "archiveBody": "Archiving hides the Space without deleting anything.",
-    "search": "Search Spaces"
+    "archiveBody": "Archiving hides the Space without deleting anything. It can be brought back from the Spaces switcher, under Archived.",
+    "search": "Search Spaces",
+    "archived": "Archived ({})",
+    "unarchive": "Unarchive"
   },
   "spaceSettings": {
     "title": "Space settings"
@@ -250,7 +251,19 @@
     "editRule": "Edit regular income",
     "ruleAmountHint": "Applies to every occurrence that has not arrived yet. Months already marked received keep their own figure.",
     "ruleScheduleHint": "Changing the schedule re-dates the occurrences that have not arrived yet.",
-    "landsIn": "Joins the cycle {period}"
+    "landsIn": "Joins the cycle {period}",
+    "regenerate": "Regenerate occurrences",
+    "regenerateTitle": "Regenerate occurrences?",
+    "regenerateBody": "Upcoming occurrences of \"{title}\" are laid out again from the schedule: deleted ones come back, edited ones take the regular amount and title again. Ones already received, and ones in a frozen period, stay as they are.",
+    "regenerated": {
+      "one": "{} occurrence restored",
+      "other": "{} occurrences restored"
+    },
+    "regenerateNothing": "Everything already matches the schedule.",
+    "anchorHelpTitle": "What is an anchor income?",
+    "anchorHelpBody": "Sielto plans in periods. A period runs from one anchor income to the next — usually your salary, from one payday to the next.\n\nThe anchor's amount is what the period starts with: everything due before the next anchor comes out of it, and the Dashboard shows what is left.\n\nOther regular incomes are additional: they add to the period they land in but do not start a new one.\n\nYou can change which income is the anchor with the pin on the Incomes screen. At least one regular income must stay the anchor.",
+    "anchorHelpAction": "What is this?",
+    "becameAnchor": "\"{title}\" is now the anchor: periods run from one payment to the next."
   },
   "category": {
     "title": "Categories",
@@ -298,7 +311,7 @@
       "income": "Income that day",
       "noAmount": "Income with no amount yet",
       "today": "Today",
-      "selected": "Selected day",
+      "selected": "Selected day: the one the Day view opens on",
       "nonWorking": "Weekend or day off",
       "holiday": "Public holiday or your own non-working day",
       "highLoad": "Heavy spending day",
