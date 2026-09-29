@@ -740,7 +740,7 @@ class _FeedSource {
   final CalendarDate today;
   final Map<String, bool> coverage;
 
-  /// Row id to the side of the row the cutoff falls on.
+  /// Row id to the side of the row where the cutoff falls.
   final Map<String, bool> moneyEndsAt;
 
   /// Null when the anchor income has no amount.

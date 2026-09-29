@@ -627,7 +627,7 @@ void main() {
       await service.refresh(space, today);
       final CalendarDate before = (await periodAt(1)).startDate;
 
-      // Received without a date: nothing to move to.
+      // Received without a date: the period stays.
       final Income salary = await anchorIncomeOf(await periodAt(1));
       await repos.incomes.update(salary.id, isPaid: const Value<bool>(true));
       await service.refresh(space, today);

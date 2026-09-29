@@ -55,7 +55,7 @@ class CalendarViewController extends Notifier<CalendarView> {
 
   bool canGoBack() => _trail.isNotEmpty;
 
-  /// False when there is nothing to return to.
+  /// False when the trail is empty.
   bool back() {
     if (_trail.isEmpty) return false;
     state = _trail.removeLast();

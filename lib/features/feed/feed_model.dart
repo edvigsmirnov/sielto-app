@@ -151,7 +151,7 @@ List<FeedItem> buildFeedItems({
   required FeedOrderMode orderMode,
   Map<String, bool> coverage = const <String, bool>{},
 
-  /// Row id to the side of the row the cutoff falls on.
+  /// Row id to the side of the row where the cutoff falls.
   Map<String, bool> moneyEndsAt = const <String, bool>{},
 }) {
   final Map<String, List<FeedRecord>> byDay = <String, List<FeedRecord>>{};

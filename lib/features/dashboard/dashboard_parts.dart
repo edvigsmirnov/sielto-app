@@ -138,7 +138,7 @@ class MainFigure extends StatelessWidget {
   }
 }
 
-/// Spent total, where there is no fund or income to subtract from.
+/// Spent total, for a cycle without a fund or income.
 class SpentFigure extends StatelessWidget {
   const SpentFigure({required this.amount, required this.money, super.key});
 
