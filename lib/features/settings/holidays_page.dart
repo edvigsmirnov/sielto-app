@@ -5,6 +5,7 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/holidays/countries.dart';
+import 'package:sielto/core/holidays/holiday_source.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
@@ -197,6 +198,10 @@ Future<String?> _askDayTitle(BuildContext context) async {
           controller: controller,
           autofocus: true,
           maxLength: 200,
+          // Wraps and grows downward rather than scrolling one line sideways.
+          minLines: 1,
+          maxLines: 5,
+          textInputAction: TextInputAction.done,
           textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(hintText: tr('holidays.dayTitleHint')),
         ),
@@ -236,15 +241,32 @@ class _PublicHolidays extends ConsumerWidget {
       resolvedCalendarProvider,
     );
 
-    return FutureBuilder<List<CalendarDate>?>(
-      future: ref.watch(repositoriesProvider).holidays.cached(country!, year),
+    // Names are bundled beside the dates; a fetched year has none.
+    Future<(List<CalendarDate>?, Map<CalendarDate, List<String>>)>
+    load() async => (
+      await ref.read(repositoriesProvider).holidays.cached(country!, year),
+      await const HolidayBundle().namesFor(country!),
+    );
+
+    return FutureBuilder<
+      (List<CalendarDate>?, Map<CalendarDate, List<String>>)
+    >(
+      future: load(),
       builder:
-          (BuildContext context, AsyncSnapshot<List<CalendarDate>?> snapshot) {
+          (
+            BuildContext context,
+            AsyncSnapshot<
+              (List<CalendarDate>?, Map<CalendarDate, List<String>>)
+            >
+            snapshot,
+          ) {
             if (refresh.isLoading ||
                 snapshot.connectionState != ConnectionState.done) {
               return const _Note('…');
             }
-            final List<CalendarDate>? days = snapshot.data;
+            final List<CalendarDate>? days = snapshot.data?.$1;
+            final Map<CalendarDate, List<String>> names =
+                snapshot.data?.$2 ?? const <CalendarDate, List<String>>{};
             if (days == null || days.isEmpty) {
               // countries.json offers every country the source knows, ten
               // times what is bundled, so an empty list usually means this
@@ -268,8 +290,17 @@ class _PublicHolidays extends ConsumerWidget {
                       size: 20,
                       color: context.sage.inkLabel,
                     ),
-                    title: Text(dates.short(day)),
-                    subtitle: Text(dates.weekday(day)),
+                    // As in the Day view: the English name, then the local
+                    // one where it differs.
+                    title: Text(
+                      names[day]?.firstOrNull ?? tr('calendar.holiday'),
+                    ),
+                    subtitle: Text(
+                      <String>[
+                        ...?names[day]?.skip(1),
+                        '${dates.short(day)} · ${dates.weekday(day)}',
+                      ].join('\n'),
+                    ),
                   ),
               ],
             );
