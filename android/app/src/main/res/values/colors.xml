@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The wordmark's green, SageBrand.night: the splash leads straight into
+         the welcome screen, which is the same colour. -->
+    <color name="splash_background">#213627</color>
+</resources>
