@@ -149,7 +149,7 @@ class _DayCell extends StatelessWidget {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
     final DayTotals? day = totals;
-    final Color ink = CellDecoration.inkOf(sage, mark, isSelected: isSelected);
+    final Color ink = CellDecoration.inkOf(sage, mark, isToday: isToday);
 
     return GestureDetector(
       onTap: onTap,
@@ -162,6 +162,7 @@ class _DayCell extends StatelessWidget {
       child: CellDecoration(
         mark: mark,
         isSelected: isSelected,
+        isToday: isToday,
         dimmed: isOutsideMonth,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -169,9 +170,7 @@ class _DayCell extends StatelessWidget {
             Text(
               date.day.toString(),
               style: text.labelMedium?.copyWith(
-                // Today is the accent ink where it is not the selected cell:
-                // the fill is the selection, and one cell must not claim both.
-                color: !isSelected && isToday ? sage.accentStrong : ink,
+                color: ink,
                 fontWeight: isSelected || isToday
                     ? FontWeight.w700
                     : FontWeight.w600,
@@ -180,19 +179,19 @@ class _DayCell extends StatelessWidget {
             if (day != null && day.expenses > Decimal.zero)
               _CellFigure(
                 text: money.shortSigned(-day.expenses),
-                color: isSelected ? ink : sage.danger,
+                color: isToday ? ink : sage.danger,
               ),
             if (day != null && day.income > Decimal.zero)
               _CellFigure(
                 text: money.shortSigned(day.income),
-                color: isSelected ? ink : sage.accentStrong,
+                color: isToday ? ink : sage.accentStrong,
               ),
             // A day whose only record is a floating income has no figure to
             // draw, and drawing nothing would read as an empty day (spec 4.7).
             if (day != null &&
                 day.expenses == Decimal.zero &&
                 day.income == Decimal.zero)
-              _CellFigure(text: '·', color: isSelected ? ink : sage.inkLabel),
+              _CellFigure(text: '·', color: isToday ? ink : sage.inkLabel),
           ],
         ),
       ),

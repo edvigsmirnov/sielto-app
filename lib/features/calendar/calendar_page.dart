@@ -12,6 +12,7 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_data.dart';
@@ -121,6 +122,7 @@ class CalendarPage extends ConsumerWidget {
                 ),
                 child: _Swipe(
                   view: view,
+                  enabled: !atBottom,
                   child: _Body(
                     view: view,
                     selected: selected,
@@ -140,18 +142,25 @@ class CalendarPage extends ConsumerWidget {
 
 /// A horizontal swipe steps the scale on screen, like the arrows (spec 8.1).
 ///
-/// Not in the Day view, where a swipe on a row marks or deletes it.
+/// Not in the Day view, where a swipe on a row marks or deletes it, nor with
+/// the controls at the bottom, where a horizontal swipe belongs to the shell's
+/// tabs.
 class _Swipe extends ConsumerWidget {
-  const _Swipe({required this.view, required this.child});
+  const _Swipe({
+    required this.view,
+    required this.enabled,
+    required this.child,
+  });
 
   final CalendarView view;
+  final bool enabled;
   final Widget child;
 
   static const double _velocityThreshold = 200;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (view == CalendarView.day) return child;
+    if (view == CalendarView.day || !enabled) return child;
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onHorizontalDragEnd: (DragEndDetails details) {
@@ -325,7 +334,13 @@ class _Body extends ConsumerWidget {
   final DateLabels dates;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => _StepSlide(
+    view: view,
+    anchor: rangeOf(view, selected).from,
+    child: _content(context, ref),
+  );
+
+  Widget _content(BuildContext context, WidgetRef ref) {
     if (view == CalendarView.day) {
       return _DayBody(day: selected, today: today, money: money);
     }
@@ -392,6 +407,80 @@ class _Body extends ConsumerWidget {
   }
 }
 
+/// Slides the range on screen sideways when it steps, in the direction of
+/// travel, so the arrows and the swipe read as moving through time.
+///
+/// Wraps the views themselves, not [_Body]: the views take their data as
+/// arguments, so the one sliding out keeps its own figures instead of
+/// redrawing with the incoming range's. A change of scale fades instead.
+class _StepSlide extends StatefulWidget {
+  const _StepSlide({
+    required this.view,
+    required this.anchor,
+    required this.child,
+  });
+
+  final CalendarView view;
+
+  /// The first day of the range on screen.
+  final CalendarDate anchor;
+  final Widget child;
+
+  @override
+  State<_StepSlide> createState() => _StepSlideState();
+}
+
+class _StepSlideState extends State<_StepSlide> {
+  /// 1 forward in time, -1 back, 0 for a change of scale.
+  int _direction = 0;
+
+  @override
+  void didUpdateWidget(_StepSlide old) {
+    super.didUpdateWidget(old);
+    if (widget.view != old.view) {
+      _direction = 0;
+    } else if (widget.anchor != old.anchor) {
+      _direction = widget.anchor.isAfter(old.anchor) ? 1 : -1;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Key current = ValueKey<String>(
+      '${widget.view.name}:${widget.anchor.toIso()}',
+    );
+    return ClipRect(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 240),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        layoutBuilder: (Widget? child, List<Widget> previous) => Stack(
+          alignment: Alignment.topCenter,
+          children: <Widget>[...previous, ?child],
+        ),
+        // A fresh closure each build, so the outgoing child is rebuilt with
+        // the latest direction too — it leaves the way the new one arrives.
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          if (_direction == 0) {
+            return FadeTransition(opacity: animation, child: child);
+          }
+          final double side = child.key == current
+              ? _direction.toDouble()
+              : -_direction.toDouble();
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: Offset(side, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          );
+        },
+        child: KeyedSubtree(key: current, child: widget.child),
+      ),
+    );
+  }
+}
+
 /// The Day view and the four things a row can do there.
 ///
 /// The handlers mirror the Feed's exactly — including the confirmations and the
@@ -408,7 +497,7 @@ class _DayBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final DayRecords? records = ref.watch(dayRecordsProvider(day));
     if (records == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: LeafLoader());
     }
 
     return DayView(

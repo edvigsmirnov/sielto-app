@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
@@ -75,6 +76,7 @@ Future<void> showDayMenu(
     ],
   );
   if (choice == null || !context.mounted) return;
+  HapticFeedback.lightImpact();
 
   switch (choice) {
     case _DayAction.payment:

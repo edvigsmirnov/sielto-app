@@ -103,8 +103,8 @@ class _WeekRow extends StatelessWidget {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
     final DayTotals? day = totals;
-    final Color ink = CellDecoration.inkOf(sage, mark, isSelected: isSelected);
     final bool isToday = date == today;
+    final Color ink = CellDecoration.inkOf(sage, mark, isToday: isToday);
 
     return GestureDetector(
       onTap: onTap,
@@ -115,6 +115,7 @@ class _WeekRow extends StatelessWidget {
       child: CellDecoration(
         mark: mark,
         isSelected: isSelected,
+        isToday: isToday,
         radius: SageRadius.card,
         child: Padding(
           padding: const EdgeInsets.symmetric(
@@ -133,7 +134,7 @@ class _WeekRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: text.bodyLarge?.copyWith(
-                        color: !isSelected && isToday ? sage.accentStrong : ink,
+                        color: ink,
                         fontWeight: isSelected || isToday
                             ? FontWeight.w700
                             : FontWeight.w500,
@@ -144,7 +145,7 @@ class _WeekRow extends StatelessWidget {
                   _Figures(
                     totals: day,
                     money: money,
-                    isSelected: isSelected,
+                    isToday: isToday,
                     ink: ink,
                   ),
                 ],
@@ -156,7 +157,7 @@ class _WeekRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: text.bodySmall?.copyWith(
-                    color: isSelected ? ink : sage.inkLabel,
+                    color: isToday ? ink : sage.inkLabel,
                   ),
                 ),
               ],
@@ -173,13 +174,13 @@ class _Figures extends StatelessWidget {
   const _Figures({
     required this.totals,
     required this.money,
-    required this.isSelected,
+    required this.isToday,
     required this.ink,
   });
 
   final DayTotals? totals;
   final MoneyFormat money;
-  final bool isSelected;
+  final bool isToday;
   final Color ink;
 
   @override
@@ -191,9 +192,7 @@ class _Figures extends StatelessWidget {
     if (day == null || day.isEmpty) {
       return Text(
         tr('calendar.noRecords'),
-        style: text.bodyMedium?.copyWith(
-          color: isSelected ? ink : sage.inkLabel,
-        ),
+        style: text.bodyMedium?.copyWith(color: isToday ? ink : sage.inkLabel),
       );
     }
 
@@ -201,15 +200,13 @@ class _Figures extends StatelessWidget {
       if (day.expenses > Decimal.zero)
         Text(
           money.shortSigned(-day.expenses),
-          style: text.labelLarge?.copyWith(
-            color: isSelected ? ink : sage.danger,
-          ),
+          style: text.labelLarge?.copyWith(color: isToday ? ink : sage.danger),
         ),
       if (day.income > Decimal.zero)
         Text(
           money.shortSigned(day.income),
           style: text.labelLarge?.copyWith(
-            color: isSelected ? ink : sage.accentStrong,
+            color: isToday ? ink : sage.accentStrong,
           ),
         ),
     ];
@@ -218,9 +215,7 @@ class _Figures extends StatelessWidget {
     if (figures.isEmpty) {
       return Text(
         tr('income.amountUnknown'),
-        style: text.bodyMedium?.copyWith(
-          color: isSelected ? ink : sage.inkLabel,
-        ),
+        style: text.bodyMedium?.copyWith(color: isToday ? ink : sage.inkLabel),
       );
     }
 

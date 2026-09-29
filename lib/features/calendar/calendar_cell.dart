@@ -15,7 +15,8 @@ import 'package:sielto/features/calendar/day_marks.dart';
 ///   - high load: a `danger` dot in the other corner
 ///   - income uncertainty: diagonal `sand` hatching across the cell
 ///   - deadline: a border — solid for hard, dashed for soft (spec 4.8)
-///   - selected: the solid `accent` fill, which overrides every wash
+///   - today: the solid `accent` fill, which overrides every wash
+///   - selected: a thin outline, the day the Day view would open on
 ///
 /// The corners carry the two dots and the border carries the deadline, so no
 /// two decorations compete for the same pixels. All of it comes out of the
@@ -26,6 +27,7 @@ class CellDecoration extends StatelessWidget {
     required this.mark,
     required this.child,
     this.isSelected = false,
+    this.isToday = false,
     this.radius = SageRadius.chip,
     this.dimmed = false,
     super.key,
@@ -34,6 +36,7 @@ class CellDecoration extends StatelessWidget {
   final DayMark mark;
   final Widget child;
   final bool isSelected;
+  final bool isToday;
   final double radius;
 
   /// A day from a neighbouring month in the Month grid: present, and clearly
@@ -49,7 +52,7 @@ class CellDecoration extends StatelessWidget {
 
     final Widget body = DecoratedBox(
       decoration: BoxDecoration(
-        color: groundOf(sage, mark, isSelected: isSelected),
+        color: groundOf(sage, mark, isToday: isToday),
         borderRadius: BorderRadius.circular(radius),
         border: switch (mark.deadline) {
           // Solid against dashed, so a hard deadline is visibly the one that
@@ -78,17 +81,31 @@ class CellDecoration extends StatelessWidget {
               ),
             ),
           child,
+          // Inside the deadline border, so the two never share a stroke.
+          if (isSelected)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(radius),
+                  border: Border.all(
+                    color: isToday ? sage.accentOn : sage.inkSecondary,
+                    width: 1.5,
+                    strokeAlign: BorderSide.strokeAlignInside,
+                  ),
+                ),
+              ),
+            ),
           if (mark.isHoliday)
             Positioned(
               top: 3,
               left: 3,
-              child: _Dot(color: isSelected ? sage.accentOn : sage.warning),
+              child: _Dot(color: isToday ? sage.accentOn : sage.warning),
             ),
           if (mark.isHighLoad)
             Positioned(
               top: 3,
               right: 3,
-              child: _Dot(color: isSelected ? sage.accentOn : sage.danger),
+              child: _Dot(color: isToday ? sage.accentOn : sage.danger),
             ),
         ],
       ),
@@ -97,25 +114,21 @@ class CellDecoration extends StatelessWidget {
     return dimmed ? Opacity(opacity: 0.35, child: body) : body;
   }
 
-  /// The cell ground. Selection wins over every wash, because it is the one
-  /// thing the user just did.
+  /// The cell ground. Today wins over every wash: it is the one day that is
+  /// always worth finding at a glance.
   static Color groundOf(
     SageColors sage,
     DayMark mark, {
-    required bool isSelected,
+    required bool isToday,
   }) {
-    if (isSelected) return sage.accent;
+    if (isToday) return sage.accent;
     if (mark.isNonWorking) return sage.warningTint;
     return sage.card;
   }
 
   /// The ink for a cell's own figures, following the ground.
-  static Color inkOf(
-    SageColors sage,
-    DayMark mark, {
-    required bool isSelected,
-  }) {
-    if (isSelected) return sage.accentOn;
+  static Color inkOf(SageColors sage, DayMark mark, {required bool isToday}) {
+    if (isToday) return sage.accentOn;
     if (mark.isNonWorking) return sage.warning;
     return sage.ink;
   }

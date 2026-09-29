@@ -155,27 +155,30 @@ void main() {
     expect(opened, const CalendarDate(2026, 8, 20));
   });
 
-  testWidgets('the selected cell takes the accent fill', (
+  testWidgets('today takes the accent fill, the selection an outline', (
     WidgetTester tester,
   ) async {
     await pumpMonth(tester, selected: const CalendarDate(2026, 8, 20));
 
     final SageColors sage = SageColors.light;
-    final CellDecoration selected = tester
+    final List<CellDecoration> cells = tester
         .widgetList<CellDecoration>(find.byType(CellDecoration))
-        .firstWhere((CellDecoration c) => c.isSelected);
+        .toList();
+    // Exactly one of each, and not the same cell here.
+    final CellDecoration filled = cells.singleWhere(
+      (CellDecoration c) => c.isToday,
+    );
+    final CellDecoration outlined = cells.singleWhere(
+      (CellDecoration c) => c.isSelected,
+    );
+    expect(filled, isNot(outlined));
     expect(
-      CellDecoration.groundOf(sage, selected.mark, isSelected: true),
+      CellDecoration.groundOf(sage, filled.mark, isToday: true),
       sage.accent,
     );
-
-    // Exactly one, so the fill always names one day.
     expect(
-      tester
-          .widgetList<CellDecoration>(find.byType(CellDecoration))
-          .where((CellDecoration c) => c.isSelected)
-          .length,
-      1,
+      CellDecoration.groundOf(sage, outlined.mark, isToday: false),
+      sage.card,
     );
   });
 
@@ -202,7 +205,7 @@ void main() {
     expect(washed.length, 2);
     for (final CellDecoration cell in washed) {
       expect(
-        CellDecoration.groundOf(sage, cell.mark, isSelected: false),
+        CellDecoration.groundOf(sage, cell.mark, isToday: false),
         sage.warningTint,
       );
     }

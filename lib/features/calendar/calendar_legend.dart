@@ -49,10 +49,15 @@ Future<void> showCalendarLegend(
               label: tr('calendar.legend.noAmount'),
             ),
             _Entry(
-              figure: ('1', sage.accentStrong),
+              figure: ('1', sage.accentOn),
+              isToday: true,
               label: tr('calendar.legend.today'),
             ),
-            _Entry(isSelected: true, label: tr('calendar.legend.selected')),
+            _Entry(
+              figure: ('1', sage.ink),
+              isSelected: true,
+              label: tr('calendar.legend.selected'),
+            ),
             _Entry(
               mark: const DayMark(isNonWorking: true),
               label: tr('calendar.legend.nonWorking'),
@@ -100,12 +105,14 @@ class _Entry extends StatelessWidget {
     this.mark = DayMark.none,
     this.figure,
     this.isSelected = false,
+    this.isToday = false,
   });
 
   final String label;
   final DayMark mark;
   final (String, Color)? figure;
   final bool isSelected;
+  final bool isToday;
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +126,7 @@ class _Entry extends StatelessWidget {
             child: CellDecoration(
               mark: mark,
               isSelected: isSelected,
+              isToday: isToday,
               child: Center(
                 child: f == null
                     ? null
