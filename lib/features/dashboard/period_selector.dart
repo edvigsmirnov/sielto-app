@@ -7,6 +7,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/periods/period_service.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 
 /// "← Previous period / Next period →" with the cycle's dates between them
@@ -16,11 +17,15 @@ import 'package:sielto/features/space/period_ledger.dart';
 /// exactly as far as the schedule is known. There is no arbitrary range — a
 /// period is always one whole cycle between two anchor incomes.
 class PeriodSelector extends ConsumerWidget {
-  const PeriodSelector({this.onJump, super.key});
+  const PeriodSelector({this.onJump, this.swipe = true, super.key});
 
   /// Given by the Feed, which scrolls to the period rather than filtering to
   /// it: the list stays one continuous run of records (spec 4.5).
   final void Function(BudgetPeriod period)? onJump;
+
+  /// Off at the bottom of the screen, where a horizontal swipe belongs to the
+  /// shell's tabs.
+  final bool swipe;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,20 +44,36 @@ class PeriodSelector extends ConsumerWidget {
     final DateLabels dates = DateLabels(context.locale.toString());
     final CalendarDate today = ref.watch(spaceClockProviderForLabel);
 
+    // Near the last known period, lay out more, so the next arrow is never
+    // a wall while the schedule goes on.
+    final CalendarDate last = periods.last.startDate;
+    if (index >= periods.length - 2 &&
+        last.isBefore(today.addMonths(PeriodService.maxReachMonths))) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        ref
+            .read(periodReachProvider.notifier)
+            .reach(last.addMonths(PeriodService.horizonStepMonths));
+      });
+    }
+
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       // Swiping the dates does what the chevrons either side of them do — a
       // shortcut, not a second control (spec 4.7).
-      onHorizontalDragEnd: (DragEndDetails details) {
-        final double? velocity = details.primaryVelocity;
-        if (velocity == null || velocity.abs() < _swipeVelocityThreshold) {
-          return;
-        }
-        final BudgetPeriod? target = velocity > 0 ? previous : next;
-        if (target == null) return;
-        HapticFeedback.selectionClick();
-        _go(ref, target);
-      },
+      onHorizontalDragEnd: !swipe
+          ? null
+          : (DragEndDetails details) {
+              final double? velocity = details.primaryVelocity;
+              if (velocity == null ||
+                  velocity.abs() < _swipeVelocityThreshold) {
+                return;
+              }
+              final BudgetPeriod? target = velocity > 0 ? previous : next;
+              if (target == null) return;
+              HapticFeedback.selectionClick();
+              _go(ref, target);
+            },
       child: Row(
         children: <Widget>[
           IconButton(

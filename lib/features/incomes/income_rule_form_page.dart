@@ -8,9 +8,12 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/schedule_editor.dart';
+import 'package:sielto/features/periods/holiday_service.dart';
+import 'package:sielto/features/periods/period_service.dart';
 
 /// Editing a regular income as a whole (spec 5.4).
 ///
@@ -132,18 +135,62 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
       // already confirmed keeps the figure it was confirmed with (spec 5.4).
       await repos.incomes.updateFutureAmounts(widget.rule.id, amount);
 
-      if (_scheduleChanged) {
-        // New dates mean the old rows are on the wrong days. Dropping the
-        // unreceived ones lets the next recompute lay them out again;
-        // received ones are history and stay (spec 5.4).
-        await repos.incomes.clearFutureOccurrences(
-          widget.rule.id,
-          ref.read(spaceClockProvider).today(),
-        );
-      }
+      // New dates mean the old rows are on the wrong days, so they are laid
+      // out again; received ones are history and stay (spec 5.4).
+      if (_scheduleChanged) await _regenerateOccurrences();
 
       ref.invalidate(periodRefreshProvider);
       if (mounted) Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Puts the rule's upcoming occurrences back on its schedule. Returns how
+  /// many rows changed.
+  Future<int> _regenerateOccurrences() async {
+    final ResolvedCalendar resolved = await ref.read(
+      resolvedCalendarProvider.future,
+    );
+    return PeriodService(
+      repos: ref.read(repositoriesProvider),
+      calendar: resolved.calendar,
+      missingHolidayYears: resolved.missingYears,
+    ).regenerate(
+      ref.space,
+      widget.rule.id,
+      ref.read(spaceClockProvider).today(),
+    );
+  }
+
+  Future<void> _regenerate() async {
+    final bool confirmed = await confirmDialog(
+      context,
+      title: tr('income.regenerateTitle'),
+      body: tr(
+        'income.regenerateBody',
+        namedArgs: <String, String>{'title': widget.rule.title},
+      ),
+      confirmLabel: tr('income.regenerate'),
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _saving = true);
+    try {
+      final int changed = await _regenerateOccurrences();
+      ref.invalidate(periodRefreshProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              changed == 0
+                  ? tr('income.regenerateNothing')
+                  : plural('income.regenerated', changed),
+            ),
+          ),
+        );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -212,6 +259,14 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
               onPressed: _isValid ? _save : null,
               child: Text(tr('common.save')),
             ),
+            if (space.budgetMode == BudgetMode.incomeDriven) ...<Widget>[
+              const SizedBox(height: SageSpace.sm),
+              TextButton.icon(
+                onPressed: _saving ? null : _regenerate,
+                icon: const Icon(Icons.restart_alt),
+                label: Text(tr('income.regenerate')),
+              ),
+            ],
           ],
         ),
       ),

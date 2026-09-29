@@ -82,6 +82,11 @@ final StreamProvider<List<Space>> spaceListProvider =
       (Ref ref) => ref.watch(repositoriesProvider).spaces.watchAll(),
     );
 
+final StreamProvider<List<Space>> archivedSpacesProvider =
+    StreamProvider<List<Space>>(
+      (Ref ref) => ref.watch(repositoriesProvider).spaces.watchArchived(),
+    );
+
 /// Which Space to open. Persisted so a relaunch lands where the user left off.
 class CurrentSpaceIdController extends Notifier<String?> {
   @override
@@ -201,6 +206,26 @@ Future<ResolvedCalendar> _resolveCalendar(Ref ref, Set<int> years) {
       );
 }
 
+/// How far ahead the open Space's periods are asked to reach. Null until
+/// the Feed scrolls past what exists; it only ever moves forward.
+class PeriodReachController extends Notifier<CalendarDate?> {
+  @override
+  CalendarDate? build() {
+    ref.watch(currentSpaceIdProvider);
+    return null;
+  }
+
+  void reach(CalendarDate date) {
+    final CalendarDate? current = state;
+    if (current == null || date.isAfter(current)) state = date;
+  }
+}
+
+final NotifierProvider<PeriodReachController, CalendarDate?>
+periodReachProvider = NotifierProvider<PeriodReachController, CalendarDate?>(
+  PeriodReachController.new,
+);
+
 /// Brings periods and future occurrences up to date for the open Space.
 ///
 /// Watched by the screens that need periods, so opening a Space is what
@@ -220,7 +245,11 @@ final FutureProvider<PeriodRefresh> periodRefreshProvider =
         repos: ref.watch(repositoriesProvider),
         calendar: resolved.calendar,
         missingHolidayYears: resolved.missingYears,
-      ).refresh(space, ref.watch(spaceClockProvider).today());
+      ).refresh(
+        space,
+        ref.watch(spaceClockProvider).today(),
+        until: ref.watch(periodReachProvider),
+      );
     });
 
 /// Every period of the open Space, live.

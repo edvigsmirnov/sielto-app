@@ -44,6 +44,10 @@ class IncomeRuleRepository
   Stream<List<IncomeRecurrenceRule>> watchInSpace(String spaceId) =>
       selectAliveInSpace(spaceId).watch();
 
+  Future<IncomeRecurrenceRule?> byId(String id) =>
+      (selectAlive()..where(($IncomeRecurrenceRulesTable t) => t.id.equals(id)))
+          .getSingleOrNull();
+
   Future<List<IncomeRecurrenceRule>> anchorsInSpace(String spaceId) =>
       (selectAliveInSpace(spaceId)
             ..where(($IncomeRecurrenceRulesTable t) => t.isAnchor.equals(true)))
@@ -375,12 +379,14 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
   /// leaving it out would have the next recompute read the date as a gap and
   /// put the occurrence straight back, which is indistinguishable from the
   /// delete having done nothing.
-  Future<Set<String>> materialisedDatesFor(String ruleId) async {
-    final List<Income> rows = await (db.select(
-      db.incomes,
-    )..where(($IncomesTable t) => t.recurrenceRuleId.equals(ruleId))).get();
-    return <String>{for (final Income i in rows) i.expectedDate.toIso()};
-  }
+  Future<Set<String>> materialisedDatesFor(String ruleId) async => <String>{
+    for (final Income i in await occurrencesOf(ruleId)) i.expectedDate.toIso(),
+  };
+
+  /// Every row a rule has produced, deleted ones included.
+  Future<List<Income>> occurrencesOf(String ruleId) => (db.select(
+    db.incomes,
+  )..where(($IncomesTable t) => t.recurrenceRuleId.equals(ruleId))).get();
 
   Future<int> setPeriod(String id, String? periodId) {
     final ({String author, DateTime editedAt}) s = stamp();
@@ -411,27 +417,6 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
         .write(
           IncomesCompanion(
             amount: Value<Decimal?>(amount),
-            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-            lastModifiedBy: Value<String?>(s.author),
-            clientEditedAt: Value<DateTime>(s.editedAt),
-          ),
-        );
-  }
-
-  /// Drops unreceived future occurrences of a rule, so a schedule change can
-  /// re-materialise them on the new dates. Received rows stay untouched.
-  Future<int> clearFutureOccurrences(String ruleId, CalendarDate from) {
-    final ({String author, DateTime editedAt}) s = stamp();
-    return (db.update(db.incomes)..where(
-          ($IncomesTable t) =>
-              t.recurrenceRuleId.equals(ruleId) &
-              t.isPaid.equals(false) &
-              t.isDeleted.equals(false) &
-              t.expectedDate.isBiggerOrEqualValue(from.toIso()),
-        ))
-        .write(
-          IncomesCompanion(
-            isDeleted: const Value<bool>(true),
             syncStatus: const Value<SyncStatus>(SyncStatus.pending),
             lastModifiedBy: Value<String?>(s.author),
             clientEditedAt: Value<DateTime>(s.editedAt),

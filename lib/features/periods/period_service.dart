@@ -1,10 +1,11 @@
+import 'package:decimal/decimal.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
-import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/period/period_materializer.dart';
 import 'package:sielto/domain/schedule/income_schedule.dart';
-import 'package:sielto/domain/schedule/income_window.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -66,15 +67,30 @@ class PeriodService {
   /// be narrowed later instead of silently standing as final (spec 5.1.1).
   final Set<int> missingHolidayYears;
 
-  /// How many months of future occurrences each rule materialises.
+  /// How many months of future occurrences each rule materialises when no
+  /// period bounds them.
   static const int incomeHorizonMonths = PeriodMaterializer.horizonPeriods;
+
+  /// The furthest [refresh] may be asked to reach, from today.
+  static const int maxReachMonths = 24;
+
+  /// How far each request to reach further goes.
+  static const int horizonStepMonths = 3;
 
   /// Recomputes everything derivable from the schedules.
   ///
   /// Safe to call on every Space open: with no anchors it does nothing, which
   /// is the valid permanent state of a Space that has no income yet
   /// (spec 4.7).
-  Future<PeriodRefresh> refresh(Space space, CalendarDate today) async {
+  ///
+  /// Periods run [PeriodMaterializer.horizonPeriods] ahead, further when
+  /// [until] asks — the Feed scrolled to the end — and never less far than
+  /// they already reach, so a horizon once extended is not taken back.
+  Future<PeriodRefresh> refresh(
+    Space space,
+    CalendarDate today, {
+    CalendarDate? until,
+  }) async {
     if (space.budgetMode != BudgetMode.incomeDriven) {
       return const PeriodRefresh();
     }
@@ -90,11 +106,35 @@ class PeriodService {
     ];
     if (anchors.isEmpty) return const PeriodRefresh();
 
-    final List<MaterializedPeriod> computed = PeriodMaterializer.materialize(
-      anchors: anchors,
-      from: today,
-      calendar: calendar,
-    );
+    final CalendarDate cap = today.addMonths(maxReachMonths);
+    CalendarDate? reach = until;
+    for (final BudgetPeriod p in await repos.periods.incomeDrivenIn(space.id)) {
+      if (reach == null || p.startDate.isAfter(reach)) reach = p.startDate;
+    }
+    if (reach != null && reach.isAfter(cap)) reach = cap;
+    int count = PeriodMaterializer.horizonPeriods;
+    List<MaterializedPeriod> computed;
+    while (true) {
+      computed = PeriodMaterializer.materialize(
+        anchors: anchors,
+        from: today,
+        calendar: calendar,
+        count: count,
+      );
+      if (reach == null ||
+          computed.length < count ||
+          !computed.last.startDate.isBefore(reach)) {
+        break;
+      }
+      count += PeriodMaterializer.horizonPeriods;
+    }
+    // Grown in steps, so cut back to the reach: an edited schedule must not
+    // ratchet the horizon out a step on every refresh.
+    while (reach != null &&
+        computed.length > PeriodMaterializer.horizonPeriods &&
+        computed.last.startDate.isAfter(reach)) {
+      computed.removeLast();
+    }
 
     // One transaction for the whole refresh. Written row by row outside one,
     // every stream this feeds (incomes, periods, payments) re-emits after
@@ -115,29 +155,13 @@ class PeriodService {
             today: today,
             settled: await _settledAnchors(space, rules),
           );
-      // Occurrences stop at the last known boundary, so every materialised row
-      // has a period to belong to. The horizon moves them along together.
-      final List<BudgetPeriod> boundaries = await repos.periods.incomeDrivenIn(
-        space.id,
-      );
-      // The floor is the start of the cycle the user is in, not today. The
-      // anchor of the current period has usually already arrived — a Space
-      // created mid-month is the ordinary case — and without its row the
-      // period it opens has no amount and reads as uncomputable (spec 4.7).
-      final BudgetPeriod? current = boundaries
-          .where(
-            (BudgetPeriod p) =>
-                !p.startDate.isAfter(today) &&
-                (p.endDate == null || !p.endDate!.isBefore(today)),
-          )
-          .firstOrNull;
-
+      final ({CalendarDate from, CalendarDate? horizonEnd}) window =
+          await _occurrenceWindow(space, today);
       final int materialised = await _materialiseIncomes(
         space: space,
         rules: rules,
-        today: today,
-        from: current?.startDate ?? today,
-        horizonEnd: boundaries.isEmpty ? null : boundaries.last.endDate,
+        from: window.from,
+        horizonEnd: window.horizonEnd,
       );
       final int rebound = await _bindRecords(space);
       return (periods: periods, materialised: materialised, rebound: rebound);
@@ -306,6 +330,76 @@ class PeriodService {
   bool _incomplete(MaterializedPeriod period) =>
       missingHolidayYears.contains(period.anchorDate.year);
 
+  /// Where occurrences may exist: from the start of the cycle the user is in
+  /// to the last known boundary.
+  ///
+  /// The floor is the cycle's start, not today. The anchor of the current
+  /// period has usually already arrived — a Space created mid-month is the
+  /// ordinary case — and without its row the period it opens has no amount
+  /// and reads as uncomputable (spec 4.7). The horizon stops at the last
+  /// boundary so every row has a period to belong to.
+  Future<({CalendarDate from, CalendarDate? horizonEnd})> _occurrenceWindow(
+    Space space,
+    CalendarDate today,
+  ) async {
+    final List<BudgetPeriod> boundaries = await repos.periods.incomeDrivenIn(
+      space.id,
+    );
+    final BudgetPeriod? current = boundaries
+        .where(
+          (BudgetPeriod p) =>
+              !p.startDate.isAfter(today) &&
+              (p.endDate == null || !p.endDate!.isBefore(today)),
+        )
+        .firstOrNull;
+    return (
+      from: current?.startDate ?? today,
+      horizonEnd: boundaries.isEmpty ? null : boundaries.last.endDate,
+    );
+  }
+
+  /// The dates a rule's schedule puts an occurrence on, within the window.
+  ///
+  /// A schedule starts when it is written down: never earlier than the rule
+  /// itself, or entering a salary today would invent last month's as well.
+  /// History is not invented, and nothing lands past the last boundary.
+  ({CalendarDate floor, List<CalendarDate> dates}) _scheduledDates(
+    Space space,
+    IncomeRecurrenceRule rule,
+    IncomeSchedule schedule, {
+    required CalendarDate from,
+    required CalendarDate? horizonEnd,
+  }) {
+    final CalendarDate ruleStart = repos.spaces
+        .clockFor(space)
+        .dateOf(rule.createdAt);
+    final CalendarDate floor = ruleStart.isAfter(from) ? ruleStart : from;
+
+    final List<CalendarDate> dates = <CalendarDate>[];
+    int year = floor.year;
+    int month = floor.month;
+    // Up to the last boundary; the months are counted only when none bounds
+    // them.
+    final int months = horizonEnd == null
+        ? incomeHorizonMonths
+        : (horizonEnd.year - year) * 12 + horizonEnd.month - month + 1;
+    for (int i = 0; i < months; i++) {
+      final CalendarDate date = schedule
+          .resolveFor(year, month, calendar: calendar)
+          .anchorDate;
+      if ((horizonEnd == null || !date.isAfter(horizonEnd)) &&
+          !date.isBefore(floor)) {
+        dates.add(date);
+      }
+      month++;
+      if (month == 13) {
+        month = 1;
+        year++;
+      }
+    }
+    return (floor: floor, dates: dates);
+  }
+
   /// Fills in the future occurrences each rule is missing.
   ///
   /// Only gaps are filled: an occurrence that already exists keeps its own
@@ -313,14 +407,10 @@ class PeriodService {
   Future<int> _materialiseIncomes({
     required Space space,
     required List<IncomeRecurrenceRule> rules,
-    required CalendarDate today,
     required CalendarDate from,
     required CalendarDate? horizonEnd,
   }) async {
     int written = 0;
-
-    final SpaceClock clock = repos.spaces.clockFor(space);
-
     for (final IncomeRecurrenceRule rule in rules) {
       final IncomeSchedule? schedule = scheduleOf(rule);
       if (schedule == null) continue;
@@ -328,52 +418,109 @@ class PeriodService {
       final Set<String> already = await repos.incomes.materialisedDatesFor(
         rule.id,
       );
-
-      // A schedule starts when it is written down. The floor is the cycle's
-      // start so a Space opened mid-month still gets the salary that opened
-      // the cycle it is in — but never earlier than the rule itself, or
-      // entering a salary today would invent last month's as well.
-      final CalendarDate ruleStart = clock.dateOf(rule.createdAt);
-      final CalendarDate floor = ruleStart.isAfter(from) ? ruleStart : from;
-
-      int year = floor.year;
-      int month = floor.month;
-      for (int i = 0; i < incomeHorizonMonths; i++) {
-        final IncomeWindow window = schedule.resolveFor(
-          year,
-          month,
-          calendar: calendar,
+      for (final CalendarDate date in _scheduledDates(
+        space,
+        rule,
+        schedule,
+        from: from,
+        horizonEnd: horizonEnd,
+      ).dates) {
+        if (!already.add(date.toIso())) continue;
+        await repos.incomes.create(
+          spaceId: space.id,
+          title: rule.title,
+          expectedDate: date,
+          amount: rule.amount,
+          recurrenceRuleId: rule.id,
         );
-        final String iso = window.anchorDate.toIso();
-
-        // History is not invented: an income the user never recorded did not
-        // happen as far as the app knows. Nor is anything past the last
-        // boundary, which would have no period to belong to.
-        final bool withinHorizon =
-            horizonEnd == null || !window.anchorDate.isAfter(horizonEnd);
-        if (withinHorizon &&
-            !window.anchorDate.isBefore(floor) &&
-            !already.contains(iso)) {
-          await repos.incomes.create(
-            spaceId: space.id,
-            title: rule.title,
-            expectedDate: window.anchorDate,
-            amount: rule.amount,
-            recurrenceRuleId: rule.id,
-          );
-          already.add(iso);
-          written++;
-        }
-
-        month++;
-        if (month == 13) {
-          month = 1;
-          year++;
-        }
+        written++;
       }
     }
-
     return written;
+  }
+
+  /// Lays a regular income's occurrences out again from its rule (spec 5.4).
+  ///
+  /// Within the occurrence window every unreceived row ends up on a scheduled
+  /// date with the rule's title and amount: a deleted one comes back, an
+  /// edited one is reset, one moved off its date is dropped and the date
+  /// refilled. Received rows and rows in a frozen period stay as they are.
+  /// Returns how many rows changed.
+  ///
+  /// This is the one way past a deletion: the gap-filling in [refresh] treats
+  /// a deleted date as decided, and that is right for a single tap, not for
+  /// a row lost by accident or a schedule edited back and forth.
+  Future<int> regenerate(Space space, String ruleId, CalendarDate today) async {
+    if (space.budgetMode != BudgetMode.incomeDriven) return 0;
+    final IncomeRecurrenceRule? rule = await repos.incomeRules.byId(ruleId);
+    final IncomeSchedule? schedule = rule == null ? null : scheduleOf(rule);
+    if (rule == null || schedule == null) return 0;
+
+    // The periods follow the rule's current schedule before anything is
+    // laid out against them.
+    await refresh(space, today);
+
+    final int changed = await repos.db.transaction(() async {
+      final ({CalendarDate from, CalendarDate? horizonEnd}) window =
+          await _occurrenceWindow(space, today);
+      final ({CalendarDate floor, List<CalendarDate> dates}) planned =
+          _scheduledDates(
+            space,
+            rule,
+            schedule,
+            from: window.from,
+            horizonEnd: window.horizonEnd,
+          );
+      final Set<String> scheduled = <String>{
+        for (final CalendarDate date in planned.dates) date.toIso(),
+      };
+
+      // A received row holds its date; live rows are preferred over deleted
+      // ones as the row a date keeps.
+      final List<Income> rows = await repos.incomes.occurrencesOf(ruleId)
+        ..sort(
+          (Income a, Income b) =>
+              (a.isDeleted ? 1 : 0).compareTo(b.isDeleted ? 1 : 0),
+        );
+      final Set<String> held = <String>{
+        for (final Income r in rows)
+          if (r.isPaid && !r.isDeleted) r.expectedDate.toIso(),
+      };
+
+      int changed = 0;
+      for (final Income row in rows) {
+        if (row.isPaid || row.expectedDate.isBefore(planned.floor)) continue;
+        final String iso = row.expectedDate.toIso();
+        if (await repos.incomes.freezeStateOf(row.id) == FreezeState.frozen) {
+          if (!row.isDeleted) held.add(iso);
+          continue;
+        }
+
+        if (scheduled.contains(iso) && held.add(iso)) {
+          if (row.isDeleted) await repos.incomes.restore(row.id);
+          if (row.title != rule.title || row.amount != rule.amount) {
+            await repos.incomes.update(
+              row.id,
+              title: Value<String>(rule.title),
+              amount: Value<Decimal?>(rule.amount),
+            );
+          }
+          if (row.isDeleted ||
+              row.title != rule.title ||
+              row.amount != rule.amount) {
+            changed++;
+          }
+        } else if (!row.isDeleted) {
+          await repos.incomes.softDelete(row.id);
+          changed++;
+        }
+      }
+      return changed;
+    });
+
+    // Fills the dates nothing held and binds the restored rows.
+    final PeriodRefresh after = await refresh(space, today);
+    return changed + after.incomesMaterialised;
   }
 
   /// Binds every record to the period its date falls in.

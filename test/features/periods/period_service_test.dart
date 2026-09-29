@@ -311,6 +311,76 @@ void main() {
     });
   });
 
+  group('regenerate', () {
+    Future<List<Income>> live() async =>
+        (await repos.incomes.inSpace(space.id)).toList()..sort(
+          (Income a, Income b) => a.expectedDate.compareTo(b.expectedDate),
+        );
+
+    test('lays deleted, edited and moved occurrences out again', () async {
+      final IncomeRecurrenceRule rule = await anchorOn(26);
+      await service.refresh(space, today);
+      final List<Income> before = await live();
+      expect(before.length, greaterThanOrEqualTo(4));
+
+      await repos.incomes.softDelete(before[0].id);
+      await repos.incomes.update(
+        before[1].id,
+        amount: Value<Decimal?>(m('3500')),
+      );
+      await repos.incomes.update(
+        before[2].id,
+        expectedDate: Value<CalendarDate>(before[2].expectedDate.addDays(1)),
+      );
+      await repos.incomes.update(
+        before[3].id,
+        amount: Value<Decimal?>(m('2900')),
+        isPaid: const Value<bool>(true),
+      );
+
+      final int changed = await service.regenerate(space, rule.id, today);
+      expect(changed, greaterThanOrEqualTo(3));
+
+      final List<Income> after = await live();
+      expect(
+        after.map((Income i) => i.expectedDate).toList(),
+        before.map((Income i) => i.expectedDate).toList(),
+      );
+      expect(after[1].amount, m('3000'));
+      // Received money is a fact: its own figure stays.
+      expect(after[3].isPaid, isTrue);
+      expect(after[3].amount, m('2900'));
+
+      // Nothing left to do the second time.
+      expect(await service.regenerate(space, rule.id, today), 0);
+    });
+
+    test('a schedule edited back and forth leaves no gaps', () async {
+      final IncomeRecurrenceRule rule = await anchorOn(26);
+      await service.refresh(space, today);
+      final List<CalendarDate> original = <CalendarDate>[
+        for (final Income i in await live()) i.expectedDate,
+      ];
+
+      Future<void> moveTo(int day) async {
+        await repos.incomeRules.updateRule(
+          rule.id,
+          title: 'Salary',
+          scheduleType: ScheduleType.fixedDate,
+          amount: m('3000'),
+          fixedDay: day,
+        );
+        await service.regenerate(space, rule.id, today);
+      }
+
+      await moveTo(20);
+      await moveTo(26);
+      expect(<CalendarDate>[
+        for (final Income i in await live()) i.expectedDate,
+      ], original);
+    });
+  });
+
   group('closed periods are history', () {
     test('a period whose end has passed is never rewritten', () async {
       await anchorOn(26);

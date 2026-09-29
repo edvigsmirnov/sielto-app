@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/l10n/app_locales.dart';
 import 'package:sielto/core/theme/sage_theme.dart';
@@ -56,6 +57,7 @@ void main() {
         overrides: [
           incomePeriodsProvider.overrideWithValue(<BudgetPeriod>[period]),
           selectedPeriodProvider.overrideWithValue(period),
+          periodReachProvider.overrideWith(_NoReach.new),
           spaceClockProviderForLabel.overrideWithValue(
             const CalendarDate(2026, 9, 22),
           ),
@@ -96,4 +98,10 @@ void main() {
       greaterThan(screen / 2),
     );
   });
+}
+
+/// The reach without the open Space it resets on, which this test has none of.
+class _NoReach extends PeriodReachController {
+  @override
+  CalendarDate? build() => null;
 }
