@@ -54,3 +54,4 @@ app.*.map.json
 /CLAUDE.md
 /.claude/settings.local.json
 /.claude/sielto_design/
+/.claude/hooks/
