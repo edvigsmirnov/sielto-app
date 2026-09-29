@@ -7,8 +7,10 @@ import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/incomes/anchor_help.dart';
 import 'package:sielto/features/incomes/income_rule_form_page.dart';
 import 'package:sielto/features/periods/schedule_mapping.dart';
 
@@ -60,7 +62,7 @@ class IncomeRulesPage extends ConsumerWidget {
         AsyncError<List<IncomeRecurrenceRule>>() => EmptyState(
           message: tr('common.loadFailed'),
         ),
-        _ => const Center(child: CircularProgressIndicator()),
+        _ => const Center(child: LeafLoader()),
       },
     );
   }
@@ -109,6 +111,7 @@ class IncomeRulesPage extends ConsumerWidget {
           .incomeRules
           .setAnchor(rule.id, isAnchor: anchor, mode: space.budgetMode);
       ref.invalidate(periodRefreshProvider);
+      if (anchor && context.mounted) announceAnchor(context, rule.title);
     } on LastAnchorRequired {
       if (context.mounted) _sayAnchorRequired(context);
     }
@@ -186,6 +189,7 @@ class _RuleTile extends StatelessWidget {
                     if (anchored) ...<Widget>[
                       const SizedBox(width: SageSpace.sm),
                       _AnchorBadge(),
+                      const AnchorHelpButton(),
                     ],
                   ],
                 ),

@@ -10,10 +10,12 @@ import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/incomes/anchor_help.dart';
 import 'package:sielto/features/incomes/income_rule_form_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/incomes/income_scope_dialog.dart';
@@ -245,6 +247,11 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         mode: space.budgetMode,
       );
     }
+    if (space.budgetMode == BudgetMode.incomeDriven &&
+        (rule.isAnchor || (_anchorChoiceApplies && _isAnchor)) &&
+        mounted) {
+      announceAnchor(context, rule.title);
+    }
   }
 
   /// The two writes a closed period still allows (spec 5.5): the title, and a
@@ -363,7 +370,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     final DateLabels dates = DateLabels(locale);
 
     if (!_loaded) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: LeafLoader()));
     }
 
     final bool isOccurrence = _existing != null;
@@ -517,11 +524,18 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                     ),
                   ),
                   const SizedBox(height: SageSpace.xs),
-                  Text(
-                    _isAnchor
-                        ? tr('income.roleAnchorHint')
-                        : tr('income.roleAdditionalHint'),
-                    style: Theme.of(context).textTheme.bodySmall,
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          _isAnchor
+                              ? tr('income.roleAnchorHint')
+                              : tr('income.roleAdditionalHint'),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      const AnchorHelpButton(),
+                    ],
                   ),
                 ],
               ],
