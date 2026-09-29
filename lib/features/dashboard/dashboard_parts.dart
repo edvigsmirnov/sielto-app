@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
@@ -9,6 +10,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/analytics/analytics_page.dart';
+import 'package:sielto/features/shell/shell_tab.dart';
 
 /// The dashboard blocks the three modes share (spec 4.4).
 ///
@@ -185,7 +187,7 @@ class SpentFigure extends StatelessWidget {
 /// Only the base remainder appears here. The net figure is the hero above, and
 /// printing it twice on one screen invites the reader to look for a difference
 /// that is not there.
-class CascadeCard extends StatefulWidget {
+class CascadeCard extends ConsumerStatefulWidget {
   const CascadeCard({
     required this.available,
     required this.baseRemainder,
@@ -206,16 +208,23 @@ class CascadeCard extends StatefulWidget {
   final MoneyFormat money;
 
   @override
-  State<CascadeCard> createState() => _CascadeCardState();
+  ConsumerState<CascadeCard> createState() => _CascadeCardState();
 }
 
-class _CascadeCardState extends State<CascadeCard> {
+class _CascadeCardState extends ConsumerState<CascadeCard> {
   /// Closed until asked. The explanation is three lines that stop being news
   /// after the first read, and the figure below is the point of the card.
   bool _explained = false;
 
   @override
   Widget build(BuildContext context) {
+    // The tab is kept alive, so an explanation left open would greet the
+    // next visit. It closes as the Dashboard is left.
+    ref.listen<int>(shellTabProvider, (int? _, int tab) {
+      if (tab != ShellTabController.dashboard && _explained) {
+        setState(() => _explained = false);
+      }
+    });
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
     final Decimal? remainder = widget.baseRemainder;
@@ -235,21 +244,35 @@ class _CascadeCardState extends State<CascadeCard> {
               ),
             ],
           ),
-          if (_explained) ...<Widget>[
-            const SizedBox(height: SageSpace.md),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(SageSpace.md),
-              decoration: BoxDecoration(
-                color: sage.accentTint,
-                borderRadius: BorderRadius.circular(SageRadius.button),
-              ),
-              child: Text(
-                tr('dashboard.cascadeHint'),
-                style: text.bodySmall?.copyWith(color: sage.inkSecondary),
-              ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: !_explained
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.only(top: SageSpace.md),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(SageSpace.md),
+                        decoration: BoxDecoration(
+                          color: sage.accentTint,
+                          borderRadius: BorderRadius.circular(
+                            SageRadius.button,
+                          ),
+                        ),
+                        child: Text(
+                          tr('dashboard.cascadeHint'),
+                          style: text.bodySmall?.copyWith(
+                            color: sage.inkSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
             ),
-          ],
+          ),
           const SizedBox(height: SageSpace.md),
           StatRow(
             label: tr('dashboard.baseRemainder'),

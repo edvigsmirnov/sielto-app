@@ -8,9 +8,11 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/period_selector.dart';
+import 'package:sielto/features/incomes/anchor_help.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/overdue/overdue.dart';
@@ -38,7 +40,7 @@ class PeriodDashboardBody extends ConsumerWidget {
 
     final AsyncValue<PeriodLedger> ledger = ref.watch(periodLedgerProvider);
     return ledger.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: LeafLoader()),
       error: (Object e, StackTrace _) =>
           EmptyState(message: tr('common.loadFailed')),
       data: (PeriodLedger data) => _PeriodBody(space: space, ledger: data),
@@ -83,6 +85,10 @@ class _NoAnchorState extends StatelessWidget {
             FilledButton(
               onPressed: () => openIncomeForm(context),
               child: Text(tr('income.add')),
+            ),
+            TextButton(
+              onPressed: () => showAnchorHelp(context),
+              child: Text(tr('income.anchorHelpTitle')),
             ),
           ],
         ),
@@ -197,7 +203,7 @@ class _PeriodBody extends ConsumerWidget {
         Expanded(child: list),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: SageSpace.gutter),
-          child: PeriodSelector(),
+          child: PeriodSelector(swipe: false),
         ),
       ],
     );

@@ -7,6 +7,7 @@ import 'package:sielto/features/calendar/calendar_page.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/feed/feed_page.dart';
+import 'package:sielto/features/shell/shell_tab.dart';
 
 /// The three main screens and the two ways to move between them: the bottom
 /// bar and a horizontal swipe, both live at once (spec 4.1).
@@ -30,8 +31,20 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.dispose();
   }
 
-  void _goTo(int index) {
+  void _show(int index) {
     setState(() => _index = index);
+    ref.read(shellTabProvider.notifier).show(index);
+  }
+
+  void _goTo(int index) {
+    final int distance = (index - _index).abs();
+    _show(index);
+    // Sliding past a tab lays it out mid-flight for nothing; a tap two away
+    // lands straight on its target.
+    if (distance > 1) {
+      _controller.jumpToPage(index);
+      return;
+    }
     _controller.animateToPage(
       index,
       duration: const Duration(milliseconds: 220),
@@ -54,7 +67,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       // frame, because the notification can arrive mid-build.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        setState(() => _index = 0);
+        _show(0);
         if (_controller.hasClients) _controller.jumpToPage(0);
       });
     });
@@ -84,8 +97,12 @@ class _MainShellState extends ConsumerState<MainShell> {
         backgroundColor: context.sage.surface,
         body: PageView(
           controller: _controller,
-          onPageChanged: (int index) => setState(() => _index = index),
-          children: const <Widget>[DashboardPage(), FeedPage(), CalendarPage()],
+          onPageChanged: _show,
+          children: const <Widget>[
+            _KeepAlive(child: DashboardPage()),
+            _KeepAlive(child: FeedPage()),
+            _KeepAlive(child: CalendarPage()),
+          ],
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _index,
@@ -110,5 +127,30 @@ class _MainShellState extends ConsumerState<MainShell> {
         ),
       ),
     );
+  }
+}
+
+/// Keeps a tab built while another one is shown.
+///
+/// A PageView drops pages that scroll out of view, so every return to the
+/// Feed rebuilt the whole list and lost its scroll position.
+class _KeepAlive extends StatefulWidget {
+  const _KeepAlive({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive>
+    with AutomaticKeepAliveClientMixin<_KeepAlive> {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
