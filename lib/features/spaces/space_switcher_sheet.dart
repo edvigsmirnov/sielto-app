@@ -49,6 +49,8 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
     final List<Space> spaces =
         ref.watch(spaceListProvider).value ?? const <Space>[];
     final String? currentId = ref.watch(currentSpaceProvider)?.id;
+    final List<Space> archived =
+        ref.watch(archivedSpacesProvider).value ?? const <Space>[];
     final Map<String, Coverage> coverage =
         ref.watch(spaceCoverageProvider).value ?? const <String, Coverage>{};
 
@@ -101,6 +103,33 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
                 ),
               ),
             ),
+            if (archived.isNotEmpty)
+              // Collapsed: the way back, not a second list to read.
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                shape: const Border(),
+                collapsedShape: const Border(),
+                title: Text(
+                  tr('space.archived', args: <String>['${archived.length}']),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                children: <Widget>[
+                  for (final Space space in archived)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: SpaceAvatar(
+                        spaceId: space.id,
+                        title: space.title,
+                        highlighted: false,
+                      ),
+                      title: Text(space.title, overflow: TextOverflow.ellipsis),
+                      trailing: TextButton(
+                        onPressed: () => _unarchive(space),
+                        child: Text(tr('space.unarchive')),
+                      ),
+                    ),
+                ],
+              ),
             const SizedBox(height: SageSpace.md),
             DashedButton(
               label: '+ ${tr('space.createTitle')}',
@@ -139,6 +168,14 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
     if (mounted) {
       Navigator.of(context).popUntil((Route<void> r) => r.isFirst);
     }
+  }
+
+  Future<void> _unarchive(Space space) async {
+    HapticFeedback.lightImpact();
+    await ref
+        .read(repositoriesProvider)
+        .spaces
+        .setArchived(space.id, isArchived: false);
   }
 
   void _openSettings(Space space) {

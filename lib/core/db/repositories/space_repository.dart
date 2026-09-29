@@ -32,6 +32,15 @@ class SpaceRepository {
   /// reads this rather than re-querying after every write.
   Stream<List<Space>> watchAll() => _selectAll().watch();
 
+  /// Archived Spaces, for the switcher's way back (spec 3.4).
+  Stream<List<Space>> watchArchived() =>
+      (db.select(db.spaces)
+            ..where(($SpacesTable t) => t.isArchived.equals(true))
+            ..orderBy(<OrderClauseGenerator<$SpacesTable>>[
+              ($SpacesTable t) => OrderingTerm(expression: t.createdAt),
+            ]))
+          .watch();
+
   Future<Space?> byId(String id) => _selectById(id).getSingleOrNull();
 
   Stream<Space?> watchById(String id) => _selectById(id).watchSingleOrNull();
