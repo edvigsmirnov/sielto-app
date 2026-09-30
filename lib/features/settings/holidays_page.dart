@@ -392,59 +392,61 @@ class _CountryPickerState extends ConsumerState<_CountryPicker> {
               )
               .toList();
 
+    final double keyboard = MediaQuery.viewInsetsOf(context).bottom;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           SageSpace.gutter,
           0,
           SageSpace.gutter,
-          SageSpace.md,
+          SageSpace.md + keyboard,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              tr('holidays.country'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: SageSpace.md),
-            TextField(
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search, size: 20),
-                hintText: tr('holidays.searchCountry'),
-                isDense: true,
+        child: SizedBox(
+          height: (MediaQuery.sizeOf(context).height - keyboard) * 0.75,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                tr('holidays.country'),
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-              onChanged: (String value) => setState(() => _query = value),
-            ),
-            const SizedBox(height: SageSpace.sm),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(tr('holidays.noCountry')),
-              subtitle: Text(tr('holidays.noCountryBody')),
-              onTap: () =>
-                  Navigator.of(context).pop(const _CountryResult(null)),
-            ),
-            const Hairline(),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: shown.length,
-                itemBuilder: (BuildContext context, int index) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  title: Text(shown[index].name),
-                  trailing: Text(
-                    shown[index].code,
-                    style: Theme.of(context).textTheme.labelSmall,
+              const SizedBox(height: SageSpace.md),
+              TextField(
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  hintText: tr('holidays.searchCountry'),
+                  isDense: true,
+                ),
+                onChanged: (String value) => setState(() => _query = value),
+              ),
+              const SizedBox(height: SageSpace.sm),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(tr('holidays.noCountry')),
+                subtitle: Text(tr('holidays.noCountryBody')),
+                onTap: () =>
+                    Navigator.of(context).pop(const _CountryResult(null)),
+              ),
+              const Hairline(),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: shown.length,
+                  itemBuilder: (BuildContext context, int index) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(shown[index].name),
+                    trailing: Text(
+                      shown[index].code,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                    onTap: () =>
+                        Navigator.of(context)
+                            .pop(_CountryResult(shown[index].code)),
                   ),
-                  onTap: () =>
-                      Navigator.of(context)
-                          .pop(_CountryResult(shown[index].code)),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
