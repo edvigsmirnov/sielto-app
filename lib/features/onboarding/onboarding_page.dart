@@ -101,7 +101,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   }
 }
 
-/// Nickname, currency, theme and language. The currency becomes the default
+/// Name, currency, theme and language. The currency becomes the default
 /// for new Spaces; theme and language apply immediately.
 class _ProfileStep extends ConsumerStatefulWidget {
   const _ProfileStep({required this.stepCount, required this.onContinue});
@@ -114,17 +114,17 @@ class _ProfileStep extends ConsumerStatefulWidget {
 }
 
 class _ProfileStepState extends ConsumerState<_ProfileStep> {
-  final TextEditingController _nickname = TextEditingController();
+  final TextEditingController _name = TextEditingController();
   String? _currency;
 
   @override
   void dispose() {
-    _nickname.dispose();
+    _name.dispose();
     super.dispose();
   }
 
   Future<void> _save(String currency) async {
-    await ref.read(localSettingsProvider).setNickname(_nickname.text);
+    await ref.read(nameProvider.notifier).set(_name.text);
     await ref.read(localSettingsProvider).setCurrencyCode(currency);
     widget.onContinue();
   }
@@ -147,13 +147,11 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
       onPrimary: () => _save(currency),
       children: <Widget>[
         LabelledField(
-          label: tr('onboarding.fieldNickname'),
+          label: tr('onboarding.fieldName'),
           child: TextField(
-            controller: _nickname,
+            controller: _name,
             textCapitalization: TextCapitalization.words,
-            decoration: InputDecoration(
-              hintText: tr('onboarding.nicknameHint'),
-            ),
+            decoration: InputDecoration(hintText: tr('onboarding.nameHint')),
           ),
         ),
         const SizedBox(height: SageSpace.lg),

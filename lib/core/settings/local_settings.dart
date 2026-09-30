@@ -19,7 +19,7 @@ class LocalSettings {
   static const Uuid _uuid = Uuid();
 
   static const String _keyUserId = 'user_id';
-  static const String _keyNickname = 'nickname';
+  static const String _keyName = 'nickname';
   static const String _keyThemeMode = 'theme_mode';
   static const String _keyFeedDensity = 'feed_density';
   static const String _keyCurrencyCode = 'currency_code';
@@ -46,15 +46,15 @@ class LocalSettings {
   }
 
   /// Null when skipped at onboarding.
-  String? get nickname => _prefs.getString(_keyNickname);
+  String? get name => _prefs.getString(_keyName);
 
-  Future<void> setNickname(String? value) async {
+  Future<void> setName(String? value) async {
     final String? trimmed = value?.trim();
     if (trimmed == null || trimmed.isEmpty) {
-      await _prefs.remove(_keyNickname);
+      await _prefs.remove(_keyName);
       return;
     }
-    await _prefs.setString(_keyNickname, trimmed);
+    await _prefs.setString(_keyName, trimmed);
   }
 
   ThemeMode get themeMode =>

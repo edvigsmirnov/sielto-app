@@ -29,11 +29,11 @@
   "onboarding": {
     "welcomeTitle": "Welcome",
     "welcomeBody": "No account, no email, no password. Your data stays on this device until you decide otherwise.",
-    "fieldNickname": "Nickname",
-    "nicknameHint": "Optional",
+    "fieldName": "Name",
+    "nameHint": "Optional",
     "currencyWhy": "Taken from your device. You can change it now; afterwards only while a Space has no records in it.",
     "profileTitle": "A few basics",
-    "profileWhy": "All of it can be changed later in Settings. The nickname is optional and stays on this device until you move a Space to the cloud."
+    "profileWhy": "All of it can be changed later in Settings."
   },
   "mode": {
     "incomeDriven": {
@@ -95,6 +95,8 @@
   },
   "settings": {
     "title": "Settings",
+    "name": "Name",
+    "nameNotSet": "Not set",
     "display": "Display",
     "theme": "Theme",
     "feedDensity": "Feed density",

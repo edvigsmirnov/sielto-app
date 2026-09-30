@@ -29,6 +29,15 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
         children: <Widget>[
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: Text(tr('settings.name')),
+            subtitle: Text(
+              ref.watch(nameProvider) ?? tr('settings.nameNotSet'),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _editName(context, ref),
+          ),
           SectionLabel(tr('settings.display')),
           Padding(
             padding: const EdgeInsets.symmetric(
@@ -133,4 +142,63 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _editName(BuildContext context, WidgetRef ref) async {
+  final String? typed = await showDialog<String>(
+    context: context,
+    builder: (BuildContext context) =>
+        _NameDialog(initial: ref.read(nameProvider) ?? ''),
+  );
+  if (typed != null) await ref.read(nameProvider.notifier).set(typed);
+}
+
+class _NameDialog extends StatefulWidget {
+  const _NameDialog({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    backgroundColor: context.sage.card,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(SageRadius.card),
+    ),
+    title: Text(
+      tr('settings.name'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    content: TextField(
+      controller: _controller,
+      autofocus: true,
+      textCapitalization: TextCapitalization.words,
+      decoration: InputDecoration(hintText: tr('onboarding.nameHint')),
+      onSubmitted: (String value) => Navigator.of(context).pop(value),
+    ),
+    actions: <Widget>[
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(tr('common.cancel')),
+      ),
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(_controller.text),
+        child: Text(tr('common.save')),
+      ),
+    ],
+  );
 }

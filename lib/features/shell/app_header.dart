@@ -102,7 +102,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   }
 }
 
-/// Nickname initial on a disc; an icon without a nickname.
+/// Name initial on a disc; an icon without a name.
 class _ProfileAvatar extends StatelessWidget {
   const _ProfileAvatar({
     required this.initial,

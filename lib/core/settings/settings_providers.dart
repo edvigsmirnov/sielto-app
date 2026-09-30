@@ -11,11 +11,26 @@ final Provider<String> userIdProvider = Provider<String>(
   (Ref ref) => ref.watch(localSettingsProvider).userId,
 );
 
-/// First letter of the nickname. Null without a nickname.
+class NameController extends Notifier<String?> {
+  @override
+  String? build() => ref.watch(localSettingsProvider).name;
+
+  Future<void> set(String? name) async {
+    final LocalSettings settings = ref.read(localSettingsProvider);
+    await settings.setName(name);
+    state = settings.name;
+  }
+}
+
+/// Null when not set.
+final NotifierProvider<NameController, String?> nameProvider =
+    NotifierProvider<NameController, String?>(NameController.new);
+
+/// First letter of the name. Null without a name.
 final Provider<String?> profileInitialProvider = Provider<String?>((Ref ref) {
-  final String? nickname = ref.watch(localSettingsProvider).nickname?.trim();
-  if (nickname == null || nickname.isEmpty) return null;
-  return nickname.characters.first.toUpperCase();
+  final String? name = ref.watch(nameProvider)?.trim();
+  if (name == null || name.isEmpty) return null;
+  return name.characters.first.toUpperCase();
 });
 
 class FeedDensityController extends Notifier<FeedDensity> {
