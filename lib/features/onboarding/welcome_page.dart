@@ -128,9 +128,10 @@ class _WelcomePageState extends State<WelcomePage>
                             child: Text(
                               tr('welcome.tagline'),
                               textAlign: TextAlign.center,
-                              style: text.bodyLarge?.copyWith(
-                                height: 1.6,
-                                color: SageBrand.leaf.withValues(alpha: 0.85),
+                              style: text.titleMedium?.copyWith(
+                                height: 1.5,
+                                fontWeight: FontWeight.w500,
+                                color: SageBrand.leaf,
                               ),
                             ),
                           ),

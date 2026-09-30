@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/leaf_scatter.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
@@ -88,7 +87,6 @@ enum _Phase { covering, fading, scattering, done }
 class _LaunchCurtainState extends ConsumerState<LaunchCurtain> {
   final GlobalKey _curtain = GlobalKey();
   _Phase _phase = LaunchCurtain.armed ? _Phase.covering : _Phase.done;
-  bool _loading = false;
   ui.Image? _snapshot;
   ProviderSubscription<bool>? _ready;
   final List<Timer> _timers = <Timer>[];
@@ -102,15 +100,8 @@ class _LaunchCurtainState extends ConsumerState<LaunchCurtain> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => LaunchCurtain._release(),
     );
-    _timers
-      // Loader only for loads over 300 ms.
-      ..add(
-        Timer(const Duration(milliseconds: 300), () {
-          if (mounted) setState(() => _loading = true);
-        }),
-      )
-      // Reveals after 6 s at the latest.
-      ..add(Timer(const Duration(seconds: 6), _reveal));
+    // Reveals after 6 s at the latest.
+    _timers.add(Timer(const Duration(seconds: 6), _reveal));
     _ready = ref.listenManual<bool>(launchReadyProvider, (bool? _, bool ready) {
       if (ready) _reveal();
     }, fireImmediately: true);
@@ -141,7 +132,6 @@ class _LaunchCurtainState extends ConsumerState<LaunchCurtain> {
     if (!mounted) return;
     if (firstRun) {
       setState(() => _phase = _Phase.fading);
-      LaunchCurtain.covering.value = false;
       return;
     }
     final ui.Image? image = await snapshotOf(_curtain);
@@ -158,6 +148,8 @@ class _LaunchCurtainState extends ConsumerState<LaunchCurtain> {
   }
 
   void _finish() {
+    // The welcome intro starts once the icon is gone.
+    LaunchCurtain.covering.value = false;
     if (!mounted) return;
     setState(() => _phase = _Phase.done);
     _snapshot?.dispose();
@@ -186,17 +178,15 @@ class _LaunchCurtainState extends ConsumerState<LaunchCurtain> {
                 begin: 1,
                 end: _phase == _Phase.fading ? 0 : 1,
               ),
-              duration: const Duration(milliseconds: 260),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOut,
               onEnd: _phase == _Phase.fading ? _finish : null,
               builder: (BuildContext context, double opacity, Widget? child) =>
                   IgnorePointer(
                     ignoring: _phase == _Phase.fading,
                     child: Opacity(opacity: opacity, child: child),
                   ),
-              child: RepaintBoundary(
-                key: _curtain,
-                child: _Curtain(loading: _loading),
-              ),
+              child: RepaintBoundary(key: _curtain, child: const _Curtain()),
             ),
           ),
       ],
@@ -205,9 +195,7 @@ class _LaunchCurtainState extends ConsumerState<LaunchCurtain> {
 }
 
 class _Curtain extends StatelessWidget {
-  const _Curtain({required this.loading});
-
-  final bool loading;
+  const _Curtain();
 
   @override
   Widget build(BuildContext context) => ColoredBox(
@@ -215,21 +203,9 @@ class _Curtain extends StatelessWidget {
     child: Center(
       child: SizedBox.square(
         dimension: LaunchCurtain.iconSize,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 360),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          child: loading
-              ? const LeafLoader(
-                  key: ValueKey<String>('loader'),
-                  size: 120,
-                  onBrand: true,
-                )
-              : RawImage(
-                  key: const ValueKey<String>('icon'),
-                  image: LaunchCurtain._icon,
-                  filterQuality: FilterQuality.medium,
-                ),
+        child: RawImage(
+          image: LaunchCurtain._icon,
+          filterQuality: FilterQuality.medium,
         ),
       ),
     ),

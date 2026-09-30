@@ -1,5 +1,6 @@
 package dev.edvig.sielto
 
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewTreeObserver
@@ -21,6 +22,10 @@ class MainActivity : FlutterFragmentActivity(), FlutterUiDisplayListener {
         // Secure until Dart reads the setting, so the first recents
         // thumbnail is blank too.
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        // No fade-out: the curtain underneath draws the same icon.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            splashScreen.setOnExitAnimationListener { it.remove() }
+        }
         val content = findViewById<View>(android.R.id.content)
         content.viewTreeObserver.addOnPreDrawListener(
             object : ViewTreeObserver.OnPreDrawListener {

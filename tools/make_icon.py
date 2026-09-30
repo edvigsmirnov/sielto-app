@@ -28,13 +28,11 @@ SS = 8
 WORDMARK_CROP = (90, 330, 934, 675)
 WORDMARK_FEATHER = 36
 
-# Launcher densities: legacy icon side, adaptive layer side (108dp) and the
-# pre-Android 12 splash icon (96dp). The splash has its own PNG because from
-# API 26 `@mipmap/ic_launcher` is the adaptive XML, which a <bitmap> cannot
-# load.
+# Launcher densities: legacy icon, adaptive layer (108dp), splash circle (192dp).
+# The splash canvas is 288dp, Android 12's size for an icon without background.
 DENSITIES = {
-    'mdpi': (48, 108, 96), 'hdpi': (72, 162, 144), 'xhdpi': (96, 216, 192),
-    'xxhdpi': (144, 324, 288), 'xxxhdpi': (192, 432, 384),
+    'mdpi': (48, 108, 192), 'hdpi': (72, 162, 288), 'xhdpi': (96, 216, 384),
+    'xxhdpi': (144, 324, 576), 'xxxhdpi': (192, 432, 768),
 }
 
 # How much of the adaptive layer the artwork covers. Android shows the middle
@@ -111,7 +109,14 @@ if __name__ == '__main__':
         folder = os.path.join(res, 'mipmap-%s' % name)
         os.makedirs(folder, exist_ok=True)
         rounded(legacy).save(os.path.join(folder, 'ic_launcher.png'))
-        rounded(splash).save(os.path.join(folder, 'ic_splash.png'))
+        drawables = os.path.join(res, 'drawable-%s' % name)
+        os.makedirs(drawables, exist_ok=True)
+        canvas = Image.new('RGBA', (splash * 3 // 2,) * 2, (0, 0, 0, 0))
+        canvas.alpha_composite(
+            adaptive_preview(splash * 108 // 72, circle=True),
+            (splash // 4, splash // 4))
+        canvas.save(os.path.join(drawables, 'splash_icon.webp'),
+                    lossless=False, quality=92, method=6)
         adaptive_foreground(layer).save(
             os.path.join(folder, 'ic_launcher_foreground.png'))
         adaptive_background(layer).convert('RGB').save(
