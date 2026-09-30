@@ -71,19 +71,19 @@ final FutureProvider<bool> biometricAvailableProvider = FutureProvider<bool>((
   }
 });
 
-/// [retryCancelled] tries once more after a system cancel.
-Future<bool> authenticateBiometric({bool retryCancelled = false}) async {
+/// [retries] more tries after a system cancel.
+Future<bool> authenticateBiometric({int retries = 0}) async {
   try {
     return await LocalAuthentication().authenticate(
       localizedReason: tr('lock.biometricReason'),
       persistAcrossBackgrounding: true,
     );
   } on LocalAuthException catch (e) {
-    if (retryCancelled &&
+    if (retries > 0 &&
         (e.code == LocalAuthExceptionCode.systemCanceled ||
             e.code == LocalAuthExceptionCode.uiUnavailable)) {
-      await Future<void>.delayed(const Duration(milliseconds: 400));
-      return authenticateBiometric();
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      return authenticateBiometric(retries: retries - 1);
     }
     return false;
   } on Exception {
@@ -183,11 +183,12 @@ class _LockScreenState extends ConsumerState<_LockScreen> {
     }
     if (!ref.read(biometricUnlockProvider)) return;
     await WidgetsBinding.instance.waitUntilFirstFrameRasterized;
-    if (mounted) await _biometric(retryCancelled: true);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (mounted) await _biometric(retries: 2);
   }
 
-  Future<void> _biometric({bool retryCancelled = false}) async {
-    if (await authenticateBiometric(retryCancelled: retryCancelled)) {
+  Future<void> _biometric({int retries = 0}) async {
+    if (await authenticateBiometric(retries: retries)) {
       ref.read(appLockProvider.notifier).unlock();
     }
   }
