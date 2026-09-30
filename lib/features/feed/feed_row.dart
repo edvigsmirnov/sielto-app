@@ -156,10 +156,24 @@ class FeedRowTile extends StatelessWidget {
                     ),
                     child: Row(
                       children: <Widget>[
-                        _PaidCircle(
-                          record: record,
-                          onTap: isFrozen || selecting ? null : onTogglePaid,
-                        ),
+                        if (selecting)
+                          SizedBox.square(
+                            dimension: 26,
+                            child: Icon(
+                              isSelected
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
+                              size: 24,
+                              color: isSelected
+                                  ? sage.accentStrong
+                                  : sage.inkLabel,
+                            ),
+                          )
+                        else
+                          _PaidCircle(
+                            record: record,
+                            onTap: isFrozen ? null : onTogglePaid,
+                          ),
                         const SizedBox(width: SageSpace.md),
                         _TypeMarker(record: record, category: category),
                         const SizedBox(width: SageSpace.md),
@@ -331,7 +345,10 @@ class _PaidCircleState extends State<_PaidCircle>
     final bool paid = widget.record.isPaid;
     return Semantics(
       button: widget.onTap != null,
-      label: tr(paid ? 'feed.bulk.notDone' : 'feed.bulk.done'),
+      label: tr(
+        'feed.bulk.${paid ? 'unmark' : 'mark'}.'
+        '${widget.record.isIncome ? 'received' : 'paid'}',
+      ),
       excludeSemantics: true,
       child: GestureDetector(
         onTap: widget.onTap == null

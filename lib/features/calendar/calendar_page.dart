@@ -352,7 +352,7 @@ class _Body extends ConsumerWidget {
     }
 
     void holdDay(CalendarDate date, Offset at) =>
-        showDayMenu(context, ref, date: date, at: at);
+        showDayMenu(context, ref, date: date);
 
     if (view == CalendarView.week) {
       return WeekView(
@@ -487,8 +487,7 @@ class _DayBody extends ConsumerWidget {
       onEdit: (FeedRecord r) => editRecord(context, r),
       onTogglePaid: (FeedRecord r) => togglePaid(context, ref, r),
       onDelete: (FeedRecord r) => deleteRecord(context, ref, r),
-      onHoldRecord: (FeedRecord r) =>
-          showRecordMenu(context, ref, record: r, today: today),
+      onHoldRecord: (FeedRecord r) => showRecordMenu(context, ref, record: r),
     );
   }
 }

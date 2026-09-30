@@ -4,8 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
-import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/core/ui/action_sheet.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/feed/feed_model.dart';
@@ -15,194 +14,131 @@ import 'package:sielto/features/settings/holidays_page.dart';
 
 enum _QuickAdd { payment, income, nonWorkingDay }
 
-/// Fixed item height and menu padding, for [quickAddAnchor].
-@visibleForTesting
-const double quickAddItemHeight = kMinInteractiveDimension;
-const double _menuVerticalPadding = 16;
+/// Add an expense, an income or a day off on [date].
+List<SheetAction<_QuickAdd>> _quickAdd(WidgetRef ref) =>
+    <SheetAction<_QuickAdd>>[
+      SheetAction<_QuickAdd>(
+        Icons.remove_circle_outline,
+        tr('payment.add'),
+        _QuickAdd.payment,
+      ),
+      SheetAction<_QuickAdd>(
+        Icons.add_circle_outline,
+        // In Budget mode an income is a top-up of the fund.
+        ref.read(currentSpaceProvider)!.budgetMode == BudgetMode.budget
+            ? tr('budget.topUp')
+            : tr('income.add'),
+        _QuickAdd.income,
+      ),
+      SheetAction<_QuickAdd>(
+        Icons.event_busy_outlined,
+        tr('holidays.markDay'),
+        _QuickAdd.nonWorkingDay,
+      ),
+    ];
 
-/// The FAB menu: a bubble beside the button.
+/// The + button and a Calendar day's long press share these actions.
 Future<void> showQuickAddMenu(
   BuildContext context,
   WidgetRef ref, {
-  required CalendarDate today,
-  required GlobalKey anchorKey,
+  required CalendarDate date,
+  required String title,
+  bool askDate = true,
 }) async {
-  final List<PopupMenuEntry<_QuickAdd>> items = _quickAddItems(ref);
   HapticFeedback.lightImpact();
-  final _QuickAdd? choice = await showMenu<_QuickAdd>(
-    context: context,
-    position: quickAddAnchor(context, anchorKey, itemCount: items.length),
-    color: context.sage.card,
-    // Opens from the button, fast.
-    popUpAnimationStyle: const AnimationStyle(
-      duration: Duration(milliseconds: 140),
-      reverseDuration: Duration(milliseconds: 100),
-      curve: Curves.easeOutCubic,
-    ),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(SageRadius.card),
-    ),
-    items: items,
+  final _QuickAdd? choice = await showActionSheet<_QuickAdd>(
+    context,
+    title: title,
+    groups: <List<SheetAction<_QuickAdd>>>[_quickAdd(ref)],
   );
   if (choice == null || !context.mounted) return;
   HapticFeedback.lightImpact();
 
   switch (choice) {
     case _QuickAdd.payment:
-      await openPaymentForm(context, date: today);
+      await openPaymentForm(context, date: date);
     case _QuickAdd.income:
-      await openIncomeForm(context, date: today);
+      await openIncomeForm(context, date: date);
     case _QuickAdd.nonWorkingDay:
-      await markNonWorkingDay(context, ref, initial: today);
+      await markNonWorkingDay(context, ref, initial: date, askDate: askDate);
   }
 }
 
-/// Built once so [quickAddAnchor] can count them.
-List<PopupMenuEntry<_QuickAdd>> _quickAddItems(WidgetRef ref) =>
-    <PopupMenuEntry<_QuickAdd>>[
-      PopupMenuItem<_QuickAdd>(
-        value: _QuickAdd.payment,
-        height: quickAddItemHeight,
-        child: MenuLine(
-          icon: Icons.remove_circle_outline,
-          label: tr('payment.add'),
-        ),
+enum RecordAction { addBefore, addAfter, duplicateBefore, duplicateAfter }
+
+/// Add or duplicate on a neighbouring day.
+List<SheetAction<Object>> recordActions(FeedRecord record) =>
+    <SheetAction<Object>>[
+      SheetAction<Object>(
+        Icons.arrow_upward,
+        tr('feed.addBefore'),
+        RecordAction.addBefore,
       ),
-      PopupMenuItem<_QuickAdd>(
-        value: _QuickAdd.income,
-        height: quickAddItemHeight,
-        child: MenuLine(
-          icon: Icons.add_circle_outline,
-          // In Budget mode an income is a top-up of the fund.
-          label: ref.read(currentSpaceProvider)!.budgetMode == BudgetMode.budget
-              ? tr('budget.topUp')
-              : tr('income.add'),
-        ),
+      SheetAction<Object>(
+        Icons.arrow_downward,
+        tr('feed.addAfter'),
+        RecordAction.addAfter,
       ),
-      PopupMenuItem<_QuickAdd>(
-        value: _QuickAdd.nonWorkingDay,
-        height: quickAddItemHeight,
-        child: MenuLine(
-          icon: Icons.event_busy_outlined,
-          label: tr('holidays.markDay'),
+      if (!record.isIncome) ...<SheetAction<Object>>[
+        SheetAction<Object>(
+          Icons.content_copy_outlined,
+          tr('feed.duplicateBefore'),
+          RecordAction.duplicateBefore,
         ),
-      ),
+        SheetAction<Object>(
+          Icons.content_copy,
+          tr('feed.duplicateAfter'),
+          RecordAction.duplicateAfter,
+        ),
+      ],
     ];
 
-/// Where the bubble opens. `showMenu` places the top at `position.top` and
-/// ignores `position.bottom`, so the top is computed from the item count.
-@visibleForTesting
-RelativeRect quickAddAnchor(
+Future<void> runRecordAction(
   BuildContext context,
-  GlobalKey anchorKey, {
-  required int itemCount,
-}) {
-  final RenderBox overlay =
-      Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
-  final RenderBox? box =
-      anchorKey.currentContext?.findRenderObject() as RenderBox?;
-  if (box == null) return RelativeRect.fill;
+  WidgetRef ref,
+  FeedRecord record,
+  RecordAction action,
+) => switch (action) {
+  RecordAction.addBefore => _addOn(context, record, record.date.addDays(-1)),
+  RecordAction.addAfter => _addOn(context, record, record.date.addDays(1)),
+  RecordAction.duplicateBefore => _duplicate(
+    context,
+    ref,
+    record,
+    record.date.addDays(-1),
+  ),
+  RecordAction.duplicateAfter => _duplicate(
+    context,
+    ref,
+    record,
+    record.date.addDays(1),
+  ),
+};
 
-  final Offset topLeft = box.localToGlobal(Offset.zero, ancestor: overlay);
-  final Offset bottomRight = box.localToGlobal(
-    box.size.bottomRight(Offset.zero),
-    ancestor: overlay,
-  );
-  final double menuHeight =
-      itemCount * quickAddItemHeight + _menuVerticalPadding;
-
-  return RelativeRect.fromLTRB(
-    topLeft.dx,
-    topLeft.dy - menuHeight - SageSpace.sm,
-    overlay.size.width - bottomRight.dx,
-    overlay.size.height - bottomRight.dy,
-  );
-}
-
-/// Long-press menu on a row. Every item only prefills a date.
+/// Long-press menu on a row outside the Feed.
 Future<void> showRecordMenu(
   BuildContext context,
   WidgetRef ref, {
   required FeedRecord record,
-  required CalendarDate today,
-}) => showModalBottomSheet<void>(
-  context: context,
-  builder: (BuildContext sheetContext) => SafeArea(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            SageSpace.gutter,
-            SageSpace.md,
-            SageSpace.gutter,
-            SageSpace.sm,
-          ),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              record.title,
-              style: Theme.of(sheetContext).textTheme.titleSmall,
-            ),
-          ),
-        ),
-        ...recordMenuTiles(context, ref, record, sheetContext),
-      ],
-    ),
-  ),
-);
-
-/// Add or duplicate on a neighbouring day. [sheetContext] is closed first.
-List<Widget> recordMenuTiles(
-  BuildContext context,
-  WidgetRef ref,
-  FeedRecord record,
-  BuildContext sheetContext,
-) => <Widget>[
-  ListTile(
-    leading: const Icon(Icons.arrow_upward),
-    title: Text(tr('feed.addBefore')),
-    onTap: () {
-      Navigator.of(sheetContext).pop();
-      _addOn(context, record, record.date.addDays(-1));
-    },
-  ),
-  ListTile(
-    leading: const Icon(Icons.arrow_downward),
-    title: Text(tr('feed.addAfter')),
-    onTap: () {
-      Navigator.of(sheetContext).pop();
-      _addOn(context, record, record.date.addDays(1));
-    },
-  ),
-  if (!record.isIncome) ...<Widget>[
-    ListTile(
-      leading: const Icon(Icons.content_copy_outlined),
-      title: Text(tr('feed.duplicateBefore')),
-      onTap: () {
-        Navigator.of(sheetContext).pop();
-        _duplicate(context, ref, record, record.date.addDays(-1));
-      },
-    ),
-    ListTile(
-      leading: const Icon(Icons.content_copy),
-      title: Text(tr('feed.duplicateAfter')),
-      onTap: () {
-        Navigator.of(sheetContext).pop();
-        _duplicate(context, ref, record, record.date.addDays(1));
-      },
-    ),
-  ],
-];
+}) async {
+  final Object? choice = await showActionSheet<Object>(
+    context,
+    title: record.title,
+    groups: <List<SheetAction<Object>>>[recordActions(record)],
+  );
+  if (choice is RecordAction && context.mounted) {
+    await runRecordAction(context, ref, record, choice);
+  }
+}
 
 /// Empty form on the neighbouring day.
-void _addOn(BuildContext context, FeedRecord record, CalendarDate date) {
-  if (record.isIncome) {
-    openIncomeForm(context, date: date);
-    return;
-  }
-  openPaymentForm(context, date: date);
-}
+Future<void> _addOn(
+  BuildContext context,
+  FeedRecord record,
+  CalendarDate date,
+) => record.isIncome
+    ? openIncomeForm(context, date: date)
+    : openPaymentForm(context, date: date);
 
 /// Unsaved copy on the neighbouring day.
 Future<void> _duplicate(

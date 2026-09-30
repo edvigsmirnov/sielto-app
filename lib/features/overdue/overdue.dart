@@ -197,12 +197,8 @@ class OverduePage extends ConsumerWidget {
                           openPaymentForm(context, paymentId: payment.id),
                       onTogglePaid: () => _settle(context, ref, record),
                       onDelete: () => deleteRecord(context, ref, record),
-                      onLongPress: () => showRecordMenu(
-                        context,
-                        ref,
-                        record: record,
-                        today: today,
-                      ),
+                      onLongPress: () =>
+                          showRecordMenu(context, ref, record: record),
                     ),
                   ],
                 );

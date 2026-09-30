@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/deadline_guard.dart';
 import 'package:sielto/core/db/freeze_guard.dart';
+import 'package:sielto/core/ui/action_sheet.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
@@ -42,51 +43,56 @@ Future<void> showBulkActions(
 }) async {
   if (records.isEmpty) return;
   final bool anyPayment = records.any((FeedRecord r) => !r.isIncome);
-  final _Bulk? choice = await showModalBottomSheet<_Bulk>(
-    context: context,
-    builder: (BuildContext sheet) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          ListTile(
-            title: Text(
-              tr(
-                'feed.bulk.selected',
-                namedArgs: <String, String>{'count': '${records.length}'},
-              ),
-              style: Theme.of(sheet).textTheme.titleSmall,
-            ),
+  final bool anyIncome = records.any((FeedRecord r) => r.isIncome);
+  final String kind = !anyIncome ? 'paid' : (!anyPayment ? 'received' : 'done');
+  final Object? choice = await showActionSheet<Object>(
+    context,
+    title: records.length == 1
+        ? records.single.title
+        : tr(
+            'feed.bulk.selected',
+            namedArgs: <String, String>{'count': '${records.length}'},
           ),
-          if (records.length == 1)
-            ...recordMenuTiles(context, ref, records.single, sheet),
-          if (records.any((FeedRecord r) => !r.isPaid))
-            ListTile(
-              leading: const Icon(Icons.check_circle_outline),
-              title: Text(tr('feed.bulk.done')),
-              onTap: () => Navigator.of(sheet).pop(_Bulk.done),
-            ),
-          if (records.any((FeedRecord r) => r.isPaid))
-            ListTile(
-              leading: const Icon(Icons.radio_button_unchecked),
-              title: Text(tr('feed.bulk.notDone')),
-              onTap: () => Navigator.of(sheet).pop(_Bulk.notDone),
-            ),
-          if (anyPayment)
-            ListTile(
-              leading: const Icon(Icons.label_outline),
-              title: Text(tr('feed.bulk.category')),
-              onTap: () => Navigator.of(sheet).pop(_Bulk.category),
-            ),
-          ListTile(
-            leading: const Icon(Icons.delete_outline),
-            title: Text(tr('common.delete')),
-            onTap: () => Navigator.of(sheet).pop(_Bulk.delete),
+    groups: <List<SheetAction<Object>>>[
+      if (records.length == 1) recordActions(records.single),
+      <SheetAction<Object>>[
+        if (records.any((FeedRecord r) => !r.isPaid))
+          SheetAction<Object>(
+            Icons.check_circle_outline,
+            tr('feed.bulk.mark.$kind'),
+            _Bulk.done,
           ),
-        ],
-      ),
-    ),
+        if (records.any((FeedRecord r) => r.isPaid))
+          SheetAction<Object>(
+            Icons.radio_button_unchecked,
+            tr('feed.bulk.unmark.$kind'),
+            _Bulk.notDone,
+          ),
+        if (anyPayment)
+          SheetAction<Object>(
+            Icons.label_outline,
+            tr('feed.bulk.category'),
+            _Bulk.category,
+          ),
+      ],
+      <SheetAction<Object>>[
+        SheetAction<Object>(
+          Icons.delete_outline,
+          tr('common.delete'),
+          _Bulk.delete,
+          destructive: true,
+        ),
+      ],
+    ],
   );
-  if (choice == null || !context.mounted) return;
+  if (choice is RecordAction) {
+    ref.read(feedSelectionProvider.notifier).clear();
+    if (context.mounted) {
+      await runRecordAction(context, ref, records.single, choice);
+    }
+    return;
+  }
+  if (choice is! _Bulk || !context.mounted) return;
 
   final Future<bool> action = switch (choice) {
     _Bulk.done => _setDone(context, ref, records, done: true),

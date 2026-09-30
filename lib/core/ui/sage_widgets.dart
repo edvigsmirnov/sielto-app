@@ -476,24 +476,6 @@ class SectionLabel extends StatelessWidget {
   );
 }
 
-/// Icon and label in a popup menu item.
-class MenuLine extends StatelessWidget {
-  const MenuLine({required this.icon, required this.label, super.key});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: <Widget>[
-      Icon(icon, size: 20, color: context.sage.inkSecondary),
-      const SizedBox(width: SageSpace.md),
-      Text(label, style: Theme.of(context).textTheme.bodyLarge),
-    ],
-  );
-}
-
 /// Reorder grip for a [ReorderableListView] item: 48 dp wide, and it
 /// lights up on touch, before the drag starts.
 class DragGrip extends StatefulWidget {

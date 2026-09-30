@@ -54,8 +54,6 @@ const double _cutoffExtent = 34;
 class _FeedPageState extends ConsumerState<FeedPage> {
   final ScrollController _scroll = ScrollController();
 
-  final GlobalKey _addButton = GlobalKey();
-
   /// Last built list, for the scroll listener and the arrows.
   List<FeedItem> _items = const <FeedItem>[];
 
@@ -307,7 +305,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               },
             )
           : FloatingActionButton(
-              key: _addButton,
               tooltip: tr('common.add'),
               backgroundColor: context.sage.accent,
               foregroundColor: context.sage.accentOn,
@@ -315,8 +312,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               onPressed: () => showQuickAddMenu(
                 context,
                 ref,
-                today: source.today,
-                anchorKey: _addButton,
+                date: source.today,
+                title: tr('feed.today'),
               ),
               child: const Icon(Icons.add),
             ),
