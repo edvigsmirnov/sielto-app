@@ -73,8 +73,8 @@
     "fieldMode": "Type",
     "modeIsPermanent": "You choose this once. Each type works out money its own way, so a Space keeps the type it started with.",
     "fieldCurrency": "Currency",
-    "currencyFreezes": "Can be changed until the first record is added.",
-    "currencyFrozen": "Frozen — this Space already has records.",
+    "currencyFreezes": "You can change it until the first entry is added.",
+    "currencyFrozen": "This Space already has entries, so its currency stays. A new Space can use another one.",
     "fieldStorage": "Storage",
     "fieldTimezone": "Timezone",
     "fieldFeedOrder": "Order in the Feed",
@@ -248,7 +248,7 @@
     "allFuture": "All future",
     "wholeSeries": "Whole series",
     "deleteTitle": "Delete the repeating payment?",
-    "deleteBody": "Occurrences already marked paid are kept either way."
+    "deleteBody": "Ones you've already paid stay either way."
   },
   "income": {
     "add": "Add income",
@@ -265,7 +265,7 @@
     "expected": "Expected",
     "makeRegular": "Make it regular",
     "makeRegularHint": "Repeats on a schedule instead of happening once.",
-    "partOfSeries": "One occurrence of a regular income.",
+    "partOfSeries": "One date of a regular income.",
     "fieldActualDate": "Actually received on",
     "actualDateNote": "Just for your records; it doesn't change any numbers.",
     "role": "Role",
@@ -280,10 +280,10 @@
     "makeAdditional": "Make it additional",
     "lastAnchorRequired": "Make another income the anchor first.",
     "deleteRuleTitle": "Delete this regular income?",
-    "deleteRuleBody": "Future occurrences of \"{title}\" are removed. Ones already received stay.",
+    "deleteRuleBody": "The upcoming dates of \"{title}\" go. Money you've already received stays.",
     "editRule": "Edit regular income",
-    "ruleAmountHint": "Applies to every occurrence that has not arrived yet. Months already marked received keep their own figure.",
-    "ruleScheduleHint": "Changing the schedule re-dates the occurrences that have not arrived yet.",
+    "ruleAmountHint": "Changes every date still to come. Dates you've marked received keep their own amount.",
+    "ruleScheduleHint": "A new schedule moves the dates still to come. Ones marked received stay put.",
     "landsIn": "Joins the cycle {period}",
     "regenerate": "Reset to schedule",
     "regenerateTitle": "Reset \"{title}\" to its schedule?",
@@ -314,7 +314,7 @@
     "pick": "Choose a category",
     "search": "Search categories",
     "titleTaken": "A category with this name already exists.",
-    "moveRecords": "Move records to…",
+    "moveRecords": "Move entries to…",
     "moved": "Entries moved: {count}",
     "deleteManyTitle": "Delete these categories?",
     "deleteManyBody": "{titles}. Payments filed under them keep the names.",
@@ -354,8 +354,8 @@
       "highLoad": "Heavy spending day",
       "highLoadOver": "Heavy spending day: {amount} or more",
       "uncertainIncome": "The salary may arrive on any of these days",
-      "hardDeadline": "Hard deadline: no records after it",
-      "softDeadline": "Soft deadline: a guide only"
+      "hardDeadline": "Fixed date: nothing can be dated after it",
+      "softDeadline": "Date as a guide only"
     }
   },
   "coverage": {
@@ -431,7 +431,7 @@
   },
   "incomeScope": {
     "title": "This income repeats",
-    "body": "Does the new amount apply to this month only, or from now on? Occurrences already received never change.",
+    "body": "Does the new amount apply to this month only, or from now on? Money you've already received stays as it is.",
     "thisOne": "Only this one",
     "allFuture": "From now on"
   },
@@ -531,7 +531,7 @@
     },
     "hard": "Fixed",
     "hardDeadline": "Fixed date",
-    "hardDeadlineHint": "Refuses records dated after it. Off, the date is just a marker.",
+    "hardDeadlineHint": "Nothing can be dated after it. Turned off, the date is just a guide.",
     "refusedBeyondDeadline": "The date is fixed at {date}. Nothing can be dated after it.",
     "topUp": "Top up the budget",
     "beyondDeadline": "Past the date"
@@ -548,8 +548,8 @@
       "year": "Year"
     },
     "records": {
-      "one": "{} record",
-      "other": "{} records"
+      "one": "{} entry",
+      "other": "{} entries"
     },
     "by": {
       "category": "By category",

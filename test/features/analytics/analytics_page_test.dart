@@ -149,7 +149,7 @@ void main() {
     // Transport 1320, Groceries 980.
     expect(transport, lessThan(groceries));
 
-    expect(find.text('2 records'), findsNWidgets(2));
+    expect(find.text('2 entries'), findsNWidgets(2));
     await unmount(tester);
   });
 
@@ -175,7 +175,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Groceries'), findsNothing);
-    expect(find.text('1 record'), findsOneWidget);
+    expect(find.text('1 entry'), findsOneWidget);
     await unmount(tester);
   });
 
