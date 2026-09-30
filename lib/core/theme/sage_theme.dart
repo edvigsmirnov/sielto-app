@@ -113,9 +113,9 @@ abstract final class SageTheme {
       extensions: <ThemeExtension<dynamic>>[c],
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: <TargetPlatform, PageTransitionsBuilder>{
-          TargetPlatform.android: _SnappyPredictiveBack(),
-          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
-          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+          TargetPlatform.android: _SnappyZoom(),
+          TargetPlatform.linux: _SnappyZoom(),
+          TargetPlatform.windows: _SnappyZoom(),
         },
       ),
       dividerTheme: DividerThemeData(color: c.hairline, thickness: 1, space: 1),
@@ -237,9 +237,9 @@ abstract final class SageTheme {
   }
 }
 
-/// Android's predictive-back transition, shortened to 260/220 ms.
-class _SnappyPredictiveBack extends PredictiveBackPageTransitionsBuilder {
-  const _SnappyPredictiveBack();
+/// The zoom transition, shortened to 260/220 ms. It animates snapshots.
+class _SnappyZoom extends ZoomPageTransitionsBuilder {
+  const _SnappyZoom();
 
   @override
   Duration get transitionDuration => const Duration(milliseconds: 260);
