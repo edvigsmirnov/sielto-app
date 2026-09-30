@@ -165,6 +165,23 @@
     "addAfter": "Add on the day after",
     "duplicateBefore": "Duplicate to the day before",
     "duplicateAfter": "Duplicate to the day after",
+    "filter": {
+      "title": "Search and filter",
+      "search": "Title or note",
+      "clear": "Clear filters",
+      "nothing": "Nothing matches.",
+      "kind": {
+        "all": "All",
+        "mandatory": "Mandatory",
+        "variable": "Variable",
+        "income": "Income"
+      },
+      "status": {
+        "all": "All",
+        "done": "Done",
+        "pending": "Not yet"
+      }
+    },
     "income": "Income"
   },
   "payment": {

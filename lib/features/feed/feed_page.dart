@@ -20,6 +20,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/period_selector.dart';
+import 'package:sielto/features/feed/feed_filter.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/feed_reorder.dart';
@@ -210,8 +211,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       );
     }
 
+    final FeedFilter filter = ref.watch(feedFilterProvider);
     _items = buildFeedItems(
-      records: source.records,
+      records: filter.isActive
+          ? source.records.where(filter.matches).toList()
+          : source.records,
       orderMode: space.feedOrderMode,
       coverage: source.coverage,
       moneyEndsAt: source.moneyEndsAt,
@@ -248,6 +252,22 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       backgroundColor: context.sage.surface,
       appBar: AppHeader(
         title: tr('nav.feed'),
+        trailing: <Widget>[
+          Padding(
+            padding: const EdgeInsets.only(right: SageSpace.sm),
+            child: Badge(
+              isLabelVisible: filter.isActive,
+              backgroundColor: context.sage.accentStrong,
+              smallSize: 8,
+              child: SoftIconButton(
+                size: 44,
+                icon: Icons.search,
+                tooltip: tr('feed.filter.title'),
+                onTap: () => showFeedFilter(context),
+              ),
+            ),
+          ),
+        ],
         bottom: _FeedTotals(
           source: source,
           money: money,
@@ -273,9 +293,15 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       ),
       body: Column(
         children: <Widget>[
+          if (filter.isActive)
+            FeedFilterBar(shown: _allMatches(filter), money: money),
           Expanded(
             child: items.isEmpty
-                ? EmptyState(message: tr('feed.empty'))
+                ? EmptyState(
+                    message: tr(
+                      filter.isActive ? 'feed.filter.nothing' : 'feed.empty',
+                    ),
+                  )
                 : LayoutBuilder(
                     builder: (BuildContext context, BoxConstraints box) =>
                         ReorderableListView.builder(
@@ -302,6 +328,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                                     const <String, Category>{},
                                 freeze: ref.watch(freezeLookupProvider),
                                 beyondDeadline: source.beyondDeadline,
+                                canReorder: !filter.isActive,
                               ),
                           onReorderStart: (int index) =>
                               HapticFeedback.mediumImpact(),
@@ -319,6 +346,16 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       ),
     );
   }
+
+  /// Every record the filter matches, outside the render window too.
+  List<FeedRecord> _allMatches(FeedFilter filter) => <FeedRecord>[
+    for (final Payment p
+        in ref.read(spacePaymentsProvider).value ?? const <Payment>[])
+      if (filter.matches(FeedRecord.fromPayment(p))) FeedRecord.fromPayment(p),
+    for (final Income i
+        in ref.read(spaceIncomesProvider).value ?? const <Income>[])
+      if (filter.matches(FeedRecord.fromIncome(i))) FeedRecord.fromIncome(i),
+  ];
 
   /// The list and its figures. One continuous list in every mode; only the
   /// figures follow the selected period.
@@ -509,6 +546,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     required Map<String, Category> categories,
     required FreezeLookup freeze,
     required Set<String> beyondDeadline,
+    required bool canReorder,
   }) {
     switch (item) {
       case FeedHeader():
@@ -541,7 +579,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               showRecordMenu(context, ref, record: record, today: today),
           // The grip is outside the row's gesture area, so the row's long-press does not
           // compete with it.
-          dragHandle: DragGrip(index: index),
+          dragHandle: canReorder ? DragGrip(index: index) : null,
         );
     }
   }
