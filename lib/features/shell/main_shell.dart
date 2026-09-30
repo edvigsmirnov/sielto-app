@@ -11,7 +11,7 @@ import 'package:sielto/features/feed/feed_page.dart';
 import 'package:sielto/features/feed/feed_selection.dart';
 import 'package:sielto/features/shell/shell_tab.dart';
 
-/// Dashboard, Feed and Calendar, switched by the bottom bar or a swipe.
+/// Dashboard, Feed and Calendar, switched by the bottom bar.
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
@@ -66,8 +66,6 @@ class _MainShellState extends ConsumerState<MainShell> {
     });
   }
 
-  static const int _feedTab = 1;
-
   static const int _calendarTab = 2;
 
   /// Back leaves Calendar zoom first, then returns to the Dashboard.
@@ -102,11 +100,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         backgroundColor: context.sage.surface,
         body: PageView(
           controller: _controller,
-          // Feed rows own the horizontal swipe.
-          physics: index == _feedTab
-              ? const NeverScrollableScrollPhysics()
-              : null,
-          onPageChanged: _show,
+          physics: const NeverScrollableScrollPhysics(),
           children: const <Widget>[
             _KeepAlive(child: DashboardPage()),
             _KeepAlive(child: FeedPage()),
