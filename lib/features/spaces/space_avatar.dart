@@ -27,8 +27,13 @@ class SpaceAvatar extends StatelessWidget {
     Color(0xFFA8748A),
   ];
 
+  /// Same colour on every platform and version, unlike `hashCode`.
   static Color colorOf(String spaceId) =>
-      _palette[spaceId.hashCode.abs() % _palette.length];
+      _palette[spaceId.codeUnits.fold(
+            0,
+            (int hash, int unit) => (hash * 31 + unit) & 0x7fffffff,
+          ) %
+          _palette.length];
 
   @override
   Widget build(BuildContext context) {

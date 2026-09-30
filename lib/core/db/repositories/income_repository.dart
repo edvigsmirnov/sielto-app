@@ -239,10 +239,9 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
       (selectAlive()..where(($IncomesTable t) => t.id.equals(id)))
           .getSingleOrNull();
 
-  Future<FreezeState> freezeStateOf(String id) async {
-    final Income? row = await byId(id);
-    return _freeze.stateOf(row?.budgetPeriodId);
-  }
+  /// Deleted rows included.
+  Future<FreezeState> freezeStateOf(Income row) =>
+      _freeze.stateOf(row.budgetPeriodId);
 
   @override
   Future<int> softDelete(String id) async {
@@ -374,23 +373,36 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
     );
   }
 
-  /// Skips received rows.
-  Future<int> updateFutureAmounts(String ruleId, Decimal? amount) {
+  /// Unreceived occurrences dated [from] or later, outside frozen periods.
+  Future<int> updateFutureAmounts(
+    String ruleId,
+    Decimal? amount, {
+    required CalendarDate from,
+  }) async {
+    final List<Income> rows =
+        await (selectAlive()..where(
+              ($IncomesTable t) =>
+                  t.recurrenceRuleId.equals(ruleId) &
+                  t.isPaid.equals(false) &
+                  t.expectedDate.isBiggerOrEqualValue(from.toIso()),
+            ))
+            .get();
+    final List<String> ids = <String>[
+      for (final Income row in rows)
+        if (await _freeze.stateOf(row.budgetPeriodId) != FreezeState.frozen)
+          row.id,
+    ];
     final ({String author, DateTime editedAt}) s = stamp();
-    return (db.update(db.incomes)..where(
-          ($IncomesTable t) =>
-              t.recurrenceRuleId.equals(ruleId) &
-              t.isPaid.equals(false) &
-              t.isDeleted.equals(false),
-        ))
-        .write(
-          IncomesCompanion(
-            amount: Value<Decimal?>(amount),
-            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-            lastModifiedBy: Value<String?>(s.author),
-            clientEditedAt: Value<DateTime>(s.editedAt),
-          ),
-        );
+    return (db.update(
+      db.incomes,
+    )..where(($IncomesTable t) => t.id.isIn(ids))).write(
+      IncomesCompanion(
+        amount: Value<Decimal?>(amount),
+        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        lastModifiedBy: Value<String?>(s.author),
+        clientEditedAt: Value<DateTime>(s.editedAt),
+      ),
+    );
   }
 
   Future<int> setSortOrder(String id, int sortOrder) {

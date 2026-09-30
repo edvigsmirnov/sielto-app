@@ -133,14 +133,12 @@ class _Body extends ConsumerWidget {
 
 /// When the balance was set, and how many records the walk excluded.
 String? _balanceCaption(Space space, FlowLedger ledger, DateLabels dates) {
-  final DateTime? setAt = space.manualBalanceUpdatedAt;
+  final CalendarDate? setOn = space.balanceSetOn;
   return <String>[
-    if (setAt != null)
+    if (setOn != null)
       tr(
         'dashboard.balanceSetOn',
-        namedArgs: <String, String>{
-          'date': dates.short(CalendarDate.fromDateTime(setAt.toUtc())),
-        },
+        namedArgs: <String, String>{'date': dates.short(setOn)},
       ),
     if (ledger.excludedCount > 0)
       plural('balance.excludedFromWalker', ledger.excludedCount),

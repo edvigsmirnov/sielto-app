@@ -292,6 +292,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       await repos.incomes.updateFutureAmounts(
         existing.recurrenceRuleId!,
         _parsedAmount,
+        from: existing.expectedDate,
       );
     }
   }

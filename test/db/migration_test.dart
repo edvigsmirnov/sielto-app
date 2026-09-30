@@ -87,6 +87,36 @@ void main() {
     );
   });
 
+  test(
+    'upgrading to v4 suffixes titles that differ in Cyrillic case',
+    () async {
+      final InitializedSchema schema = await verifier.schemaAt(3);
+      registerSqlFunctions(schema.rawDatabase);
+      schema.rawDatabase
+        ..execute(
+          'INSERT INTO spaces (id, title, space_type, budget_mode, owner_id, '
+          'storage_mode, timezone, currency_code, created_at) VALUES '
+          "('s', 'S', 'personal', 'flow', 'u', 'local', 'UTC', 'EUR', 0)",
+        )
+        ..execute(
+          'INSERT INTO categories (id, space_id, title, created_at, '
+          "client_edited_at) VALUES ('a', 's', 'Еда', 0, 0), "
+          "('b', 's', 'еда', 1, 0)",
+        );
+      final AppDatabase db = AppDatabase(schema.newConnection());
+      addTearDown(db.close);
+      await verifier.migrateAndValidate(db, AppDatabase.currentSchemaVersion);
+
+      final List<QueryRow> rows = await db
+          .customSelect('SELECT title FROM categories ORDER BY id')
+          .get();
+      expect(
+        <String>[for (final QueryRow r in rows) r.read<String>('title')],
+        <String>['Еда', 'еда (2)'],
+      );
+    },
+  );
+
   test('a fresh database reports the current user_version', () async {
     final AppDatabase db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);

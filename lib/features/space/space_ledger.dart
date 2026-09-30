@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/ledger/available_money.dart';
 import 'package:sielto/domain/ledger/ledger_entry.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
@@ -125,6 +126,13 @@ class FlowLedger {
   };
 }
 
+extension BalanceDay on Space {
+  /// Day of the balance snapshot in the Space's timezone.
+  CalendarDate? get balanceSetOn => manualBalanceUpdatedAt == null
+      ? null
+      : SpaceClock(timezone: timezone).dateOf(manualBalanceUpdatedAt!);
+}
+
 /// Incomes dated on or before the balance snapshot are part of it; later ones
 /// are added.
 FlowLedger buildFlowLedger({
@@ -133,9 +141,7 @@ FlowLedger buildFlowLedger({
   required List<Income> incomes,
   required CalendarDate today,
 }) {
-  final CalendarDate? balanceSetOn = space.manualBalanceUpdatedAt == null
-      ? null
-      : CalendarDate.fromDateTime(space.manualBalanceUpdatedAt!.toUtc());
+  final CalendarDate? balanceSetOn = space.balanceSetOn;
   final Decimal manualBalance = space.manualBalance ?? Decimal.zero;
 
   Decimal receivedSinceSnapshot = Decimal.zero;

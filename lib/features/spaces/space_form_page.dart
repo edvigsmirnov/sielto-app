@@ -72,37 +72,43 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
         Currencies.forLocale(locale);
 
     try {
-      final Space space = await repos.spaces.create(
-        title: _title.text,
-        spaceType: SpaceType.personal,
-        budgetMode: _mode,
-        ownerId: ref.read(userIdProvider),
-        timezone: await _deviceTimezone(),
-        currencyCode: currency,
-      );
-      await repos.categories.createStarterSet(space.id, <
-        ({
-          String key,
-          String title,
-          String? icon,
-          String? color,
-          ExpenseType type,
-        })
-      >[
-        for (final StarterCategory c in starterCategories())
-          (
-            key: c.key,
-            title: c.title,
-            icon: c.icon,
-            color: c.color,
-            type: c.expenseType,
-          ),
-      ]);
-      // Flow and Budget hold exactly one continuous period.
-      await repos.periods.ensureContinuous(
-        spaceId: space.id,
-        startDate: repos.spaces.clockFor(space).today(),
-      );
+      final String timezone = await _deviceTimezone();
+      final Space space = await repos.db.transaction(() async {
+        final Space space = await repos.spaces.create(
+          title: _title.text,
+          spaceType: SpaceType.personal,
+          budgetMode: _mode,
+          ownerId: ref.read(userIdProvider),
+          timezone: timezone,
+          currencyCode: currency,
+        );
+        await repos.categories.createStarterSet(space.id, <
+          ({
+            String key,
+            String title,
+            String? icon,
+            String? color,
+            ExpenseType type,
+          })
+        >[
+          for (final StarterCategory c in starterCategories())
+            (
+              key: c.key,
+              title: c.title,
+              icon: c.icon,
+              color: c.color,
+              type: c.expenseType,
+            ),
+        ]);
+        // Flow and Budget hold exactly one continuous period.
+        if (_mode != BudgetMode.incomeDriven) {
+          await repos.periods.ensureContinuous(
+            spaceId: space.id,
+            startDate: repos.spaces.clockFor(space).today(),
+          );
+        }
+        return space;
+      });
       await ref.read(currentSpaceIdProvider.notifier).select(space.id);
       // Pops to the shell.
       if (mounted && !widget.isFirstSpace) {

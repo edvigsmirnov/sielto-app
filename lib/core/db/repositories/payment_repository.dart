@@ -191,12 +191,18 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     String? categoryId,
     String? notes,
   }) async {
+    for (final CalendarDate date in dates) {
+      await _deadline.refuseIfBeyondDeadline(spaceId, date);
+    }
+    final List<int> sortOrders = <int>[
+      for (final CalendarDate date in dates) await nextSortOrder(spaceId, date),
+    ];
     final String groupId = SyncedRepository.newId();
     final ({String author, DateTime editedAt}) s = stamp();
 
     await db.batch((Batch b) {
       b.insertAll(db.payments, <PaymentsCompanion>[
-        for (final CalendarDate date in dates)
+        for (final (int i, CalendarDate date) in dates.indexed)
           PaymentsCompanion.insert(
             id: SyncedRepository.newId(),
             spaceId: spaceId,
@@ -207,6 +213,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
             categoryId: Value<String?>(categoryId),
             groupRecurringId: Value<String>(groupId),
             notes: Value<String?>(notes),
+            sortOrder: Value<int>(sortOrders[i]),
             syncStatus: const Value<SyncStatus>(SyncStatus.pending),
             lastModifiedBy: Value<String?>(s.author),
             clientEditedAt: s.editedAt,
@@ -265,20 +272,28 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
             ]))
           .get();
 
-  /// Soft-deletes a whole series, or from [from] on.
-  Future<int> deleteSeries(String groupRecurringId, {CalendarDate? from}) {
+  /// Soft-deletes a whole series, or from [from] on. Frozen rows stay.
+  Future<int> deleteSeries(
+    String groupRecurringId, {
+    CalendarDate? from,
+  }) async {
+    final List<String> ids = await _idsInSeries(
+      groupRecurringId,
+      from,
+      unpaidOnly: false,
+      skipFrozen: true,
+    );
     final ({String author, DateTime editedAt}) s = stamp();
-    return (db.update(db.payments)..where(
-          ($PaymentsTable t) => _seriesFilter(t, groupRecurringId, from),
-        ))
-        .write(
-          PaymentsCompanion(
-            isDeleted: const Value<bool>(true),
-            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-            lastModifiedBy: Value<String?>(s.author),
-            clientEditedAt: Value<DateTime>(s.editedAt),
-          ),
-        );
+    return (db.update(
+      db.payments,
+    )..where(($PaymentsTable t) => t.id.isIn(ids))).write(
+      PaymentsCompanion(
+        isDeleted: const Value<bool>(true),
+        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        lastModifiedBy: Value<String?>(s.author),
+        clientEditedAt: Value<DateTime>(s.editedAt),
+      ),
+    );
   }
 
   Future<int> _writeSeries(
@@ -289,26 +304,55 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     Value<ExpenseType> expenseType = const Value<ExpenseType>.absent(),
     Value<String?> categoryId = const Value<String?>.absent(),
     Value<String?> notes = const Value<String?>.absent(),
-  }) {
+  }) async {
+    // Title, category and notes stay editable in a frozen period.
+    final List<String> ids = await _idsInSeries(
+      groupRecurringId,
+      from,
+      unpaidOnly: true,
+      skipFrozen: amount.present || expenseType.present,
+    );
     final ({String author, DateTime editedAt}) s = stamp();
-    return (db.update(db.payments)..where(
-          ($PaymentsTable t) =>
-              _seriesFilter(t, groupRecurringId, from) & t.isPaid.equals(false),
-        ))
-        .write(
-          PaymentsCompanion(
-            title: title.present
-                ? Value<String>(title.value.trim())
-                : const Value<String>.absent(),
-            amount: amount,
-            expenseType: expenseType,
-            categoryId: categoryId,
-            notes: notes,
-            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-            lastModifiedBy: Value<String?>(s.author),
-            clientEditedAt: Value<DateTime>(s.editedAt),
-          ),
-        );
+    return (db.update(
+      db.payments,
+    )..where(($PaymentsTable t) => t.id.isIn(ids))).write(
+      PaymentsCompanion(
+        title: title.present
+            ? Value<String>(title.value.trim())
+            : const Value<String>.absent(),
+        amount: amount,
+        expenseType: expenseType,
+        categoryId: categoryId,
+        notes: notes,
+        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        lastModifiedBy: Value<String?>(s.author),
+        clientEditedAt: Value<DateTime>(s.editedAt),
+      ),
+    );
+  }
+
+  Future<List<String>> _idsInSeries(
+    String groupRecurringId,
+    CalendarDate? from, {
+    required bool unpaidOnly,
+    required bool skipFrozen,
+  }) async {
+    final List<Payment> rows =
+        await (db.select(db.payments)..where(($PaymentsTable t) {
+              final Expression<bool> series = _seriesFilter(
+                t,
+                groupRecurringId,
+                from,
+              );
+              return unpaidOnly ? series & t.isPaid.equals(false) : series;
+            }))
+            .get();
+    return <String>[
+      for (final Payment row in rows)
+        if (!skipFrozen ||
+            await _freeze.stateOf(row.budgetPeriodId) != FreezeState.frozen)
+          row.id,
+    ];
   }
 
   Expression<bool> _seriesFilter(

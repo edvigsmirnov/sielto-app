@@ -119,10 +119,7 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
 
   for (CalendarDate d = range.from; !d.isAfter(range.to); d = d.addDays(1)) {
     if (!calendar.isNonWorkingDay(d)) continue;
-    marks[d] = DayMark(
-      isNonWorking: true,
-      isHoliday: !calendar.weekendDays.contains(d.weekday),
-    );
+    marks[d] = DayMark(isNonWorking: true, isHoliday: calendar.isDayOff(d));
   }
 
   final List<BudgetPeriod> periods =

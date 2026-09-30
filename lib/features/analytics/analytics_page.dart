@@ -111,7 +111,7 @@ class AnalyticsPage extends ConsumerWidget {
   static String _labelOf(
     AnalyticsSlice slice,
     Map<String, Category> categories,
-  ) => categories[slice.key]?.shownTitle ?? tr('category.none');
+  ) => categories[slice.key]?.reportTitle ?? tr('category.none');
 
   static List<DonutSlice> wedges(
     List<AnalyticsSlice> slices,
@@ -176,7 +176,7 @@ class _Summary extends StatelessWidget {
                       parseCategoryColor(categories[slice.key]?.color) ??
                       sage.sand,
                   label:
-                      categories[slice.key]?.shownTitle ?? tr('category.none'),
+                      categories[slice.key]?.reportTitle ?? tr('category.none'),
                   amount: money.short(slice.total),
                 ),
             ],
@@ -265,7 +265,7 @@ class _CategoryRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        category?.title ?? tr('category.none'),
+                        category?.reportTitle ?? tr('category.none'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: text.bodyLarge,

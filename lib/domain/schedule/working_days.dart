@@ -26,6 +26,9 @@ class WorkingDayCalendar {
 
   bool isNonWorkingDay(CalendarDate date) => !isWorkingDay(date);
 
+  /// A holiday or user-marked day, whatever the weekday.
+  bool isDayOff(CalendarDate date) => _nonWorking.contains(date);
+
   CalendarDate workingDayOnOrBefore(CalendarDate date) =>
       _search(date, step: -1);
 

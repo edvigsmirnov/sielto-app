@@ -128,6 +128,21 @@ void main() {
       }
     });
 
+    test('a merged period keeps the widest window', () {
+      // 31 Oct 2026 is a Saturday: the range may land on Monday 2 Nov, but
+      // anchors on Friday the 30th, inside its month.
+      final List<MaterializedPeriod> periods = run(<AnchorSchedule>[
+        fixed('bonus', 30),
+        const AnchorSchedule(
+          ruleId: 'salary',
+          schedule: DateRangeSchedule(29, 31),
+        ),
+      ], from: '2026-10-31');
+      final MaterializedPeriod merged = periods.first;
+      expect(merged.anchorDate, d('2026-10-30'));
+      expect(merged.windowEnd, d('2026-11-02'));
+    });
+
     test('anchors that only sometimes coincide merge only then', () {
       // The 30th clamps to the 28th in February and merges with it.
       final List<MaterializedPeriod> periods = run(

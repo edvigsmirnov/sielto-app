@@ -14,6 +14,8 @@ void main() {
     );
     expect(() => CalendarDate.parse('2026-3-9'), throwsFormatException);
     expect(() => CalendarDate.parse(''), throwsFormatException);
+    expect(() => CalendarDate.parse('2026-02-30'), throwsFormatException);
+    expect(() => CalendarDate.parse('2026-13-01'), throwsFormatException);
   });
 
   test('ISO text sorts the same way the dates do', () {

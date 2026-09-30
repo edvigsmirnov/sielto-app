@@ -84,9 +84,8 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                   controller: _title,
                   textCapitalization: TextCapitalization.sentences,
                   style: Theme.of(context).textTheme.bodyLarge,
-                  onSubmitted: (String value) => repo.setTitle(space.id, value),
-                  onTapOutside: (PointerDownEvent _) =>
-                      repo.setTitle(space.id, _title.text),
+                  onSubmitted: (String _) => _saveTitle(space),
+                  onTapOutside: (PointerDownEvent _) => _saveTitle(space),
                 ),
               ),
             ],
@@ -195,6 +194,16 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   }
 
   /// Archiving is local.
+  /// An empty title reverts; an unchanged one writes nothing.
+  Future<void> _saveTitle(Space space) async {
+    final String title = _title.text.trim();
+    if (title.isEmpty) {
+      _title.text = space.title;
+    } else if (title != space.title) {
+      await ref.read(repositoriesProvider).spaces.setTitle(space.id, title);
+    }
+  }
+
   Future<void> _archive(Space space) async {
     final bool confirmed = await confirmDialog(
       context,
@@ -212,7 +221,9 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
         .read(repositoriesProvider)
         .spaces
         .setArchived(space.id, isArchived: true);
-    await ref.read(currentSpaceIdProvider.notifier).select(null);
+    if (ref.read(currentSpaceIdProvider) == space.id) {
+      await ref.read(currentSpaceIdProvider.notifier).select(null);
+    }
     if (mounted) Navigator.of(context).pop();
   }
 }

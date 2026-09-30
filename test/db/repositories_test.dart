@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/app/startup.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/deadline_guard.dart';
 import 'package:sielto/core/db/repositories/budget_period_repository.dart';
 import 'package:sielto/core/db/repositories/category_repository.dart';
 import 'package:sielto/core/db/repositories/income_repository.dart';
@@ -154,6 +155,91 @@ void main() {
       expect(rows.map((Payment p) => p.sortOrder), <int>[0, 1024, 2048]);
     });
 
+    test('a series lands at the end of each day', () async {
+      final Space space = await makeSpace();
+      const CalendarDate day = CalendarDate(2026, 3, 1);
+      await payments.create(
+        spaceId: space.id,
+        title: 'Rent',
+        amount: Decimal.one,
+        dueDate: day,
+        expenseType: ExpenseType.mandatory,
+      );
+      await payments.createSeries(
+        spaceId: space.id,
+        title: 'Gym',
+        amount: Decimal.one,
+        dates: const <CalendarDate>[day, CalendarDate(2026, 4, 1)],
+        expenseType: ExpenseType.mandatory,
+      );
+
+      final List<Payment> rows = await payments.onDay(space.id, day);
+      expect(rows.map((Payment p) => p.title), <String>['Rent', 'Gym']);
+      expect(rows.last.sortOrder, greaterThan(rows.first.sortOrder));
+    });
+
+    test('a series cannot pass a hard deadline', () async {
+      final Space space = await makeSpace(mode: BudgetMode.budget);
+      final BudgetPeriod period = await periods.ensureContinuous(
+        spaceId: space.id,
+        startDate: const CalendarDate(2026, 3, 1),
+      );
+      await periods.setDeadline(
+        period.id,
+        date: const CalendarDate(2026, 3, 31),
+        isHard: true,
+      );
+
+      await expectLater(
+        payments.createSeries(
+          spaceId: space.id,
+          title: 'Gym',
+          amount: Decimal.one,
+          dates: const <CalendarDate>[
+            CalendarDate(2026, 3, 1),
+            CalendarDate(2026, 4, 1),
+          ],
+          expenseType: ExpenseType.mandatory,
+        ),
+        throwsA(isA<BeyondHardDeadline>()),
+      );
+      expect(await payments.inSpace(space.id), isEmpty);
+    });
+
+    test('series writes leave frozen occurrences alone', () async {
+      final Space space = await makeSpace();
+      final BudgetPeriod closed = await periods.createIncomeDriven(
+        spaceId: space.id,
+        startDate: const CalendarDate(2026, 1, 1),
+        endDate: const CalendarDate(2026, 1, 31),
+        anchorDate: const CalendarDate(2026, 1, 1),
+      );
+      final String group = await payments.createSeries(
+        spaceId: space.id,
+        title: 'Gym',
+        amount: Decimal.one,
+        dates: const <CalendarDate>[
+          CalendarDate(2026, 1, 15),
+          CalendarDate(2026, 3, 15),
+        ],
+        expenseType: ExpenseType.mandatory,
+      );
+      final Payment january = (await payments.seriesOf(group)).first;
+      await payments.setPeriod(january.id, closed.id);
+
+      await payments.updateWholeSeries(
+        group,
+        amount: Value<Decimal>(Decimal.ten),
+      );
+      expect(
+        (await payments.seriesOf(group)).map((Payment p) => p.amount),
+        <Decimal>[Decimal.one, Decimal.ten],
+      );
+
+      await payments.deleteSeries(group);
+      expect((await payments.seriesOf(group)).single.id, january.id);
+    });
+
     test('a duplicate sort_order still orders deterministically', () async {
       // `sort_order` is not unique; id breaks the tie.
       final Space space = await makeSpace();
@@ -230,6 +316,25 @@ void main() {
       expect(await categories.canRename(c.id), isTrue);
       await categories.rename(c.id, 'Rent');
       expect((await categories.inSpace(space.id)).single.title, 'Rent');
+    });
+
+    test('a title taken in another case is refused', () async {
+      final Space space = await makeSpace();
+      await categories.create(spaceId: space.id, title: 'Еда');
+      final Category other = await categories.create(
+        spaceId: space.id,
+        title: 'Кафе',
+      );
+
+      await expectLater(
+        categories.create(spaceId: space.id, title: ' еда '),
+        throwsA(isA<CategoryTitleTaken>()),
+      );
+      await expectLater(
+        categories.rename(other.id, 'ЕДА'),
+        throwsA(isA<CategoryTitleTaken>()),
+      );
+      await categories.rename(other.id, 'кафе');
     });
 
     test('a visible payment freezes the title forever', () async {
@@ -541,6 +646,49 @@ void main() {
       expect(updated.expectedDate, const CalendarDate(2026, 3, 26));
       expect(updated.actualDate, const CalendarDate(2026, 3, 25));
     });
+  });
+
+  test('a rule amount reaches only future, unfrozen occurrences', () async {
+    final Space space = await makeSpace();
+    final IncomeRecurrenceRule rule = await rules.create(
+      spaceId: space.id,
+      title: 'Salary',
+      scheduleType: ScheduleType.fixedDate,
+      fixedDay: 20,
+      amount: Decimal.fromInt(3000),
+      isAnchor: true,
+    );
+    final BudgetPeriod closed = await periods.createIncomeDriven(
+      spaceId: space.id,
+      startDate: const CalendarDate(2026, 1, 1),
+      endDate: const CalendarDate(2026, 1, 31),
+      anchorDate: const CalendarDate(2026, 1, 1),
+    );
+    Future<Income> occurrence(CalendarDate date) => incomes.create(
+      spaceId: space.id,
+      title: 'Salary',
+      expectedDate: date,
+      amount: Decimal.fromInt(3000),
+      recurrenceRuleId: rule.id,
+    );
+    await occurrence(const CalendarDate(2026, 3, 1));
+    final Income frozen = await occurrence(const CalendarDate(2026, 4, 20));
+    await incomes.setPeriod(frozen.id, closed.id);
+    await occurrence(const CalendarDate(2026, 3, 20));
+
+    await incomes.updateFutureAmounts(
+      rule.id,
+      Decimal.fromInt(3500),
+      from: const CalendarDate(2026, 3, 10),
+    );
+
+    final List<Income> rows = (await incomes.inSpace(space.id))
+      ..sort((Income a, Income b) => a.expectedDate.compareTo(b.expectedDate));
+    expect(rows.map((Income i) => i.amount), <Decimal>[
+      Decimal.fromInt(3000),
+      Decimal.fromInt(3500),
+      Decimal.fromInt(3000),
+    ]);
   });
 
   group('budget periods', () {

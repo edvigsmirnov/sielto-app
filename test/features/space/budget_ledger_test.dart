@@ -9,6 +9,7 @@ import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
+import 'package:sielto/features/spaces/space_coverage.dart';
 
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 Decimal m(String v) => Decimal.parse(v);
@@ -233,5 +234,12 @@ void main() {
     final BudgetLedger ledger = await build();
     expect(ledger.entries.length, 1);
     expect(ledger.totalPlanned, Decimal.zero);
+  });
+
+  test('the switcher judges a Budget Space against its fund', () async {
+    await repos.periods.setBudgetTarget(period.id, m('100'));
+    await expense('tickets', '2026-03-12', '50');
+
+    expect(await coverageOf(repos, space), Coverage.covered);
   });
 }

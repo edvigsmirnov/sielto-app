@@ -125,8 +125,13 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
             : null,
       );
 
-      // Applies to every occurrence not yet received.
-      await repos.incomes.updateFutureAmounts(widget.rule.id, amount);
+      if (amount != widget.rule.amount) {
+        await repos.incomes.updateFutureAmounts(
+          widget.rule.id,
+          amount,
+          from: ref.read(spaceClockProvider).today(),
+        );
+      }
 
       if (_scheduleChanged) await _regenerateOccurrences();
 
@@ -147,7 +152,7 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
       calendar: resolved.calendar,
       missingHolidayYears: resolved.missingYears,
     ).regenerate(
-      ref.space,
+      ref.read(currentSpaceProvider)!,
       widget.rule.id,
       ref.read(spaceClockProvider).today(),
     );

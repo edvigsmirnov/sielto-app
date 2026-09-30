@@ -410,33 +410,28 @@ class Space extends DataClass implements Insertable<Space> {
   final SpaceType spaceType;
   final BudgetMode budgetMode;
   final String ownerId;
-
-  /// Named storage_mode, not sync_status, to keep it distinct from the
-  /// per-row sync state (spec 3.1).
   final StorageMode storageMode;
 
-  /// Overrides the global default when resolving holidays (spec 5.1.1).
+  /// Overrides the default country for holidays.
   final String? countryCode;
 
-  /// One 'today' for every member, regardless of where they are
-  /// (plan section 2, invariant 7).
+  /// Defines "today" for every member.
   final String timezone;
 
-  /// Frozen after the first record (spec 9.2).
+  /// Frozen after the first record.
   final String currencyCode;
 
-  /// 0 disables invites. Null is reserved for 'no limit' and is written by a
-  /// separate UPDATE rather than stored as 0 (spec 3.4).
+  /// 0 disables invites; null means no limit.
   final int? maxMembers;
 
   /// Read-only local archive. Never uploaded.
   final bool isArchived;
 
-  /// Flow's 'money I have now' (spec 4.6). Budget uses budget_target instead.
+  /// Flow's current balance.
   final Decimal? manualBalance;
   final DateTime? manualBalanceUpdatedAt;
 
-  /// Raised only with creator consent (spec 10.6, plan G6).
+  /// Raised only with creator consent.
   final int minSchemaVersion;
   final FeedOrderMode feedOrderMode;
   final DateTime createdAt;
@@ -1550,18 +1545,14 @@ class $MemberLocalLabelsTable extends MemberLocalLabels
 
 class MemberLocalLabel extends DataClass
     implements Insertable<MemberLocalLabel> {
-  /// Soft delete. Every read filters on this; see `SyncedRepository`.
   final bool isDeleted;
   final SyncStatus syncStatus;
-
-  /// Author of the last edit, for conflict toasts (spec 10.4).
   final String? lastModifiedBy;
 
-  /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local 'last modified'; there is no separate updated_at.
+  /// Device time of the edit; last-write-wins compares it.
   final DateTime clientEditedAt;
 
-  /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
+  /// Set by the server on receipt. Null until uploaded.
   final DateTime? serverReceivedAt;
   final String spaceId;
   final String viewerUserId;
@@ -2140,18 +2131,14 @@ class $UserProfilesTable extends UserProfiles
 }
 
 class UserProfile extends DataClass implements Insertable<UserProfile> {
-  /// Soft delete. Every read filters on this; see `SyncedRepository`.
   final bool isDeleted;
   final SyncStatus syncStatus;
-
-  /// Author of the last edit, for conflict toasts (spec 10.4).
   final String? lastModifiedBy;
 
-  /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local 'last modified'; there is no separate updated_at.
+  /// Device time of the edit; last-write-wins compares it.
   final DateTime clientEditedAt;
 
-  /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
+  /// Set by the server on receipt. Null until uploaded.
   final DateTime? serverReceivedAt;
   final String userId;
   final String nickname;
@@ -2798,18 +2785,14 @@ class $CategoriesTable extends Categories
 }
 
 class Category extends DataClass implements Insertable<Category> {
-  /// Soft delete. Every read filters on this; see `SyncedRepository`.
   final bool isDeleted;
   final SyncStatus syncStatus;
-
-  /// Author of the last edit, for conflict toasts (spec 10.4).
   final String? lastModifiedBy;
 
-  /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local 'last modified'; there is no separate updated_at.
+  /// Device time of the edit; last-write-wins compares it.
   final DateTime clientEditedAt;
 
-  /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
+  /// Set by the server on receipt. Null until uploaded.
   final DateTime? serverReceivedAt;
   final String id;
   final String spaceId;
@@ -2817,13 +2800,11 @@ class Category extends DataClass implements Insertable<Category> {
   final String? color;
   final String? icon;
 
-  /// Which starter category this is, while its title is still the one the app
-  /// gave it. The title is then shown in the reader's language rather than
-  /// the one the Space was created in; a rename clears it, and the title is
-  /// the user's from then on (spec 7).
+  /// Starter category key; the title is then shown translated. Cleared on
+  /// rename.
   final String? starterKey;
 
-  /// Default for new payments only. Existing rows keep their own value.
+  /// Default for new payments only.
   final ExpenseType expenseType;
   final int sortOrder;
   final DateTime createdAt;
@@ -3793,43 +3774,37 @@ class $BudgetPeriodsTable extends BudgetPeriods
 }
 
 class BudgetPeriod extends DataClass implements Insertable<BudgetPeriod> {
-  /// Soft delete. Every read filters on this; see `SyncedRepository`.
   final bool isDeleted;
   final SyncStatus syncStatus;
-
-  /// Author of the last edit, for conflict toasts (spec 10.4).
   final String? lastModifiedBy;
 
-  /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local 'last modified'; there is no separate updated_at.
+  /// Device time of the edit; last-write-wins compares it.
   final DateTime clientEditedAt;
 
-  /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
+  /// Set by the server on receipt. Null until uploaded.
   final DateTime? serverReceivedAt;
   final String id;
   final String spaceId;
   final PeriodType periodType;
   final CalendarDate startDate;
 
-  /// Null for `continuous`: the context never closes.
+  /// Null for `continuous`.
   final CalendarDate? endDate;
 
-  /// Anchor income uncertainty window (spec 5.1.1). Null for `continuous`.
+  /// Anchor income uncertainty window. Null for `continuous`.
   final CalendarDate? windowStart;
   final CalendarDate? windowEnd;
-
-  /// resolveIncomeWindow's result, stored rather than recomputed per render.
   final CalendarDate? anchorDate;
 
-  /// The window was computed without holiday data and may still narrow.
+  /// Computed without holiday data; may still narrow.
   final bool holidayDataIncomplete;
 
-  /// Budget mode's event date (spec 4.8). Null elsewhere.
+  /// Budget mode only.
   final CalendarDate? deadlineDate;
   final bool deadlineIsHard;
   final Decimal? budgetTarget;
 
-  /// Temporary unfreeze of a closed period (spec 5.5).
+  /// Temporary unfreeze of a closed period.
   final DateTime? unfrozenUntil;
   final String? unfreezeReason;
   final DateTime createdAt;
@@ -5061,27 +5036,23 @@ class $IncomeRecurrenceRulesTable extends IncomeRecurrenceRules
 
 class IncomeRecurrenceRule extends DataClass
     implements Insertable<IncomeRecurrenceRule> {
-  /// Soft delete. Every read filters on this; see `SyncedRepository`.
   final bool isDeleted;
   final SyncStatus syncStatus;
-
-  /// Author of the last edit, for conflict toasts (spec 10.4).
   final String? lastModifiedBy;
 
-  /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local 'last modified'; there is no separate updated_at.
+  /// Device time of the edit; last-write-wins compares it.
   final DateTime clientEditedAt;
 
-  /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
+  /// Set by the server on receipt. Null until uploaded.
   final DateTime? serverReceivedAt;
   final String id;
   final String spaceId;
   final String title;
 
-  /// Null when the amount floats (spec 4.7, floating salary).
+  /// Null when the amount is not known in advance.
   final Decimal? amount;
 
-  /// Only meaningful in income_driven Spaces; the form hides it elsewhere.
+  /// income_driven Spaces only.
   final bool isAnchor;
   final ScheduleType scheduleType;
 
@@ -5100,7 +5071,7 @@ class IncomeRecurrenceRule extends DataClass
   final BoundaryAnchor? boundaryAnchor;
   final int? boundaryCount;
 
-  /// Holiday calendar for this rule, overriding the Space country.
+  /// Overrides the Space country for holidays.
   final String? countryCode;
   final DateTime createdAt;
   const IncomeRecurrenceRule({
@@ -6230,42 +6201,33 @@ class $IncomesTable extends Incomes with TableInfo<$IncomesTable, Income> {
 }
 
 class Income extends DataClass implements Insertable<Income> {
-  /// Soft delete. Every read filters on this; see `SyncedRepository`.
   final bool isDeleted;
   final SyncStatus syncStatus;
-
-  /// Author of the last edit, for conflict toasts (spec 10.4).
   final String? lastModifiedBy;
 
-  /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local 'last modified'; there is no separate updated_at.
+  /// Device time of the edit; last-write-wins compares it.
   final DateTime clientEditedAt;
 
-  /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
+  /// Set by the server on receipt. Null until uploaded.
   final DateTime? serverReceivedAt;
   final String id;
   final String spaceId;
 
-  /// Null marks a one-off receipt.
+  /// Null for a one-off income.
   final String? recurrenceRuleId;
   final String title;
   final Decimal? amount;
-
-  /// The anchor date from resolveIncomeWindow for regular incomes; the date
-  /// the user picked for one-offs.
   final CalendarDate expectedDate;
 
-  /// When the money actually arrived, if it differed. Affects neither the
-  /// period assignment nor the schedule (spec 5.4).
+  /// Actual receipt date. Changes neither the period nor the schedule.
   final CalendarDate? actualDate;
   final String? budgetPeriodId;
 
-  /// Manual order within the day in the Feed. Sparse, gap 1024, and
-  /// deliberately not unique — the constraint would break on a feed-mode
-  /// switch (plan G2). Ties break on id.
+  /// Manual order within a day. Sparse (gap 1024), not unique; ties break on
+  /// id.
   final int sortOrder;
 
-  /// Expected versus received.
+  /// Received.
   final bool isPaid;
   final String? notes;
   final DateTime createdAt;
@@ -7308,35 +7270,29 @@ class $PaymentsTable extends Payments with TableInfo<$PaymentsTable, Payment> {
 }
 
 class Payment extends DataClass implements Insertable<Payment> {
-  /// Soft delete. Every read filters on this; see `SyncedRepository`.
   final bool isDeleted;
   final SyncStatus syncStatus;
-
-  /// Author of the last edit, for conflict toasts (spec 10.4).
   final String? lastModifiedBy;
 
-  /// Device clock at the moment of the edit, and the basis for LWW. Doubles as
-  /// the local 'last modified'; there is no separate updated_at.
+  /// Device time of the edit; last-write-wins compares it.
   final DateTime clientEditedAt;
 
-  /// Set by a Supabase trigger on receipt. Null until a row has been uploaded.
+  /// Set by the server on receipt. Null until uploaded.
   final DateTime? serverReceivedAt;
   final String id;
   final String spaceId;
   final String? budgetPeriodId;
 
-  /// `manual` pins the row to its period against recalculation (spec 5.3).
+  /// `manual` keeps the period on recalculation.
   final PeriodAssignment periodAssignment;
   final String? categoryId;
-
-  /// Ties one occurrence to its repeating series (spec 6.3).
   final String? groupRecurringId;
   final String title;
   final Decimal amount;
   final CalendarDate dueDate;
   final ExpenseType expenseType;
 
-  /// See [Incomes.sortOrder] — sparse, not unique (plan G2).
+  /// See [Incomes.sortOrder].
   final int sortOrder;
   final bool isPaid;
   final String? notes;

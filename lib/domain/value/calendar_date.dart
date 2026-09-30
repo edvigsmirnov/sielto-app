@@ -11,17 +11,21 @@ class CalendarDate implements Comparable<CalendarDate> {
     return CalendarDate(d.year, d.month, d.day);
   }
 
-  /// Parses `YYYY-MM-DD` only.
+  /// Parses `YYYY-MM-DD` only, and only real days.
   factory CalendarDate.parse(String iso) {
     final Match? m = _isoPattern.firstMatch(iso);
     if (m == null) {
       throw FormatException('expected YYYY-MM-DD', iso);
     }
-    return CalendarDate(
+    final CalendarDate date = CalendarDate(
       int.parse(m.group(1)!),
       int.parse(m.group(2)!),
       int.parse(m.group(3)!),
     );
+    if (CalendarDate.from(date.year, date.month, date.day) != date) {
+      throw FormatException('no such day', iso);
+    }
+    return date;
   }
 
   /// Uses the year, month and day as they read on [dateTime], in its own zone.

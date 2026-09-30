@@ -140,9 +140,7 @@ abstract final class PeriodMaterializer {
           );
         } else {
           existing.ruleIds.add(anchor.ruleId);
-          if (window.windowStart.isBefore(existing.windowStart)) {
-            byDate[key] = existing.withWindowStart(window.windowStart);
-          }
+          byDate[key] = existing.widenedTo(window);
         }
       }
       month++;
@@ -175,10 +173,13 @@ class _Anchor {
   final CalendarDate windowEnd;
   final List<String> ruleIds;
 
-  _Anchor withWindowStart(CalendarDate start) => _Anchor(
+  /// The union of both windows.
+  _Anchor widenedTo(IncomeWindow other) => _Anchor(
     date: date,
-    windowStart: start,
-    windowEnd: windowEnd,
+    windowStart: other.windowStart.isBefore(windowStart)
+        ? other.windowStart
+        : windowStart,
+    windowEnd: other.windowEnd.isAfter(windowEnd) ? other.windowEnd : windowEnd,
     ruleIds: ruleIds,
   );
 }

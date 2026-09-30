@@ -11,4 +11,12 @@ extension CategoryTitle on Category {
     // No translation: the stored title.
     return translated == path ? title : translated;
   }
+
+  /// [shownTitle], marked when the category is deleted. For history views.
+  String get reportTitle => isDeleted
+      ? tr(
+          'category.deletedLabel',
+          namedArgs: <String, String>{'title': shownTitle},
+        )
+      : shownTitle;
 }

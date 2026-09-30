@@ -14,6 +14,16 @@ class CategoryTitleFrozen implements Exception {
   String toString() => 'CategoryTitleFrozen: $categoryId';
 }
 
+/// An active category in the Space already has this title, in any case.
+class CategoryTitleTaken implements Exception {
+  const CategoryTitleTaken(this.title);
+
+  final String title;
+
+  @override
+  String toString() => 'CategoryTitleTaken: $title';
+}
+
 class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
   CategoryRepository({
     required super.db,
@@ -64,6 +74,7 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
     ExpenseType expenseType = ExpenseType.variable,
     int? sortOrder,
   }) async {
+    await _refuseIfTaken(spaceId, title);
     final ({String author, DateTime editedAt}) s = stamp();
     return db
         .into(db.categories)
@@ -128,6 +139,13 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
     if (!await canRename(categoryId)) {
       throw CategoryTitleFrozen(categoryId);
     }
+    final Category? row =
+        await (selectAlive()
+              ..where(($CategoriesTable t) => t.id.equals(categoryId)))
+            .getSingleOrNull();
+    if (row != null) {
+      await _refuseIfTaken(row.spaceId, title, except: categoryId);
+    }
     final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.categories,
@@ -170,5 +188,20 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
     final List<Category> rows = await inSpace(spaceId);
     if (rows.isEmpty) return 0;
     return rows.last.sortOrder + PaymentRepository.sortOrderGap;
+  }
+
+  /// Throws [CategoryTitleTaken]. Also guarded by a unique index.
+  Future<void> _refuseIfTaken(
+    String spaceId,
+    String title, {
+    String? except,
+  }) async {
+    final String key = title.trim().toLowerCase();
+    final List<Category> same = await (selectAliveInSpace(
+      spaceId,
+    )..where(($CategoriesTable t) => t.title.lower().equals(key))).get();
+    if (same.any((Category c) => c.id != except)) {
+      throw CategoryTitleTaken(title.trim());
+    }
   }
 }

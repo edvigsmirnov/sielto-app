@@ -10,6 +10,7 @@ import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -26,6 +27,7 @@ import 'package:sielto/features/payments/title_field.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/periods/period_choice.dart';
+import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
@@ -211,9 +213,12 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
   bool get _dateLooksOdd {
     final CalendarDate? date = _date;
     if (date == null) return false;
-    final CalendarDate today = ref.read(spaceClockProvider).today();
-    return date.isBefore(today.addMonths(-12 * 5)) ||
-        date.isAfter(today.addMonths(12 * 10));
+    final SpaceClock clock = ref.read(spaceClockProvider);
+    final CalendarDate created = clock.dateOf(
+      ref.read(currentSpaceProvider)!.createdAt,
+    );
+    return date.isBefore(created.addMonths(-12 * 5)) ||
+        date.isAfter(clock.today().addMonths(12 * 10));
   }
 
   /// income-driven only, not for a series, and only when the date is inside a
@@ -287,7 +292,21 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
           }
         }
       } else {
+        if (existing.expenseType == ExpenseType.mandatory &&
+            !await confirmMandatory(context)) {
+          return;
+        }
         final SeriesScope scope = await _resolveScope(existing);
+        // Date and paid status are this occurrence's own in every scope.
+        Future<void> applyOwn() async {
+          if (date == existing.dueDate && _isPaid == existing.isPaid) return;
+          await repos.payments.update(
+            existing.id,
+            dueDate: Value<CalendarDate>(date),
+            isPaid: Value<bool>(_isPaid),
+          );
+        }
+
         switch (scope) {
           case SeriesScope.thisOne:
             await repos.payments.update(
@@ -314,6 +333,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
               categoryId: Value<String?>(_categoryId),
               notes: Value<String?>(notes),
             );
+            await applyOwn();
           case SeriesScope.wholeSeries:
             await repos.payments.updateWholeSeries(
               existing.groupRecurringId!,
@@ -323,6 +343,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
               categoryId: Value<String?>(_categoryId),
               notes: Value<String?>(notes),
             );
+            await applyOwn();
           case SeriesScope.cancelled:
             return;
         }
@@ -609,8 +630,8 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
   }
 }
 
-/// Live preview of the draft, in memory. Walks Flow's ledger or the draft's
-/// income cycle.
+/// Live preview of the draft, in memory. Walks Flow's ledger, the Budget fund
+/// or the draft's income cycle.
 class _LivePreview extends ConsumerWidget {
   const _LivePreview({
     required this.amount,
@@ -692,13 +713,23 @@ class _LivePreview extends ConsumerWidget {
 
     final Decimal? available;
     final List<LedgerEntry> existing;
-    if (ref.watch(currentSpaceProvider)?.budgetMode ==
-        BudgetMode.incomeDriven) {
+    String label = tr('dashboard.freeMoney');
+    // A Budget Space without a fund only counts what it spends.
+    bool spentOnly = false;
+    final BudgetMode? mode = ref.watch(currentSpaceProvider)?.budgetMode;
+    if (mode == BudgetMode.incomeDriven) {
       // The cycle of the draft's date, not the one on screen.
       final PeriodLedger? period = _ledgerForDraft(ref);
       if (period == null) return const SizedBox.shrink();
       available = period.anchorAmount;
       existing = period.entries;
+    } else if (mode == BudgetMode.budget) {
+      final BudgetLedger? budget = ref.watch(budgetLedgerProvider).value;
+      if (budget == null) return const SizedBox.shrink();
+      spentOnly = !budget.hasFund;
+      label = tr(spentOnly ? 'budget.spent' : 'budget.remaining');
+      available = budget.available;
+      existing = budget.entries;
     } else {
       final FlowLedger? flow = ref.watch(flowLedgerProvider).value;
       if (flow == null) return const SizedBox.shrink();
@@ -744,8 +775,14 @@ class _LivePreview extends ConsumerWidget {
       entries: <LedgerEntry>[...without, ...draft],
     );
 
-    final Decimal? beforeFree = before.freeCash;
-    final Decimal? afterFree = after.freeCash;
+    Decimal sum(List<LedgerEntry> entries) => entries.fold(
+      Decimal.zero,
+      (Decimal total, LedgerEntry e) => total + e.amount,
+    );
+    final Decimal? beforeFree = spentOnly ? sum(without) : before.freeCash;
+    final Decimal? afterFree = spentOnly
+        ? sum(<LedgerEntry>[...without, ...draft])
+        : after.freeCash;
     final Color afterColor = afterFree == null ? sage.danger : sage.ink;
 
     final String? periodLabel = _periodLabel(ref, context);
@@ -767,9 +804,7 @@ class _LivePreview extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            periodLabel == null
-                ? tr('dashboard.freeMoney')
-                : '${tr('dashboard.freeMoney')} ($periodLabel)',
+            periodLabel == null ? label : '$label ($periodLabel)',
             style: text.bodySmall?.copyWith(color: sage.inkSecondary),
           ),
           const SizedBox(height: SageSpace.xs),

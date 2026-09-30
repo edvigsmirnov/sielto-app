@@ -57,4 +57,5 @@ Future<Startup> startOver(DatabaseKeyManager manager) async {
 
 /// In-memory database with the full schema. Tests only.
 @visibleForTesting
-AppDatabase inMemoryDatabase() => AppDatabase(NativeDatabase.memory());
+AppDatabase inMemoryDatabase() =>
+    AppDatabase(NativeDatabase.memory(setup: registerSqlFunctions));

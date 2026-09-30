@@ -16,6 +16,15 @@ void main() {
       expect(calendar.isWorkingDay(d('2026-03-16')), isTrue);
     });
 
+    test('a holiday on a weekend is still a day off', () {
+      // 2026-03-14 is a Saturday.
+      final WorkingDayCalendar calendar = WorkingDayCalendar(
+        holidays: <CalendarDate>{d('2026-03-14')},
+      );
+      expect(calendar.isDayOff(d('2026-03-14')), isTrue);
+      expect(calendar.isDayOff(d('2026-03-15')), isFalse);
+    });
+
     test('holidays and custom days both count', () {
       final WorkingDayCalendar calendar = WorkingDayCalendar(
         holidays: <CalendarDate>{d('2026-01-01')},

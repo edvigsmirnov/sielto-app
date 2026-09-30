@@ -90,7 +90,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (BuildContext _) =>
-                      SpaceSettingsPage(space: ref.space),
+                      SpaceSettingsPage(space: ref.read(currentSpaceProvider)!),
                 ),
               );
             },

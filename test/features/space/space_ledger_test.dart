@@ -158,6 +158,27 @@ void main() {
     });
   });
 
+  test('the balance day is taken in the Space timezone', () async {
+    final SpaceRepository evening = SpaceRepository(
+      db: db,
+      clock: SpaceClock(
+        timezone: 'UTC',
+        now: () => DateTime.utc(2026, 3, 9, 20),
+      ),
+    );
+    final Space auckland = await evening.create(
+      title: 'Auckland',
+      spaceType: SpaceType.personal,
+      budgetMode: BudgetMode.flow,
+      ownerId: 'tester',
+      timezone: 'Pacific/Auckland',
+      currencyCode: 'NZD',
+    );
+    await evening.setManualBalance(auckland.id, m('1000'));
+
+    expect((await evening.byId(auckland.id))!.balanceSetOn, d('2026-03-10'));
+  });
+
   group('the double-count rule', () {
     test('an expense paid before the snapshot is dropped', () async {
       await addExpense('rent', '2026-03-01', '600', isPaid: true);

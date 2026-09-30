@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
@@ -20,18 +22,30 @@ final FutureProvider<Map<String, Coverage>> spaceCoverageProvider =
 
       final Map<String, Coverage> result = <String, Coverage>{};
       for (final Space space in spaces) {
-        final Coverage? coverage = await _coverageOf(repos, space);
+        final Coverage? coverage = await coverageOf(repos, space);
         if (coverage != null) result[space.id] = coverage;
       }
       return result;
     });
 
-Future<Coverage?> _coverageOf(Repositories repos, Space space) async {
+@visibleForTesting
+Future<Coverage?> coverageOf(Repositories repos, Space space) async {
   final CalendarDate today = repos.spaces.clockFor(space).today();
   final List<Payment> payments = await repos.payments.inSpace(space.id);
   final List<Income> incomes = await repos.incomes.inSpace(space.id);
 
-  if (space.budgetMode != BudgetMode.incomeDriven) {
+  if (space.budgetMode == BudgetMode.budget) {
+    final BudgetPeriod? period = await repos.periods.continuousFor(space.id);
+    if (period == null) return null;
+    return buildBudgetLedger(
+      period: period,
+      payments: payments,
+      incomes: incomes,
+      today: today,
+    ).coverage;
+  }
+
+  if (space.budgetMode == BudgetMode.flow) {
     return buildFlowLedger(
       space: space,
       payments: payments,

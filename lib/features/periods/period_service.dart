@@ -406,7 +406,7 @@ class PeriodService {
       for (final Income row in rows) {
         if (row.isPaid || row.expectedDate.isBefore(planned.floor)) continue;
         final String iso = row.expectedDate.toIso();
-        if (await repos.incomes.freezeStateOf(row.id) == FreezeState.frozen) {
+        if (await repos.incomes.freezeStateOf(row) == FreezeState.frozen) {
           if (!row.isDeleted) held.add(iso);
           continue;
         }

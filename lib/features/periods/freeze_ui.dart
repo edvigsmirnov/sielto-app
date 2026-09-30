@@ -131,32 +131,32 @@ class FreezeBanner extends ConsumerWidget {
 }
 
 /// Null when dismissed.
-Future<String?> askUnfreezeReason(BuildContext context) async {
-  final TextEditingController reason = TextEditingController();
-  try {
-    return await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => _UnfreezeDialog(controller: reason),
-    );
-  } finally {
-    reason.dispose();
-  }
-}
+Future<String?> askUnfreezeReason(BuildContext context) => showDialog<String>(
+  context: context,
+  builder: (BuildContext context) => const _UnfreezeDialog(),
+);
 
+/// Owns its controller: the dialog outlives the future during its exit.
 class _UnfreezeDialog extends StatefulWidget {
-  const _UnfreezeDialog({required this.controller});
-
-  final TextEditingController controller;
+  const _UnfreezeDialog();
 
   @override
   State<_UnfreezeDialog> createState() => _UnfreezeDialogState();
 }
 
 class _UnfreezeDialogState extends State<_UnfreezeDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    final String reason = widget.controller.text.trim();
+    final String reason = _controller.text.trim();
 
     return AlertDialog(
       backgroundColor: sage.card,
@@ -177,7 +177,7 @@ class _UnfreezeDialogState extends State<_UnfreezeDialog> {
           ),
           const SizedBox(height: SageSpace.md),
           TextField(
-            controller: widget.controller,
+            controller: _controller,
             autofocus: true,
             maxLength: 500,
             textCapitalization: TextCapitalization.sentences,

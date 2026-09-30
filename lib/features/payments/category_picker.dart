@@ -59,7 +59,7 @@ class CategoryPickerField extends ConsumerWidget {
             const SizedBox(width: SageSpace.md),
             Expanded(
               child: Text(
-                selected?.title ?? tr('category.none'),
+                selected?.shownTitle ?? tr('category.none'),
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: selected == null ? sage.inkLabel : sage.ink,

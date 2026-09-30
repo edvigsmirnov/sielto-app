@@ -34,7 +34,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   /// Bump with a new [migration] step and a new schema snapshot.
-  static const int currentSchemaVersion = 3;
+  static const int currentSchemaVersion = 4;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -67,11 +67,67 @@ class AppDatabase extends _$AppDatabase {
           }
         }
       }
+      if (from < 4) {
+        // v4: `lower` folds Unicode; rebuild the indexes that use it.
+        await _renameCaseVariantCategories(this);
+        await customStatement(
+          'DROP INDEX IF EXISTS categories_unique_active_title',
+        );
+        await customStatement('DROP INDEX IF EXISTS payments_space_title');
+        await _createIndexes(this);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+}
+
+/// SQLite's own `lower` folds ASCII only. Register on every connection before
+/// the first query, or the Unicode-keyed indexes disagree with lookups.
+void registerSqlFunctions(Database raw) => raw.createFunction(
+  functionName: 'lower',
+  argumentCount: const AllowedArgumentCount(1),
+  deterministic: true,
+  directOnly: false,
+  function: (List<Object?> args) {
+    final Object? value = args.first;
+    return value is String ? value.toLowerCase() : value;
+  },
+);
+
+/// Active titles that differed only in non-ASCII case were distinct before v4.
+/// Suffix all but the first, or the unique index rebuild fails.
+Future<void> _renameCaseVariantCategories(AppDatabase db) async {
+  final List<QueryRow> rows = await db
+      .customSelect(
+        'SELECT id, space_id, title FROM categories '
+        'WHERE is_deleted = 0 ORDER BY created_at, id',
+      )
+      .get();
+  final Set<String> taken = <String>{
+    for (final QueryRow r in rows)
+      '${r.read<String>('space_id')}/${r.read<String>('title').toLowerCase()}',
+  };
+  final Set<String> seen = <String>{};
+  for (final QueryRow r in rows) {
+    final String space = r.read<String>('space_id');
+    final String title = r.read<String>('title');
+    if (seen.add('$space/${title.toLowerCase()}')) continue;
+    int n = 2;
+    while (taken.contains('$space/${'$title ($n)'.toLowerCase()}')) {
+      n++;
+    }
+    taken.add('$space/${'$title ($n)'.toLowerCase()}');
+    await db.customUpdate(
+      'UPDATE categories SET title = ?, starter_key = NULL WHERE id = ?',
+      variables: <Variable<Object>>[
+        Variable<String>('$title ($n)'),
+        Variable<String>(r.read<String>('id')),
+      ],
+      updates: <TableInfo<Table, Object?>>{db.categories},
+    );
+  }
 }
 
 /// Starter category titles written by v2, per key. Frozen: do not edit.
@@ -145,6 +201,7 @@ QueryExecutor openEncryptedDatabase({
     setup: (Database raw) {
       raw.execute('PRAGMA key = ${key.toPragmaLiteral()}');
       raw.execute('SELECT count(*) FROM sqlite_schema');
+      registerSqlFunctions(raw);
     },
   );
 }

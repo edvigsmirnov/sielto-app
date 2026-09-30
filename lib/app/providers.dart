@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/analytics_repository.dart';
@@ -111,10 +114,28 @@ final Provider<Space?> currentSpaceProvider = Provider<Space?>(
   (Ref ref) => ref.watch(resolvedSpaceProvider).value,
 );
 
-/// UTC before a Space exists.
+/// UTC before a Space exists. Rebuilds when the Space's day turns, so every
+/// "today" read through a watch follows it.
 final Provider<SpaceClock> spaceClockProvider = Provider<SpaceClock>((Ref ref) {
   final Space? space = ref.watch(currentSpaceProvider);
-  return SpaceClock(timezone: space?.timezone ?? 'UTC');
+  final SpaceClock clock = SpaceClock(timezone: space?.timezone ?? 'UTC');
+  final CalendarDate today = clock.today();
+
+  final Timer midnight = Timer(
+    clock.endOfDayUtc(today).difference(clock.nowUtc()),
+    ref.invalidateSelf,
+  );
+  // The timer does not run while the device sleeps.
+  final AppLifecycleListener resume = AppLifecycleListener(
+    onResume: () {
+      if (clock.today() != today) ref.invalidateSelf();
+    },
+  );
+  ref.onDispose(() {
+    midnight.cancel();
+    resume.dispose();
+  });
+  return clock;
 });
 
 final Provider<HolidayService> holidayServiceProvider =
@@ -136,10 +157,14 @@ final StreamProvider<List<CustomNonWorkingDay>> customNonWorkingDaysProvider =
 final FutureProvider<ResolvedCalendar> resolvedCalendarProvider =
     FutureProvider<ResolvedCalendar>((Ref ref) {
       final CalendarDate today = ref.watch(spaceClockProvider).today();
+      // Every year periods can reach.
       return _resolveCalendar(ref, <int>{
-        // Materialisation reaches into next year.
-        today.year,
-        today.addMonths(PeriodService.incomeHorizonMonths).year,
+        for (
+          int y = today.year;
+          y <= today.addMonths(PeriodService.maxReachMonths).year;
+          y++
+        )
+          y,
       });
     });
 

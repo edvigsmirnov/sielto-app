@@ -73,7 +73,7 @@ List<PopupMenuEntry<_QuickAdd>> _quickAddItems(WidgetRef ref) =>
         child: _MenuLine(
           icon: Icons.add_circle_outline,
           // In Budget mode an income is a top-up of the fund.
-          label: ref.space.budgetMode == BudgetMode.budget
+          label: ref.read(currentSpaceProvider)!.budgetMode == BudgetMode.budget
               ? tr('budget.topUp')
               : tr('income.add'),
         ),

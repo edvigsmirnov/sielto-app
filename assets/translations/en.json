@@ -281,7 +281,9 @@
     "fieldIcon": "Icon",
     "iconHint": "Any emoji",
     "pick": "Choose a category",
-    "search": "Search categories"
+    "search": "Search categories",
+    "titleTaken": "A category with this name already exists.",
+    "deletedLabel": "{title} (deleted)"
   },
   "starterCategory": {
     "rent": "Rent",

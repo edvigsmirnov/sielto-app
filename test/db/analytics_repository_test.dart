@@ -322,6 +322,13 @@ void main() {
       ]);
     });
 
+    test('matching ignores Cyrillic case', () async {
+      await spend('Пятёрочка', '10', on: summerStart);
+      expect(await payments.titleSuggestions(space.id, 'пят'), <String>[
+        'Пятёрочка',
+      ]);
+    });
+
     test(
       'one suggestion per grouping key, in its commonest spelling',
       () async {

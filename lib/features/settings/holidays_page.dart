@@ -158,52 +158,68 @@ Future<void> markNonWorkingDay(
       .add(
         date: date,
         title: title.isEmpty ? null : title,
-        // Bound to the current country.
-        countryCode: ref.read(defaultCountryProvider),
+        // Same country as the resolved calendar.
+        countryCode:
+            ref.read(currentSpaceProvider)?.countryCode ??
+            ref.read(defaultCountryProvider),
       );
   ref.invalidate(periodRefreshProvider);
 }
 
 /// Empty string: no name. Null: cancelled.
-Future<String?> _askDayTitle(BuildContext context) async {
-  final TextEditingController controller = TextEditingController();
-  try {
-    return await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        backgroundColor: context.sage.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(SageRadius.card),
-        ),
-        title: Text(
-          tr('holidays.dayTitle'),
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 200,
-          minLines: 1,
-          maxLines: 5,
-          textInputAction: TextInputAction.done,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(hintText: tr('holidays.dayTitleHint')),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(tr('common.cancel')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: Text(tr('common.save')),
-          ),
-        ],
-      ),
-    );
-  } finally {
-    controller.dispose();
+Future<String?> _askDayTitle(BuildContext context) => showDialog<String>(
+  context: context,
+  builder: (BuildContext context) => const _DayTitleDialog(),
+);
+
+/// Owns its controller: the dialog outlives the future during its exit.
+class _DayTitleDialog extends StatefulWidget {
+  const _DayTitleDialog();
+
+  @override
+  State<_DayTitleDialog> createState() => _DayTitleDialogState();
+}
+
+class _DayTitleDialogState extends State<_DayTitleDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    backgroundColor: context.sage.card,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(SageRadius.card),
+    ),
+    title: Text(
+      tr('holidays.dayTitle'),
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    content: TextField(
+      controller: _controller,
+      autofocus: true,
+      maxLength: 200,
+      minLines: 1,
+      maxLines: 5,
+      textInputAction: TextInputAction.done,
+      textCapitalization: TextCapitalization.sentences,
+      decoration: InputDecoration(hintText: tr('holidays.dayTitleHint')),
+    ),
+    actions: <Widget>[
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(tr('common.cancel')),
+      ),
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+        child: Text(tr('common.save')),
+      ),
+    ],
+  );
 }
 
 /// This year's public holidays for the default country.

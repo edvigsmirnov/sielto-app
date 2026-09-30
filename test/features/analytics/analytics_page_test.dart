@@ -153,6 +153,18 @@ void main() {
     await unmount(tester);
   });
 
+  testWidgets('a deleted category keeps its payments, labelled', (
+    WidgetTester tester,
+  ) async {
+    await db.customStatement(
+      "UPDATE categories SET is_deleted = 1 WHERE title = 'Transport'",
+    );
+    await settle(tester);
+
+    expect(find.text('Transport (deleted)'), findsNWidgets(2));
+    await unmount(tester);
+  });
+
   testWidgets('the type filter re-cuts the same range', (
     WidgetTester tester,
   ) async {

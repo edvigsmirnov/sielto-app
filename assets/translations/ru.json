@@ -291,7 +291,9 @@
     "fieldIcon": "Иконка",
     "iconHint": "Любой эмодзи",
     "pick": "Выберите категорию",
-    "search": "Поиск категории"
+    "search": "Поиск категории",
+    "titleTaken": "Категория с таким названием уже есть.",
+    "deletedLabel": "{title} (удалена)"
   },
   "starterCategory": {
     "rent": "Аренда",

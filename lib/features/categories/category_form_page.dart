@@ -67,6 +67,19 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   }
 
   Future<void> _save() async {
+    try {
+      await _write();
+    } on CategoryTitleTaken {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(tr('category.titleTaken'))));
+      return;
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _write() async {
     final CategoryRepository repo = ref.read(repositoriesProvider).categories;
     final Category? existing = widget.category;
 
@@ -90,7 +103,6 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
         await repo.rename(existing.id, _title.text);
       }
     }
-    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _pickCustomIcon() async {
@@ -112,7 +124,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
     return Scaffold(
       backgroundColor: sage.surface,
       appBar: AppBar(
-        title: Text(existing?.title ?? tr('category.add')),
+        title: Text(existing?.shownTitle ?? tr('category.add')),
         actions: <Widget>[
           TextButton(
             onPressed: _title.text.trim().isEmpty ? null : _save,
