@@ -88,6 +88,20 @@ jobs:
           cache: true
 
       - run: flutter pub get
+
+      # Google Drive sign-in accepts only the SHA-1 of this upload key.
+      - name: Signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        # Without the secret (a fork) the APK falls back to the debug key.
+        run: |
+          [ -n "$KEYSTORE_BASE64" ] || exit 0
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          printf 'storeFile=%s\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=sielto\n' \
+            "$RUNNER_TEMP/upload.jks" "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" \
+            > android/key.properties
+
       - run: |
           flutter build apk --release \
             --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
@@ -122,8 +136,11 @@ jobs:
           cache: true
 
       - run: flutter pub get
-      - run: flutter build windows --release --build-name=$env:BUILD_NAME --build-number=$env:BUILD_NUMBER
+      # The Google Drive desktop client secret stays out of the public source.
+      - run: flutter build windows --release --build-name=$env:BUILD_NAME --build-number=$env:BUILD_NUMBER --dart-define=SIELTO_GOOGLE_DESKTOP_SECRET=$env:GOOGLE_DESKTOP_SECRET
         shell: pwsh
+        env:
+          GOOGLE_DESKTOP_SECRET: ${{ secrets.GOOGLE_DESKTOP_SECRET }}
 
       - name: Package
         run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "sielto-app-$env:BUILD_NAME+$env:BUILD_NUMBER-windows.zip"
@@ -164,7 +181,10 @@ jobs:
       - run: flutter pub get
       - run: |
           flutter build linux --release \
-            --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
+            --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER" \
+            --dart-define=SIELTO_GOOGLE_DESKTOP_SECRET="$GOOGLE_DESKTOP_SECRET"
+        env:
+          GOOGLE_DESKTOP_SECRET: ${{ secrets.GOOGLE_DESKTOP_SECRET }}
 
       - name: Fetch appimagetool
         run: |

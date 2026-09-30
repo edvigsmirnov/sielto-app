@@ -1,7 +1,15 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// The upload key: android/key.properties locally, written from secrets in CI.
+val keyProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
 }
 
 android {
@@ -28,10 +36,23 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (keyProperties.isNotEmpty()) {
+                storeFile = file(keyProperties.getProperty("storeFile"))
+                storePassword = keyProperties.getProperty("storePassword")
+                keyAlias = keyProperties.getProperty("keyAlias")
+                keyPassword = keyProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Debug keys until release signing lands in M11.
-            signingConfig = signingConfigs.getByName("debug")
+            // Without key.properties a release build falls back to the debug key.
+            signingConfig = signingConfigs.getByName(
+                if (keyProperties.isNotEmpty()) "release" else "debug",
+            )
         }
     }
 }
@@ -44,4 +65,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Theme.AppCompat before Android 9, where the biometric prompt needs it.
+    implementation("androidx.appcompat:appcompat:1.7.1")
 }
