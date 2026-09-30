@@ -76,6 +76,7 @@ class CalendarPage extends ConsumerWidget {
       floatingActionButton: view == CalendarView.day
           // Only the Day view has a FAB; other views add through a long press.
           ? FloatingActionButton(
+              tooltip: tr('payment.add'),
               backgroundColor: context.sage.accent,
               foregroundColor: context.sage.accentOn,
               shape: const CircleBorder(),

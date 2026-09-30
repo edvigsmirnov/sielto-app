@@ -329,38 +329,43 @@ class _PaidCircleState extends State<_PaidCircle>
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final bool paid = widget.record.isPaid;
-    return GestureDetector(
-      onTap: widget.onTap == null
-          ? null
-          : () {
-              HapticFeedback.lightImpact();
-              widget.onTap!();
-            },
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 26,
-        height: 26,
-        child: CustomPaint(
-          foregroundPainter: _RaysPainter(
-            progress: _rays,
-            color: sage.accentStrong,
-          ),
-          child: Center(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 140),
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: paid ? sage.accent : Colors.transparent,
-                border: Border.all(
-                  color: paid ? sage.accent : sage.border,
-                  width: 1.5,
+    return Semantics(
+      button: widget.onTap != null,
+      label: tr(paid ? 'feed.bulk.notDone' : 'feed.bulk.done'),
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: widget.onTap == null
+            ? null
+            : () {
+                HapticFeedback.lightImpact();
+                widget.onTap!();
+              },
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 26,
+          height: 26,
+          child: CustomPaint(
+            foregroundPainter: _RaysPainter(
+              progress: _rays,
+              color: sage.accentStrong,
+            ),
+            child: Center(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: paid ? sage.accent : Colors.transparent,
+                  border: Border.all(
+                    color: paid ? sage.accent : sage.border,
+                    width: 1.5,
+                  ),
                 ),
+                child: paid
+                    ? Icon(Icons.check, size: 15, color: sage.accentOn)
+                    : null,
               ),
-              child: paid
-                  ? Icon(Icons.check, size: 15, color: sage.accentOn)
-                  : null,
             ),
           ),
         ),
@@ -420,8 +425,7 @@ class _TypeMarker extends StatelessWidget {
       width: 3,
       height: 22,
       decoration: BoxDecoration(
-        color: solid ? color : Colors.transparent,
-        border: solid ? null : Border.all(color: color),
+        color: solid ? color : color.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(2),
       ),
     );

@@ -18,22 +18,13 @@ class SpaceAvatar extends StatelessWidget {
   /// The open Space gets a ring.
   final bool highlighted;
 
-  static const List<Color> _palette = <Color>[
-    Color(0xFF6F9A74),
-    Color(0xFFCB8B52),
-    Color(0xFF6E8FA8),
-    Color(0xFF8A7BA8),
-    Color(0xFF5F7D7A),
-    Color(0xFFA8748A),
-  ];
-
   /// Same colour on every platform and version, unlike `hashCode`.
   static Color colorOf(String spaceId) =>
-      _palette[spaceId.codeUnits.fold(
+      SageBrand.avatars[spaceId.codeUnits.fold(
             0,
             (int hash, int unit) => (hash * 31 + unit) & 0x7fffffff,
           ) %
-          _palette.length];
+          SageBrand.avatars.length];
 
   @override
   Widget build(BuildContext context) {

@@ -85,6 +85,8 @@ Future<CalendarDate?> pickDate(
   BuildContext context,
   CalendarDate initial,
 ) async {
+  // Keeps the keyboard closed after the picker.
+  FocusManager.instance.primaryFocus?.unfocus();
   final DateTime? picked = await showDatePicker(
     context: context,
     initialDate: initial.toUtcMidnight(),

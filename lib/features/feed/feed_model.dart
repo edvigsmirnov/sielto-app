@@ -150,10 +150,16 @@ List<FeedItem> buildFeedItems({
 
   /// Row id to the side of the row where the cutoff falls.
   Map<String, bool> moneyEndsAt = const <String, bool>{},
+
+  /// Gets a heading even with nothing on it.
+  CalendarDate? today,
 }) {
   final Map<String, List<FeedRecord>> byDay = <String, List<FeedRecord>>{};
   for (final FeedRecord r in records) {
     byDay.putIfAbsent(r.date.toIso(), () => <FeedRecord>[]).add(r);
+  }
+  if (today != null && records.isNotEmpty) {
+    byDay.putIfAbsent(today.toIso(), () => <FeedRecord>[]);
   }
 
   final List<FeedItem> items = <FeedItem>[];

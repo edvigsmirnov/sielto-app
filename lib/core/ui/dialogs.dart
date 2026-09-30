@@ -12,32 +12,100 @@ Future<bool> confirmDialog(
 }) async {
   final bool? answer = await showDialog<bool>(
     context: context,
-    builder: (BuildContext context) {
-      final SageColors sage = context.sage;
-      return AlertDialog(
-        backgroundColor: sage.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(SageRadius.card),
-        ),
-        title: Text(title, style: Theme.of(context).textTheme.titleMedium),
-        content: Text(body, style: Theme.of(context).textTheme.bodyMedium),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(tr('common.cancel')),
+    builder: (BuildContext context) => AlertDialog(
+      backgroundColor: context.sage.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(SageRadius.card),
+      ),
+      title: Text(
+        title,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: isDestructive ? sage.danger : sage.accentStrong,
-            ),
-            child: Text(confirmLabel),
+          const SizedBox(height: SageSpace.lg),
+          ChoiceGrid(
+            choices: <(String, VoidCallback)>[
+              (tr('common.cancel'), () => Navigator.of(context).pop(false)),
+              (confirmLabel, () => Navigator.of(context).pop(true)),
+            ],
+            destructiveLast: isDestructive,
           ),
         ],
-      );
-    },
+      ),
+    ),
   );
   return answer ?? false;
+}
+
+/// One of [options], as stacked full-width buttons. Null when dismissed.
+Future<T?> chooseDialog<T>(
+  BuildContext context, {
+  required String title,
+  required List<(String, T)> options,
+}) => showDialog<T>(
+  context: context,
+  builder: (BuildContext context) => AlertDialog(
+    backgroundColor: context.sage.card,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(SageRadius.card),
+    ),
+    title: Text(
+      title,
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        for (final (String label, T value) in options)
+          Padding(
+            padding: const EdgeInsets.only(top: SageSpace.sm),
+            child: OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(value),
+              child: Text(label, textAlign: TextAlign.center),
+            ),
+          ),
+      ],
+    ),
+  ),
+);
+
+/// Back asks before throwing away edits; [isDirty] is read on each press.
+class DiscardGuard extends StatelessWidget {
+  const DiscardGuard({required this.isDirty, required this.child, super.key});
+
+  final bool Function() isDirty;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (bool didPop, Object? _) async {
+      if (didPop) return;
+      final NavigatorState navigator = Navigator.of(context);
+      if (!isDirty() ||
+          await confirmDialog(
+            context,
+            title: tr('common.discardTitle'),
+            body: tr('common.discardBody'),
+            confirmLabel: tr('common.discard'),
+            isDestructive: true,
+          )) {
+        navigator.pop();
+      }
+    },
+    child: child,
+  );
 }
 
 enum MandatoryChange { move, unpay, delete }
@@ -140,6 +208,55 @@ class _UndoCountdownState extends State<_UndoCountdown>
           Text(tr('common.undo')),
         ],
       ),
+    );
+  }
+}
+
+/// Two buttons a row; an odd last one takes the whole row.
+class ChoiceGrid extends StatelessWidget {
+  const ChoiceGrid({
+    required this.choices,
+    this.destructive = false,
+    this.destructiveLast = false,
+    super.key,
+  });
+
+  final List<(String, VoidCallback)> choices;
+
+  /// Every choice in the danger colour.
+  final bool destructive;
+
+  /// Only the last one.
+  final bool destructiveLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final ButtonStyle danger = OutlinedButton.styleFrom(
+      foregroundColor: context.sage.danger,
+    );
+    Widget button((String, VoidCallback) choice) => OutlinedButton(
+      onPressed: choice.$2,
+      style: destructive || (destructiveLast && identical(choice, choices.last))
+          ? danger
+          : null,
+      child: Text(choice.$1, textAlign: TextAlign.center),
+    );
+    return Column(
+      children: <Widget>[
+        for (int i = 0; i < choices.length; i += 2)
+          Padding(
+            padding: EdgeInsets.only(top: i == 0 ? 0 : SageSpace.sm),
+            child: Row(
+              children: <Widget>[
+                Expanded(child: button(choices[i])),
+                if (i + 1 < choices.length) ...<Widget>[
+                  const SizedBox(width: SageSpace.sm),
+                  Expanded(child: button(choices[i + 1])),
+                ],
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

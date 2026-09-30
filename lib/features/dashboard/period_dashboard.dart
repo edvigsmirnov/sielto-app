@@ -77,7 +77,7 @@ class _NoAnchorState extends StatelessWidget {
             ),
             const SizedBox(height: SageSpace.lg),
             FilledButton(
-              onPressed: () => openIncomeForm(context),
+              onPressed: () => openIncomeForm(context, regular: true),
               child: Text(tr('income.add')),
             ),
             TextButton(

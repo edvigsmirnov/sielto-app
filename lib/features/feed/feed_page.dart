@@ -20,6 +20,7 @@ import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/dashboard/balance_sheet.dart';
 import 'package:sielto/features/dashboard/period_selector.dart';
 import 'package:sielto/features/feed/feed_filter.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
@@ -226,6 +227,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       orderMode: space.feedOrderMode,
       coverage: source.coverage,
       moneyEndsAt: source.moneyEndsAt,
+      today: filter.isActive || source.byPeriod ? null : source.today,
     );
     final List<FeedItem> items = _items;
     _measure(items, rowHeightFor(density));
@@ -278,6 +280,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         bottom: _FeedTotals(
           source: source,
           money: money,
+          onBalanceTap: space.budgetMode == BudgetMode.flow
+              ? () => showBalanceSheet(context, ref, space: space, money: money)
+              : null,
           hasOverdue: !ref.watch(overduePaymentsProvider).isEmpty,
           selector: source.byPeriod && !atBottom ? selector : null,
         ),
@@ -303,6 +308,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             )
           : FloatingActionButton(
               key: _addButton,
+              tooltip: tr('common.add'),
               backgroundColor: context.sage.accent,
               foregroundColor: context.sage.accentOn,
               shape: const CircleBorder(),
@@ -755,10 +761,14 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
     required this.money,
     required this.selector,
     required this.hasOverdue,
+    this.onBalanceTap,
   });
 
   final _FeedSource source;
   final MoneyFormat money;
+
+  /// Flow only: the balance opens its sheet, as on the Dashboard.
+  final VoidCallback? onBalanceTap;
 
   final Widget? selector;
 
@@ -786,7 +796,7 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
         ? money.format(free)
         : (available == null
               ? tr('income.amountUnknown')
-              : tr('dashboard.notCovered'));
+              : tr('feed.runsShort'));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -812,6 +822,7 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
                     value: available,
                     money: money,
                     highlighted: true,
+                    onTap: onBalanceTap,
                   ),
                 ),
                 const SizedBox(width: SageSpace.sm),
@@ -872,7 +883,10 @@ class _Tile extends StatelessWidget {
     required this.money,
     this.valueColor,
     this.highlighted = false,
+    this.onTap,
   });
+
+  final VoidCallback? onTap;
 
   final String label;
 
@@ -892,33 +906,40 @@ class _Tile extends StatelessWidget {
     final SageColors sage = context.sage;
     final TextTheme style = Theme.of(context).textTheme;
 
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: highlighted ? sage.accentTint : sage.card,
+    return Material(
+      color: highlighted ? sage.accentTint : sage.card,
+      borderRadius: BorderRadius.circular(SageRadius.button),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(SageRadius.button),
-        border: Border.all(color: sage.border),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: style.bodySmall?.copyWith(color: sage.inkLabel),
+        child: Container(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(SageRadius.button),
+            border: Border.all(color: sage.border),
           ),
-          const SizedBox(height: 2),
-          if (value != null)
-            AnimatedMoney(value: value!, format: money.format)
-          else
-            Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: style.titleSmall?.copyWith(color: valueColor),
-            ),
-        ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: style.bodySmall?.copyWith(color: sage.inkLabel),
+              ),
+              const SizedBox(height: 2),
+              if (value != null)
+                AnimatedMoney(value: value!, format: money.format)
+              else
+                Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style.titleSmall?.copyWith(color: valueColor),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

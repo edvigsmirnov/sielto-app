@@ -1,6 +1,7 @@
 import 'dart:ui' show PathMetric;
 
 import 'package:decimal/decimal.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
@@ -170,12 +171,15 @@ class CoverageDot extends StatelessWidget {
       };
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      color: colorOf(context, coverage),
-      shape: BoxShape.circle,
+  Widget build(BuildContext context) => Semantics(
+    label: tr('coverage.${coverage.name}'),
+    child: Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: colorOf(context, coverage),
+        shape: BoxShape.circle,
+      ),
     ),
   );
 }

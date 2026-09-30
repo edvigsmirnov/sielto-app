@@ -75,10 +75,9 @@ class HolidaysPage extends ConsumerWidget {
           const _CustomDays(),
           Padding(
             padding: const EdgeInsets.all(SageSpace.gutter),
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.add, size: 20),
-              label: Text(tr('holidays.addDay')),
-              onPressed: () => markNonWorkingDay(context, ref),
+            child: DashedButton(
+              label: '+ ${tr('holidays.addDay')}',
+              onTap: () => markNonWorkingDay(context, ref),
             ),
           ),
         ],

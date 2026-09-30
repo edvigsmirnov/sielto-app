@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/features/payments/series_scope_dialog.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 
 /// How far an amount change on one occurrence reaches.
 enum IncomeScope {

@@ -84,7 +84,20 @@ class MainFigure extends StatelessWidget {
                     style: text.bodyMedium?.copyWith(color: sage.inkLabel),
                   ),
                 ),
-                if (info != null) InfoButton(info!),
+                if (info case final FigureInfo i)
+                  InfoButton(
+                    FigureInfo(
+                      title: i.title,
+                      what: i.what,
+                      sum: i.sum,
+                      note:
+                          i.note ??
+                          (coverage == null
+                              ? null
+                              : tr('info.dot.${coverage!.name}')),
+                      advice: i.advice,
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: SageSpace.xs),
@@ -170,9 +183,17 @@ class SpentFigure extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
       child: Column(
         children: <Widget>[
-          Text(
-            tr('budget.spent'),
-            style: text.bodyMedium?.copyWith(color: context.sage.inkLabel),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                tr('budget.spent'),
+                style: text.bodyMedium?.copyWith(color: context.sage.inkLabel),
+              ),
+              InfoButton(
+                FigureInfo(title: tr('budget.spent'), what: tr('info.spent')),
+              ),
+            ],
           ),
           const SizedBox(height: SageSpace.xs),
           Text(money.format(amount), style: text.displaySmall),
@@ -265,12 +286,14 @@ class _RemainderBar extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(SageRadius.pill),
-      child: LinearProgressIndicator(
-        value: share,
-        minHeight: 6,
-        backgroundColor: sage.accentTintAlt,
-        valueColor: AlwaysStoppedAnimation<Color>(
-          CoverageDot.colorOf(context, coverage),
+      child: ExcludeSemantics(
+        child: LinearProgressIndicator(
+          value: share,
+          minHeight: 6,
+          backgroundColor: sage.accentTintAlt,
+          valueColor: AlwaysStoppedAnimation<Color>(
+            CoverageDot.colorOf(context, coverage),
+          ),
         ),
       ),
     );

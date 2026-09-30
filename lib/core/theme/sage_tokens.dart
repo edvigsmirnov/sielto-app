@@ -244,6 +244,16 @@ abstract final class SageBrand {
 
   /// Wordmark letters.
   static const Color leaf = Color(0xFFBDC9A7);
+
+  /// Space avatars, picked by id; the same in light and dark.
+  static const List<Color> avatars = <Color>[
+    Color(0xFF6F9A74),
+    Color(0xFFCB8B52),
+    Color(0xFF6E8FA8),
+    Color(0xFF8A7BA8),
+    Color(0xFF5F7D7A),
+    Color(0xFFA8748A),
+  ];
 }
 
 abstract final class SageRadius {

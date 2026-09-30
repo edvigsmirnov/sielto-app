@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
 /// How far an edit to one occurrence of a series reaches.
@@ -142,45 +143,4 @@ Future<StatusScope> askStatusScope(
     ),
   );
   return answer ?? StatusScope.cancelled;
-}
-
-/// Two buttons a row; an odd last one takes the whole row.
-class ChoiceGrid extends StatelessWidget {
-  const ChoiceGrid({
-    required this.choices,
-    this.destructive = false,
-    super.key,
-  });
-
-  final List<(String, VoidCallback)> choices;
-  final bool destructive;
-
-  @override
-  Widget build(BuildContext context) {
-    final ButtonStyle? style = destructive
-        ? OutlinedButton.styleFrom(foregroundColor: context.sage.danger)
-        : null;
-    Widget button((String, VoidCallback) choice) => OutlinedButton(
-      onPressed: choice.$2,
-      style: style,
-      child: Text(choice.$1, textAlign: TextAlign.center),
-    );
-    return Column(
-      children: <Widget>[
-        for (int i = 0; i < choices.length; i += 2)
-          Padding(
-            padding: EdgeInsets.only(top: i == 0 ? 0 : SageSpace.sm),
-            child: Row(
-              children: <Widget>[
-                Expanded(child: button(choices[i])),
-                if (i + 1 < choices.length) ...<Widget>[
-                  const SizedBox(width: SageSpace.sm),
-                  Expanded(child: button(choices[i + 1])),
-                ],
-              ],
-            ),
-          ),
-      ],
-    );
-  }
 }

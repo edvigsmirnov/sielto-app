@@ -112,6 +112,25 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
 
   Payment? _existing;
   bool _loaded = false;
+
+  /// [_fingerprint] as loaded; back asks before losing a change.
+  String? _pristine;
+
+  String get _fingerprint => <Object?>[
+    _title.text,
+    _amount.text,
+    _date,
+    _categoryId,
+    _type,
+    _notes.text,
+    _addedNote.text,
+    _isPaid,
+    _paidAll,
+    _isRecurring,
+    _interval,
+    _occurrences,
+    _periodChoice,
+  ].join('|');
   bool _saving = false;
 
   /// Frozen: only the category and an appended note are editable.
@@ -198,6 +217,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     }
 
     _date ??= widget.initialDate ?? ref.read(spaceClockProvider).today();
+    _pristine = _fingerprint;
     if (mounted) setState(() => _loaded = true);
   }
 
@@ -490,183 +510,188 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       return const Scaffold(body: Center(child: LeafLoader()));
     }
 
-    return Scaffold(
-      backgroundColor: sage.surface,
-      appBar: AppBar(
-        title: Text(_existing == null ? tr('payment.add') : tr('payment.edit')),
-        actions: <Widget>[
-          // No delete in a frozen period.
-          if (_existing != null && !_isFrozen)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: tr('common.delete'),
-              onPressed: _delete,
-            ),
-        ],
-      ),
-      bottomNavigationBar: FormActionBar(
-        child: FilledButton(
-          onPressed: _isValid ? _save : null,
-          child: Text(tr('common.save')),
-        ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: <Widget>[
-            if (!_isFrozen)
-              _LivePreview(
-                amount: _parsedAmount,
-                date: _date,
-                replacingId: _existing?.id,
-                isRecurring: _isRecurring && _existing == null,
-                occurrences: _occurrences,
-                interval: _interval,
-                money: money,
-                periodChoice: _periodChoice,
+    return DiscardGuard(
+      isDirty: () => _pristine != null && _fingerprint != _pristine,
+      child: Scaffold(
+        backgroundColor: sage.surface,
+        appBar: AppBar(
+          title: Text(
+            _existing == null ? tr('payment.add') : tr('payment.edit'),
+          ),
+          actions: <Widget>[
+            // No delete in a frozen period.
+            if (_existing != null && !_isFrozen)
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: tr('common.delete'),
+                onPressed: _delete,
               ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(SageSpace.formGutter),
-                children: <Widget>[
-                  if (_isFrozen) const FreezeNotice(),
-                  if (_seriesLength > 1) ...<Widget>[
-                    _SeriesNotice(
-                      position: _seriesPosition,
-                      length: _seriesLength,
-                      onDeleteSeries: _isFrozen ? null : _deleteSeries,
-                    ),
-                    const SizedBox(height: SageSpace.md),
-                  ],
-                  LabelledField(
-                    label: tr('payment.fieldTitle'),
-                    child: TitleField(controller: _title, spaceId: space.id),
-                  ),
-                  const SizedBox(height: SageSpace.lg),
-                  LabelledField(
-                    label: tr('payment.fieldAmount'),
-                    child: MoneyField(
-                      controller: _amount,
-                      symbol: money.symbol,
-                      enabled: !_isFrozen,
-                    ),
-                  ),
-                  const SizedBox(height: SageSpace.lg),
-                  LabelledField(
-                    label: tr('payment.fieldDate'),
-                    child: DateField(
-                      label: DateLabels(locale).dayMonth(_date!),
-                      onTap: _isFrozen ? null : _pickDate,
-                      warn: _dateLooksOdd,
-                    ),
-                  ),
-                  if (_dateLooksOdd)
-                    Padding(
-                      padding: const EdgeInsets.only(top: SageSpace.xs),
-                      child: Text(
-                        tr('payment.dateOutOfRange'),
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: sage.warning),
+          ],
+        ),
+        bottomNavigationBar: FormActionBar(
+          child: FilledButton(
+            onPressed: _isValid ? _save : null,
+            child: Text(tr('common.save')),
+          ),
+        ),
+        body: SafeArea(
+          child: Column(
+            children: <Widget>[
+              if (!_isFrozen)
+                _LivePreview(
+                  amount: _parsedAmount,
+                  date: _date,
+                  replacingId: _existing?.id,
+                  isRecurring: _isRecurring && _existing == null,
+                  occurrences: _occurrences,
+                  interval: _interval,
+                  money: money,
+                  periodChoice: _periodChoice,
+                ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(SageSpace.formGutter),
+                  children: <Widget>[
+                    if (_isFrozen) const FreezeNotice(),
+                    if (_seriesLength > 1) ...<Widget>[
+                      _SeriesNotice(
+                        position: _seriesPosition,
+                        length: _seriesLength,
+                        onDeleteSeries: _isFrozen ? null : _deleteSeries,
                       ),
+                      const SizedBox(height: SageSpace.md),
+                    ],
+                    LabelledField(
+                      label: tr('payment.fieldTitle'),
+                      child: TitleField(controller: _title, spaceId: space.id),
                     ),
-                  const SizedBox(height: SageSpace.lg),
-                  LabelledField(
-                    label: tr('payment.fieldCategory'),
-                    child: CategoryPickerField(
-                      selectedId: _categoryId,
-                      onChanged: (Category? category) => setState(() {
-                        _categoryId = category?.id;
-                        // The category sets the default type for new records only.
-                        if (category != null) _type = category.expenseType;
-                      }),
-                    ),
-                  ),
-                  const SizedBox(height: SageSpace.lg),
-                  LabelledField(
-                    label: tr('payment.fieldType'),
-                    child: SegmentedChoice<ExpenseType>(
-                      values: ExpenseType.values,
-                      selected: _type,
-                      labelOf: (ExpenseType t) => tr('expenseType.${t.name}'),
-                      onChanged: (ExpenseType t) => setState(() => _type = t),
-                      enabled: !_isFrozen,
-                    ),
-                  ),
-                  if (_showPeriodChoice(space)) ...<Widget>[
                     const SizedBox(height: SageSpace.lg),
                     LabelledField(
-                      label: tr('payment.fieldPeriod'),
-                      child: SegmentedChoice<PeriodChoice>(
-                        values: PeriodChoice.values,
-                        selected: _periodChoice,
-                        labelOf: (PeriodChoice c) => switch (c) {
-                          PeriodChoice.byDate => tr('payment.periodAuto'),
-                          PeriodChoice.current => tr('payment.periodCurrent'),
-                          PeriodChoice.next => tr('payment.periodNext'),
-                        },
-                        onChanged: (PeriodChoice c) =>
-                            setState(() => _periodChoice = c),
+                      label: tr('payment.fieldAmount'),
+                      child: MoneyField(
+                        controller: _amount,
+                        symbol: money.symbol,
+                        enabled: !_isFrozen,
                       ),
                     ),
-                    const SizedBox(height: SageSpace.xs),
-                    Text(
-                      tr('payment.periodHint'),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                  if (_existing == null) ...<Widget>[
                     const SizedBox(height: SageSpace.lg),
-                    _RecurrenceFields(
-                      isRecurring: _isRecurring,
-                      interval: _interval,
-                      occurrences: _occurrences,
-                      onRecurringChanged: (bool value) =>
-                          setState(() => _isRecurring = value),
-                      onIntervalChanged: (RecurrenceInterval value) =>
-                          setState(() => _interval = value),
-                      onOccurrencesChanged: (int? value) =>
-                          setState(() => _occurrences = value),
-                    ),
-                  ],
-                  const SizedBox(height: SageSpace.lg),
-                  if (_isFrozen)
-                    AppendNoteField(
-                      existing: _existing?.notes,
-                      controller: _addedNote,
-                      notesLabel: tr('payment.fieldNotes'),
-                    )
-                  else
                     LabelledField(
-                      label: tr('payment.fieldNotes'),
-                      child: TextField(
-                        controller: _notes,
-                        maxLines: 3,
-                        maxLength: 5000,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: InputDecoration(
-                          hintText: tr('payment.notesHint'),
+                      label: tr('payment.fieldDate'),
+                      child: DateField(
+                        label: DateLabels(locale).dayMonth(_date!),
+                        onTap: _isFrozen ? null : _pickDate,
+                        warn: _dateLooksOdd,
+                      ),
+                    ),
+                    if (_dateLooksOdd)
+                      Padding(
+                        padding: const EdgeInsets.only(top: SageSpace.xs),
+                        child: Text(
+                          tr('payment.dateOutOfRange'),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: sage.warning),
                         ),
                       ),
+                    const SizedBox(height: SageSpace.lg),
+                    LabelledField(
+                      label: tr('payment.fieldCategory'),
+                      child: CategoryPickerField(
+                        selectedId: _categoryId,
+                        onChanged: (Category? category) => setState(() {
+                          _categoryId = category?.id;
+                          // The category sets the default type for new records only.
+                          if (category != null) _type = category.expenseType;
+                        }),
+                      ),
                     ),
-                  SwitchListTile.adaptive(
-                    value: _isPaid,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(tr('payment.markPaid')),
-                    onChanged: _isFrozen
-                        ? null
-                        : (bool value) => setState(() => _isPaid = value),
-                  ),
-                  if (_isPaid && _isRecurring && _existing == null)
-                    SegmentedChoice<bool>(
-                      values: const <bool>[false, true],
-                      selected: _paidAll,
-                      labelOf: (bool all) =>
-                          tr(all ? 'payment.paidAll' : 'payment.paidFirst'),
-                      onChanged: (bool all) => setState(() => _paidAll = all),
+                    const SizedBox(height: SageSpace.lg),
+                    LabelledField(
+                      label: tr('payment.fieldType'),
+                      child: SegmentedChoice<ExpenseType>(
+                        values: ExpenseType.values,
+                        selected: _type,
+                        labelOf: (ExpenseType t) => tr('expenseType.${t.name}'),
+                        onChanged: (ExpenseType t) => setState(() => _type = t),
+                        enabled: !_isFrozen,
+                      ),
                     ),
-                ],
+                    if (_showPeriodChoice(space)) ...<Widget>[
+                      const SizedBox(height: SageSpace.lg),
+                      LabelledField(
+                        label: tr('payment.fieldPeriod'),
+                        child: SegmentedChoice<PeriodChoice>(
+                          values: PeriodChoice.values,
+                          selected: _periodChoice,
+                          labelOf: (PeriodChoice c) => switch (c) {
+                            PeriodChoice.byDate => tr('payment.periodAuto'),
+                            PeriodChoice.current => tr('payment.periodCurrent'),
+                            PeriodChoice.next => tr('payment.periodNext'),
+                          },
+                          onChanged: (PeriodChoice c) =>
+                              setState(() => _periodChoice = c),
+                        ),
+                      ),
+                      const SizedBox(height: SageSpace.xs),
+                      Text(
+                        tr('payment.periodHint'),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                    if (_existing == null) ...<Widget>[
+                      const SizedBox(height: SageSpace.lg),
+                      _RecurrenceFields(
+                        isRecurring: _isRecurring,
+                        interval: _interval,
+                        occurrences: _occurrences,
+                        onRecurringChanged: (bool value) =>
+                            setState(() => _isRecurring = value),
+                        onIntervalChanged: (RecurrenceInterval value) =>
+                            setState(() => _interval = value),
+                        onOccurrencesChanged: (int? value) =>
+                            setState(() => _occurrences = value),
+                      ),
+                    ],
+                    const SizedBox(height: SageSpace.lg),
+                    if (_isFrozen)
+                      AppendNoteField(
+                        existing: _existing?.notes,
+                        controller: _addedNote,
+                        notesLabel: tr('payment.fieldNotes'),
+                      )
+                    else
+                      LabelledField(
+                        label: tr('payment.fieldNotes'),
+                        child: TextField(
+                          controller: _notes,
+                          maxLines: 3,
+                          maxLength: 5000,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: InputDecoration(
+                            hintText: tr('payment.notesHint'),
+                          ),
+                        ),
+                      ),
+                    SwitchListTile.adaptive(
+                      value: _isPaid,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(tr('payment.markPaid')),
+                      onChanged: _isFrozen
+                          ? null
+                          : (bool value) => setState(() => _isPaid = value),
+                    ),
+                    if (_isPaid && _isRecurring && _existing == null)
+                      SegmentedChoice<bool>(
+                        values: const <bool>[false, true],
+                        selected: _paidAll,
+                        labelOf: (bool all) =>
+                            tr(all ? 'payment.paidAll' : 'payment.paidFirst'),
+                        onChanged: (bool all) => setState(() => _paidAll = all),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -244,6 +244,7 @@ class FeedFilterBar extends ConsumerWidget {
       child: InputChip(
         label: Text(label),
         onDeleted: () => c.set(without),
+        deleteButtonTooltipMessage: tr('common.clear'),
         onPressed: () => showFeedFilter(context),
         visualDensity: VisualDensity.compact,
       ),

@@ -108,14 +108,16 @@ class _MonthCard extends StatelessWidget {
                 if (empty)
                   Text('—', style: text.bodyMedium)
                 else ...<Widget>[
-                  _Line(
-                    text: '↑${money.short(sums.income)}',
-                    color: sage.accentStrong,
-                  ),
-                  _Line(
-                    text: '↓${money.short(sums.expenses)}',
-                    color: sage.danger,
-                  ),
+                  if (sums.income > Decimal.zero)
+                    _Line(
+                      text: '↑${money.short(sums.income)}',
+                      color: sage.accentStrong,
+                    ),
+                  if (sums.expenses > Decimal.zero)
+                    _Line(
+                      text: '↓${money.short(sums.expenses)}',
+                      color: sage.danger,
+                    ),
                   const SizedBox(height: 2),
                   _Line(
                     text: money.shortSigned(sums.net),

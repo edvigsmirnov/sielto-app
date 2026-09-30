@@ -95,11 +95,13 @@ class _ProgressBar extends StatelessWidget {
         duration: const Duration(milliseconds: 280),
         curve: Curves.easeOutCubic,
         builder: (BuildContext context, double value, Widget? _) =>
-            LinearProgressIndicator(
-              value: value,
-              minHeight: 4,
-              backgroundColor: sage.hairline,
-              valueColor: AlwaysStoppedAnimation<Color>(sage.accent),
+            ExcludeSemantics(
+              child: LinearProgressIndicator(
+                value: value,
+                minHeight: 4,
+                backgroundColor: sage.hairline,
+                valueColor: AlwaysStoppedAnimation<Color>(sage.accent),
+              ),
             ),
       ),
     );

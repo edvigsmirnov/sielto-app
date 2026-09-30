@@ -410,6 +410,9 @@ class _Keypad extends StatelessWidget {
     Widget key(Widget label, VoidCallback? onTap, {String? tooltip}) =>
         Semantics(
           label: tooltip,
+          button: tooltip != null,
+          onTap: tooltip == null ? null : onTap,
+          excludeSemantics: tooltip != null,
           child: SizedBox(
             width: 72,
             height: 64,

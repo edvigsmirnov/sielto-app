@@ -1,5 +1,9 @@
 {
   "common": {
+    "add": "Add",
+    "discardTitle": "Discard your changes?",
+    "discardBody": "What you've typed here won't be saved.",
+    "discard": "Discard",
     "cancel": "Cancel",
     "continue": "Continue",
     "save": "Save",
@@ -40,7 +44,7 @@
   "mode": {
     "incomeDriven": {
       "name": "Regular income",
-      "body": "For a household or personal budget with regular income. Periods run automatically from one payday to the next, and one-off receipts add to your free money.",
+      "body": "For a household or personal budget with regular income. Periods run automatically from one payday to the next, and one-off income adds to what you have to spend.",
       "examples": "Family budget, salary, stipend."
     },
     "budget": {
@@ -57,7 +61,7 @@
   "storage": {
     "local": {
       "name": "Local",
-      "body": "Stored on this device only. Fast, fully private, works without a network. It will not appear on another device and cannot be shared."
+      "body": "Stored on this device only. Fast, fully private, works without a network. It won't appear on another device and can't be shared."
     },
     "cloud": {
       "name": "Cloud",
@@ -161,6 +165,7 @@
     "empty": "Nothing here yet. Add your first expense with +.",
     "today": "Today",
     "currentMoney": "Balance",
+    "runsShort": "Runs short",
     "cutoff": "Money runs out here",
     "deleted": "Deleted \"{title}\"",
     "addBefore": "Add on the day before",
@@ -578,7 +583,7 @@
   "backup": {
     "title": "Backup",
     "manual": "Manual export",
-    "export": "Export backup (.finbackup)",
+    "export": "Save a backup",
     "restore": "Restore from a backup",
     "restoreInstead": "Restore from a backup",
     "exportWhat": "What goes into the backup?",
@@ -587,9 +592,14 @@
       "other": "All Spaces ({})"
     },
     "exportOne": "Only “{}”",
+    "whereTo": "Where should it go?",
+    "toDevice": "Save to this device",
+    "share": "Share or send",
     "saved": "Backup saved",
     "madeOn": "Made on {}",
-    "exists": "Space “{}” already exists here",
+    "keyWhy": "Enter the Recovery Key this backup was made with.",
+    "alreadyHere": "Already on this device. What should happen to it?",
+    "willAdd": "New on this device. It will be added.",
     "choice": {
       "replace": "Replace local",
       "copy": "Import as copy",
@@ -676,19 +686,25 @@
   "drive": {
     "section": "Automatic backup",
     "connect": "Back up to Google Drive",
-    "connectHint": "A daily encrypted snapshot in a hidden app folder; the last 7 are kept",
+    "connectHint": "Once a day, an encrypted copy goes to a private folder in your Google Drive. The last 7 copies are kept.",
     "disconnect": "Turn off",
     "lastBackup": "Last backup",
     "never": "Not yet",
     "now": "Back up now",
     "done": "Backed up to Google Drive. All safe.",
-    "failed": "Google Drive could not be reached",
+    "failed": "Couldn't reach Google Drive. Check your connection and try again.",
     "fromDrive": "From Google Drive",
     "snapshotsTitle": "Backups in Google Drive",
-    "none": "No backups in this Google account",
+    "none": "No Sielto backups in this Google account",
     "kb": "{} KB"
   },
   "info": {
+    "spent": "What you've paid for this goal so far. Planned payments count once you mark them paid.",
+    "dot": {
+      "covered": "The green dot: covered, with room to spare.",
+      "exact": "The orange dot: covered, but only just.",
+      "short": "The red dot: there isn't enough for everything planned."
+    },
     "explain": "How is this worked out?",
     "income": "income",
     "now": "you have now",

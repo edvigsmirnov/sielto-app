@@ -201,4 +201,17 @@ void main() {
       isEmpty,
     );
   });
+
+  test('today gets a heading even with nothing due', () {
+    final List<FeedItem> items = buildFeedItems(
+      records: <FeedRecord>[expense('later', '2026-03-20')],
+      orderMode: FeedOrderMode.grouped,
+      today: const CalendarDate(2026, 3, 10),
+    );
+    expect(keysOf(items), <String>[
+      'header:2026-03-10',
+      'header:2026-03-20',
+      'row:later',
+    ]);
+  });
 }

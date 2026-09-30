@@ -180,9 +180,9 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           ],
 
           const SizedBox(height: SageSpace.xl),
-          _DangerButton(
-            label: tr('space.archive'),
-            onTap: () => _archive(space),
+          OutlinedButton(
+            onPressed: () => _archive(space),
+            child: Text(tr('space.archive')),
           ),
           const SizedBox(height: SageSpace.sm),
           Text(
@@ -235,7 +235,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
         namedArgs: <String, String>{'title': space.title},
       ),
       confirmLabel: tr('space.archive'),
-      isDestructive: true,
     );
     if (!confirmed) return;
 

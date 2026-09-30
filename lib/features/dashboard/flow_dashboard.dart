@@ -85,6 +85,14 @@ class _Body extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: SageSpace.md),
+        if (space.balanceSetOn == null) ...<Widget>[
+          DashedButton(
+            label: tr('balance.sheetTitle'),
+            onTap: () =>
+                showBalanceSheet(context, ref, space: space, money: money),
+          ),
+          const SizedBox(height: SageSpace.md),
+        ],
         OverdueChip(
           money: money,
           margin: const EdgeInsets.only(bottom: SageSpace.md),

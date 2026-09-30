@@ -10,6 +10,7 @@ import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -32,15 +33,23 @@ Future<void> openIncomeForm(
   BuildContext context, {
   String? incomeId,
   CalendarDate? date,
+  bool regular = false,
 }) => Navigator.of(context).push(
   MaterialPageRoute<void>(
     builder: (BuildContext _) =>
-        IncomeFormPage(incomeId: incomeId, initialDate: date),
+        IncomeFormPage(incomeId: incomeId, initialDate: date, regular: regular),
   ),
 );
 
 class IncomeFormPage extends ConsumerStatefulWidget {
-  const IncomeFormPage({this.incomeId, this.initialDate, super.key});
+  const IncomeFormPage({
+    this.incomeId,
+    this.initialDate,
+    this.regular = false,
+    super.key,
+  });
+
+  final bool regular;
 
   final String? incomeId;
   final CalendarDate? initialDate;
@@ -63,8 +72,24 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   /// Defaults to the expected date.
   CalendarDate? _actualDate;
 
-  bool _isRegular = false;
+  late bool _isRegular = widget.regular;
   ScheduleDraft _schedule = const ScheduleDraft();
+
+  /// [_fingerprint] as loaded; back asks before losing a change.
+  String? _pristine;
+
+  String get _fingerprint => <Object?>[
+    _title.text,
+    _amount.text,
+    _date,
+    _notes.text,
+    _addedNote.text,
+    _isReceived,
+    _actualDate,
+    _isRegular,
+    identityHashCode(_schedule),
+    _isAnchor,
+  ].join('|');
 
   /// income_driven Spaces only, once an anchor exists.
   bool _isAnchor = true;
@@ -137,6 +162,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     }
 
     _date ??= widget.initialDate ?? ref.read(spaceClockProvider).today();
+    _pristine = _fingerprint;
     if (mounted) setState(() => _loaded = true);
   }
 
@@ -369,216 +395,225 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     final bool isOccurrence = _existing != null;
     final bool partOfSeries = _existing?.recurrenceRuleId != null;
 
-    return Scaffold(
-      backgroundColor: context.sage.surface,
-      appBar: AppBar(
-        title: Text(
-          isOccurrence
-              ? tr('income.edit')
-              : (ref.space.budgetMode == BudgetMode.budget
-                    ? tr('budget.topUp')
-                    : tr('income.add')),
+    return DiscardGuard(
+      isDirty: () => _pristine != null && _fingerprint != _pristine,
+      child: Scaffold(
+        backgroundColor: context.sage.surface,
+        appBar: AppBar(
+          title: Text(
+            isOccurrence
+                ? tr('income.edit')
+                : (ref.space.budgetMode == BudgetMode.budget
+                      ? tr('budget.topUp')
+                      : tr('income.add')),
+          ),
+          actions: <Widget>[
+            // No delete in a frozen period or for an anchor occurrence; the rule is
+            // deleted from the regular income list.
+            if (isOccurrence && !_isFrozen && !_isAnchorOccurrence)
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: tr('common.delete'),
+                onPressed: _delete,
+              ),
+          ],
         ),
-        actions: <Widget>[
-          // No delete in a frozen period or for an anchor occurrence; the rule is
-          // deleted from the regular income list.
-          if (isOccurrence && !_isFrozen && !_isAnchorOccurrence)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: tr('common.delete'),
-              onPressed: _delete,
-            ),
-        ],
-      ),
-      bottomNavigationBar: FormActionBar(
-        child: FilledButton(
-          onPressed: _isValid ? _save : null,
-          child: Text(tr('common.save')),
+        bottomNavigationBar: FormActionBar(
+          child: FilledButton(
+            onPressed: _isValid ? _save : null,
+            child: Text(tr('common.save')),
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(SageSpace.formGutter),
-          children: <Widget>[
-            if (_isFrozen) const FreezeNotice(),
-            // Link to the rule behind this occurrence.
-            if (partOfSeries)
-              Padding(
-                padding: const EdgeInsets.only(bottom: SageSpace.md),
-                child: SageCard(
-                  onTap: _openRule,
-                  child: Row(
-                    children: <Widget>[
-                      Icon(
-                        Icons.repeat,
-                        size: 18,
-                        color: context.sage.inkLabel,
-                      ),
-                      const SizedBox(width: SageSpace.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              tr('income.partOfSeries'),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              tr('income.editRule'),
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(color: context.sage.accentStrong),
-                            ),
-                          ],
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(SageSpace.formGutter),
+            children: <Widget>[
+              if (_isFrozen) const FreezeNotice(),
+              // Link to the rule behind this occurrence.
+              if (partOfSeries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: SageSpace.md),
+                  child: SageCard(
+                    onTap: _openRule,
+                    child: Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.repeat,
+                          size: 18,
+                          color: context.sage.inkLabel,
                         ),
-                      ),
-                      Icon(
-                        Icons.chevron_right,
-                        size: 18,
-                        color: context.sage.inkLabel,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            LabelledField(
-              label: tr('income.fieldTitle'),
-              child: TextField(
-                controller: _title,
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ),
-            const SizedBox(height: SageSpace.lg),
-            LabelledField(
-              label: tr('income.fieldAmount'),
-              child: MoneyField(
-                controller: _amount,
-                symbol: money.symbol,
-                enabled: !_isFrozen,
-                hintText: tr('income.amountOptional'),
-              ),
-            ),
-            const SizedBox(height: SageSpace.lg),
-
-            // Regular incomes take dates from the schedule.
-            if (!_isRegular) ...<Widget>[
-              LabelledField(
-                label: tr('income.fieldDate'),
-                child: DateField(
-                  label: dates.dayMonth(_date!),
-                  onTap: _isFrozen ? null : () => _pickDate(actual: false),
-                ),
-              ),
-              const SizedBox(height: SageSpace.sm),
-              _LandsIn(date: _date!, amount: _parsedAmount, money: money),
-              const SizedBox(height: SageSpace.lg),
-            ],
-
-            if (!isOccurrence) ...<Widget>[
-              SwitchListTile.adaptive(
-                value: _isRegular,
-                contentPadding: EdgeInsets.zero,
-                title: Text(tr('income.makeRegular')),
-                subtitle: Text(tr('income.makeRegularHint')),
-                onChanged: (bool value) => setState(() => _isRegular = value),
-              ),
-              if (_isRegular) ...<Widget>[
-                const SizedBox(height: SageSpace.md),
-                ScheduleEditor(
-                  draft: _schedule,
-                  onChanged: (ScheduleDraft next) =>
-                      setState(() => _schedule = next),
-                ),
-                // income_driven only.
-                if (_anchorChoiceApplies &&
-                    space.budgetMode == BudgetMode.incomeDriven) ...<Widget>[
-                  const SizedBox(height: SageSpace.lg),
-                  LabelledField(
-                    label: tr('income.role'),
-                    child: SegmentedChoice<bool>(
-                      values: const <bool>[true, false],
-                      selected: _isAnchor,
-                      labelOf: (bool anchor) => anchor
-                          ? tr('income.roleAnchor')
-                          : tr('income.roleAdditional'),
-                      onChanged: (bool anchor) =>
-                          setState(() => _isAnchor = anchor),
+                        const SizedBox(width: SageSpace.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                tr('income.partOfSeries'),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                tr('income.editRule'),
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      color: context.sage.accentStrong,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: context.sage.inkLabel,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: SageSpace.xs),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          _isAnchor
-                              ? tr('income.roleAnchorHint')
-                              : tr('income.roleAdditionalHint'),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                      const AnchorHelpButton(),
-                    ],
+                ),
+              LabelledField(
+                label: tr('income.fieldTitle'),
+                child: TextField(
+                  controller: _title,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+              ),
+              const SizedBox(height: SageSpace.lg),
+              LabelledField(
+                label: tr('income.fieldAmount'),
+                child: MoneyField(
+                  controller: _amount,
+                  symbol: money.symbol,
+                  enabled: !_isFrozen,
+                  hintText: tr('income.amountOptional'),
+                ),
+              ),
+              const SizedBox(height: SageSpace.lg),
+
+              // Regular incomes take dates from the schedule.
+              if (!_isRegular) ...<Widget>[
+                LabelledField(
+                  label: tr('income.fieldDate'),
+                  child: DateField(
+                    label: dates.dayMonth(_date!),
+                    onTap: _isFrozen ? null : () => _pickDate(actual: false),
                   ),
+                ),
+                const SizedBox(height: SageSpace.sm),
+                _LandsIn(date: _date!, amount: _parsedAmount, money: money),
+                const SizedBox(height: SageSpace.lg),
+              ],
+
+              if (!isOccurrence) ...<Widget>[
+                SwitchListTile.adaptive(
+                  value: _isRegular,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(tr('income.makeRegular')),
+                  subtitle: Text(tr('income.makeRegularHint')),
+                  onChanged: (bool value) => setState(() => _isRegular = value),
+                ),
+                if (_isRegular) ...<Widget>[
+                  const SizedBox(height: SageSpace.md),
+                  ScheduleEditor(
+                    draft: _schedule,
+                    onChanged: (ScheduleDraft next) =>
+                        setState(() => _schedule = next),
+                  ),
+                  // income_driven only.
+                  if (_anchorChoiceApplies &&
+                      space.budgetMode == BudgetMode.incomeDriven) ...<Widget>[
+                    const SizedBox(height: SageSpace.lg),
+                    LabelledField(
+                      label: tr('income.role'),
+                      child: SegmentedChoice<bool>(
+                        values: const <bool>[true, false],
+                        selected: _isAnchor,
+                        labelOf: (bool anchor) => anchor
+                            ? tr('income.roleAnchor')
+                            : tr('income.roleAdditional'),
+                        onChanged: (bool anchor) =>
+                            setState(() => _isAnchor = anchor),
+                      ),
+                    ),
+                    const SizedBox(height: SageSpace.xs),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            _isAnchor
+                                ? tr('income.roleAnchorHint')
+                                : tr('income.roleAdditionalHint'),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        const AnchorHelpButton(),
+                      ],
+                    ),
+                  ],
+                ],
+                const SizedBox(height: SageSpace.lg),
+              ],
+
+              if (_isFrozen)
+                AppendNoteField(
+                  existing: _existing?.notes,
+                  controller: _addedNote,
+                  notesLabel: tr('income.fieldNotes'),
+                )
+              else
+                LabelledField(
+                  label: tr('income.fieldNotes'),
+                  child: TextField(
+                    controller: _notes,
+                    maxLines: 3,
+                    maxLength: 5000,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: tr('payment.notesHint'),
+                    ),
+                  ),
+                ),
+
+              if (!_isRegular) ...<Widget>[
+                SwitchListTile.adaptive(
+                  value: _isReceived,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(tr('income.markReceived')),
+                  subtitle: _isReceived && _parsedAmount == null
+                      ? Text(
+                          tr('income.amountRequired'),
+                          style: TextStyle(color: context.sage.danger),
+                        )
+                      : null,
+                  onChanged: _isFrozen
+                      ? null
+                      : (bool value) => setState(() {
+                          _isReceived = value;
+                          _actualDate ??= _date;
+                        }),
+                ),
+                // Actual receipt date. Changes no calculation.
+                if (_isReceived) ...<Widget>[
+                  const SizedBox(height: SageSpace.sm),
+                  LabelledField(
+                    label: tr('income.fieldActualDate'),
+                    child: DateField(
+                      label: dates.dayMonth(_actualDate ?? _date!),
+                      onTap: _isFrozen ? null : () => _pickDate(actual: true),
+                    ),
+                  ),
+                  if (_actualDate != null && _actualDate != _date)
+                    Padding(
+                      padding: const EdgeInsets.only(top: SageSpace.xs),
+                      child: Text(
+                        tr('income.actualDateNote'),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
                 ],
               ],
-              const SizedBox(height: SageSpace.lg),
             ],
-
-            if (_isFrozen)
-              AppendNoteField(
-                existing: _existing?.notes,
-                controller: _addedNote,
-                notesLabel: tr('income.fieldNotes'),
-              )
-            else
-              LabelledField(
-                label: tr('income.fieldNotes'),
-                child: TextField(
-                  controller: _notes,
-                  maxLines: 3,
-                  maxLength: 5000,
-                ),
-              ),
-
-            if (!_isRegular) ...<Widget>[
-              SwitchListTile.adaptive(
-                value: _isReceived,
-                contentPadding: EdgeInsets.zero,
-                title: Text(tr('income.markReceived')),
-                subtitle: _isReceived && _parsedAmount == null
-                    ? Text(
-                        tr('income.amountRequired'),
-                        style: TextStyle(color: context.sage.danger),
-                      )
-                    : null,
-                onChanged: _isFrozen
-                    ? null
-                    : (bool value) => setState(() {
-                        _isReceived = value;
-                        _actualDate ??= _date;
-                      }),
-              ),
-              // Actual receipt date. Changes no calculation.
-              if (_isReceived) ...<Widget>[
-                const SizedBox(height: SageSpace.sm),
-                LabelledField(
-                  label: tr('income.fieldActualDate'),
-                  child: DateField(
-                    label: dates.dayMonth(_actualDate ?? _date!),
-                    onTap: _isFrozen ? null : () => _pickDate(actual: true),
-                  ),
-                ),
-                if (_actualDate != null && _actualDate != _date)
-                  Padding(
-                    padding: const EdgeInsets.only(top: SageSpace.xs),
-                    child: Text(
-                      tr('income.actualDateNote'),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-              ],
-            ],
-          ],
+          ),
         ),
       ),
     );

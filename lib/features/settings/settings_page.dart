@@ -209,7 +209,10 @@ class _NameDialogState extends State<_NameDialog> {
       controller: _controller,
       autofocus: true,
       textCapitalization: TextCapitalization.words,
-      decoration: InputDecoration(hintText: tr('onboarding.nameHint')),
+      decoration: InputDecoration(
+        hintText: tr('onboarding.nameHint'),
+        hintMaxLines: 2,
+      ),
       onSubmitted: (String value) => Navigator.of(context).pop(value),
     ),
     actions: <Widget>[
