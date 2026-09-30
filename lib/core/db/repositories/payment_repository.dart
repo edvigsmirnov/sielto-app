@@ -167,6 +167,24 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     );
   }
 
+  /// Every live payment of [fromCategoryId], frozen periods included: the
+  /// category stays editable there.
+  Future<int> moveCategory(String fromCategoryId, String? toCategoryId) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return (db.update(db.payments)..where(
+          ($PaymentsTable t) =>
+              t.categoryId.equals(fromCategoryId) & t.isDeleted.equals(false),
+        ))
+        .write(
+          PaymentsCompanion(
+            categoryId: Value<String?>(toCategoryId),
+            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+            lastModifiedBy: Value<String?>(s.author),
+            clientEditedAt: Value<DateTime>(s.editedAt),
+          ),
+        );
+  }
+
   Future<int> setPaid(String id, {required bool isPaid}) =>
       update(id, isPaid: Value<bool>(isPaid));
 

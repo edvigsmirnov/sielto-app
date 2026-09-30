@@ -286,6 +286,8 @@
     "pick": "Choose a category",
     "search": "Search categories",
     "titleTaken": "A category with this name already exists.",
+    "moveRecords": "Move records to…",
+    "moved": "Records moved: {count}",
     "deletedLabel": "{title} (deleted)"
   },
   "starterCategory": {

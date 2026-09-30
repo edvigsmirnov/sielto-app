@@ -6,11 +6,13 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/category_repository.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_icons.dart';
 import 'package:sielto/features/categories/category_title.dart';
+import 'package:sielto/features/payments/category_picker.dart';
 
 /// Add or edit a category.
 Future<void> openCategoryForm(BuildContext context, {Category? category}) =>
@@ -103,6 +105,48 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
         await repo.rename(existing.id, _title.text);
       }
     }
+  }
+
+  Future<void> _moveRecords(Category from) async {
+    final CategoryChoice? choice = await pickCategory(
+      context,
+      selectedId: from.id,
+    );
+    if (choice == null || choice.category?.id == from.id || !mounted) return;
+
+    final Repositories repos = ref.read(repositoriesProvider);
+    final int moved = await repos.payments.moveCategory(
+      from.id,
+      choice.category?.id,
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            tr(
+              'category.moved',
+              namedArgs: <String, String>{'count': '$moved'},
+            ),
+          ),
+        ),
+      );
+    if (moved == 0) return;
+
+    final bool delete = await confirmDialog(
+      context,
+      title: tr('category.deleteTitle'),
+      body: tr(
+        'category.deleteBody',
+        namedArgs: <String, String>{'title': from.shownTitle},
+      ),
+      confirmLabel: tr('common.delete'),
+      isDestructive: true,
+    );
+    if (!delete) return;
+    await repos.categories.softDelete(from.id);
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _pickCustomIcon() async {
@@ -210,6 +254,14 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
               onPressed: _title.text.trim().isEmpty ? null : _save,
               child: Text(tr('common.save')),
             ),
+            if (existing != null) ...<Widget>[
+              const SizedBox(height: SageSpace.sm),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.drive_file_move_outline, size: 20),
+                label: Text(tr('category.moveRecords')),
+                onPressed: () => _moveRecords(existing),
+              ),
+            ],
           ],
         ),
       ),

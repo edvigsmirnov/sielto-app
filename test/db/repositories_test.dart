@@ -441,6 +441,36 @@ void main() {
       expect(updated.title, 'Rent');
     });
 
+    test('moving records re-files live payments only', () async {
+      final Space space = await makeSpace();
+      final Category from = await categories.create(
+        spaceId: space.id,
+        title: 'Shop',
+      );
+      final Category to = await categories.create(
+        spaceId: space.id,
+        title: 'Food',
+      );
+      Future<Payment> pay(String title) => payments.create(
+        spaceId: space.id,
+        title: title,
+        amount: Decimal.fromInt(10),
+        dueDate: const CalendarDate(2026, 3, 1),
+        expenseType: ExpenseType.variable,
+        categoryId: from.id,
+      );
+      final Payment live = await pay('Lidl');
+      final Payment deleted = await pay('Aldi');
+      await payments.softDelete(deleted.id);
+
+      expect(await payments.moveCategory(from.id, to.id), 1);
+      expect((await payments.byId(live.id))!.categoryId, to.id);
+      final Payment deletedRow = await (db.select(
+        db.payments,
+      )..where(($PaymentsTable t) => t.id.equals(deleted.id))).getSingle();
+      expect(deletedRow.categoryId, from.id);
+    });
+
     test('a deleted category keeps its payments intact', () async {
       final Space space = await makeSpace();
       final Category c = await categories.create(
