@@ -51,9 +51,6 @@ class PeriodService {
   /// Periods anchored in these years get `holiday_data_incomplete`.
   final Set<int> missingHolidayYears;
 
-  /// Months of occurrences when no period bounds them.
-  static const int incomeHorizonMonths = PeriodMaterializer.horizonPeriods;
-
   /// Furthest [refresh] may reach, in months from today.
   static const int maxReachMonths = 24;
 
@@ -311,7 +308,8 @@ class PeriodService {
     int year = floor.year;
     int month = floor.month;
     final int months = horizonEnd == null
-        ? incomeHorizonMonths
+        // One period per month.
+        ? PeriodMaterializer.horizonPeriods
         : (horizonEnd.year - year) * 12 + horizonEnd.month - month + 1;
     for (int i = 0; i < months; i++) {
       final CalendarDate date = schedule

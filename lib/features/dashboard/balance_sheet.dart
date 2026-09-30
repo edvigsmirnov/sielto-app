@@ -1,13 +1,13 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 
 /// "Set current balance". Paid expenses dated on or before the snapshot day
@@ -87,16 +87,10 @@ class _BalanceSheetState extends ConsumerState<_BalanceSheet> {
           const SizedBox(height: SageSpace.lg),
           LabelledField(
             label: tr('balance.fieldAmount'),
-            child: TextField(
+            child: MoneyField(
               controller: _amount,
+              symbol: widget.money.symbol,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: <TextInputFormatter>[
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.,\s]')),
-              ],
-              decoration: InputDecoration(suffixText: widget.money.symbol),
               onSubmitted: (String _) => _save(),
             ),
           ),

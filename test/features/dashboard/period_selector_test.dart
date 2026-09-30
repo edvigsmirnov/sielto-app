@@ -57,9 +57,7 @@ void main() {
           incomePeriodsProvider.overrideWithValue(<BudgetPeriod>[period]),
           selectedPeriodProvider.overrideWithValue(period),
           periodReachProvider.overrideWith(_NoReach.new),
-          spaceClockProviderForLabel.overrideWithValue(
-            const CalendarDate(2026, 9, 22),
-          ),
+          todayProvider.overrideWithValue(const CalendarDate(2026, 9, 22)),
         ],
         child: EasyLocalization(
           supportedLocales: AppLocales.supported,

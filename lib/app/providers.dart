@@ -138,6 +138,11 @@ final Provider<SpaceClock> spaceClockProvider = Provider<SpaceClock>((Ref ref) {
   return clock;
 });
 
+/// Today in the open Space's timezone.
+final Provider<CalendarDate> todayProvider = Provider<CalendarDate>(
+  (Ref ref) => ref.watch(spaceClockProvider).today(),
+);
+
 final Provider<HolidayService> holidayServiceProvider =
     Provider<HolidayService>((Ref ref) {
       final Repositories repos = ref.watch(repositoriesProvider);

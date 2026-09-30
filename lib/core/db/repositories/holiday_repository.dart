@@ -99,7 +99,7 @@ class CustomNonWorkingDayRepository {
   final AppDatabase db;
   final SpaceClock clock;
 
-  /// Newest first. Days without a country apply to every country.
+  /// Oldest first. Days without a country apply to every country.
   Future<List<CustomNonWorkingDay>> forCountry(String? countryCode) async {
     final List<CustomNonWorkingDay> rows = await all();
     return rows

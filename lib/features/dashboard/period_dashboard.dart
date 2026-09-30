@@ -1,4 +1,3 @@
-import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +17,7 @@ import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/space/period_ledger.dart';
+import 'package:sielto/features/space/space_ledger.dart';
 
 /// Regular-income Space dashboard: no anchor yet, anchor without an amount, or
 /// the period figures.
@@ -245,5 +245,3 @@ class _FloatingAnchorCard extends StatelessWidget {
     );
   }
 }
-
-Decimal? freeCashOf(PeriodLedger ledger) => ledger.freeCash;

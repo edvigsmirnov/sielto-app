@@ -22,31 +22,21 @@ class SpaceRepository {
   final AppDatabase db;
   final SpaceClock clock;
 
-  Future<List<Space>> all() => _selectAll().get();
+  Stream<List<Space>> watchAll() => _byCreation(archived: false).watch();
 
-  Stream<List<Space>> watchAll() => _selectAll().watch();
+  Stream<List<Space>> watchArchived() => _byCreation(archived: true).watch();
 
-  Stream<List<Space>> watchArchived() =>
-      (db.select(db.spaces)
-            ..where(($SpacesTable t) => t.isArchived.equals(true))
-            ..orderBy(<OrderClauseGenerator<$SpacesTable>>[
-              ($SpacesTable t) => OrderingTerm(expression: t.createdAt),
-            ]))
-          .watch();
+  Future<Space?> byId(String id) => (db.select(
+    db.spaces,
+  )..where(($SpacesTable t) => t.id.equals(id))).getSingleOrNull();
 
-  Future<Space?> byId(String id) => _selectById(id).getSingleOrNull();
-
-  Stream<Space?> watchById(String id) => _selectById(id).watchSingleOrNull();
-
-  SimpleSelectStatement<$SpacesTable, Space> _selectAll() =>
-      db.select(db.spaces)
-        ..where(($SpacesTable t) => t.isArchived.equals(false))
-        ..orderBy(<OrderClauseGenerator<$SpacesTable>>[
-          ($SpacesTable t) => OrderingTerm(expression: t.createdAt),
-        ]);
-
-  SimpleSelectStatement<$SpacesTable, Space> _selectById(String id) =>
-      db.select(db.spaces)..where(($SpacesTable t) => t.id.equals(id));
+  SimpleSelectStatement<$SpacesTable, Space> _byCreation({
+    required bool archived,
+  }) => db.select(db.spaces)
+    ..where(($SpacesTable t) => t.isArchived.equals(archived))
+    ..orderBy(<OrderClauseGenerator<$SpacesTable>>[
+      ($SpacesTable t) => OrderingTerm(expression: t.createdAt),
+    ]);
 
   Future<Space> create({
     required String title,
@@ -143,5 +133,5 @@ class SpaceRepository {
       (db.update(db.spaces)..where(($SpacesTable t) => t.id.equals(spaceId)))
           .write(SpacesCompanion(feedOrderMode: Value<FeedOrderMode>(mode)));
 
-  SpaceClock clockFor(Space space) => SpaceClock(timezone: space.timezone);
+  SpaceClock clockFor(Space space) => clock.inZone(space.timezone);
 }

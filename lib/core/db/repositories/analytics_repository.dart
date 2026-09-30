@@ -138,7 +138,7 @@ class AnalyticsRepository {
   }
 
   /// Rows above which the fold runs in an isolate.
-  static const int isolateRowThreshold = 500;
+  static const int isolateRowThreshold = 5000;
 }
 
 /// One slice per grouping key, largest total first. Top-level so an isolate can

@@ -23,7 +23,7 @@ void main() {
       ];
       for (final (int year, int month, int length) in cases) {
         expect(
-          IncomeSchedule.daysInMonth(year, month),
+          CalendarDate(year, month, 1).daysInMonth,
           length,
           reason: '$year-$month',
         );

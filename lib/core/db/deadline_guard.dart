@@ -1,7 +1,6 @@
-import 'package:drift/drift.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/repositories/budget_period_repository.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
-import 'package:sielto/domain/value/enums.dart';
 
 /// A record dated after a hard deadline.
 class BeyondHardDeadline implements Exception {
@@ -16,19 +15,12 @@ class BeyondHardDeadline implements Exception {
 /// Refuses records dated after a Budget Space's hard deadline. A soft
 /// deadline refuses nothing.
 class DeadlineGuard {
-  const DeadlineGuard({required this.db});
+  const DeadlineGuard({required this.periods});
 
-  final AppDatabase db;
+  final BudgetPeriodRepository periods;
 
   Future<void> refuseIfBeyondDeadline(String spaceId, CalendarDate date) async {
-    final BudgetPeriod? period =
-        await (db.select(db.budgetPeriods)..where(
-              ($BudgetPeriodsTable t) =>
-                  t.spaceId.equals(spaceId) &
-                  t.periodType.equalsValue(PeriodType.continuous) &
-                  t.isDeleted.equals(false),
-            ))
-            .getSingleOrNull();
+    final BudgetPeriod? period = await periods.continuousFor(spaceId);
     if (period == null || !period.deadlineIsHard) return;
 
     final CalendarDate? deadline = period.deadlineDate;

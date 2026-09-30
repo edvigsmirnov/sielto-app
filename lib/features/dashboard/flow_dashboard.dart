@@ -1,4 +1,3 @@
-import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +8,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
-import 'package:sielto/features/dashboard/dashboard_page.dart';
+import 'package:sielto/features/dashboard/balance_sheet.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/projection_chart.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
@@ -72,7 +71,8 @@ class _Body extends ConsumerWidget {
               'amount': money.format(projection.averageSpendPerDay),
             },
           ),
-          onTap: () => editBalance(context, ref, space: space, money: money),
+          onTap: () =>
+              showBalanceSheet(context, ref, space: space, money: money),
         ),
         const SizedBox(height: SageSpace.md),
         OverdueChip(
@@ -96,7 +96,7 @@ class _Body extends ConsumerWidget {
                 caption: _balanceCaption(space, ledger, dates),
                 // Tapping the balance edits it.
                 onTap: () =>
-                    editBalance(context, ref, space: space, money: money),
+                    showBalanceSheet(context, ref, space: space, money: money),
               ),
             ),
             const SizedBox(width: SageSpace.sm),
@@ -203,6 +203,3 @@ class _FigureTile extends StatelessWidget {
     );
   }
 }
-
-/// Null once not everything is covered.
-Decimal? flowFreeCash(FlowLedger ledger) => ledger.freeCash;

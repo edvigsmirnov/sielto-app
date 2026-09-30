@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/deadline_guard.dart';
 import 'package:sielto/core/db/freeze_guard.dart';
+import 'package:sielto/core/db/repositories/budget_period_repository.dart';
 import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -22,7 +23,9 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
   TableInfo<$PaymentsTable, Payment> get table => db.payments;
 
   late final FreezeGuard _freeze = FreezeGuard(db: db, clock: clock);
-  late final DeadlineGuard _deadline = DeadlineGuard(db: db);
+  late final DeadlineGuard _deadline = DeadlineGuard(
+    periods: BudgetPeriodRepository(db: db, clock: clock, userId: userId),
+  );
 
   /// Fields a frozen period protects. Category and notes stay editable.
   static bool _touchesProtected({
@@ -39,7 +42,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
   Stream<List<Payment>> watchInSpace(String spaceId) =>
       _selectInSpace(spaceId).watch();
 
-  /// Three months either side of [around].
+  /// Due between [from] and [to], inclusive.
   Stream<List<Payment>> watchAround(
     String spaceId,
     CalendarDate from,
@@ -63,18 +66,17 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
         ]);
 
   Future<List<Payment>> onDay(String spaceId, CalendarDate day) =>
-      (selectAliveInSpace(spaceId)
-            ..where(($PaymentsTable t) => t.dueDate.equals(day.toIso()))
-            ..orderBy(<OrderClauseGenerator<$PaymentsTable>>[
-              ($PaymentsTable t) => OrderingTerm(expression: t.sortOrder),
-              ($PaymentsTable t) => OrderingTerm(expression: t.id),
-            ]))
-          .get();
+      _selectOnDay(spaceId, day).get();
 
   Stream<List<Payment>> watchOnDay(String spaceId, CalendarDate day) =>
-      (_selectInSpace(
-        spaceId,
-      )..where(($PaymentsTable t) => t.dueDate.equals(day.toIso()))).watch();
+      _selectOnDay(spaceId, day).watch();
+
+  SimpleSelectStatement<$PaymentsTable, Payment> _selectOnDay(
+    String spaceId,
+    CalendarDate day,
+  ) =>
+      _selectInSpace(spaceId)
+        ..where(($PaymentsTable t) => t.dueDate.equals(day.toIso()));
 
   Future<Payment?> byId(String id) =>
       (selectAlive()..where(($PaymentsTable t) => t.id.equals(id)))
@@ -174,11 +176,6 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     final Payment? row = await byId(id);
     await _freeze.refuseIfFrozen(row?.budgetPeriodId);
     return super.softDelete(id);
-  }
-
-  Future<FreezeState> freezeStateOf(String id) async {
-    final Payment? row = await byId(id);
-    return _freeze.stateOf(row?.budgetPeriodId);
   }
 
   /// One row per occurrence, sharing a `group_recurring_id`.
@@ -397,7 +394,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
           ))
           .get();
 
-  /// Manual rows whose period is deleted.
+  /// Rows pinned to a period by hand.
   Future<List<Payment>> manuallyAssignedIn(String spaceId) =>
       (selectAliveInSpace(spaceId)..where(
             ($PaymentsTable t) =>

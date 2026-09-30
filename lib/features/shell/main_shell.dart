@@ -18,8 +18,9 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
-  final PageController _controller = PageController();
-  int _index = 0;
+  late final PageController _controller = PageController(initialPage: _index);
+
+  int get _index => ref.read(shellTabProvider);
 
   @override
   void dispose() {
@@ -27,10 +28,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.dispose();
   }
 
-  void _show(int index) {
-    setState(() => _index = index);
-    ref.read(shellTabProvider.notifier).show(index);
-  }
+  void _show(int index) => ref.read(shellTabProvider.notifier).show(index);
 
   void _goTo(int index) {
     final int distance = (index - _index).abs();
@@ -77,8 +75,9 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
     _resetOnSpaceChange();
+    final int index = ref.watch(shellTabProvider);
     return PopScope(
-      canPop: _index == 0,
+      canPop: index == 0,
       onPopInvokedWithResult: (bool didPop, Object? _) {
         if (!didPop) _back();
       },
@@ -94,7 +93,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           ],
         ),
         bottomNavigationBar: NavigationBar(
-          selectedIndex: _index,
+          selectedIndex: index,
           onDestinationSelected: _goTo,
           destinations: <NavigationDestination>[
             NavigationDestination(

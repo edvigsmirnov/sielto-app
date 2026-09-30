@@ -10,7 +10,6 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/leaf_scatter.dart';
 import 'package:sielto/domain/value/enums.dart';
-import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';

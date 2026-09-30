@@ -438,3 +438,42 @@ class EmptyState extends StatelessWidget {
     ),
   );
 }
+
+/// Upper-case label over a settings section.
+class SectionLabel extends StatelessWidget {
+  const SectionLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      SageSpace.gutter,
+      SageSpace.md,
+      SageSpace.gutter,
+      SageSpace.xs,
+    ),
+    child: Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelSmall,
+    ),
+  );
+}
+
+/// Icon and label in a popup menu item.
+class MenuLine extends StatelessWidget {
+  const MenuLine({required this.icon, required this.label, super.key});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Icon(icon, size: 20, color: context.sage.inkSecondary),
+      const SizedBox(width: SageSpace.md),
+      Text(label, style: Theme.of(context).textTheme.bodyLarge),
+    ],
+  );
+}

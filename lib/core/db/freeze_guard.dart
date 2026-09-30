@@ -29,29 +29,9 @@ class FreezeGuard {
 
   /// Throws [PeriodFrozen]. "Today" is in the Space's timezone.
   Future<void> refuseIfFrozen(String? periodId) async {
-    if (periodId == null) return;
-
-    final BudgetPeriod? period =
-        await (db.select(db.budgetPeriods)
-              ..where(($BudgetPeriodsTable t) => t.id.equals(periodId)))
-            .getSingleOrNull();
-    // A period without an end never freezes.
-    if (period == null || period.endDate == null) return;
-
-    final Space? space =
-        await (db.select(db.spaces)
-              ..where(($SpacesTable t) => t.id.equals(period.spaceId)))
-            .getSingleOrNull();
-    if (space == null) return;
-
-    final SpaceClock spaceClock = clock.inZone(space.timezone);
-    final bool frozen = evaluator.isFrozen(
-      endDate: period.endDate,
-      today: spaceClock.today(),
-      nowUtc: spaceClock.nowUtc(),
-      unfrozenUntil: period.unfrozenUntil,
-    );
-    if (frozen) throw PeriodFrozen(periodId);
+    if (await stateOf(periodId) == FreezeState.frozen) {
+      throw PeriodFrozen(periodId!);
+    }
   }
 
   Future<FreezeState> stateOf(String? periodId) async {

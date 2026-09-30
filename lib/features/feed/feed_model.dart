@@ -83,22 +83,19 @@ class FeedRecord {
 
   bool get isMandatory => expenseType == ExpenseType.mandatory;
 
+  /// Incomes, then mandatory, then variable.
+  int get groupRank => isIncome ? 0 : (isMandatory ? 1 : 2);
+
   /// Unpaid and due before today. Incomes are never overdue.
   bool isOverdue(CalendarDate today) =>
       !isIncome && !isPaid && date.isBefore(today);
-}
-
-/// Incomes, then mandatory, then variable.
-int _groupRank(FeedRecord r) {
-  if (r.isIncome) return 0;
-  return r.isMandatory ? 1 : 2;
 }
 
 /// `grouped`: type block, then `sort_order`. `free`: `sort_order`. Id breaks
 /// ties.
 int compareInDay(FeedRecord a, FeedRecord b, FeedOrderMode mode) {
   if (mode == FeedOrderMode.grouped) {
-    final int byGroup = _groupRank(a).compareTo(_groupRank(b));
+    final int byGroup = a.groupRank.compareTo(b.groupRank);
     if (byGroup != 0) return byGroup;
   }
   final int byOrder = a.sortOrder.compareTo(b.sortOrder);

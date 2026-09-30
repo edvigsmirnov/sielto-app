@@ -14,7 +14,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -25,10 +25,8 @@ import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/feed_reorder.dart';
 import 'package:sielto/features/feed/feed_row.dart';
 import 'package:sielto/features/feed/feed_window.dart';
-import 'package:sielto/features/incomes/income_form_page.dart';
-import 'package:sielto/features/incomes/receipt_dialog.dart';
+import 'package:sielto/features/feed/record_actions.dart';
 import 'package:sielto/features/overdue/overdue.dart';
-import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/periods/period_service.dart';
@@ -56,6 +54,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
   /// Last built list, for the scroll listener and the arrows.
   List<FeedItem> _items = const <FeedItem>[];
+
+  /// Offset of each item in [_items], plus the total at the end.
+  List<double> _starts = const <double>[0];
+
+  /// Date of the last header at or before each item in [_items].
+  List<CalendarDate?> _headers = const <CalendarDate?>[];
+
+  bool _edgeCheckQueued = false;
 
   /// Order just dropped, shown until the query reads it back.
   Map<String, int>? _dropped;
@@ -86,7 +92,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   /// Widens the window at either end and syncs the selected period.
   void _extendOnEdge() {
     if (!_scroll.hasClients) return;
-    _syncPeriodToScroll(_items);
+    _syncPeriodToScroll();
     final ScrollPosition position = _scroll.position;
     const double margin = 400;
     if (_extending) return;
@@ -130,7 +136,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     _keptTop = null;
     if (kept == null) return;
     // Keeps the view on the same item.
-    final double? y = _offsetOf(items, (FeedItem i) => _sameItem(i, kept));
+    final double? y = _offsetOf((FeedItem i) => _sameItem(i, kept));
     if (y == null || y == 0) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.pixels + y);
@@ -144,14 +150,23 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     _ => false,
   };
 
-  double? _offsetOf(List<FeedItem> items, bool Function(FeedItem) test) {
-    final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
-    double y = 0;
+  /// Within the last built [_items].
+  double? _offsetOf(bool Function(FeedItem) test) {
+    final int i = _items.indexWhere(test);
+    return i < 0 ? null : _starts[i];
+  }
+
+  void _measure(List<FeedItem> items, double rowHeight) {
+    final List<double> starts = <double>[0];
+    final List<CalendarDate?> headers = <CalendarDate?>[];
+    CalendarDate? header;
     for (final FeedItem item in items) {
-      if (test(item)) return y;
-      y += _extentOf(item, rowHeight);
+      if (item is FeedHeader) header = item.date;
+      headers.add(header);
+      starts.add(starts.last + _extentOf(item, rowHeight));
     }
-    return null;
+    _starts = starts;
+    _headers = headers;
   }
 
   static double _extentOf(FeedItem item, double rowHeight) => switch (item) {
@@ -161,21 +176,15 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   };
 
   /// Room under the last row so the last period can reach the top.
-  double _bottomSlack(List<FeedItem> items, double viewport, bool byPeriod) {
+  double _bottomSlack(double viewport, bool byPeriod) {
     const double floor = 96;
     final BudgetPeriod? last = ref.read(incomePeriodsProvider).lastOrNull;
     if (!byPeriod || last == null) return floor;
     final double? start = _offsetOf(
-      items,
       (FeedItem i) => i is FeedHeader && !i.date.isBefore(last.startDate),
     );
     if (start == null) return floor;
-    final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
-    double total = 0;
-    for (final FeedItem item in items) {
-      total += _extentOf(item, rowHeight);
-    }
-    return math.max(floor, viewport - (total - start));
+    return math.max(floor, viewport - (_starts.last - start));
   }
 
   @override
@@ -190,6 +199,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       locale: locale,
       currencyCode: space.currencyCode,
     );
+    final DateLabels dates = DateLabels(locale);
 
     final _FeedSource? source = _source(space);
     if (source == null) {
@@ -207,17 +217,22 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       moneyEndsAt: source.moneyEndsAt,
     );
     final List<FeedItem> items = _items;
+    _measure(items, rowHeightFor(density));
     if (_extending) _afterExtend(items);
     // Checks the edges after layout: a list that fits never scrolls.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _extendOnEdge();
-    });
+    if (!_edgeCheckQueued) {
+      _edgeCheckQueued = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _edgeCheckQueued = false;
+        if (mounted) _extendOnEdge();
+      });
+    }
     if (!_placed && items.isNotEmpty) {
       _placed = true;
       final BudgetPeriod? selected = ref.read(selectedPeriodProvider);
       if (source.byPeriod && selected != null) {
         WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _scrollToPeriod(selected, items, animate: false),
+          (_) => _scrollToPeriod(selected, animate: false),
         );
       }
     }
@@ -225,7 +240,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         .watch(controlsAtBottomProvider)
         .contains(ControlsScreen.feed);
     final Widget selector = PeriodSelector(
-      onJump: (BudgetPeriod p) => _scrollToPeriod(p, items),
+      onJump: (BudgetPeriod p) => _scrollToPeriod(p),
       swipe: !atBottom,
     );
 
@@ -268,7 +283,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                           buildDefaultDragHandles: false,
                           padding: EdgeInsets.only(
                             bottom: _bottomSlack(
-                              items,
                               box.maxHeight,
                               source.byPeriod,
                             ),
@@ -281,7 +295,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                                 index: index,
                                 density: density,
                                 money: money,
-                                locale: locale,
+                                dates: dates,
                                 today: source.today,
                                 categories:
                                     categories.value ??
@@ -417,11 +431,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 
   /// Selects the period of the top visible day.
-  void _syncPeriodToScroll(List<FeedItem> items) {
+  void _syncPeriodToScroll() {
     final List<BudgetPeriod> periods = ref.read(incomePeriodsProvider);
     if (periods.isEmpty || !_scroll.hasClients) return;
 
-    final CalendarDate? top = _topVisibleDate(items);
+    final CalendarDate? top = _topVisibleDate();
     if (top == null) return;
 
     for (final BudgetPeriod p in periods) {
@@ -436,23 +450,23 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 
   /// First row at or below the top of the viewport, from the fixed extents.
-  CalendarDate? _topVisibleDate(List<FeedItem> items) {
+  /// Binary search over [_starts].
+  CalendarDate? _topVisibleDate() {
+    final List<FeedItem> items = _items;
+    if (items.isEmpty) return null;
     final double offset = _scroll.position.pixels;
-    final double rowHeight = rowHeightFor(ref.read(feedDensityProvider));
-
-    double y = 0;
-    CalendarDate? lastHeader;
-    for (final FeedItem item in items) {
-      final double h = switch (item) {
-        FeedHeader() => _headerExtent,
-        FeedCutoff() => _cutoffExtent,
-        FeedRow() => rowHeight,
-      };
-      if (item is FeedHeader) lastHeader = item.date;
-      if (y + h > offset) return lastHeader ?? _firstDateOf(items);
-      y += h;
+    int lo = 0;
+    int hi = items.length - 1;
+    // First item whose end is below the offset.
+    while (lo < hi) {
+      final int mid = (lo + hi) ~/ 2;
+      if (_starts[mid + 1] > offset) {
+        hi = mid;
+      } else {
+        lo = mid + 1;
+      }
     }
-    return lastHeader;
+    return _headers[lo] ?? _firstDateOf(items);
   }
 
   CalendarDate? _firstDateOf(List<FeedItem> items) {
@@ -463,14 +477,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 
   /// Scrolls to where [period] begins.
-  void _scrollToPeriod(
-    BudgetPeriod period,
-    List<FeedItem> items, {
-    bool animate = true,
-  }) {
+  void _scrollToPeriod(BudgetPeriod period, {bool animate = true}) {
     if (!_scroll.hasClients) return;
     final double? y = _offsetOf(
-      items,
       (FeedItem i) => i is FeedHeader && !i.date.isBefore(period.startDate),
     );
     if (y == null) return;
@@ -495,7 +504,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     required int index,
     required FeedDensity density,
     required MoneyFormat money,
-    required String locale,
+    required DateLabels dates,
     required CalendarDate today,
     required Map<String, Category> categories,
     required FreezeLookup freeze,
@@ -507,7 +516,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           key: ValueKey<String>(item.key),
           header: item,
           today: today,
-          dates: DateLabels(locale),
+          dates: dates,
         );
       case FeedCutoff():
         return _CutoffLine(key: ValueKey<String>(item.key), item: item);
@@ -522,9 +531,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           category: record.categoryId == null
               ? null
               : categories[record.categoryId],
-          onTap: () => _edit(record),
-          onTogglePaid: () => _togglePaid(record),
-          onDelete: () => _delete(record),
+          onTap: () => editRecord(context, record),
+          onTogglePaid: () => togglePaid(context, ref, record),
+          onDelete: () => deleteRecord(context, ref, record),
           isFrozen: freeze.isFrozen(record.budgetPeriodId),
           isOverdue: record.isOverdue(today),
           isBeyondDeadline: beyondDeadline.contains(record.id),
@@ -550,89 +559,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           ),
         );
     }
-  }
-
-  void _edit(FeedRecord record) {
-    if (record.isIncome) {
-      openIncomeForm(context, incomeId: record.id, date: record.date);
-      return;
-    }
-    openPaymentForm(context, paymentId: record.id, date: record.date);
-  }
-
-  /// Unmarking a mandatory payment asks for confirmation.
-  Future<void> _togglePaid(FeedRecord record) async {
-    final Repositories repos = ref.read(repositoriesProvider);
-    final bool next = !record.isPaid;
-
-    if (!next && record.isMandatory && !await confirmMandatory(context)) {
-      return;
-    }
-    if (!mounted) return;
-
-    if (record.isIncome) {
-      if (next && record.amount == null) {
-        // A receipt needs an amount.
-        if (mounted) {
-          openIncomeForm(context, incomeId: record.id, date: record.date);
-        }
-        return;
-      }
-
-      // Asks for the actual receipt date, defaulting to the expected one.
-      CalendarDate? actual;
-      if (next) {
-        if (!mounted) return;
-        actual = await askReceiptDate(context, expected: record.date);
-        if (actual == null) return;
-      }
-      if (!mounted) return;
-
-      await guardFreeze(
-        context,
-        () => repos.incomes.update(
-          record.id,
-          isPaid: Value<bool>(next),
-          actualDate: Value<CalendarDate?>(actual),
-        ),
-      );
-      // An early anchor moves its cycle.
-      ref.invalidate(periodRefreshProvider);
-      return;
-    }
-    await guardFreeze(
-      context,
-      () => repos.payments.setPaid(record.id, isPaid: next),
-    );
-  }
-
-  Future<void> _delete(FeedRecord record) async {
-    if (record.isMandatory && !await confirmMandatory(context)) return;
-    if (!mounted) return;
-    final Repositories repos = ref.read(repositoriesProvider);
-
-    final bool deleted = await guardFreeze(
-      context,
-      () => record.isIncome
-          ? repos.incomes.softDelete(record.id)
-          : repos.payments.softDelete(record.id),
-    );
-    ref.invalidate(periodRefreshProvider);
-    if (!deleted || !mounted) return;
-    showUndoSnackbar(
-      context,
-      message: tr(
-        'feed.deleted',
-        namedArgs: <String, String>{'title': record.title},
-      ),
-      onUndo: () async {
-        if (record.isIncome) {
-          await repos.incomes.restore(record.id);
-        } else {
-          await repos.payments.restore(record.id);
-        }
-      },
-    );
   }
 
   Future<void> _onReorder({
@@ -689,21 +615,15 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         recordId: final String id,
         suggestedDate: final CalendarDate suggested,
       ):
-        final DateTime? picked = await showDatePicker(
-          context: context,
-          initialDate: suggested.toUtcMidnight(),
-          firstDate: DateTime.utc(suggested.year - 5),
-          lastDate: DateTime.utc(suggested.year + 10),
-        );
-        if (picked == null) return;
-        final CalendarDate date = CalendarDate.fromDateTime(picked);
+        final CalendarDate? date = await pickDate(context, suggested);
+        if (date == null) return;
         final FeedRow? row = items
             .whereType<FeedRow>()
             .where((FeedRow r) => r.record.id == id)
             .firstOrNull;
         if (row == null) return;
         if (!mounted) return;
-        await guardFreeze(
+        await guardWrite(
           context,
           () => row.record.isIncome
               ? repos.incomes.update(

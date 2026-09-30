@@ -1,13 +1,13 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
@@ -92,19 +92,11 @@ class _FundSheetState extends ConsumerState<_FundSheet> {
           const SizedBox(height: SageSpace.lg),
           LabelledField(
             label: tr('budget.target'),
-            child: TextField(
+            child: MoneyField(
               controller: _amount,
+              symbol: money.symbol,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: <TextInputFormatter>[
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.,\s]')),
-              ],
-              decoration: InputDecoration(
-                suffixText: money.symbol,
-                hintText: tr('budget.targetHint'),
-              ),
+              hintText: tr('budget.targetHint'),
               onSubmitted: (String _) => _save(),
             ),
           ),
@@ -145,14 +137,9 @@ class _DeadlineSheetState extends ConsumerState<_DeadlineSheet> {
 
   Future<void> _pick() async {
     final CalendarDate start = _date ?? widget.ledger.today;
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: start.toUtcMidnight(),
-      firstDate: DateTime.utc(start.year - 5),
-      lastDate: DateTime.utc(start.year + 10),
-    );
+    final CalendarDate? picked = await pickDate(context, start);
     if (picked == null) return;
-    setState(() => _date = CalendarDate.fromDateTime(picked));
+    setState(() => _date = picked);
   }
 
   Future<void> _save() async {

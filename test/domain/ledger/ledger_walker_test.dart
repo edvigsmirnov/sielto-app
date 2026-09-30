@@ -89,7 +89,13 @@ void main() {
         ],
       );
       // 'c' fits on its own, but comes after the cutoff.
-      expect(run.uncovered.map((LedgerEntry e) => e.id), <String>['b', 'c']);
+      expect(
+        <String>[
+          for (final LedgerStep s in run.steps)
+            if (!s.isCovered) s.entry.id,
+        ],
+        <String>['b', 'c'],
+      );
     });
 
     test('an empty ledger is covered with the full amount left', () {

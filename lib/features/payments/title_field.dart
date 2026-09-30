@@ -20,6 +20,8 @@ class TitleField extends ConsumerStatefulWidget {
 
   static const int minimumPrefix = 2;
 
+  static const Duration debounce = Duration(milliseconds: 250);
+
   @override
   ConsumerState<TitleField> createState() => _TitleFieldState();
 }
@@ -47,6 +49,11 @@ class _TitleFieldState extends ConsumerState<TitleField> {
       optionsBuilder: (TextEditingValue value) async {
         final String prefix = value.text.trim();
         if (prefix.length < TitleField.minimumPrefix) {
+          return const Iterable<String>.empty();
+        }
+        // Debounce: a newer keystroke makes this call stale.
+        await Future<void>.delayed(TitleField.debounce);
+        if (widget.controller.text.trim() != prefix) {
           return const Iterable<String>.empty();
         }
         final List<String> matches = await ref

@@ -70,8 +70,8 @@ flutter:
     # One JSON per shipped locale. The pseudolocale has no file: it is derived
     # from en at load time by PseudoAssetLoader.
     - assets/translations/
-    # Public holidays for twenty countries, so the base case needs no network
-    # and no API at all (spec 5.1.1). One file per country.
+    # Public holidays for every country, so the base case needs no network.
+    # One file per country.
     - assets/holidays/
     - assets/holidays/names/
     # The wordmark for the welcome screen, cut from tools/icon/wordmark.png

@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
@@ -11,7 +10,6 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -28,11 +26,9 @@ import 'package:sielto/features/calendar/week_view.dart';
 import 'package:sielto/features/calendar/year_view.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
-import 'package:sielto/features/incomes/income_form_page.dart';
-import 'package:sielto/features/incomes/receipt_dialog.dart';
+import 'package:sielto/features/feed/record_actions.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
-import 'package:sielto/features/periods/freeze_ui.dart' show guardFreeze;
 import 'package:sielto/features/shell/app_header.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
@@ -153,7 +149,7 @@ class _Swipe extends ConsumerWidget {
       onHorizontalDragEnd: (DragEndDetails details) {
         final double? velocity = details.primaryVelocity;
         if (velocity == null || velocity.abs() < _velocityThreshold) return;
-        HapticFeedback.selectionClick();
+        HapticFeedback.lightImpact();
         ref
             .read(selectedDateProvider.notifier)
             .step(view, velocity > 0 ? -1 : 1);
@@ -474,6 +470,7 @@ class _DayBody extends ConsumerWidget {
     return DayView(
       day: day,
       records: records,
+      orderMode: ref.watch(currentSpaceProvider)!.feedOrderMode,
       today: today,
       categories:
           ref.watch(categoryIndexProvider).value ?? const <String, Category>{},
@@ -481,98 +478,11 @@ class _DayBody extends ConsumerWidget {
       money: money,
       isFrozen: ref.watch(freezeLookupProvider).isFrozen,
       dayOff: ref.watch(dayOffNamesProvider(day)),
-      onEdit: (FeedRecord r) => _edit(context, r),
-      onTogglePaid: (FeedRecord r) => _togglePaid(context, ref, r),
-      onDelete: (FeedRecord r) => _delete(context, ref, r),
+      onEdit: (FeedRecord r) => editRecord(context, r),
+      onTogglePaid: (FeedRecord r) => togglePaid(context, ref, r),
+      onDelete: (FeedRecord r) => deleteRecord(context, ref, r),
       onHoldRecord: (FeedRecord r) =>
           showRecordMenu(context, ref, record: r, today: today),
-    );
-  }
-
-  void _edit(BuildContext context, FeedRecord record) {
-    if (record.isIncome) {
-      openIncomeForm(context, incomeId: record.id, date: record.date);
-      return;
-    }
-    openPaymentForm(context, paymentId: record.id, date: record.date);
-  }
-
-  /// Unmarking a mandatory payment asks for confirmation.
-  Future<void> _togglePaid(
-    BuildContext context,
-    WidgetRef ref,
-    FeedRecord record,
-  ) async {
-    final Repositories repos = ref.read(repositoriesProvider);
-    final bool next = !record.isPaid;
-
-    if (!next && record.isMandatory && !await confirmMandatory(context)) {
-      return;
-    }
-    if (!context.mounted) return;
-
-    if (!record.isIncome) {
-      await guardFreeze(
-        context,
-        () => repos.payments.setPaid(record.id, isPaid: next),
-      );
-      return;
-    }
-
-    if (next && record.amount == null) {
-      // A receipt needs an amount.
-      openIncomeForm(context, incomeId: record.id, date: record.date);
-      return;
-    }
-
-    CalendarDate? actual;
-    if (next) {
-      actual = await askReceiptDate(context, expected: record.date);
-      if (actual == null || !context.mounted) return;
-    }
-
-    await guardFreeze(
-      context,
-      () => repos.incomes.update(
-        record.id,
-        isPaid: Value<bool>(next),
-        actualDate: Value<CalendarDate?>(actual),
-      ),
-    );
-    // An early anchor moves its cycle.
-    ref.invalidate(periodRefreshProvider);
-  }
-
-  Future<void> _delete(
-    BuildContext context,
-    WidgetRef ref,
-    FeedRecord record,
-  ) async {
-    if (record.isMandatory && !await confirmMandatory(context)) return;
-    if (!context.mounted) return;
-    final Repositories repos = ref.read(repositoriesProvider);
-
-    final bool deleted = await guardFreeze(
-      context,
-      () => record.isIncome
-          ? repos.incomes.softDelete(record.id)
-          : repos.payments.softDelete(record.id),
-    );
-    ref.invalidate(periodRefreshProvider);
-    if (!deleted || !context.mounted) return;
-    showUndoSnackbar(
-      context,
-      message: tr(
-        'feed.deleted',
-        namedArgs: <String, String>{'title': record.title},
-      ),
-      onUndo: () async {
-        if (record.isIncome) {
-          await repos.incomes.restore(record.id);
-        } else {
-          await repos.payments.restore(record.id);
-        }
-      },
     );
   }
 }

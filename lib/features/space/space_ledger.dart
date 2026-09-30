@@ -24,6 +24,15 @@ final StreamProvider<List<Income>> spaceIncomesProvider =
       return ref.watch(repositoriesProvider).incomes.watchInSpace(space.id);
     });
 
+final StreamProvider<List<IncomeRecurrenceRule>> incomeRulesProvider =
+    StreamProvider<List<IncomeRecurrenceRule>>((Ref ref) {
+      final Space? space = ref.watch(currentSpaceProvider);
+      if (space == null) {
+        return const Stream<List<IncomeRecurrenceRule>>.empty();
+      }
+      return ref.watch(repositoriesProvider).incomeRules.watchInSpace(space.id);
+    });
+
 final StreamProvider<List<Category>> spaceCategoriesProvider =
     StreamProvider<List<Category>>((Ref ref) {
       final Space? space = ref.watch(currentSpaceProvider);

@@ -91,7 +91,7 @@ abstract final class PeriodMaterializer {
     return periods;
   }
 
-  /// True when only [remaining] periods are left ahead of [today].
+  /// True when at most [threshold] periods start on or after [today].
   static bool needsExtension(
     List<MaterializedPeriod> periods,
     CalendarDate today, {

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/feed/feed_model.dart';
@@ -62,7 +63,7 @@ List<PopupMenuEntry<_QuickAdd>> _quickAddItems(WidgetRef ref) =>
       PopupMenuItem<_QuickAdd>(
         value: _QuickAdd.payment,
         height: quickAddItemHeight,
-        child: _MenuLine(
+        child: MenuLine(
           icon: Icons.remove_circle_outline,
           label: tr('payment.add'),
         ),
@@ -70,7 +71,7 @@ List<PopupMenuEntry<_QuickAdd>> _quickAddItems(WidgetRef ref) =>
       PopupMenuItem<_QuickAdd>(
         value: _QuickAdd.income,
         height: quickAddItemHeight,
-        child: _MenuLine(
+        child: MenuLine(
           icon: Icons.add_circle_outline,
           // In Budget mode an income is a top-up of the fund.
           label: ref.read(currentSpaceProvider)!.budgetMode == BudgetMode.budget
@@ -81,7 +82,7 @@ List<PopupMenuEntry<_QuickAdd>> _quickAddItems(WidgetRef ref) =>
       PopupMenuItem<_QuickAdd>(
         value: _QuickAdd.nonWorkingDay,
         height: quickAddItemHeight,
-        child: _MenuLine(
+        child: MenuLine(
           icon: Icons.event_busy_outlined,
           label: tr('holidays.markDay'),
         ),
@@ -115,24 +116,6 @@ RelativeRect quickAddAnchor(
     topLeft.dy - menuHeight - SageSpace.sm,
     overlay.size.width - bottomRight.dx,
     overlay.size.height - bottomRight.dy,
-  );
-}
-
-/// Icon and label.
-class _MenuLine extends StatelessWidget {
-  const _MenuLine({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: <Widget>[
-      Icon(icon, size: 20, color: context.sage.inkSecondary),
-      const SizedBox(width: SageSpace.md),
-      Text(label, style: Theme.of(context).textTheme.bodyLarge),
-    ],
   );
 }
 

@@ -2,7 +2,6 @@ import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -10,6 +9,7 @@ import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
@@ -17,7 +17,6 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/anchor_help.dart';
 import 'package:sielto/features/incomes/income_rule_form_page.dart';
-import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/incomes/income_scope_dialog.dart';
 import 'package:sielto/features/incomes/schedule_editor.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
@@ -108,8 +107,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     final String? id = widget.incomeId;
 
     if (id != null) {
-      final List<Income> rows = await repos.incomes.inSpace(space.id);
-      final Income? row = rows.where((Income i) => i.id == id).firstOrNull;
+      final Income? row = await repos.incomes.byId(id);
       if (row != null) {
         _existing = row;
         _title.text = row.title;
@@ -203,27 +201,13 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
           title: _title.text,
           amount: _parsedAmount,
           scheduleType: _schedule.type,
-          fixedDay: _schedule.type == ScheduleType.fixedDate
-              ? _schedule.fixedDay
-              : null,
-          weekdayOrdinal: _schedule.type == ScheduleType.weekdayRule
-              ? _schedule.ordinal
-              : null,
-          weekdayDay: _schedule.type == ScheduleType.weekdayRule
-              ? _schedule.weekday
-              : null,
-          dateRangeStart: _schedule.type == ScheduleType.dateRange
-              ? _schedule.rangeStart
-              : null,
-          dateRangeEnd: _schedule.type == ScheduleType.dateRange
-              ? _schedule.rangeEnd
-              : null,
-          boundaryAnchor: _schedule.type == ScheduleType.boundaryDays
-              ? _schedule.boundaryAnchor
-              : null,
-          boundaryCount: _schedule.type == ScheduleType.boundaryDays
-              ? _schedule.boundaryCount
-              : null,
+          fixedDay: _schedule.fixedDayOrNull,
+          weekdayOrdinal: _schedule.ordinalOrNull,
+          weekdayDay: _schedule.weekdayOrNull,
+          dateRangeStart: _schedule.rangeStartOrNull,
+          dateRangeEnd: _schedule.rangeEndOrNull,
+          boundaryAnchor: _schedule.boundaryAnchorOrNull,
+          boundaryCount: _schedule.boundaryCountOrNull,
         );
 
     if (_anchorChoiceApplies && _isAnchor) {
@@ -323,18 +307,13 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   Future<void> _pickDate({required bool actual}) async {
     final CalendarDate current =
         (actual ? _actualDate : _date) ?? ref.read(spaceClockProvider).today();
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: current.toUtcMidnight(),
-      firstDate: DateTime.utc(current.year - 10),
-      lastDate: DateTime.utc(current.year + 15),
-    );
+    final CalendarDate? picked = await pickDate(context, current);
     if (picked == null) return;
     setState(() {
       if (actual) {
-        _actualDate = CalendarDate.fromDateTime(picked);
+        _actualDate = picked;
       } else {
-        _date = CalendarDate.fromDateTime(picked);
+        _date = picked;
       }
     });
   }
@@ -432,19 +411,11 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
             const SizedBox(height: SageSpace.lg),
             LabelledField(
               label: tr('income.fieldAmount'),
-              child: TextField(
+              child: MoneyField(
                 controller: _amount,
+                symbol: money.symbol,
                 enabled: !_isFrozen,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.allow(RegExp(r'[\d.,\s]')),
-                ],
-                decoration: InputDecoration(
-                  suffixText: money.symbol,
-                  hintText: tr('income.amountOptional'),
-                ),
+                hintText: tr('income.amountOptional'),
               ),
             ),
             const SizedBox(height: SageSpace.lg),
@@ -514,9 +485,10 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
             ],
 
             if (_isFrozen)
-              _AppendNoteField(
+              AppendNoteField(
                 existing: _existing?.notes,
                 controller: _addedNote,
+                notesLabel: tr('income.fieldNotes'),
               )
             else
               LabelledField(
@@ -579,43 +551,6 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   }
 }
 
-/// Existing note and a field that appends to it.
-class _AppendNoteField extends StatelessWidget {
-  const _AppendNoteField({required this.existing, required this.controller});
-
-  final String? existing;
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: <Widget>[
-      if (existing != null && existing!.trim().isNotEmpty) ...<Widget>[
-        LabelledField(
-          label: tr('income.fieldNotes'),
-          child: SageCard(
-            child: Text(
-              existing!,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-        ),
-        const SizedBox(height: SageSpace.lg),
-      ],
-      LabelledField(
-        label: tr('freeze.addNote'),
-        child: TextField(
-          controller: controller,
-          maxLines: 3,
-          maxLength: 5000,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(hintText: tr('freeze.addNoteHint')),
-        ),
-      ),
-    ],
-  );
-}
-
 /// Which cycle a one-off income joins and its effect on free money.
 class _LandsIn extends ConsumerWidget {
   const _LandsIn({
@@ -646,7 +581,6 @@ class _LandsIn extends ConsumerWidget {
     final TextTheme text = Theme.of(context).textTheme;
     final DateLabels dates = DateLabels(context.locale.toString());
 
-    // Null while the amount is empty.
     final PeriodLedger ledger = buildPeriodLedger(
       period: period,
       payments: ref.watch(spacePaymentsProvider).value ?? const <Payment>[],
@@ -681,6 +615,7 @@ class _LandsIn extends ConsumerWidget {
             ),
             style: text.bodySmall?.copyWith(color: sage.inkSecondary),
           ),
+          // Nothing to add while the amount is empty.
           if (free != null && amount != null) ...<Widget>[
             const SizedBox(height: SageSpace.xs),
             Row(
@@ -708,41 +643,6 @@ class _LandsIn extends ConsumerWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-/// Tappable date field. Shared with the receipt dialog.
-class DateField extends StatelessWidget {
-  const DateField({required this.label, required this.onTap, super.key});
-
-  final String label;
-
-  /// Null when the period is frozen.
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(SageRadius.input),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: sage.card,
-          borderRadius: BorderRadius.circular(SageRadius.input),
-          border: Border.all(color: sage.border),
-        ),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
-            ),
-            Icon(Icons.calendar_today_outlined, size: 18, color: sage.inkLabel),
-          ],
-        ),
       ),
     );
   }

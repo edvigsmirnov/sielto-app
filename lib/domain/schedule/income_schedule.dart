@@ -28,9 +28,6 @@ sealed class IncomeSchedule {
       calendar: calendar,
     );
   }
-
-  static int daysInMonth(int year, int month) =>
-      DateTime.utc(year, month + 1, 0).day;
 }
 
 /// "The 26th of every month". Short months clamp to their last day.
@@ -44,7 +41,7 @@ class FixedDateSchedule extends IncomeSchedule {
     if (day < 1 || day > 31) {
       throw ArgumentError.value(day, 'day', 'outside 1..31');
     }
-    final int clamped = day.clamp(1, IncomeSchedule.daysInMonth(year, month));
+    final int clamped = day.clamp(1, CalendarDate(year, month, 1).daysInMonth);
     return (start: CalendarDate(year, month, clamped), end: null);
   }
 }
@@ -62,7 +59,7 @@ class WeekdayRuleSchedule extends IncomeSchedule {
 
   @override
   ({CalendarDate start, CalendarDate? end}) baseRangeFor(int year, int month) {
-    final int length = IncomeSchedule.daysInMonth(year, month);
+    final int length = CalendarDate(year, month, 1).daysInMonth;
 
     if (ordinal == WeekdayOrdinal.last) {
       for (int day = length; day >= 1; day--) {
@@ -103,7 +100,7 @@ class DateRangeSchedule extends IncomeSchedule {
         'date range $startDay..$endDay ends before it starts',
       );
     }
-    final int length = IncomeSchedule.daysInMonth(year, month);
+    final int length = CalendarDate(year, month, 1).daysInMonth;
     return (
       start: CalendarDate(year, month, startDay.clamp(1, length)),
       end: CalendarDate(year, month, endDay.clamp(1, length)),
@@ -126,7 +123,7 @@ class BoundaryDaysSchedule extends IncomeSchedule {
     if (count < 1 || count > maxCount) {
       throw ArgumentError.value(count, 'count', 'outside 1..$maxCount');
     }
-    final int length = IncomeSchedule.daysInMonth(year, month);
+    final int length = CalendarDate(year, month, 1).daysInMonth;
     return switch (anchor) {
       BoundaryAnchor.start => (
         start: CalendarDate(year, month, 1),

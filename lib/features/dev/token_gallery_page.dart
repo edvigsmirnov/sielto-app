@@ -34,9 +34,9 @@ class TokenGalleryPage extends ConsumerWidget {
               ThemeMode.dark => Icons.dark_mode_outlined,
             }),
             label: Text(switch (mode) {
-              ThemeMode.system => 'theme.system'.tr(),
-              ThemeMode.light => 'theme.light'.tr(),
-              ThemeMode.dark => 'theme.dark'.tr(),
+              ThemeMode.system => tr('theme.system'),
+              ThemeMode.light => tr('theme.light'),
+              ThemeMode.dark => tr('theme.dark'),
             }),
           ),
           const SizedBox(width: SageSpace.sm),
@@ -156,7 +156,7 @@ class TokenGalleryPage extends ConsumerWidget {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 Text(
-                  'payment.fieldAmount'.tr(),
+                  tr('payment.fieldAmount'),
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
               ],
@@ -169,14 +169,14 @@ class TokenGalleryPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: SageSpace.md,
               children: <Widget>[
-                FilledButton(onPressed: () {}, child: Text('payment.add'.tr())),
+                FilledButton(onPressed: () {}, child: Text(tr('payment.add'))),
                 OutlinedButton(
                   onPressed: () {},
-                  child: Text('common.cancel'.tr()),
+                  child: Text(tr('common.cancel')),
                 ),
                 TextField(
                   decoration: InputDecoration(
-                    labelText: 'payment.fieldTitle'.tr(),
+                    labelText: tr('payment.fieldTitle'),
                     hintText: 'Rent',
                   ),
                 ),
@@ -184,15 +184,15 @@ class TokenGalleryPage extends ConsumerWidget {
                   spacing: SageSpace.sm,
                   children: <Widget>[
                     Chip(
-                      label: Text('payment.mandatory'.tr()),
+                      label: Text(tr('payment.mandatory')),
                       backgroundColor: c.accentTintAlt,
                     ),
                     Chip(
-                      label: Text('payment.overdue'.tr()),
+                      label: Text(tr('payment.overdue')),
                       backgroundColor: c.dangerTint,
                     ),
                     Chip(
-                      label: Text('payment.uncertain'.tr()),
+                      label: Text(tr('payment.uncertain')),
                       backgroundColor: c.sandTint,
                     ),
                   ],
@@ -258,9 +258,9 @@ class _Dot extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors c = context.sage;
     final (Color color, String label) = switch (coverage) {
-      _Coverage.covered => (c.accentStrong, 'coverage.covered'.tr()),
-      _Coverage.exact => (c.warningAccent, 'coverage.exact'.tr()),
-      _Coverage.short => (c.danger, 'coverage.short'.tr()),
+      _Coverage.covered => (c.accentStrong, tr('coverage.covered')),
+      _Coverage.exact => (c.warningAccent, tr('coverage.exact')),
+      _Coverage.short => (c.danger, tr('coverage.short')),
     };
     return Row(
       children: <Widget>[

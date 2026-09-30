@@ -80,11 +80,6 @@ class LedgerRun {
 
   /// Null once there is a cutoff.
   Decimal? get freeCash => hasCutoff ? null : finalBalance;
-
-  List<LedgerEntry> get uncovered => steps
-      .where((LedgerStep s) => !s.isCovered)
-      .map((LedgerStep s) => s.entry)
-      .toList();
 }
 
 /// Chronological running balance. A future income joins only on its own date,

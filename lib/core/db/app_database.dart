@@ -186,12 +186,14 @@ Future<void> _createIndexes(DatabaseConnectionUser db) async {
   }
 }
 
+const String databaseFileName = 'sielto.sqlite';
+
 /// `PRAGMA key` must be the first statement; the read after it fails fast on
 /// a wrong key.
 QueryExecutor openEncryptedDatabase({
   required Directory directory,
   required DatabaseKey key,
-  String fileName = 'sielto.sqlite',
+  String fileName = databaseFileName,
 }) {
   final File file = File(p.join(directory.path, fileName));
   directory.createSync(recursive: true);

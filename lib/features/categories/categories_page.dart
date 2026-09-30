@@ -117,11 +117,16 @@ class CategoriesPage extends ConsumerWidget {
     ordered.insert(newIndex, moved);
 
     final CategoryRepository repo = ref.read(repositoriesProvider).categories;
-    for (int i = 0; i < ordered.length; i++) {
-      final int order = i * PaymentRepository.sortOrderGap;
-      if (ordered[i].sortOrder == order) continue;
-      await repo.updateAppearance(ordered[i].id, sortOrder: Value<int>(order));
-    }
+    await repo.db.transaction(() async {
+      for (int i = 0; i < ordered.length; i++) {
+        final int order = i * PaymentRepository.sortOrderGap;
+        if (ordered[i].sortOrder == order) continue;
+        await repo.updateAppearance(
+          ordered[i].id,
+          sortOrder: Value<int>(order),
+        );
+      }
+    });
   }
 }
 

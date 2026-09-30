@@ -9,12 +9,12 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/feed_row.dart';
+import 'package:sielto/features/feed/record_actions.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
@@ -196,7 +196,7 @@ class OverduePage extends ConsumerWidget {
                       onTap: () =>
                           openPaymentForm(context, paymentId: payment.id),
                       onTogglePaid: () => _settle(context, ref, record),
-                      onDelete: () => _delete(context, ref, record),
+                      onDelete: () => deleteRecord(context, ref, record),
                       onLongPress: () => showRecordMenu(
                         context,
                         ref,
@@ -216,38 +216,13 @@ class OverduePage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     FeedRecord record,
-  ) => guardFreeze(
+  ) => guardWrite(
     context,
     () => ref
         .read(repositoriesProvider)
         .payments
         .setPaid(record.id, isPaid: true),
   );
-
-  Future<void> _delete(
-    BuildContext context,
-    WidgetRef ref,
-    FeedRecord record,
-  ) async {
-    if (record.isMandatory && !await confirmMandatory(context)) return;
-    if (!context.mounted) return;
-    final Repositories repos = ref.read(repositoriesProvider);
-
-    final bool deleted = await guardFreeze(
-      context,
-      () => repos.payments.softDelete(record.id),
-    );
-    ref.invalidate(periodRefreshProvider);
-    if (!deleted || !context.mounted) return;
-    showUndoSnackbar(
-      context,
-      message: tr(
-        'feed.deleted',
-        namedArgs: <String, String>{'title': record.title},
-      ),
-      onUndo: () => repos.payments.restore(record.id),
-    );
-  }
 }
 
 /// Count and total.

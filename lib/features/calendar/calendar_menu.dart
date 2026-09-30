@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
@@ -43,14 +44,14 @@ Future<void> showDayMenu(
     items: <PopupMenuEntry<_DayAction>>[
       PopupMenuItem<_DayAction>(
         value: _DayAction.payment,
-        child: _MenuLine(
+        child: MenuLine(
           icon: Icons.remove_circle_outline,
           label: tr('payment.add'),
         ),
       ),
       PopupMenuItem<_DayAction>(
         value: _DayAction.income,
-        child: _MenuLine(
+        child: MenuLine(
           icon: Icons.add_circle_outline,
           // In Budget mode an income is a top-up of the fund.
           label: ref.read(currentSpaceProvider)!.budgetMode == BudgetMode.budget
@@ -60,7 +61,7 @@ Future<void> showDayMenu(
       ),
       PopupMenuItem<_DayAction>(
         value: _DayAction.nonWorkingDay,
-        child: _MenuLine(
+        child: MenuLine(
           icon: Icons.event_busy_outlined,
           label: tr('holidays.markDay'),
         ),
@@ -78,21 +79,4 @@ Future<void> showDayMenu(
     case _DayAction.nonWorkingDay:
       await markNonWorkingDay(context, ref, initial: date, askDate: false);
   }
-}
-
-class _MenuLine extends StatelessWidget {
-  const _MenuLine({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: <Widget>[
-      Icon(icon, size: 20, color: context.sage.inkSecondary),
-      const SizedBox(width: SageSpace.md),
-      Text(label, style: Theme.of(context).textTheme.bodyLarge),
-    ],
-  );
 }

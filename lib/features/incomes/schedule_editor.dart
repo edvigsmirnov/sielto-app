@@ -49,6 +49,20 @@ class ScheduleDraft {
     boundaryCount: boundaryCount ?? this.boundaryCount,
   );
 
+  // The chosen [type]'s fields; the others are null, as the table requires.
+  int? get fixedDayOrNull => type == ScheduleType.fixedDate ? fixedDay : null;
+  WeekdayOrdinal? get ordinalOrNull =>
+      type == ScheduleType.weekdayRule ? ordinal : null;
+  Weekday? get weekdayOrNull =>
+      type == ScheduleType.weekdayRule ? weekday : null;
+  int? get rangeStartOrNull =>
+      type == ScheduleType.dateRange ? rangeStart : null;
+  int? get rangeEndOrNull => type == ScheduleType.dateRange ? rangeEnd : null;
+  BoundaryAnchor? get boundaryAnchorOrNull =>
+      type == ScheduleType.boundaryDays ? boundaryAnchor : null;
+  int? get boundaryCountOrNull =>
+      type == ScheduleType.boundaryDays ? boundaryCount : null;
+
   /// A range must not end before it starts.
   bool get isValid => type != ScheduleType.dateRange || rangeEnd >= rangeStart;
 

@@ -1,7 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -9,6 +8,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/schedule_editor.dart';
@@ -102,27 +102,13 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
         title: _title.text,
         amount: amount,
         scheduleType: _schedule.type,
-        fixedDay: _schedule.type == ScheduleType.fixedDate
-            ? _schedule.fixedDay
-            : null,
-        weekdayOrdinal: _schedule.type == ScheduleType.weekdayRule
-            ? _schedule.ordinal
-            : null,
-        weekdayDay: _schedule.type == ScheduleType.weekdayRule
-            ? _schedule.weekday
-            : null,
-        dateRangeStart: _schedule.type == ScheduleType.dateRange
-            ? _schedule.rangeStart
-            : null,
-        dateRangeEnd: _schedule.type == ScheduleType.dateRange
-            ? _schedule.rangeEnd
-            : null,
-        boundaryAnchor: _schedule.type == ScheduleType.boundaryDays
-            ? _schedule.boundaryAnchor
-            : null,
-        boundaryCount: _schedule.type == ScheduleType.boundaryDays
-            ? _schedule.boundaryCount
-            : null,
+        fixedDay: _schedule.fixedDayOrNull,
+        weekdayOrdinal: _schedule.ordinalOrNull,
+        weekdayDay: _schedule.weekdayOrNull,
+        dateRangeStart: _schedule.rangeStartOrNull,
+        dateRangeEnd: _schedule.rangeEndOrNull,
+        boundaryAnchor: _schedule.boundaryAnchorOrNull,
+        boundaryCount: _schedule.boundaryCountOrNull,
       );
 
       if (amount != widget.rule.amount) {
@@ -216,18 +202,10 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
             const SizedBox(height: SageSpace.lg),
             LabelledField(
               label: tr('income.fieldAmount'),
-              child: TextField(
+              child: MoneyField(
                 controller: _amount,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.allow(RegExp(r'[\d.,\s]')),
-                ],
-                decoration: InputDecoration(
-                  suffixText: money.symbol,
-                  hintText: tr('income.amountOptional'),
-                ),
+                symbol: money.symbol,
+                hintText: tr('income.amountOptional'),
               ),
             ),
             const SizedBox(height: SageSpace.xs),

@@ -7,7 +7,6 @@ import 'package:sielto/domain/ledger/ledger_entry.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
-import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// One income cycle, walked from its anchor income. `is_paid` changes no

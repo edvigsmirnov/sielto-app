@@ -9,10 +9,10 @@ import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// Coverage per Space for the switcher. One walk per Space. Uncomputable
-/// Spaces are absent.
+/// Coverage per Space for the switcher, alive only while it is open. One walk
+/// per Space. Uncomputable Spaces are absent.
 final FutureProvider<Map<String, Coverage>> spaceCoverageProvider =
-    FutureProvider<Map<String, Coverage>>((Ref ref) async {
+    FutureProvider.autoDispose<Map<String, Coverage>>((Ref ref) async {
       final List<Space> spaces =
           ref.watch(spaceListProvider).value ?? const <Space>[];
       final Repositories repos = ref.watch(repositoriesProvider);

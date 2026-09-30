@@ -13,7 +13,7 @@ import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 
 /// Runs [write] and reports a freeze or deadline refusal as a message.
-Future<bool> guardFreeze(
+Future<bool> guardWrite(
   BuildContext context,
   Future<void> Function() write,
 ) async {

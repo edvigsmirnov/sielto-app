@@ -109,23 +109,18 @@ bool _fitsItsGroup(
   required FeedRow? previous,
   required FeedRow? next,
 }) {
-  final int rank = _rank(record);
+  final int rank = record.groupRank;
   if (previous != null &&
       previous.record.date == record.date &&
-      _rank(previous.record) > rank) {
+      previous.record.groupRank > rank) {
     return false;
   }
   if (next != null &&
       next.record.date == record.date &&
-      _rank(next.record) < rank) {
+      next.record.groupRank < rank) {
     return false;
   }
   return true;
-}
-
-int _rank(FeedRecord r) {
-  if (r.isIncome) return 0;
-  return r.isMandatory ? 1 : 2;
 }
 
 int _positionWithinDay(List<FeedItem> items, int insertAt, CalendarDate day) {

@@ -59,9 +59,6 @@ class DayMark {
   /// See [highLoadThreshold].
   final bool isHighLoad;
 
-  bool get isPlain =>
-      !isNonWorking && !isUncertainIncome && !isHighLoad && deadline == null;
-
   DayMark copyWith({
     bool? isUncertainIncome,
     DeadlineKind? deadline,
@@ -143,16 +140,7 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
     }
   }
 
-  // The threshold comes from recent history, not from the range on screen.
-  ref.watch(spacePaymentsProvider);
-  final CalendarDate today = ref.watch(spaceClockProvider).today();
-  final Map<CalendarDate, DayTotals> history = await ref
-      .watch(repositoriesProvider)
-      .calendar
-      .dailyTotals(space.id, today.addMonths(-loadSampleMonths), today);
-  final Decimal? threshold = highLoadThreshold(
-    history.values.map((DayTotals t) => t.expenses),
-  );
+  final Decimal? threshold = await ref.watch(highLoadThresholdProvider.future);
 
   if (threshold != null) {
     final Map<CalendarDate, DayTotals> totals = await ref
@@ -167,6 +155,20 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
 
   return DayMarks(marks, threshold: threshold);
 });
+
+/// From recent history, not from the range on screen.
+final FutureProvider<Decimal?> highLoadThresholdProvider =
+    FutureProvider<Decimal?>((Ref ref) async {
+      final Space? space = ref.watch(currentSpaceProvider);
+      ref.watch(spacePaymentsProvider);
+      final CalendarDate today = ref.watch(spaceClockProvider).today();
+      if (space == null) return null;
+      final Map<CalendarDate, DayTotals> history = await ref
+          .watch(repositoriesProvider)
+          .calendar
+          .dailyTotals(space.id, today.addMonths(-loadSampleMonths), today);
+      return highLoadThreshold(history.values.map((DayTotals t) => t.expenses));
+    });
 
 final FutureProvider<Map<CalendarDate, List<String>>> holidayNamesProvider =
     FutureProvider<Map<CalendarDate, List<String>>>((Ref ref) {
@@ -183,10 +185,10 @@ final dayOffNamesProvider = Provider.family<List<String>?, CalendarDate>((
   Ref ref,
   CalendarDate day,
 ) {
-  final DayMark mark =
-      (ref.watch(dayMarksProvider(CalendarView.day)).value ??
-      DayMarks.empty)[day];
-  if (!mark.isHoliday) return null;
+  final ResolvedCalendar? resolved = ref
+      .watch(calendarForYearProvider(day.year))
+      .value;
+  if (resolved == null || !resolved.calendar.isDayOff(day)) return null;
   for (final CustomNonWorkingDay c
       in ref.watch(customNonWorkingDaysProvider).value ??
           const <CustomNonWorkingDay>[]) {

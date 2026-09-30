@@ -2,7 +2,7 @@ import 'package:sielto/domain/value/calendar_date.dart';
 
 enum RecurrenceInterval { monthly, weekly }
 
-/// Months an open-ended series materialises ahead of today.
+/// Months an open-ended series fills from its start.
 const int recurrenceHorizonMonths = 24;
 
 /// [count] includes the first occurrence. Null fills [recurrenceHorizonMonths].

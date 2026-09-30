@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sielto/core/crypto/database_key.dart';
 import 'package:sielto/core/crypto/key_store.dart';
@@ -49,7 +50,9 @@ Future<Startup> openDatabase({Directory? directory}) async {
 Future<Startup> startOver(DatabaseKeyManager manager) async {
   await manager.destroy();
   for (final String suffix in <String>['', '-wal', '-shm']) {
-    final File f = File('${manager.directory.path}/sielto.sqlite$suffix');
+    final File f = File(
+      p.join(manager.directory.path, '$databaseFileName$suffix'),
+    );
     if (f.existsSync()) f.deleteSync();
   }
   return openDatabase(directory: manager.directory);

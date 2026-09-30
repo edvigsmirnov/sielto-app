@@ -11,8 +11,12 @@ class HolidayBundle {
 
   static const String _dir = 'assets/holidays';
 
-  /// Country codes from `index.json`.
-  Future<Set<String>> bundledCodes() async {
+  static Future<Set<String>>? _codes;
+
+  /// Country codes from `index.json`, parsed once.
+  Future<Set<String>> bundledCodes() => _codes ??= _loadCodes();
+
+  static Future<Set<String>> _loadCodes() async {
     final Object? parsed = jsonDecode(
       await rootBundle.loadString('$_dir/index.json'),
     );

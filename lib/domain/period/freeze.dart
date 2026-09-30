@@ -46,20 +46,6 @@ class FreezeEvaluator {
     return FreezeState.open;
   }
 
-  bool isFrozen({
-    required CalendarDate? endDate,
-    required CalendarDate today,
-    required DateTime nowUtc,
-    DateTime? unfrozenUntil,
-  }) =>
-      evaluate(
-        endDate: endDate,
-        today: today,
-        nowUtc: nowUtc,
-        unfrozenUntil: unfrozenUntil,
-      ) ==
-      FreezeState.frozen;
-
   DateTime unfreezeExpiry(DateTime nowUtc) =>
       nowUtc.add(const Duration(hours: 48));
 

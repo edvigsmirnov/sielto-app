@@ -38,32 +38,14 @@ void main() {
 
     test('the boundary day itself is still editable', () {
       // Day 14 is not yet frozen.
-      expect(
-        evaluator.isFrozen(
-          endDate: d(end),
-          today: d('2026-04-08'),
-          nowUtc: now,
-        ),
-        isFalse,
-      );
-      expect(
-        evaluator.isFrozen(
-          endDate: d(end),
-          today: d('2026-04-09'),
-          nowUtc: now,
-        ),
-        isTrue,
-      );
+      expect(stateOn('2026-04-08', endDate: end), isNot(FreezeState.frozen));
+      expect(stateOn('2026-04-09', endDate: end), FreezeState.frozen);
     });
   });
 
   group('open contexts never freeze', () {
     test('a null end date stays open forever', () {
       expect(stateOn('2030-01-01'), FreezeState.open);
-      expect(
-        evaluator.isFrozen(endDate: null, today: d('2030-01-01'), nowUtc: now),
-        isFalse,
-      );
     });
   });
 

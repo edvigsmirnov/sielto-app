@@ -13,6 +13,7 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/anchor_help.dart';
 import 'package:sielto/features/incomes/income_rule_form_page.dart';
 import 'package:sielto/features/periods/schedule_mapping.dart';
+import 'package:sielto/features/space/space_ledger.dart';
 
 /// Regular incomes of a Space. The repository refuses removing the last
 /// anchor; this screen reports it.
@@ -118,15 +119,6 @@ class IncomeRulesPage extends ConsumerWidget {
       ..showSnackBar(SnackBar(content: Text(tr('income.lastAnchorRequired'))));
   }
 }
-
-final StreamProvider<List<IncomeRecurrenceRule>> incomeRulesProvider =
-    StreamProvider<List<IncomeRecurrenceRule>>((Ref ref) {
-      final Space? space = ref.watch(currentSpaceProvider);
-      if (space == null) {
-        return const Stream<List<IncomeRecurrenceRule>>.empty();
-      }
-      return ref.watch(repositoriesProvider).incomeRules.watchInSpace(space.id);
-    });
 
 /// One regular income as a card.
 class _RuleTile extends StatelessWidget {

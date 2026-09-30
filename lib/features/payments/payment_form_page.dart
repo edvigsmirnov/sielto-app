@@ -2,7 +2,6 @@ import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -12,6 +11,7 @@ import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_entry.dart';
@@ -19,7 +19,6 @@ import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
-import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/payments/category_picker.dart';
 import 'package:sielto/features/payments/recurrence.dart';
 import 'package:sielto/features/payments/series_scope_dialog.dart';
@@ -232,15 +231,8 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
 
   Future<void> _pickDate() async {
     final CalendarDate current = _date ?? ref.read(spaceClockProvider).today();
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: current.toUtcMidnight(),
-      firstDate: DateTime.utc(current.year - 10),
-      lastDate: DateTime.utc(current.year + 15),
-    );
-    if (picked != null) {
-      setState(() => _date = CalendarDate.fromDateTime(picked));
-    }
+    final CalendarDate? picked = await pickDate(context, current);
+    if (picked != null) setState(() => _date = picked);
   }
 
   Future<void> _save() async {
@@ -406,7 +398,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     }
     if (!mounted) return;
 
-    await guardFreeze(context, () async {
+    await guardWrite(context, () async {
       final Repositories repos = ref.read(repositoriesProvider);
       await repos.payments.deleteSeries(
         group,
@@ -498,24 +490,17 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                   const SizedBox(height: SageSpace.lg),
                   LabelledField(
                     label: tr('payment.fieldAmount'),
-                    child: TextField(
+                    child: MoneyField(
                       controller: _amount,
+                      symbol: money.symbol,
                       enabled: !_isFrozen,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: <TextInputFormatter>[
-                        FilteringTextInputFormatter.allow(RegExp(r'[\d.,\s]')),
-                      ],
-                      decoration: InputDecoration(suffixText: money.symbol),
                     ),
                   ),
                   const SizedBox(height: SageSpace.lg),
                   LabelledField(
                     label: tr('payment.fieldDate'),
-                    child: _DateField(
-                      date: _date!,
-                      labels: DateLabels(locale),
+                    child: DateField(
+                      label: DateLabels(locale).dayMonth(_date!),
                       onTap: _isFrozen ? null : _pickDate,
                       warn: _dateLooksOdd,
                     ),
@@ -590,9 +575,10 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                   ],
                   const SizedBox(height: SageSpace.lg),
                   if (_isFrozen)
-                    _AppendNoteField(
+                    AppendNoteField(
                       existing: _existing?.notes,
                       controller: _addedNote,
+                      notesLabel: tr('payment.fieldNotes'),
                     )
                   else
                     LabelledField(
@@ -762,27 +748,23 @@ class _LivePreview extends ConsumerWidget {
           ),
     ];
 
-    final List<LedgerEntry> without = <LedgerEntry>[
-      for (final LedgerEntry e in existing)
-        if (e.id != replacingId) e,
-    ];
-    final LedgerRun before = LedgerWalker.walk(
+    final LedgerRun before = previewRun(
       available: available,
-      entries: without,
+      entries: existing,
+      draft: const <LedgerEntry>[],
+      replacingId: replacingId,
     );
-    final LedgerRun after = LedgerWalker.walk(
+    final LedgerRun after = previewRun(
       available: available,
-      entries: <LedgerEntry>[...without, ...draft],
+      entries: existing,
+      draft: draft,
+      replacingId: replacingId,
     );
 
-    Decimal sum(List<LedgerEntry> entries) => entries.fold(
-      Decimal.zero,
-      (Decimal total, LedgerEntry e) => total + e.amount,
-    );
-    final Decimal? beforeFree = spentOnly ? sum(without) : before.freeCash;
-    final Decimal? afterFree = spentOnly
-        ? sum(<LedgerEntry>[...without, ...draft])
-        : after.freeCash;
+    // Budget entries are all expenses.
+    Decimal spent(LedgerRun run) => run.available - run.finalBalance;
+    final Decimal? beforeFree = spentOnly ? spent(before) : before.freeCash;
+    final Decimal? afterFree = spentOnly ? spent(after) : after.freeCash;
     final Color afterColor = afterFree == null ? sage.danger : sage.ink;
 
     final String? periodLabel = _periodLabel(ref, context);
@@ -941,88 +923,6 @@ class _SeriesNotice extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-/// Existing note and a field that appends to it.
-class _AppendNoteField extends StatelessWidget {
-  const _AppendNoteField({required this.existing, required this.controller});
-
-  final String? existing;
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: <Widget>[
-      if (existing != null && existing!.trim().isNotEmpty) ...<Widget>[
-        LabelledField(
-          label: tr('payment.fieldNotes'),
-          child: SageCard(
-            child: Text(
-              existing!,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-        ),
-        const SizedBox(height: SageSpace.lg),
-      ],
-      LabelledField(
-        label: tr('freeze.addNote'),
-        child: TextField(
-          controller: controller,
-          maxLines: 3,
-          maxLength: 5000,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(hintText: tr('freeze.addNoteHint')),
-        ),
-      ),
-    ],
-  );
-}
-
-class _DateField extends StatelessWidget {
-  const _DateField({
-    required this.date,
-    required this.labels,
-    required this.onTap,
-    required this.warn,
-  });
-
-  final CalendarDate date;
-  final DateLabels labels;
-
-  /// Null when the period is frozen.
-  final VoidCallback? onTap;
-
-  final bool warn;
-
-  @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(SageRadius.input),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: sage.card,
-          borderRadius: BorderRadius.circular(SageRadius.input),
-          border: Border.all(color: warn ? sage.warning : sage.border),
-        ),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                labels.dayMonth(date),
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ),
-            Icon(Icons.calendar_today_outlined, size: 18, color: sage.inkLabel),
-          ],
-        ),
       ),
     );
   }

@@ -36,7 +36,7 @@ class PeriodSelector extends ConsumerWidget {
         : null;
 
     final DateLabels dates = DateLabels(context.locale.toString());
-    final CalendarDate today = ref.watch(spaceClockProviderForLabel);
+    final CalendarDate today = ref.watch(todayProvider);
 
     // Near the last period, request more.
     final CalendarDate last = periods.last.startDate;
@@ -63,7 +63,7 @@ class PeriodSelector extends ConsumerWidget {
               }
               final BudgetPeriod? target = velocity > 0 ? previous : next;
               if (target == null) return;
-              HapticFeedback.selectionClick();
+              HapticFeedback.lightImpact();
               _go(ref, target);
             },
       child: Row(
@@ -140,7 +140,3 @@ class PeriodSelector extends ConsumerWidget {
     return end == null || !end.isBefore(today);
   }
 }
-
-/// Today in the Space's timezone.
-final Provider<CalendarDate> spaceClockProviderForLabel =
-    Provider<CalendarDate>((Ref ref) => ref.watch(spaceClockProvider).today());

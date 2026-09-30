@@ -17,6 +17,7 @@ class DayView extends StatelessWidget {
   const DayView({
     required this.day,
     required this.records,
+    required this.orderMode,
     required this.today,
     required this.categories,
     required this.density,
@@ -32,6 +33,9 @@ class DayView extends StatelessWidget {
 
   final CalendarDate day;
   final DayRecords records;
+
+  /// As the Feed orders the day.
+  final FeedOrderMode orderMode;
   final CalendarDate today;
   final Map<String, Category> categories;
   final FeedDensity density;
@@ -48,14 +52,10 @@ class DayView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<FeedRecord> rows =
-        <FeedRecord>[
-          for (final Payment p in records.payments) FeedRecord.fromPayment(p),
-          for (final Income i in records.incomes) FeedRecord.fromIncome(i),
-        ]..sort(
-          (FeedRecord a, FeedRecord b) =>
-              compareInDay(a, b, FeedOrderMode.grouped),
-        );
+    final List<FeedRecord> rows = <FeedRecord>[
+      for (final Payment p in records.payments) FeedRecord.fromPayment(p),
+      for (final Income i in records.incomes) FeedRecord.fromIncome(i),
+    ]..sort((FeedRecord a, FeedRecord b) => compareInDay(a, b, orderMode));
 
     Decimal expenses = Decimal.zero;
     Decimal income = Decimal.zero;

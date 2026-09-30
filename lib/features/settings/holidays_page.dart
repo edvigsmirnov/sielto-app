@@ -9,6 +9,7 @@ import 'package:sielto/core/holidays/holiday_source.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/periods/holiday_service.dart';
@@ -31,7 +32,7 @@ class HolidaysPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.only(bottom: SageSpace.xl),
         children: <Widget>[
-          _SectionLabel(tr('holidays.country')),
+          SectionLabel(tr('holidays.country')),
           ListTile(
             leading: const Icon(Icons.public),
             title: Text(
@@ -57,11 +58,11 @@ class HolidaysPage extends ConsumerWidget {
           ),
 
           const SizedBox(height: SageSpace.md),
-          _SectionLabel(tr('holidays.publicTitle')),
+          SectionLabel(tr('holidays.publicTitle')),
           _PublicHolidays(country: country, dates: dates),
 
           const SizedBox(height: SageSpace.md),
-          _SectionLabel(tr('holidays.customTitle')),
+          SectionLabel(tr('holidays.customTitle')),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
             child: Text(
@@ -139,14 +140,9 @@ Future<void> markNonWorkingDay(
   CalendarDate date = initial ?? today;
 
   if (askDate) {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: date.toUtcMidnight(),
-      firstDate: DateTime.utc(date.year - 5),
-      lastDate: DateTime.utc(date.year + 10),
-    );
+    final CalendarDate? picked = await pickDate(context, date);
     if (picked == null || !context.mounted) return;
-    date = CalendarDate.fromDateTime(picked);
+    date = picked;
   }
 
   final String? title = await _askDayTitle(context);
@@ -222,6 +218,27 @@ class _DayTitleDialogState extends State<_DayTitleDialog> {
   );
 }
 
+typedef _YearHolidays = ({
+  List<CalendarDate>? days,
+  Map<CalendarDate, List<String>> names,
+});
+
+/// Names are bundled; fetched years have none. Reruns after a fetch.
+final _yearHolidaysProvider = FutureProvider.autoDispose
+    .family<_YearHolidays, ({String country, int year})>((
+      Ref ref,
+      ({String country, int year}) key,
+    ) async {
+      ref.watch(resolvedCalendarProvider);
+      return (
+        days: await ref
+            .read(repositoriesProvider)
+            .holidays
+            .cached(key.country, key.year),
+        names: await const HolidayBundle().namesFor(key.country),
+      );
+    });
+
 /// This year's public holidays for the default country.
 class _PublicHolidays extends ConsumerWidget {
   const _PublicHolidays({required this.country, required this.dates});
@@ -240,67 +257,44 @@ class _PublicHolidays extends ConsumerWidget {
       resolvedCalendarProvider,
     );
 
-    // Names are bundled; fetched years have none.
-    Future<(List<CalendarDate>?, Map<CalendarDate, List<String>>)>
-    load() async => (
-      await ref.read(repositoriesProvider).holidays.cached(country!, year),
-      await const HolidayBundle().namesFor(country!),
+    final AsyncValue<_YearHolidays> loaded = ref.watch(
+      _yearHolidaysProvider((country: country!, year: year)),
     );
+    if (refresh.isLoading || !loaded.hasValue) return const _Note('…');
 
-    return FutureBuilder<
-      (List<CalendarDate>?, Map<CalendarDate, List<String>>)
-    >(
-      future: load(),
-      builder:
-          (
-            BuildContext context,
-            AsyncSnapshot<
-              (List<CalendarDate>?, Map<CalendarDate, List<String>>)
-            >
-            snapshot,
-          ) {
-            if (refresh.isLoading ||
-                snapshot.connectionState != ConnectionState.done) {
-              return const _Note('…');
-            }
-            final List<CalendarDate>? days = snapshot.data?.$1;
-            final Map<CalendarDate, List<String>> names =
-                snapshot.data?.$2 ?? const <CalendarDate, List<String>>{};
-            if (days == null || days.isEmpty) {
-              // Most listed countries are not bundled; empty usually means not downloaded.
-              final ResolvedCalendar? resolved = refresh.value;
-              final bool blocked =
-                  resolved != null &&
-                  resolved.missingYears.contains(year) &&
-                  !(ref.watch(holidayConsentProvider) ?? false);
-              return _Note(
-                tr(blocked ? 'holidays.needsDownload' : 'holidays.notLoaded'),
-              );
-            }
-            return Column(
-              children: <Widget>[
-                for (final CalendarDate day in days)
-                  ListTile(
-                    dense: true,
-                    leading: Icon(
-                      Icons.event_busy_outlined,
-                      size: 20,
-                      color: context.sage.inkLabel,
-                    ),
-                    // English name, then the local one where different.
-                    title: Text(
-                      names[day]?.firstOrNull ?? tr('calendar.holiday'),
-                    ),
-                    subtitle: Text(
-                      <String>[
-                        ...?names[day]?.skip(1),
-                        '${dates.short(day)} · ${dates.weekday(day)}',
-                      ].join('\n'),
-                    ),
-                  ),
-              ],
-            );
-          },
+    final List<CalendarDate>? days = loaded.value!.days;
+    final Map<CalendarDate, List<String>> names = loaded.value!.names;
+    if (days == null || days.isEmpty) {
+      // Empty: a year beyond the bundle, not downloaded.
+      final ResolvedCalendar? resolved = refresh.value;
+      final bool blocked =
+          resolved != null &&
+          resolved.missingYears.contains(year) &&
+          !(ref.watch(holidayConsentProvider) ?? false);
+      return _Note(
+        tr(blocked ? 'holidays.needsDownload' : 'holidays.notLoaded'),
+      );
+    }
+    return Column(
+      children: <Widget>[
+        for (final CalendarDate day in days)
+          ListTile(
+            dense: true,
+            leading: Icon(
+              Icons.event_busy_outlined,
+              size: 20,
+              color: context.sage.inkLabel,
+            ),
+            // English name, then the local one where different.
+            title: Text(names[day]?.firstOrNull ?? tr('calendar.holiday')),
+            subtitle: Text(
+              <String>[
+                ...?names[day]?.skip(1),
+                '${dates.short(day)} · ${dates.weekday(day)}',
+              ].join('\n'),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -359,26 +353,6 @@ class _Note extends StatelessWidget {
       vertical: SageSpace.sm,
     ),
     child: Text(text, style: Theme.of(context).textTheme.bodySmall),
-  );
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      SageSpace.gutter,
-      SageSpace.md,
-      SageSpace.gutter,
-      SageSpace.xs,
-    ),
-    child: Text(
-      text.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall,
-    ),
   );
 }
 

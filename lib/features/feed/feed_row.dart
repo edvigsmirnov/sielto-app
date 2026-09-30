@@ -287,7 +287,7 @@ class _PaidCircle extends StatelessWidget {
       onTap: onTap == null
           ? null
           : () {
-              HapticFeedback.selectionClick();
+              HapticFeedback.lightImpact();
               onTap!();
             },
       behavior: HitTestBehavior.opaque,

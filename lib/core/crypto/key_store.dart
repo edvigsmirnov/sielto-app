@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -75,10 +74,7 @@ class DatabaseKeyManager {
   }
 
   Future<DatabaseKey> _createFirstRun() async {
-    final Random rng = Random.secure();
-    final Uint8List wrappingKey = Uint8List.fromList(
-      List<int>.generate(DatabaseKey.length, (_) => rng.nextInt(256)),
-    );
+    final Uint8List wrappingKey = DatabaseKey.generate().bytes;
     final DatabaseKey dek = DatabaseKey.generate();
 
     final Envelope envelope = await Envelope.seal(

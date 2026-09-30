@@ -29,7 +29,7 @@ class SettingsPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
         children: <Widget>[
-          _SectionLabel(tr('settings.display')),
+          SectionLabel(tr('settings.display')),
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: SageSpace.gutter,
@@ -62,7 +62,7 @@ class SettingsPage extends ConsumerWidget {
               ),
             ),
           ),
-          _SectionLabel(tr('settings.controlsAtBottom')),
+          SectionLabel(tr('settings.controlsAtBottom')),
           for (final ControlsScreen screen in ControlsScreen.values)
             SwitchListTile.adaptive(
               title: Text(tr('settings.controlsScreen.${screen.name}')),
@@ -80,7 +80,7 @@ class SettingsPage extends ConsumerWidget {
             onTap: () => showLanguagePicker(context),
           ),
           const SizedBox(height: SageSpace.md),
-          _SectionLabel(tr('settings.data')),
+          SectionLabel(tr('settings.data')),
           ListTile(
             leading: const Icon(Icons.dashboard_outlined),
             title: Text(tr('settings.spaces')),
@@ -108,7 +108,7 @@ class SettingsPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: SageSpace.md),
-          _SectionLabel(tr('settings.network')),
+          SectionLabel(tr('settings.network')),
           SwitchListTile.adaptive(
             secondary: const Icon(Icons.wifi_off_outlined),
             title: Text(tr('settings.fullyOffline')),
@@ -133,24 +133,4 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      SageSpace.gutter,
-      SageSpace.md,
-      SageSpace.gutter,
-      SageSpace.xs,
-    ),
-    child: Text(
-      text.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall,
-    ),
-  );
 }

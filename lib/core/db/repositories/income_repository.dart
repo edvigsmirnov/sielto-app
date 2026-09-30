@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/deadline_guard.dart';
 import 'package:sielto/core/db/freeze_guard.dart';
+import 'package:sielto/core/db/repositories/budget_period_repository.dart';
 import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -233,7 +234,9 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
   TableInfo<$IncomesTable, Income> get table => db.incomes;
 
   late final FreezeGuard _freeze = FreezeGuard(db: db, clock: clock);
-  late final DeadlineGuard _deadline = DeadlineGuard(db: db);
+  late final DeadlineGuard _deadline = DeadlineGuard(
+    periods: BudgetPeriodRepository(db: db, clock: clock, userId: userId),
+  );
 
   Future<Income?> byId(String id) =>
       (selectAlive()..where(($IncomesTable t) => t.id.equals(id)))

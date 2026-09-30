@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
-import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/enums.dart';
-import 'package:sielto/features/dashboard/balance_sheet.dart';
 import 'package:sielto/features/dashboard/budget_dashboard.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/flow_dashboard.dart';
@@ -47,10 +45,3 @@ class DashboardPage extends ConsumerWidget {
     );
   }
 }
-
-Future<void> editBalance(
-  BuildContext context,
-  WidgetRef ref, {
-  required Space space,
-  required MoneyFormat money,
-}) => showBalanceSheet(context, ref, space: space, money: money);
