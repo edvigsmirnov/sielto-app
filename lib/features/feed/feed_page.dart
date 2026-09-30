@@ -14,6 +14,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/bulk_button.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -25,6 +26,7 @@ import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/feed_reorder.dart';
 import 'package:sielto/features/feed/feed_row.dart';
+import 'package:sielto/features/feed/feed_selection.dart';
 import 'package:sielto/features/feed/feed_window.dart';
 import 'package:sielto/features/feed/record_actions.dart';
 import 'package:sielto/features/overdue/overdue.dart';
@@ -63,6 +65,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   List<CalendarDate?> _headers = const <CalendarDate?>[];
 
   bool _edgeCheckQueued = false;
+
+  /// Whether the bulk button was pressed during this selection.
+  bool _bulkSeen = false;
 
   /// Order just dropped, shown until the query reads it back.
   Map<String, int>? _dropped;
@@ -212,6 +217,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     }
 
     final FeedFilter filter = ref.watch(feedFilterProvider);
+    final Set<String> selection = ref.watch(feedSelectionProvider);
+    if (selection.isEmpty) _bulkSeen = false;
     _items = buildFeedItems(
       records: filter.isActive
           ? source.records.where(filter.matches).toList()
@@ -278,21 +285,42 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       bottomNavigationBar: source.byPeriod && atBottom
           ? SafeArea(top: false, child: selector)
           : null,
-      floatingActionButton: FloatingActionButton(
-        key: _addButton,
-        backgroundColor: context.sage.accent,
-        foregroundColor: context.sage.accentOn,
-        shape: const CircleBorder(),
-        onPressed: () => showQuickAddMenu(
-          context,
-          ref,
-          today: source.today,
-          anchorKey: _addButton,
-        ),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: selection.isNotEmpty
+          ? BulkActionsButton(
+              pulse: !_bulkSeen,
+              tooltip: tr('feed.bulk.title'),
+              onPressed: () {
+                setState(() => _bulkSeen = true);
+                showBulkActions(
+                  context,
+                  ref,
+                  records: <FeedRecord>[
+                    for (final FeedRecord r in source.records)
+                      if (selection.contains(r.id)) r,
+                  ],
+                );
+              },
+            )
+          : FloatingActionButton(
+              key: _addButton,
+              backgroundColor: context.sage.accent,
+              foregroundColor: context.sage.accentOn,
+              shape: const CircleBorder(),
+              onPressed: () => showQuickAddMenu(
+                context,
+                ref,
+                today: source.today,
+                anchorKey: _addButton,
+              ),
+              child: const Icon(Icons.add),
+            ),
       body: Column(
         children: <Widget>[
+          if (selection.isNotEmpty)
+            _SelectionBar(
+              count: selection.length,
+              onClose: ref.read(feedSelectionProvider.notifier).clear,
+            ),
           if (filter.isActive)
             FeedFilterBar(shown: _allMatches(filter), money: money),
           Expanded(
@@ -328,7 +356,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                                     const <String, Category>{},
                                 freeze: ref.watch(freezeLookupProvider),
                                 beyondDeadline: source.beyondDeadline,
-                                canReorder: !filter.isActive,
+                                canReorder:
+                                    !filter.isActive && selection.isEmpty,
+                                selection: selection,
                               ),
                           onReorderStart: (int index) =>
                               HapticFeedback.mediumImpact(),
@@ -547,6 +577,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     required FreezeLookup freeze,
     required Set<String> beyondDeadline,
     required bool canReorder,
+    required Set<String> selection,
   }) {
     switch (item) {
       case FeedHeader():
@@ -569,14 +600,19 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           category: record.categoryId == null
               ? null
               : categories[record.categoryId],
-          onTap: () => editRecord(context, record),
+          onTap: selection.isEmpty
+              ? () => editRecord(context, record)
+              : () =>
+                    ref.read(feedSelectionProvider.notifier).toggle(record.id),
+          selecting: selection.isNotEmpty,
+          isSelected: selection.contains(record.id),
           onTogglePaid: () => togglePaid(context, ref, record),
           onDelete: () => deleteRecord(context, ref, record),
           isFrozen: freeze.isFrozen(record.budgetPeriodId),
           isOverdue: record.isOverdue(today),
           isBeyondDeadline: beyondDeadline.contains(record.id),
           onLongPress: () =>
-              showRecordMenu(context, ref, record: record, today: today),
+              ref.read(feedSelectionProvider.notifier).toggle(record.id),
           // The grip is outside the row's gesture area, so the row's long-press does not
           // compete with it.
           dragHandle: canReorder ? DragGrip(index: index) : null,
@@ -955,4 +991,35 @@ class _CutoffLine extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SelectionBar extends StatelessWidget {
+  const _SelectionBar({required this.count, required this.onClose});
+
+  final int count;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    color: context.sage.accentTint,
+    padding: const EdgeInsets.only(left: SageSpace.gutter),
+    child: Row(
+      children: <Widget>[
+        Expanded(
+          child: Text(
+            tr(
+              'feed.bulk.selected',
+              namedArgs: <String, String>{'count': '$count'},
+            ),
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: tr('common.close'),
+          onPressed: onClose,
+        ),
+      ],
+    ),
+  );
 }

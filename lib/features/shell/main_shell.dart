@@ -7,6 +7,7 @@ import 'package:sielto/features/calendar/calendar_page.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/feed/feed_page.dart';
+import 'package:sielto/features/feed/feed_selection.dart';
 import 'package:sielto/features/shell/shell_tab.dart';
 
 /// Dashboard, Feed and Calendar, switched by the bottom bar or a swipe.
@@ -28,7 +29,10 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.dispose();
   }
 
-  void _show(int index) => ref.read(shellTabProvider.notifier).show(index);
+  void _show(int index) {
+    ref.read(feedSelectionProvider.notifier).clear();
+    ref.read(shellTabProvider.notifier).show(index);
+  }
 
   void _goTo(int index) {
     final int distance = (index - _index).abs();
@@ -67,6 +71,13 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   /// Back leaves Calendar zoom first, then returns to the Dashboard.
   void _back() {
+    final FeedSelectionController selection = ref.read(
+      feedSelectionProvider.notifier,
+    );
+    if (ref.read(feedSelectionProvider).isNotEmpty) {
+      selection.clear();
+      return;
+    }
     if (_index == _calendarTab &&
         ref.read(calendarViewProvider.notifier).back()) {
       return;
@@ -78,8 +89,9 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     _resetOnSpaceChange();
     final int index = ref.watch(shellTabProvider);
+    final bool selecting = ref.watch(feedSelectionProvider).isNotEmpty;
     return PopScope(
-      canPop: index == 0,
+      canPop: index == 0 && !selecting,
       onPopInvokedWithResult: (bool didPop, Object? _) {
         if (!didPop) _back();
       },

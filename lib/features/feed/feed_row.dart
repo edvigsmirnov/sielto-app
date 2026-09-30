@@ -52,6 +52,8 @@ class FeedRowTile extends StatelessWidget {
     this.isOverdue = false,
     this.isBeyondDeadline = false,
     this.dragHandle,
+    this.selecting = false,
+    this.isSelected = false,
     super.key,
   });
 
@@ -77,6 +79,10 @@ class FeedRowTile extends StatelessWidget {
 
   final Widget? dragHandle;
 
+  /// While any row is selected, a tap selects and swipes are off.
+  final bool selecting;
+  final bool isSelected;
+
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
@@ -98,7 +104,9 @@ class FeedRowTile extends StatelessWidget {
     return Dismissible(
       key: ValueKey<String>('dismiss:${record.id}'),
       // Right deletes, left toggles paid.
-      direction: isFrozen ? DismissDirection.none : DismissDirection.horizontal,
+      direction: isFrozen || selecting
+          ? DismissDirection.none
+          : DismissDirection.horizontal,
       background: const _SwipeAction(
         alignment: Alignment.centerLeft,
         icon: Icons.delete_outline,
@@ -122,7 +130,9 @@ class FeedRowTile extends StatelessWidget {
         return false;
       },
       child: Ink(
-        color: isOverdue ? sage.dangerTint : Colors.transparent,
+        color: isSelected
+            ? sage.accentTint
+            : (isOverdue ? sage.dangerTint : Colors.transparent),
         child: ConstrainedBox(
           // A minimum: the spacious subtitle can be taller.
           constraints: BoxConstraints(minHeight: rowHeightFor(density)),
@@ -148,7 +158,7 @@ class FeedRowTile extends StatelessWidget {
                       children: <Widget>[
                         _PaidCircle(
                           record: record,
-                          onTap: isFrozen ? null : onTogglePaid,
+                          onTap: isFrozen || selecting ? null : onTogglePaid,
                         ),
                         const SizedBox(width: SageSpace.md),
                         _TypeMarker(record: record, category: category),

@@ -165,6 +165,15 @@
     "addAfter": "Add on the day after",
     "duplicateBefore": "Duplicate to the day before",
     "duplicateAfter": "Duplicate to the day after",
+    "bulk": {
+      "title": "Actions",
+      "selected": "Selected: {count}",
+      "done": "Mark as done",
+      "notDone": "Mark as not done",
+      "category": "Change category",
+      "deleted": "Deleted: {count}",
+      "skipped": "Skipped in frozen periods: {count}"
+    },
     "filter": {
       "title": "Search and filter",
       "search": "Title or note",
@@ -305,6 +314,8 @@
     "titleTaken": "A category with this name already exists.",
     "moveRecords": "Move records to…",
     "moved": "Records moved: {count}",
+    "deleteManyTitle": "Delete these categories?",
+    "deleteManyBody": "{titles}. Payments filed under them keep the names.",
     "deletedLabel": "{title} (deleted)"
   },
   "starterCategory": {

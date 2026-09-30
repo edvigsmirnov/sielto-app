@@ -146,44 +146,54 @@ Future<void> showRecordMenu(
             ),
           ),
         ),
-        ListTile(
-          leading: const Icon(Icons.arrow_upward),
-          title: Text(tr('feed.addBefore')),
-          onTap: () {
-            Navigator.of(sheetContext).pop();
-            _addOn(context, record, record.date.addDays(-1));
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.arrow_downward),
-          title: Text(tr('feed.addAfter')),
-          onTap: () {
-            Navigator.of(sheetContext).pop();
-            _addOn(context, record, record.date.addDays(1));
-          },
-        ),
-        if (!record.isIncome) ...<Widget>[
-          ListTile(
-            leading: const Icon(Icons.content_copy_outlined),
-            title: Text(tr('feed.duplicateBefore')),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              _duplicate(context, ref, record, record.date.addDays(-1));
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.content_copy),
-            title: Text(tr('feed.duplicateAfter')),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              _duplicate(context, ref, record, record.date.addDays(1));
-            },
-          ),
-        ],
+        ...recordMenuTiles(context, ref, record, sheetContext),
       ],
     ),
   ),
 );
+
+/// Add or duplicate on a neighbouring day. [sheetContext] is closed first.
+List<Widget> recordMenuTiles(
+  BuildContext context,
+  WidgetRef ref,
+  FeedRecord record,
+  BuildContext sheetContext,
+) => <Widget>[
+  ListTile(
+    leading: const Icon(Icons.arrow_upward),
+    title: Text(tr('feed.addBefore')),
+    onTap: () {
+      Navigator.of(sheetContext).pop();
+      _addOn(context, record, record.date.addDays(-1));
+    },
+  ),
+  ListTile(
+    leading: const Icon(Icons.arrow_downward),
+    title: Text(tr('feed.addAfter')),
+    onTap: () {
+      Navigator.of(sheetContext).pop();
+      _addOn(context, record, record.date.addDays(1));
+    },
+  ),
+  if (!record.isIncome) ...<Widget>[
+    ListTile(
+      leading: const Icon(Icons.content_copy_outlined),
+      title: Text(tr('feed.duplicateBefore')),
+      onTap: () {
+        Navigator.of(sheetContext).pop();
+        _duplicate(context, ref, record, record.date.addDays(-1));
+      },
+    ),
+    ListTile(
+      leading: const Icon(Icons.content_copy),
+      title: Text(tr('feed.duplicateAfter')),
+      onTap: () {
+        Navigator.of(sheetContext).pop();
+        _duplicate(context, ref, record, record.date.addDays(1));
+      },
+    ),
+  ],
+];
 
 /// Empty form on the neighbouring day.
 void _addOn(BuildContext context, FeedRecord record, CalendarDate date) {
