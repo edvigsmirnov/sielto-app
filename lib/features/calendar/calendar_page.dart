@@ -478,6 +478,10 @@ class _DayBody extends ConsumerWidget {
       money: money,
       isFrozen: ref.watch(freezeLookupProvider).isFrozen,
       dayOff: ref.watch(dayOffNamesProvider(day)),
+      deadline: _deadlineOn(
+        day,
+        ref.watch(spacePeriodsProvider).value ?? const <BudgetPeriod>[],
+      ),
       onEdit: (FeedRecord r) => editRecord(context, r),
       onTogglePaid: (FeedRecord r) => togglePaid(context, ref, r),
       onDelete: (FeedRecord r) => deleteRecord(context, ref, r),
@@ -485,4 +489,13 @@ class _DayBody extends ConsumerWidget {
           showRecordMenu(context, ref, record: r, today: today),
     );
   }
+}
+
+DeadlineKind? _deadlineOn(CalendarDate day, List<BudgetPeriod> periods) {
+  for (final BudgetPeriod p in periods) {
+    if (p.deadlineDate == day) {
+      return p.deadlineIsHard ? DeadlineKind.hard : DeadlineKind.soft;
+    }
+  }
+  return null;
 }

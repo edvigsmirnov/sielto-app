@@ -1,5 +1,3 @@
-import 'dart:ui' show PathMetric;
-
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
@@ -36,11 +34,6 @@ class CellDecoration extends StatelessWidget {
       decoration: BoxDecoration(
         color: groundOf(sage, mark, isToday: isToday),
         borderRadius: BorderRadius.circular(radius),
-        border: switch (mark.deadline) {
-          // The soft deadline's dashed border is painted below.
-          DeadlineKind.hard => Border.all(color: sage.accentStrong, width: 1.5),
-          DeadlineKind.soft || null => null,
-        },
       ),
       child: Stack(
         fit: StackFit.passthrough,
@@ -50,15 +43,6 @@ class CellDecoration extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(radius),
                 child: CustomPaint(painter: _HatchPainter(color: sage.sand)),
-              ),
-            ),
-          if (mark.deadline == DeadlineKind.soft)
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _DashedRectPainter(
-                  color: sage.accentStrong,
-                  radius: radius,
-                ),
               ),
             ),
           child,
@@ -80,6 +64,16 @@ class CellDecoration extends StatelessWidget {
               top: 3,
               left: 3,
               child: _Dot(color: isToday ? sage.accentOn : sage.warning),
+            ),
+          if (mark.deadline case final DeadlineKind kind)
+            Positioned(
+              bottom: 2,
+              left: 2,
+              child: DeadlineFlag(
+                kind: kind,
+                size: 11,
+                color: isToday ? sage.accentOn : null,
+              ),
             ),
           if (mark.isHighLoad)
             Positioned(
@@ -150,40 +144,23 @@ class _HatchPainter extends CustomPainter {
   bool shouldRepaint(_HatchPainter old) => old.color != color;
 }
 
-/// Dashed rounded rectangle for a soft deadline.
-class _DashedRectPainter extends CustomPainter {
-  const _DashedRectPainter({required this.color, required this.radius});
+/// Filled for a hard deadline, outlined for a soft one.
+class DeadlineFlag extends StatelessWidget {
+  const DeadlineFlag({
+    required this.kind,
+    this.size = 20,
+    this.color,
+    super.key,
+  });
 
-  final Color color;
-  final double radius;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    final Path path = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Offset.zero & size,
-          Radius.circular(radius),
-        ).deflate(0.75),
-      );
-
-    const double dash = 4;
-    const double gap = 3;
-    for (final PathMetric metric in path.computeMetrics()) {
-      double start = 0;
-      while (start < metric.length) {
-        final double end = (start + dash).clamp(0.0, metric.length);
-        canvas.drawPath(metric.extractPath(start, end), paint);
-        start = end + gap;
-      }
-    }
-  }
+  final DeadlineKind kind;
+  final double size;
+  final Color? color;
 
   @override
-  bool shouldRepaint(_DashedRectPainter old) =>
-      old.color != color || old.radius != radius;
+  Widget build(BuildContext context) => Icon(
+    kind == DeadlineKind.hard ? Icons.flag : Icons.outlined_flag,
+    size: size,
+    color: color ?? context.sage.danger,
+  );
 }

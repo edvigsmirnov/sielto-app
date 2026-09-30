@@ -8,7 +8,9 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/calendar/calendar_cell.dart';
 import 'package:sielto/features/calendar/calendar_data.dart';
+import 'package:sielto/features/calendar/day_marks.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/feed_row.dart';
 
@@ -28,6 +30,7 @@ class DayView extends StatelessWidget {
     required this.onHoldRecord,
     required this.isFrozen,
     this.dayOff,
+    this.deadline,
     super.key,
   });
 
@@ -50,6 +53,8 @@ class DayView extends StatelessWidget {
   /// Null on a working day; otherwise holiday names, empty when unknown.
   final List<String>? dayOff;
 
+  final DeadlineKind? deadline;
+
   @override
   Widget build(BuildContext context) {
     final List<FeedRecord> rows = <FeedRecord>[
@@ -71,6 +76,10 @@ class DayView extends StatelessWidget {
 
     return Column(
       children: <Widget>[
+        if (deadline case final DeadlineKind kind) ...<Widget>[
+          _DeadlineBanner(kind: kind),
+          const SizedBox(height: SageSpace.md),
+        ],
         if (dayOff != null) ...<Widget>[
           _DayOffBanner(names: dayOff!),
           const SizedBox(height: SageSpace.md),
@@ -130,6 +139,42 @@ class DayView extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+class _DeadlineBanner extends StatelessWidget {
+  const _DeadlineBanner({required this.kind});
+
+  final DeadlineKind kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(SageSpace.md),
+      decoration: BoxDecoration(
+        color: sage.dangerTint,
+        borderRadius: BorderRadius.circular(SageRadius.button),
+      ),
+      child: Row(
+        children: <Widget>[
+          DeadlineFlag(kind: kind),
+          const SizedBox(width: SageSpace.md),
+          Expanded(
+            child: Text(
+              tr(
+                kind == DeadlineKind.hard
+                    ? 'calendar.legend.hardDeadline'
+                    : 'calendar.legend.softDeadline',
+              ),
+              style: Theme.of(context).textTheme.titleSmall
+                  ?.copyWith(color: sage.danger),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
