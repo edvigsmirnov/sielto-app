@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
@@ -174,6 +176,12 @@ class FeedRowTile extends StatelessWidget {
                                   color: record.isPaid
                                       ? sage.inkSecondary
                                       : sage.ink,
+                                  decoration: record.isPaid
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  decorationColor: sage.inkLabel.withValues(
+                                    alpha: 0.6,
+                                  ),
                                 ),
                               ),
                               if (_subtitle(record, category)
@@ -271,8 +279,8 @@ class FeedRowTile extends StatelessWidget {
   }
 }
 
-/// Filled once paid.
-class _PaidCircle extends StatelessWidget {
+/// Filled once paid. Becoming paid sends short rays out of it.
+class _PaidCircle extends StatefulWidget {
   const _PaidCircle({required this.record, required this.onTap});
 
   final FeedRecord record;
@@ -281,40 +289,108 @@ class _PaidCircle extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
+  State<_PaidCircle> createState() => _PaidCircleState();
+}
+
+class _PaidCircleState extends State<_PaidCircle>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _rays = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 380),
+  );
+
+  @override
+  void didUpdateWidget(_PaidCircle old) {
+    super.didUpdateWidget(old);
+    if (widget.record.isPaid &&
+        !old.record.isPaid &&
+        !MediaQuery.disableAnimationsOf(context)) {
+      _rays.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _rays.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
+    final bool paid = widget.record.isPaid;
     return GestureDetector(
-      onTap: onTap == null
+      onTap: widget.onTap == null
           ? null
           : () {
               HapticFeedback.lightImpact();
-              onTap!();
+              widget.onTap!();
             },
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
         width: 26,
         height: 26,
-        child: Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: record.isPaid ? sage.accent : Colors.transparent,
-              border: Border.all(
-                color: record.isPaid ? sage.accent : sage.border,
-                width: 1.5,
+        child: CustomPaint(
+          foregroundPainter: _RaysPainter(
+            progress: _rays,
+            color: sage.accentStrong,
+          ),
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: paid ? sage.accent : Colors.transparent,
+                border: Border.all(
+                  color: paid ? sage.accent : sage.border,
+                  width: 1.5,
+                ),
               ),
+              child: paid
+                  ? Icon(Icons.check, size: 15, color: sage.accentOn)
+                  : null,
             ),
-            child: record.isPaid
-                ? Icon(Icons.check, size: 15, color: sage.accentOn)
-                : null,
           ),
         ),
       ),
     );
   }
+}
+
+/// Eight thin strokes that travel outward and fade.
+class _RaysPainter extends CustomPainter {
+  _RaysPainter({required this.progress, required this.color})
+    : super(repaint: progress);
+
+  final Animation<double> progress;
+  final Color color;
+
+  static const int _count = 8;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double t = progress.value;
+    if (t == 0 || t == 1) return;
+    final double eased = Curves.easeOutCubic.transform(t);
+    final Offset centre = size.center(Offset.zero);
+    final double inner = 12 + 6 * eased;
+    final double outer = inner + 5 * (1 - t);
+    final Paint paint = Paint()
+      ..color = color.withValues(alpha: 0.7 * (1 - t))
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    for (int i = 0; i < _count; i++) {
+      final double angle = i * 2 * math.pi / _count;
+      final Offset dir = Offset(math.cos(angle), math.sin(angle));
+      canvas.drawLine(centre + dir * inner, centre + dir * outer, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RaysPainter old) =>
+      old.progress != progress || old.color != color;
 }
 
 /// Solid for mandatory, hollow for variable, in the category colour. Incomes
