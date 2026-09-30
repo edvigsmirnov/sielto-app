@@ -1,9 +1,9 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -14,10 +14,13 @@ import 'package:sielto/core/backup/backup_service.dart';
 import 'package:sielto/core/crypto/key_store.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/drive.dart';
 import 'package:sielto/features/security/recovery_key.dart';
+
+const MethodChannel _window = MethodChannel('sielto/window');
 
 /// The Recovery Key and backups.
 class BackupPage extends ConsumerWidget {
@@ -101,21 +104,13 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
   final Space? current = ref.read(currentSpaceProvider);
   Space? only;
   if (spaces.length > 1 && current != null) {
-    final bool? all = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => SimpleDialog(
-        title: Text(tr('backup.exportWhat')),
-        children: <Widget>[
-          SimpleDialogOption(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(plural('backup.exportAll', spaces.length)),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(tr('backup.exportOne', args: <String>[current.title])),
-          ),
-        ],
-      ),
+    final bool? all = await chooseDialog<bool>(
+      context,
+      title: tr('backup.exportWhat'),
+      options: <(String, bool)>[
+        (plural('backup.exportAll', spaces.length), true),
+        (tr('backup.exportOne', args: <String>[current.title]), false),
+      ],
     );
     if (all == null || !context.mounted) return;
     if (!all) only = current;
@@ -132,6 +127,26 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
   messenger.hideCurrentSnackBar();
 
   if (Platform.isAndroid) {
+    if (!context.mounted) return;
+    final bool? toDevice = await chooseDialog<bool>(
+      context,
+      title: tr('backup.whereTo'),
+      options: <(String, bool)>[
+        (tr('backup.toDevice'), true),
+        (tr('backup.share'), false),
+      ],
+    );
+    if (toDevice == null) return;
+    if (toDevice) {
+      final bool? saved = await _window.invokeMethod<bool>(
+        'saveFile',
+        <String, Object>{'name': name, 'bytes': bytes},
+      );
+      if (saved ?? false) {
+        messenger.showSnackBar(SnackBar(content: Text(tr('backup.saved'))));
+      }
+      return;
+    }
     final File file = File(p.join((await getTemporaryDirectory()).path, name))
       ..writeAsBytesSync(bytes, flush: true);
     await SharePlus.instance.share(
@@ -322,10 +337,30 @@ class _RestorePageState extends State<RestorePage> {
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: AppBar(title: Text(tr('backup.restore'))),
+      bottomNavigationBar: FormActionBar(
+        child: backup == null
+            ? ListenableBuilder(
+                listenable: _key,
+                builder: (BuildContext context, Widget? _) => FilledButton(
+                  onPressed: _busy || _key.text.isEmpty ? null : _open,
+                  child: Text(
+                    tr(_busy ? 'recovery.working' : 'common.continue'),
+                  ),
+                ),
+              )
+            : FilledButton(
+                onPressed: _busy ? null : () => _restore(backup),
+                child: Text(
+                  tr(_busy ? 'recovery.working' : 'backup.restoreAction'),
+                ),
+              ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(SageSpace.formGutter),
         children: <Widget>[
           if (backup == null) ...<Widget>[
+            Text(tr('backup.keyWhy'), style: text.bodyMedium),
+            const SizedBox(height: SageSpace.lg),
             LabelledField(
               label: tr('recovery.title'),
               child: SecretField(
@@ -336,11 +371,6 @@ class _RestorePageState extends State<RestorePage> {
                     : tr('backup.problem.${_problem!.name}'),
                 onSubmitted: (_) => _open(),
               ),
-            ),
-            const SizedBox(height: SageSpace.xl),
-            FilledButton(
-              onPressed: _busy ? null : _open,
-              child: Text(tr(_busy ? 'recovery.working' : 'common.continue')),
             ),
           ] else ...<Widget>[
             Text(
@@ -358,26 +388,33 @@ class _RestorePageState extends State<RestorePage> {
             for (final ({String id, String title}) space in backup.spaces)
               Padding(
                 padding: const EdgeInsets.only(bottom: SageSpace.lg),
-                child: _conflicts.contains(space.id)
-                    ? LabelledField(
-                        label: tr('backup.exists', args: <String>[space.title]),
-                        child: SegmentedChoice<RestoreChoice>(
-                          values: RestoreChoice.values,
-                          selected: _choices[space.id]!,
-                          labelOf: (RestoreChoice c) =>
-                              tr('backup.choice.${c.name}'),
-                          onChanged: (RestoreChoice c) =>
-                              setState(() => _choices[space.id] = c),
-                        ),
-                      )
-                    : Text(space.title, style: text.bodyLarge),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Text(space.title, style: text.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      tr(
+                        _conflicts.contains(space.id)
+                            ? 'backup.alreadyHere'
+                            : 'backup.willAdd',
+                      ),
+                      style: text.bodySmall,
+                    ),
+                    if (_conflicts.contains(space.id)) ...<Widget>[
+                      const SizedBox(height: SageSpace.sm),
+                      SegmentedChoice<RestoreChoice>(
+                        values: RestoreChoice.values,
+                        selected: _choices[space.id]!,
+                        labelOf: (RestoreChoice c) =>
+                            tr('backup.choice.${c.name}'),
+                        onChanged: (RestoreChoice c) =>
+                            setState(() => _choices[space.id] = c),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            FilledButton(
-              onPressed: _busy ? null : () => _restore(backup),
-              child: Text(
-                tr(_busy ? 'recovery.working' : 'backup.restoreAction'),
-              ),
-            ),
           ],
         ],
       ),

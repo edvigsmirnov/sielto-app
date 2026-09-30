@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewTreeObserver
 import android.view.WindowManager
+import androidx.activity.result.contract.ActivityResultContracts
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener
@@ -13,6 +14,26 @@ import io.flutter.plugin.common.MethodChannel
 // A FragmentActivity for local_auth's biometric prompt.
 class MainActivity : FlutterFragmentActivity(), FlutterUiDisplayListener {
     private var flutterDrawn = false
+
+    // The system "save as" dialog; the bytes wait here while it is open.
+    private var pendingSave: Pair<ByteArray, MethodChannel.Result>? = null
+    private val createDocument =
+        registerForActivityResult(
+            ActivityResultContracts.CreateDocument("application/octet-stream"),
+        ) { uri ->
+            val (bytes, result) = pendingSave ?: return@registerForActivityResult
+            pendingSave = null
+            if (uri == null) {
+                result.success(false)
+                return@registerForActivityResult
+            }
+            try {
+                contentResolver.openOutputStream(uri)!!.use { it.write(bytes) }
+                result.success(true)
+            } catch (e: Exception) {
+                result.error("write", e.message, null)
+            }
+        }
 
     // Holds the system splash until Flutter has drawn its first frame, which
     // repeats the splash, so the handoff is invisible instead of fading to a
@@ -42,15 +63,21 @@ class MainActivity : FlutterFragmentActivity(), FlutterUiDisplayListener {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "sielto/window")
             .setMethodCallHandler { call, result ->
-                if (call.method == "setSecure") {
-                    if (call.arguments as Boolean) {
-                        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                    } else {
-                        window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                when (call.method) {
+                    "setSecure" -> {
+                        if (call.arguments as Boolean) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        }
+                        result.success(null)
                     }
-                    result.success(null)
-                } else {
-                    result.notImplemented()
+                    "saveFile" -> {
+                        pendingSave?.second?.success(false)
+                        pendingSave = Pair(call.argument<ByteArray>("bytes")!!, result)
+                        createDocument.launch(call.argument<String>("name"))
+                    }
+                    else -> result.notImplemented()
                 }
             }
     }
