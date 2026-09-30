@@ -209,7 +209,7 @@ void main() {
     await settle(tester, pumpWidget: false);
 
     expect(tester.takeException(), isNull);
-    expect(find.text('No payments in this range.'), findsOneWidget);
+    expect(find.text('No spending in this range.'), findsOneWidget);
     await unmount(tester);
   });
 

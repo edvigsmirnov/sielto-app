@@ -30,12 +30,12 @@
   },
   "onboarding": {
     "welcomeTitle": "Welcome",
-    "welcomeBody": "No account, no email, no password. Your data stays on this device until you decide otherwise.",
+    "welcomeBody": "No account, no email, no password. Your money stays on this device unless you decide otherwise.",
     "fieldName": "Name",
-    "nameHint": "Optional",
-    "currencyWhy": "Taken from your device. You can change it now; afterwards only while a Space has no records in it.",
-    "profileTitle": "A few basics",
-    "profileWhy": "All of it can be changed later in Settings."
+    "nameHint": "What should we call you? (optional)",
+    "currencyWhy": "We picked this from your device. Change it now if it's wrong. Later you can only change it while a Space is still empty.",
+    "profileTitle": "Let's get you set up",
+    "profileWhy": "You can change any of this later in Settings."
   },
   "mode": {
     "incomeDriven": {
@@ -45,12 +45,12 @@
     },
     "budget": {
       "name": "Budget",
-      "body": "For a goal or an event with a limit on money, a date, or both. Set the budget, record what you spend, and see whether you fit.",
+      "body": "For a goal or an event with a limit on money, a date, or both. Set the budget, record what you spend, and see if you stay within it.",
       "examples": "A trip, a renovation, an office purchase."
     },
     "flow": {
       "name": "Flow",
-      "body": "For irregular income, or when you simply want to see spending ahead. Counts from the money you have now: how far it reaches and what is left.",
+      "body": "For irregular income, or when you simply want to see spending ahead. Starts from the money you have now and shows how far it goes.",
       "examples": "Freelance, living on savings, open-ended planning."
     }
   },
@@ -67,11 +67,11 @@
   "space": {
     "createTitle": "New Space",
     "firstTitle": "Create your first Space",
-    "firstBody": "A Space holds one budget. Separate ones keep separate things apart — a household, a trip, freelance work.",
+    "firstBody": "A Space is one budget. Keep separate things separate: home, a trip, freelance work.",
     "fieldTitle": "Name",
     "titleHint": "Family, Trip, Freelance…",
     "fieldMode": "Type",
-    "modeIsPermanent": "Chosen once. The three types compute money differently, so a Space keeps the one it was created with.",
+    "modeIsPermanent": "You choose this once. Each type works out money its own way, so a Space keeps the type it started with.",
     "fieldCurrency": "Currency",
     "currencyFreezes": "Can be changed until the first record is added.",
     "currencyFrozen": "Frozen — this Space already has records.",
@@ -82,10 +82,10 @@
     "noneYet": "No Spaces yet.",
     "delete": "Delete Space",
     "deleteTitle": "Delete this Space?",
-    "deleteConfirm": "Everything in \"{title}\" is erased from this device. This cannot be undone. Type the name to confirm.",
+    "deleteConfirm": "This erases everything in \"{title}\" from this device, for good. Type its name to confirm.",
     "archive": "Archive Space",
     "archiveTitle": "Archive this Space?",
-    "archiveConfirm": "\"{title}\" disappears from the switcher. Its records stay on this device and nothing is deleted.",
+    "archiveConfirm": "\"{title}\" moves out of sight. Nothing is deleted, and you can bring it back any time.",
     "archiveBody": "Archiving hides the Space without deleting anything. It can be brought back from the Spaces switcher, under Archived.",
     "search": "Search Spaces",
     "archived": "Archived ({})",
@@ -125,9 +125,7 @@
     "overspend": "Overspend: {amount}",
     "currentMoney": "Balance",
     "balanceSetOn": "set on {date}",
-    "cascade": "Cascade",
-    "baseRemainder": "Base remainder",
-    "notCovered": "Doesn't cover it",
+    "notCovered": "Not enough to cover this",
     "planned": "Planned",
     "paid": "Paid",
     "leftToPay": "Left to pay",
@@ -136,17 +134,19 @@
       "one": "In {} day",
       "other": "In {} days"
     },
-    "noUpcomingIncome": "No income entered ahead.",
+    "noUpcomingIncome": "No income planned yet.",
     "projection": {
       "one": "Next {} day",
       "other": "Next {} days"
     },
     "averagePerDay": "{amount}/day planned",
-    "cascadeHint": "Base remainder is what is left after the mandatory payments alone — the lower bound. Free money above is after the variable ones too.",
     "nearestIncome": "Nearest income",
-    "atAverageSpend": "at an average spend of {amount}/day",
-    "perDay": "Average/day",
-    "moneyEndsOn": "Money lasts until {date}"
+    "atAverageSpend": "planning {amount} a day on average",
+    "perDay": "Planned per day, on average",
+    "moneyEndsOn": "Money lasts until {date}",
+    "afterBills": "After bills only",
+    "afterBillsLeft": "Left once the bills are paid",
+    "shortFrom": "Runs short from"
   },
   "balance": {
     "sheetTitle": "Set current balance",
@@ -158,10 +158,10 @@
     }
   },
   "feed": {
-    "empty": "Nothing here yet.",
+    "empty": "Nothing here yet. Add your first expense with +.",
     "today": "Today",
     "currentMoney": "Balance",
-    "cutoff": "Money runs out",
+    "cutoff": "Money runs out here",
     "deleted": "Deleted \"{title}\"",
     "addBefore": "Add on the day before",
     "addAfter": "Add on the day after",
@@ -174,13 +174,13 @@
       "notDone": "Mark as not done",
       "category": "Change category",
       "deleted": "Deleted: {count}",
-      "skipped": "Skipped in frozen periods: {count}"
+      "skipped": "Left as they were, their period is closed: {count}"
     },
     "filter": {
       "title": "Search and filter",
       "search": "Title or note",
       "clear": "Clear filters",
-      "nothing": "Nothing matches.",
+      "nothing": "Nothing matches. Try a different word or clear the filters.",
       "kind": {
         "all": "All",
         "mandatory": "Mandatory",
@@ -215,9 +215,9 @@
     "oneOff": "One-off",
     "recurring": "Repeating",
     "recurringPreview": "Takes {now} now, reserves {total} across {count} payments",
-    "dateOutOfRange": "That date is unusually far away. Saving it is allowed.",
+    "dateOutOfRange": "That's a long way off. Double-check the date; you can still save it.",
     "mandatoryConfirmTitle": "This is a mandatory payment",
-    "mandatoryConfirmBody": "Mandatory payments are real obligations. Continue?",
+    "mandatoryConfirmBody": "This is a bill you have to pay. Move it anyway?",
     "fieldPeriod": "Period",
     "periodAuto": "By date",
     "periodCurrent": "Current period",
@@ -243,7 +243,7 @@
   },
   "series": {
     "title": "This payment repeats",
-    "body": "Which occurrences should the change apply to? Occurrences already marked paid are never changed.",
+    "body": "Which payments should this change? Ones you've already paid stay as they are.",
     "thisOne": "Only this one",
     "allFuture": "All future",
     "wholeSeries": "Whole series",
@@ -267,14 +267,14 @@
     "makeRegularHint": "Repeats on a schedule instead of happening once.",
     "partOfSeries": "One occurrence of a regular income.",
     "fieldActualDate": "Actually received on",
-    "actualDateNote": "Kept for the record. It changes no calculation.",
+    "actualDateNote": "Just for your records; it doesn't change any numbers.",
     "role": "Role",
     "roleAnchor": "Also an anchor",
     "roleAdditional": "Additional",
     "roleAnchorHint": "Periods run from one anchor income to the next.",
     "roleAdditionalHint": "Adds to the money available without moving period boundaries.",
     "regularTitle": "Regular incomes",
-    "noRegular": "No regular incomes yet.",
+    "noRegular": "No regular income yet. Add your salary to start planning periods.",
     "anchorBadge": "Anchor",
     "makeAnchor": "Make it an anchor",
     "makeAdditional": "Make it additional",
@@ -285,22 +285,22 @@
     "ruleAmountHint": "Applies to every occurrence that has not arrived yet. Months already marked received keep their own figure.",
     "ruleScheduleHint": "Changing the schedule re-dates the occurrences that have not arrived yet.",
     "landsIn": "Joins the cycle {period}",
-    "regenerate": "Regenerate occurrences",
-    "regenerateTitle": "Regenerate occurrences?",
-    "regenerateBody": "Upcoming occurrences of \"{title}\" are laid out again from the schedule: deleted ones come back, edited ones take the regular amount and title again. Ones already received, and ones in a frozen period, stay as they are.",
+    "regenerate": "Reset to schedule",
+    "regenerateTitle": "Reset \"{title}\" to its schedule?",
+    "regenerateBody": "We'll set out the upcoming dates for \"{title}\" from its schedule again. Dates you deleted come back, and changed amounts or names go back to the usual ones. Anything already received or in a closed period stays as it is.",
     "regenerated": {
-      "one": "{} occurrence restored",
-      "other": "{} occurrences restored"
+      "one": "{} date restored",
+      "other": "{} dates restored"
     },
     "regenerateNothing": "Everything already matches the schedule.",
     "anchorHelpTitle": "What is an anchor income?",
-    "anchorHelpBody": "Sielto plans in periods. A period runs from one anchor income to the next — usually your salary, from one payday to the next.\n\nThe anchor's amount is what the period starts with: everything due before the next anchor comes out of it, and the Dashboard shows what is left.\n\nOther regular incomes are additional: they add to the period they land in but do not start a new one.\n\nYou can change which income is the anchor with the pin on the Incomes screen. At least one regular income must stay the anchor."
+    "anchorHelpBody": "Your money is planned in periods, usually from one payday to the next. The income that starts a period is the anchor, most often your salary.\n\nA period starts with the anchor's amount. Everything due before the next anchor comes out of it, and the Dashboard shows what's left.\n\nOther regular incomes are additional: they add to the period they land in, but don't start a new one.\n\nTo change which income is the anchor, use the pin on the Incomes screen. At least one regular income always stays the anchor."
   },
   "category": {
     "title": "Categories",
     "add": "New category",
     "edit": "Edit category",
-    "empty": "No categories yet.",
+    "empty": "No categories yet. Add one to keep things tidy.",
     "none": "No category",
     "fieldTitle": "Name",
     "fieldColor": "Colour",
@@ -315,7 +315,7 @@
     "search": "Search categories",
     "titleTaken": "A category with this name already exists.",
     "moveRecords": "Move records to…",
-    "moved": "Records moved: {count}",
+    "moved": "Entries moved: {count}",
     "deleteManyTitle": "Delete these categories?",
     "deleteManyBody": "{titles}. Payments filed under them keep the names.",
     "deletedLabel": "{title} (deleted)"
@@ -339,7 +339,7 @@
     "noRecords": "Nothing planned",
     "dayExpenses": "Expenses",
     "dayIncome": "Income",
-    "dayEmpty": "Nothing on this day yet.",
+    "dayEmpty": "A quiet day. Nothing planned.",
     "back": "Return",
     "holiday": "Public holiday",
     "legend": {
@@ -360,12 +360,12 @@
   },
   "coverage": {
     "covered": "Covered, with room to spare",
-    "exact": "Covered exactly, nothing spare",
-    "short": "Not covered before the next income"
+    "exact": "Covered, but only just",
+    "short": "Runs short before your next income"
   },
   "decryption": {
-    "title": "Your data cannot be opened",
-    "body": "The database is on this device, but the key that unlocks it is gone. This usually happens after clearing app data or moving to a new device.",
+    "title": "We can't open your data right now",
+    "body": "Your data is still here, but the key that opens it is missing. It usually happens after clearing app data or moving to a new phone.",
     "enterRecoveryKey": "Enter Recovery Key",
     "restoreFromBackup": "Restore from backup",
     "startOver": "Start over",
@@ -384,7 +384,7 @@
     "boundaryEnd": "Counting from",
     "boundaryCount": "Number of days",
     "shortMonthHint": "In short months, the last day of the month.",
-    "latestDayRule": "The latest day of the window is used, so nothing is planned on money that has not arrived.",
+    "latestDayRule": "We plan for the latest day, so you never count on money that hasn't arrived.",
     "rangeInverted": "The last day cannot come before the first.",
     "incomplete": "Schedule incomplete",
     "fixedDate": {
@@ -446,7 +446,7 @@
     "noAnchorTitle": "Add an anchor income to start planning periods",
     "noAnchorBody": "Without a regular income, Flow or Budget may suit better — but you can carry on here.",
     "amountUnknownTitle": "Income expected, amount not specified",
-    "amountUnknownBody": "The expense side is fully computed. The remainder appears once the amount is known.",
+    "amountUnknownBody": "Your spending is all counted. We'll show what's left once you know the amount.",
     "setAmount": "Set the amount"
   },
   "holidays": {
@@ -469,7 +469,7 @@
     "markDayHint": "Affects when income is expected, nothing else.",
     "noCountry": "No country",
     "noCountryBody": "Only weekends and your own non-working days count.",
-    "noCustomDays": "None yet.",
+    "noCustomDays": "You haven't added any days off yet.",
     "notLoaded": "Not loaded for this year yet.",
     "needsDownload": "No offline list ships for this country. Turn on the download above to fetch it.",
     "publicTitle": "Public holidays",
@@ -480,19 +480,19 @@
   "freeze": {
     "addNote": "Add a note",
     "addNoteHint": "Appended and dated. What is already written stays.",
-    "formNotice": "This period is closed. Amount, date, type and receipt cannot change; a note can still be added.",
-    "frozenBody": "Amounts, dates and receipts are read-only here. Categories and added notes still work.",
+    "formNotice": "This period is closed, so its numbers stay as they are. You can still add a note.",
+    "frozenBody": "The numbers here are settled. You can still change categories and add notes.",
     "frozenTitle": "Period closed",
     "reasonHint": "Reason",
-    "refused": "This period is closed, so that change is no longer possible.",
+    "refused": "This period is closed, so that can't change any more.",
     "soonBody": {
-      "zero": "It freezes today. Check the figures while they can still be corrected.",
-      "one": "It freezes in {} day. Check the figures while they can still be corrected.",
-      "other": "It freezes in {} days. Check the figures while they can still be corrected."
+      "zero": "It closes today. A good moment to check the numbers.",
+      "one": "It closes in {} day. A good moment to check the numbers.",
+      "other": "It closes in {} days. A good moment to check the numbers."
     },
     "soonTitle": "This period closes soon",
     "unfreeze": "Reopen",
-    "unfreezeBody": "It stays editable for 48 hours. Say why — the reason is kept with the period.",
+    "unfreezeBody": "You'll have 48 hours to make changes. Add a short reason; it's saved with the period.",
     "unfreezeTitle": "Reopen this period?"
   },
   "overdue": {
@@ -501,7 +501,7 @@
       "one": "{} missed payment",
       "other": "{} missed payments"
     },
-    "allSettled": "Nothing is late any more."
+    "allSettled": "All caught up. Nothing is late."
   },
   "budget": {
     "remaining": "Left of the budget",
@@ -539,7 +539,7 @@
   "analytics": {
     "title": "Analytics",
     "open": "Detailed analytics",
-    "empty": "No payments in this range.",
+    "empty": "No spending in this range.",
     "inRange": "in range",
     "allTypes": "Everything",
     "unit": {
@@ -581,8 +581,8 @@
     "restoreAction": "Restore",
     "restored": {
       "zero": "Nothing restored",
-      "one": "{} Space restored",
-      "other": "{} Spaces restored"
+      "one": "Welcome back. {} Space restored.",
+      "other": "Welcome back. {} Spaces restored."
     },
     "problem": {
       "notABackup": "This is not a Sielto backup",
@@ -595,7 +595,7 @@
   "recovery": {
     "title": "Recovery Key",
     "changeTitle": "Change Recovery Key",
-    "why": "A password only you know. It protects your backups and restores access if this device loses its encryption key. Keep it somewhere safe: without it the data cannot be recovered, not even by us.",
+    "why": "A password only you know. It protects your backups and gets you back in if this device loses its encryption key. Keep it somewhere safe, like a password manager or on paper. Without it, nobody can recover your data, not even us.",
     "fieldKey": "Password",
     "fieldRepeat": "Repeat",
     "fieldCurrent": "Current Recovery Key",
@@ -603,25 +603,25 @@
       "one": "At least {} character",
       "other": "At least {} characters"
     },
-    "mismatch": "The two entries differ",
+    "mismatch": "These don't match",
     "wrongKey": "This is not the Recovery Key",
     "oldBackups": "Backups made before today open only with the old key.",
-    "saved": "Recovery Key saved",
+    "saved": "Recovery Key saved. You're covered.",
     "changed": "Recovery Key changed",
     "working": "Working…",
     "saveAndContinue": "Save and continue",
     "later": "Skip (set up later)",
-    "plate": "Backup and access recovery are not set up",
+    "plate": "Your data isn't backed up yet. Set it up in a minute.",
     "isSet": "Set",
     "notSet": "Not set",
-    "notSetWarning": "Until a Recovery Key is set, this device cannot be recovered if it loses its encryption key, and no backup can be made."
+    "notSetWarning": "Without a Recovery Key there are no backups, and a lost key on this device means lost data."
   },
   "lock": {
     "enterPin": "Enter your PIN",
     "enterCurrentPin": "Enter your current PIN",
     "choosePin": "Choose a PIN, 4 to 6 digits",
     "repeatPin": "Repeat the PIN",
-    "pinsDiffer": "The PINs differ. Start again.",
+    "pinsDiffer": "Those didn't match. Let's try again.",
     "wrongPin": "Wrong PIN",
     "retryIn": {
       "one": "Try again in {} second",
@@ -643,7 +643,7 @@
     "blockScreenshotsHint": "Also hides the app in the recent apps list",
     "noScreenshotBlockOnDesktop": "Not available on this platform: Windows and Linux have no way for an app to block screenshots",
     "protectTitle": "Protect the app?",
-    "protectWhy": "Optional, and can be turned on later in Settings. A PIN is always set; biometrics are added where the device has them. The PIN guards the screen; your data is encrypted either way.",
+    "protectWhy": "Optional. A PIN keeps curious eyes out; your data is encrypted either way. Fingerprint unlock is added if your device has it.",
     "setPin": "Set a PIN",
     "passwordAtStart": "Protected by the password asked at every start"
   },
@@ -651,7 +651,7 @@
     "setTitle": "Set a password to protect your data",
     "enterTitle": "Enter your password",
     "forgotTitle": "Reset the password",
-    "why": "This computer has no system keyring, so Sielto cannot keep the key to your data for you. It asks for this password at every start. Your Recovery Key opens the data if the password is lost.",
+    "why": "This computer has no place to store keys safely, so we'll ask for this password each time you start. If you forget it, your Recovery Key gets you back in.",
     "noRecovery": "No Recovery Key was set on this device, so the data cannot be opened without the password.",
     "wrong": "Wrong password",
     "forgot": "Forgot the password?"
@@ -664,11 +664,50 @@
     "lastBackup": "Last backup",
     "never": "Not yet",
     "now": "Back up now",
-    "done": "Backed up to Google Drive",
+    "done": "Backed up to Google Drive. All safe.",
     "failed": "Google Drive could not be reached",
     "fromDrive": "From Google Drive",
     "snapshotsTitle": "Backups in Google Drive",
     "none": "No backups in this Google account",
     "kb": "{} KB"
+  },
+  "info": {
+    "explain": "How is this worked out?",
+    "income": "income",
+    "now": "you have now",
+    "budget": "budget and top-ups",
+    "comingIn": "more coming in",
+    "planned": "planned",
+    "bills": "bills",
+    "spentAndPlanned": "spent and planned",
+    "paid": "already paid",
+    "toPay": "still to pay",
+    "left": "left",
+    "short": "short",
+    "leftPeriod": "What's left this period once everything you've planned is paid.",
+    "leftFlow": "What's left once everything planned ahead is paid, starting from the money you have now.",
+    "leftBudget": "What you can still spend on this goal.",
+    "lasts": "Your money covers everything up to {date}. After that, planned spending is more than you have.",
+    "shortToday": "Something due today needs more money than you have right now.",
+    "lastsAdvice": "Move or cut something later on, or add the income you're expecting.",
+    "afterBills": "What's left if you pay only the bills you can't skip, like rent and loans, and nothing else.",
+    "billsAdvice": "The bills alone don't fit this period. They come first, so start with them.",
+    "totals": "Every expense here: what you've already paid and what's still to go.",
+    "balance": "The money you told us you have. Tap it whenever it changes.",
+    "balanceNote": "Expenses you'd already paid by then aren't subtracted again.",
+    "perDay": "Your planned spending for the next 10 days, spread evenly across them.",
+    "plannedFor": {
+      "one": "planned for {} day",
+      "other": "planned for {} days"
+    },
+    "days": "days",
+    "aDay": "a day",
+    "projection": "Your balance at the end of each day, if everything goes as planned.",
+    "projectionNote": "Red marks the days the money doesn't cover.",
+    "fund": "What this goal has to spend: the budget you set, plus every top-up.",
+    "budgetSet": "budget",
+    "topUps": "top-ups",
+    "toSpend": "to spend",
+    "shortTodayAdvice": "Move today's payment to a later day, or update your balance if you have more."
   }
 }
