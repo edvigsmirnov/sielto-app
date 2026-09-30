@@ -136,3 +136,46 @@ class AppendNoteField extends StatelessWidget {
     );
   }
 }
+
+/// Obscured text with a show/hide toggle.
+class SecretField extends StatefulWidget {
+  const SecretField({
+    required this.controller,
+    this.autofocus = false,
+    this.errorText,
+    this.onSubmitted,
+    super.key,
+  });
+
+  final TextEditingController controller;
+  final bool autofocus;
+  final String? errorText;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  State<SecretField> createState() => _SecretFieldState();
+}
+
+class _SecretFieldState extends State<SecretField> {
+  bool _hidden = true;
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    controller: widget.controller,
+    autofocus: widget.autofocus,
+    obscureText: _hidden,
+    autocorrect: false,
+    enableSuggestions: false,
+    onSubmitted: widget.onSubmitted,
+    decoration: InputDecoration(
+      errorText: widget.errorText,
+      suffixIcon: IconButton(
+        tooltip: tr(_hidden ? 'common.show' : 'common.hide'),
+        icon: Icon(
+          _hidden ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        ),
+        onPressed: () => setState(() => _hidden = !_hidden),
+      ),
+    ),
+  );
+}

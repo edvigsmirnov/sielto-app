@@ -10,8 +10,12 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/leaf_scatter.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/backup/backup_page.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/onboarding/welcome_page.dart';
+import 'package:sielto/features/security/app_lock.dart';
+import 'package:sielto/features/security/recovery_key.dart';
+import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/settings/language_picker.dart';
 import 'package:sielto/features/spaces/space_form_page.dart';
 
@@ -26,7 +30,9 @@ class OnboardingPage extends ConsumerStatefulWidget {
 class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   final PageController _controller = PageController();
 
-  static const int _stepCount = 2;
+  // The PIN needs the keyring; the start password already guards the app.
+  late final bool _protectStep = !ref.read(keyManagerProvider).usesPassphrase;
+  late final int _stepCount = _protectStep ? 4 : 3;
 
   bool _started = false;
 
@@ -82,7 +88,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         physics: const NeverScrollableScrollPhysics(),
         children: <Widget>[
           _ProfileStep(stepCount: _stepCount, onContinue: _next),
-          const SpaceFormPage(
+          if (_protectStep)
+            _ProtectStep(stepCount: _stepCount, onContinue: _next),
+          _RecoveryKeyStep(
+            step: _stepCount - 1,
+            stepCount: _stepCount,
+            onContinue: _next,
+          ),
+          SpaceFormPage(
             isFirstSpace: true,
             step: _stepCount,
             stepCount: _stepCount,
@@ -145,6 +158,8 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
       body: tr('onboarding.profileWhy'),
       primaryLabel: tr('common.next'),
       onPrimary: () => _save(currency),
+      secondaryLabel: tr('backup.restoreInstead'),
+      onSecondary: () => restoreBackup(context, ref),
       children: <Widget>[
         LabelledField(
           label: tr('onboarding.fieldName'),
@@ -207,4 +222,86 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
       ],
     );
   }
+}
+
+/// Optional; the Dashboard plate reminds while it is skipped.
+class _RecoveryKeyStep extends ConsumerStatefulWidget {
+  const _RecoveryKeyStep({
+    required this.step,
+    required this.stepCount,
+    required this.onContinue,
+  });
+
+  final int step;
+  final int stepCount;
+  final VoidCallback onContinue;
+
+  @override
+  ConsumerState<_RecoveryKeyStep> createState() => _RecoveryKeyStepState();
+}
+
+class _RecoveryKeyStepState extends ConsumerState<_RecoveryKeyStep> {
+  final NewRecoveryKey _draft = NewRecoveryKey();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _draft.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _busy = true);
+    await ref.read(recoveryKeySetProvider.notifier).set(_draft.first.text);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    FocusScope.of(context).unfocus();
+    widget.onContinue();
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: _draft.listenable,
+    builder: (BuildContext context, Widget? _) => OnboardingScaffold(
+      step: widget.step,
+      stepCount: widget.stepCount,
+      title: tr('recovery.title'),
+      body: tr('recovery.why'),
+      primaryLabel: tr(_busy ? 'recovery.working' : 'recovery.saveAndContinue'),
+      onPrimary: _busy || !_draft.valid ? null : _save,
+      secondaryLabel: tr('recovery.later'),
+      onSecondary: _busy ? null : widget.onContinue,
+      children: <Widget>[NewRecoveryKeyFields(draft: _draft)],
+    ),
+  );
+}
+
+/// Optional app lock: a PIN, with biometrics where the device has them.
+class _ProtectStep extends ConsumerWidget {
+  const _ProtectStep({required this.stepCount, required this.onContinue});
+
+  final int stepCount;
+  final VoidCallback onContinue;
+
+  Future<void> _setUp(BuildContext context, WidgetRef ref) async {
+    final String? pin = await choosePin(context);
+    if (pin == null) return;
+    await ref.read(appLockEnabledProvider.notifier).enable(pin);
+    if (await ref.read(biometricAvailableProvider.future)) {
+      await ref.read(biometricUnlockProvider.notifier).set(value: true);
+    }
+    onContinue();
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => OnboardingScaffold(
+    step: 2,
+    stepCount: stepCount,
+    title: tr('security.protectTitle'),
+    body: tr('security.protectWhy'),
+    primaryLabel: tr('security.setPin'),
+    onPrimary: () => _setUp(context, ref),
+    secondaryLabel: tr('common.skip'),
+    onSecondary: onContinue,
+  );
 }

@@ -11,7 +11,7 @@ environment:
   sdk: ^3.13.1
 
 dependencies:
-  # AES-GCM for the DEK envelopes. Argon2id (envelope B, PIN) arrives in M7.
+  # AES-GCM and Argon2id: the envelopes, backups and the PIN.
   cryptography: ^2.9.0
   cupertino_icons: ^1.0.8
   # Money is Decimal end to end, stored as TEXT. Never double.
@@ -19,6 +19,9 @@ dependencies:
   drift: ^2.34.3
   # Localization: JSON dictionaries read directly, no .arb conversion step.
   easy_localization: ^3.0.8
+  # Opens a .finbackup everywhere; saves one on desktop. GTK dialogs on Linux,
+  # no zenity.
+  file_selector: ^1.1.0
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.4.2
@@ -27,17 +30,25 @@ dependencies:
   # The device's IANA zone name, to seed a new Space's timezone. Reads
   # /etc/localtime on Linux and the Win32 API on Windows; no system packages.
   flutter_timezone: ^5.1.0
+  # Drive backup sign-in on Android.
+  google_sign_in: ^7.2.0
+  # Drive backup sign-in on desktop: OAuth with a loopback redirect.
+  googleapis_auth: ^2.3.4
   # The only network call the app makes before M8: the holiday list, and only
   # with explicit consent (spec 5.1.1).
   http: ^1.6.0
   # Number and date formatting. Locale comes from the device, currency symbol
   # from the Space -- the two are passed to the formatter separately.
   intl: ^0.20.3
+  # Biometric unlock on Android and Windows. Linux has no backend: PIN only.
+  local_auth: ^3.0.2
   # Annotations only. lib/domain uses it and must stay Flutter-free.
   meta: ^1.19.0
   path: ^1.9.1
   path_provider: ^2.1.6
   riverpod_annotation: ^4.0.6
+  # The Android share sheet for an exported backup.
+  share_plus: ^13.3.0
   # Device-local settings: theme, feed density, the local user id. Nothing
   # sensitive and nothing synced, so it stays outside the encrypted database.
   shared_preferences: ^2.5.3

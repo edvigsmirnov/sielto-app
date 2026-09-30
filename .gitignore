@@ -55,3 +55,4 @@ app.*.map.json
 /.claude/settings.local.json
 /.claude/sielto_design/
 /.claude/hooks/
+/google.env.json

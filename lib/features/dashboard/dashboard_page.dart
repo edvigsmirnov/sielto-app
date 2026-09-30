@@ -5,10 +5,12 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/backup/backup_page.dart';
 import 'package:sielto/features/dashboard/budget_dashboard.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/flow_dashboard.dart';
 import 'package:sielto/features/dashboard/period_dashboard.dart';
+import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/shell/app_header.dart';
 
 /// Aggregated figures for the open Space, by mode.
@@ -24,6 +26,13 @@ class DashboardPage extends ConsumerWidget {
       appBar: AppHeader(title: space.title),
       body: Column(
         children: <Widget>[
+          RecoveryKeyPlate(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (BuildContext _) => const BackupPage(),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(
               SageSpace.gutter,

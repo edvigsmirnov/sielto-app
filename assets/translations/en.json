@@ -9,7 +9,9 @@
     "loadFailed": "Could not load this data",
     "next": "Next",
     "skip": "Skip",
-    "clear": "Clear"
+    "clear": "Clear",
+    "show": "Show",
+    "hide": "Hide"
   },
   "theme": {
     "system": "System",
@@ -367,10 +369,10 @@
     "enterRecoveryKey": "Enter Recovery Key",
     "restoreFromBackup": "Restore from backup",
     "startOver": "Start over",
-    "notYetAvailable": "Not available in this version yet",
     "confirmTitle": "Delete the unreadable data?",
     "confirmBody": "The database stays unreadable without the key. Starting over deletes it and opens onboarding. This cannot be undone.",
-    "confirmAction": "Delete and start over"
+    "confirmAction": "Delete and start over",
+    "noRecoveryKey": "No Recovery Key was set on this device"
   },
   "schedule": {
     "type": "Schedule",
@@ -555,5 +557,118 @@
     },
     "averageTicket": "Average payment in the range",
     "swipeBack": "Swipe right to go back"
+  },
+  "backup": {
+    "title": "Backup",
+    "manual": "Manual export",
+    "export": "Export backup (.finbackup)",
+    "restore": "Restore from file",
+    "restoreInstead": "Restore from a backup",
+    "exportWhat": "What goes into the backup?",
+    "exportAll": {
+      "one": "All Spaces ({})",
+      "other": "All Spaces ({})"
+    },
+    "exportOne": "Only “{}”",
+    "saved": "Backup saved",
+    "madeOn": "Made on {}",
+    "exists": "Space “{}” already exists here",
+    "choice": {
+      "replace": "Replace local",
+      "copy": "Import as copy",
+      "skip": "Skip"
+    },
+    "restoreAction": "Restore",
+    "restored": {
+      "zero": "Nothing restored",
+      "one": "{} Space restored",
+      "other": "{} Spaces restored"
+    },
+    "problem": {
+      "notABackup": "This is not a Sielto backup",
+      "tooNew": "This backup was made by a newer version of Sielto. Update the app first.",
+      "wrongKey": "This Recovery Key does not open the backup"
+    },
+    "copyTitle": "{} (copy, {})",
+    "fromFile": "From a file"
+  },
+  "recovery": {
+    "title": "Recovery Key",
+    "changeTitle": "Change Recovery Key",
+    "why": "A password only you know. It protects your backups and restores access if this device loses its encryption key. Keep it somewhere safe: without it the data cannot be recovered, not even by us.",
+    "fieldKey": "Password",
+    "fieldRepeat": "Repeat",
+    "fieldCurrent": "Current Recovery Key",
+    "tooShort": {
+      "one": "At least {} character",
+      "other": "At least {} characters"
+    },
+    "mismatch": "The two entries differ",
+    "wrongKey": "This is not the Recovery Key",
+    "oldBackups": "Backups made before today open only with the old key.",
+    "saved": "Recovery Key saved",
+    "changed": "Recovery Key changed",
+    "working": "Working…",
+    "saveAndContinue": "Save and continue",
+    "later": "Skip (set up later)",
+    "plate": "Backup and access recovery are not set up",
+    "isSet": "Set",
+    "notSet": "Not set",
+    "notSetWarning": "Until a Recovery Key is set, this device cannot be recovered if it loses its encryption key, and no backup can be made."
+  },
+  "lock": {
+    "enterPin": "Enter your PIN",
+    "enterCurrentPin": "Enter your current PIN",
+    "choosePin": "Choose a PIN, 4 to 6 digits",
+    "repeatPin": "Repeat the PIN",
+    "pinsDiffer": "The PINs differ. Start again.",
+    "wrongPin": "Wrong PIN",
+    "retryIn": {
+      "one": "Try again in {} second",
+      "other": "Try again in {} seconds"
+    },
+    "useBiometric": "Use biometrics",
+    "biometricReason": "Unlock Sielto",
+    "erase": "Erase",
+    "pinChanged": "PIN changed"
+  },
+  "security": {
+    "title": "Security",
+    "appLock": "App lock",
+    "appLockHint": "Asks for the PIN on start and after 45 seconds in the background",
+    "biometric": "Unlock with biometrics",
+    "changePin": "Change PIN",
+    "privacy": "Privacy",
+    "blockScreenshots": "Block screenshots",
+    "blockScreenshotsHint": "Also hides the app in the recent apps list",
+    "noScreenshotBlockOnDesktop": "Not available on this platform: Windows and Linux have no way for an app to block screenshots",
+    "protectTitle": "Protect the app?",
+    "protectWhy": "Optional, and can be turned on later in Settings. A PIN is always set; biometrics are added where the device has them. The PIN guards the screen; your data is encrypted either way.",
+    "setPin": "Set a PIN",
+    "passwordAtStart": "Protected by the password asked at every start"
+  },
+  "passphrase": {
+    "setTitle": "Set a password to protect your data",
+    "enterTitle": "Enter your password",
+    "forgotTitle": "Reset the password",
+    "why": "This computer has no system keyring, so Sielto cannot keep the key to your data for you. It asks for this password at every start. Your Recovery Key opens the data if the password is lost.",
+    "noRecovery": "No Recovery Key was set on this device, so the data cannot be opened without the password.",
+    "wrong": "Wrong password",
+    "forgot": "Forgot the password?"
+  },
+  "drive": {
+    "section": "Automatic backup",
+    "connect": "Back up to Google Drive",
+    "connectHint": "A daily encrypted snapshot in a hidden app folder; the last 7 are kept",
+    "disconnect": "Turn off",
+    "lastBackup": "Last backup",
+    "never": "Not yet",
+    "now": "Back up now",
+    "done": "Backed up to Google Drive",
+    "failed": "Google Drive could not be reached",
+    "fromDrive": "From Google Drive",
+    "snapshotsTitle": "Backups in Google Drive",
+    "none": "No backups in this Google account",
+    "kb": "{} KB"
   }
 }

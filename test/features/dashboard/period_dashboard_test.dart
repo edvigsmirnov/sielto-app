@@ -18,6 +18,7 @@ import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
+import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 
 /// Regular-income Dashboard over a real database, with records written while a
@@ -87,6 +88,7 @@ void main() {
       overrides: [
         databaseProvider.overrideWithValue(db),
         localSettingsProvider.overrideWithValue(settings),
+        recoveryKeySetProvider.overrideWithBuild((_, _) => true),
         // With nothing stored, `resolvedSpaceProvider` picks the fixture Space.
       ],
       child: Builder(

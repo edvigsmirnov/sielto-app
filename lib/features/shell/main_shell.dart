@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/features/backup/drive.dart';
 import 'package:sielto/features/calendar/calendar_page.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
@@ -88,6 +89,8 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
     _resetOnSpaceChange();
+    // Keeps the daily Drive snapshot running while the shell is up.
+    if (driveSupported) ref.watch(driveProvider);
     final int index = ref.watch(shellTabProvider);
     final bool selecting = ref.watch(feedSelectionProvider).isNotEmpty;
     return PopScope(

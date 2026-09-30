@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/core/backup/backup_service.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/analytics_repository.dart';
 import 'package:sielto/core/db/repositories/budget_period_repository.dart';
@@ -37,7 +38,8 @@ class Repositories {
        holidays = HolidayRepository(db: db, clock: clock),
        customDays = CustomNonWorkingDayRepository(db: db, clock: clock),
        calendar = CalendarRepository(db: db),
-       analytics = AnalyticsRepository(db: db) {
+       analytics = AnalyticsRepository(db: db),
+       backup = BackupService(db: db, clock: clock, userId: userId) {
     categories = CategoryRepository(
       db: db,
       clock: clock,
@@ -58,6 +60,7 @@ class Repositories {
 
   final CalendarRepository calendar;
   final AnalyticsRepository analytics;
+  final BackupService backup;
 
   late final CategoryRepository categories;
 }

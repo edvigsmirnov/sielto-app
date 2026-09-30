@@ -29,6 +29,11 @@ class LocalSettings {
   static const String _keyHolidayConsent = 'holiday_fetch_consent';
   static const String _keyOfflineMode = 'fully_offline';
   static const String _keyControlsAtBottom = 'controls_at_bottom';
+  static const String _keyAppLock = 'app_lock_enabled';
+  static const String _keyAppLockBiometric = 'app_lock_biometric';
+  static const String _keyBlockScreenshots = 'block_screenshots';
+  static const String _keyDriveEmail = 'drive_email';
+  static const String _keyDriveLastBackup = 'drive_last_backup';
 
   final SharedPreferences _prefs;
 
@@ -125,6 +130,39 @@ class LocalSettings {
 
   Future<void> setFullyOffline({required bool value}) =>
       _prefs.setBool(_keyOfflineMode, value);
+
+  /// The PIN itself is in secure storage.
+  bool get appLockEnabled => _prefs.getBool(_keyAppLock) ?? false;
+
+  Future<void> setAppLockEnabled({required bool value}) =>
+      _prefs.setBool(_keyAppLock, value);
+
+  bool get appLockBiometric => _prefs.getBool(_keyAppLockBiometric) ?? false;
+
+  Future<void> setAppLockBiometric({required bool value}) =>
+      _prefs.setBool(_keyAppLockBiometric, value);
+
+  /// Android only.
+  bool get blockScreenshots => _prefs.getBool(_keyBlockScreenshots) ?? true;
+
+  Future<void> setBlockScreenshots({required bool value}) =>
+      _prefs.setBool(_keyBlockScreenshots, value);
+
+  /// Null when Google Drive backup is off.
+  String? get driveEmail => _prefs.getString(_keyDriveEmail);
+
+  Future<void> setDriveEmail(String? email) => email == null
+      ? _prefs.remove(_keyDriveEmail)
+      : _prefs.setString(_keyDriveEmail, email);
+
+  DateTime? get driveLastBackup {
+    final String? raw = _prefs.getString(_keyDriveLastBackup);
+    return raw == null ? null : DateTime.parse(raw);
+  }
+
+  Future<void> setDriveLastBackup(DateTime? at) => at == null
+      ? _prefs.remove(_keyDriveLastBackup)
+      : _prefs.setString(_keyDriveLastBackup, at.toUtc().toIso8601String());
 
   /// Screens with period controls above the bottom bar.
   Set<ControlsScreen> get controlsAtBottom {

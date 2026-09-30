@@ -8,8 +8,10 @@ import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/backup/backup_page.dart';
 import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/dev/token_gallery_page.dart';
+import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
 import 'package:sielto/features/settings/language_picker.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
@@ -113,6 +115,26 @@ class SettingsPage extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (BuildContext _) => const HolidaysPage(),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: Text(tr('security.title')),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (BuildContext _) => const SecurityPage(),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.backup_outlined),
+            title: Text(tr('backup.title')),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (BuildContext _) => const BackupPage(),
               ),
             ),
           ),
