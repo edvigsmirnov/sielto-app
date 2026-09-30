@@ -1,7 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
@@ -10,7 +9,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/analytics/analytics_page.dart';
-import 'package:sielto/features/shell/shell_tab.dart';
+import 'package:sielto/features/dashboard/figure_info.dart';
 
 /// Dashboard blocks shared by the three modes. They take plain values.
 
@@ -28,6 +27,7 @@ class MainFigure extends StatelessWidget {
     required this.today,
     this.subtitle,
     this.onTap,
+    this.info,
     super.key,
   });
 
@@ -51,11 +51,17 @@ class MainFigure extends StatelessWidget {
 
   final VoidCallback? onTap;
 
+  final FigureInfo? info;
+
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
     final bool short = amount == null;
+    // An expense due today that the money cannot cover.
+    final bool shortToday =
+        short && lastCoveredDay != null && lastCoveredDay!.isBefore(today);
+    final CalendarDate? shownDay = shortToday ? today : lastCoveredDay;
 
     return InkWell(
       onTap: onTap,
@@ -64,10 +70,22 @@ class MainFigure extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
         child: Column(
           children: <Widget>[
-            Text(
-              short && lastCoveredDay != null ? tr('dashboard.lasts') : label,
-              textAlign: TextAlign.center,
-              style: text.bodyMedium?.copyWith(color: sage.inkLabel),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Flexible(
+                  child: Text(
+                    shortToday
+                        ? tr('dashboard.shortFrom')
+                        : short && lastCoveredDay != null
+                        ? tr('dashboard.lasts')
+                        : label,
+                    textAlign: TextAlign.center,
+                    style: text.bodyMedium?.copyWith(color: sage.inkLabel),
+                  ),
+                ),
+                if (info != null) InfoButton(info!),
+              ],
             ),
             const SizedBox(height: SageSpace.xs),
             Row(
@@ -76,7 +94,7 @@ class MainFigure extends StatelessWidget {
               children: <Widget>[
                 Flexible(
                   child: Text(
-                    switch ((amount, lastCoveredDay)) {
+                    switch ((amount, shownDay)) {
                       (final Decimal value, _) => money.format(value),
                       (null, final CalendarDate day) => dates.dayMonth(
                         day,
@@ -164,13 +182,14 @@ class SpentFigure extends StatelessWidget {
   }
 }
 
-/// Base remainder after mandatory payments, with an explanation toggle.
-class CascadeCard extends ConsumerStatefulWidget {
+/// What is left after the mandatory payments alone.
+class CascadeCard extends StatelessWidget {
   const CascadeCard({
     required this.available,
     required this.baseRemainder,
     required this.baseCoverage,
     required this.money,
+    this.info,
     super.key,
   });
 
@@ -184,24 +203,12 @@ class CascadeCard extends ConsumerStatefulWidget {
 
   final MoneyFormat money;
 
-  @override
-  ConsumerState<CascadeCard> createState() => _CascadeCardState();
-}
-
-class _CascadeCardState extends ConsumerState<CascadeCard> {
-  bool _explained = false;
+  final FigureInfo? info;
 
   @override
   Widget build(BuildContext context) {
-    // Closes the explanation when the Dashboard tab is left.
-    ref.listen<int>(shellTabProvider, (int? _, int tab) {
-      if (tab != ShellTabController.dashboard && _explained) {
-        setState(() => _explained = false);
-      }
-    });
-    final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
-    final Decimal? remainder = widget.baseRemainder;
+    final Decimal? remainder = baseRemainder;
 
     return SageCard(
       child: Column(
@@ -210,90 +217,27 @@ class _CascadeCardState extends ConsumerState<CascadeCard> {
           Row(
             children: <Widget>[
               Expanded(
-                child: Text(tr('dashboard.cascade'), style: text.titleSmall),
+                child: Text(tr('dashboard.afterBills'), style: text.titleSmall),
               ),
-              _HelpToggle(
-                open: _explained,
-                onTap: () => setState(() => _explained = !_explained),
-              ),
+              if (info != null) InfoButton(info!),
             ],
           ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              child: !_explained
-                  ? const SizedBox(width: double.infinity)
-                  : Padding(
-                      padding: const EdgeInsets.only(top: SageSpace.md),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(SageSpace.md),
-                        decoration: BoxDecoration(
-                          color: sage.accentTint,
-                          borderRadius: BorderRadius.circular(
-                            SageRadius.button,
-                          ),
-                        ),
-                        child: Text(
-                          tr('dashboard.cascadeHint'),
-                          style: text.bodySmall?.copyWith(
-                            color: sage.inkSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(height: SageSpace.md),
+          const SizedBox(height: SageSpace.sm),
           StatRow(
-            label: tr('dashboard.baseRemainder'),
+            label: tr('dashboard.afterBillsLeft'),
             value: remainder == null
                 ? tr('dashboard.notCovered')
-                : widget.money.format(remainder),
-            valueColor: CoverageDot.colorOf(context, widget.baseCoverage),
+                : money.format(remainder),
+            valueColor: CoverageDot.colorOf(context, baseCoverage),
             emphasised: true,
           ),
           const SizedBox(height: SageSpace.sm),
           _RemainderBar(
-            available: widget.available,
+            available: available,
             remainder: remainder,
-            coverage: widget.baseCoverage,
+            coverage: baseCoverage,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _HelpToggle extends StatelessWidget {
-  const _HelpToggle({required this.open, required this.onTap});
-
-  final bool open;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Container(
-        width: 24,
-        height: 24,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: open ? sage.accentTintAlt : Colors.transparent,
-          border: Border.all(color: sage.border),
-        ),
-        child: Text(
-          '?',
-          style: Theme.of(context).textTheme.labelMedium
-              ?.copyWith(color: sage.inkLabel),
-        ),
       ),
     );
   }
@@ -352,7 +296,27 @@ class TotalsCard extends StatelessWidget {
   Widget build(BuildContext context) => SageCard(
     child: Column(
       children: <Widget>[
-        StatRow(label: tr('dashboard.planned'), value: money.format(planned)),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: StatRow(
+                label: tr('dashboard.planned'),
+                value: money.format(planned),
+              ),
+            ),
+            InfoButton(
+              FigureInfo(
+                title: tr('dashboard.planned'),
+                what: tr('info.totals'),
+                sum: <SumLine>[
+                  SumLine('', money.format(planned), tr('info.planned')),
+                  SumLine('−', money.format(paid), tr('info.paid')),
+                  SumLine('=', money.format(remaining), tr('info.toPay')),
+                ],
+              ),
+            ),
+          ],
+        ),
         StatRow(label: tr('dashboard.paid'), value: money.format(paid)),
         StatRow(
           label: tr('dashboard.leftToPay'),

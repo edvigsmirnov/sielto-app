@@ -7,6 +7,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_entry.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/dashboard/figure_info.dart';
 
 /// End-of-day balances for the next few days.
 @immutable
@@ -14,6 +15,7 @@ class DailyProjection {
   const DailyProjection({
     required this.days,
     required this.balances,
+    required this.spend,
     required this.averageSpendPerDay,
   });
 
@@ -23,7 +25,10 @@ class DailyProjection {
 
   final List<Decimal> balances;
 
-  /// Planned spend over the window divided by its length. Zero when nothing is
+  /// Planned spend over the window.
+  final Decimal spend;
+
+  /// [spend] divided by the window's length. Zero when nothing is
   /// planned.
   final Decimal averageSpendPerDay;
 
@@ -75,6 +80,7 @@ DailyProjection projectDays({
   return DailyProjection(
     days: days,
     balances: balances,
+    spend: spend,
     averageSpendPerDay: (spend / Decimal.fromInt(horizon)).toDecimal(
       scaleOnInfinitePrecision: 2,
     ),
@@ -105,11 +111,24 @@ class ProjectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Center(
-            child: Text(
-              plural('dashboard.projection', DailyProjection.horizonDays),
-              style: text.titleSmall,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                plural('dashboard.projection', DailyProjection.horizonDays),
+                style: text.titleSmall,
+              ),
+              InfoButton(
+                FigureInfo(
+                  title: plural(
+                    'dashboard.projection',
+                    DailyProjection.horizonDays,
+                  ),
+                  what: tr('info.projection'),
+                  note: tr('info.projectionNote'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: SageSpace.md),
           SizedBox(

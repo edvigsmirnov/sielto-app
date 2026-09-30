@@ -10,6 +10,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/dashboard/balance_sheet.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
+import 'package:sielto/features/dashboard/figure_info.dart';
 import 'package:sielto/features/dashboard/projection_chart.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/overdue/overdue.dart';
@@ -73,6 +74,15 @@ class _Body extends ConsumerWidget {
           ),
           onTap: () =>
               showBalanceSheet(context, ref, space: space, money: money),
+          info: moneyLeftInfo(
+            title: tr('dashboard.freeMoney'),
+            what: tr('info.leftFlow'),
+            run: ledger.cascade.all,
+            money: money,
+            dates: dates,
+            today: ledger.today,
+            startLabel: tr('info.now'),
+          ),
         ),
         const SizedBox(height: SageSpace.md),
         OverdueChip(
@@ -97,6 +107,13 @@ class _Body extends ConsumerWidget {
                 // Tapping the balance edits it.
                 onTap: () =>
                     showBalanceSheet(context, ref, space: space, money: money),
+                info: FigureInfo(
+                  title: tr('dashboard.currentMoney'),
+                  what: tr('info.balance'),
+                  note: ledger.excludedCount > 0
+                      ? tr('info.balanceNote')
+                      : null,
+                ),
               ),
             ),
             const SizedBox(width: SageSpace.sm),
@@ -104,6 +121,27 @@ class _Body extends ConsumerWidget {
               child: _FigureTile(
                 value: money.format(projection.averageSpendPerDay),
                 label: tr('dashboard.perDay'),
+                info: FigureInfo(
+                  title: tr('dashboard.perDay'),
+                  what: tr('info.perDay'),
+                  sum: <SumLine>[
+                    SumLine(
+                      '',
+                      money.format(projection.spend),
+                      plural('info.plannedFor', DailyProjection.horizonDays),
+                    ),
+                    SumLine(
+                      '÷',
+                      '${DailyProjection.horizonDays}',
+                      tr('info.days'),
+                    ),
+                    SumLine(
+                      '=',
+                      money.format(projection.averageSpendPerDay),
+                      tr('info.aDay'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -156,10 +194,13 @@ class _FigureTile extends StatelessWidget {
     required this.label,
     this.caption,
     this.onTap,
+    this.info,
   });
 
   final String value;
   final String label;
+
+  final FigureInfo? info;
 
   /// Qualifies the figure.
   final String? caption;
@@ -184,11 +225,20 @@ class _FigureTile extends StatelessWidget {
             style: text.titleMedium,
           ),
           const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: text.bodySmall?.copyWith(color: context.sage.inkLabel),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodySmall?.copyWith(color: context.sage.inkLabel),
+                ),
+              ),
+              if (info != null) InfoButton(info!),
+            ],
           ),
           if (caption != null)
             Text(

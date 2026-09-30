@@ -11,6 +11,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/dashboard/budget_settings.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
+import 'package:sielto/features/dashboard/figure_info.dart';
 import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
 
@@ -68,6 +69,16 @@ class _Body extends ConsumerWidget {
               },
             ),
             onTap: () => editBudgetFund(context, ref, ledger: ledger),
+            info: moneyLeftInfo(
+              title: tr('budget.remaining'),
+              what: tr('info.leftBudget'),
+              run: ledger.cascade!.all,
+              money: money,
+              dates: dates,
+              today: ledger.today,
+              startLabel: tr('info.budget'),
+              spendLabel: tr('info.spentAndPlanned'),
+            ),
           )
         else
           _NoFundFigure(ledger: ledger, money: money),
@@ -208,10 +219,39 @@ class _FundCard extends ConsumerWidget {
           const SizedBox(height: SageSpace.sm),
           const Hairline(),
           const SizedBox(height: SageSpace.sm),
-          StatRow(
-            label: tr('budget.fund'),
-            value: money.format(ledger.available),
-            emphasised: true,
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: StatRow(
+                  label: tr('budget.fund'),
+                  value: money.format(ledger.available),
+                  emphasised: true,
+                ),
+              ),
+              InfoButton(
+                FigureInfo(
+                  title: tr('budget.fund'),
+                  what: tr('info.fund'),
+                  sum: <SumLine>[
+                    SumLine(
+                      '',
+                      money.format(ledger.target ?? Decimal.zero),
+                      tr('info.budgetSet'),
+                    ),
+                    SumLine(
+                      '+',
+                      money.format(ledger.contributions),
+                      tr('info.topUps'),
+                    ),
+                    SumLine(
+                      '=',
+                      money.format(ledger.available),
+                      tr('info.toSpend'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

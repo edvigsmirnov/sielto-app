@@ -10,6 +10,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
+import 'package:sielto/features/dashboard/figure_info.dart';
 import 'package:sielto/features/dashboard/period_selector.dart';
 import 'package:sielto/features/incomes/anchor_help.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
@@ -132,6 +133,15 @@ class _PeriodBody extends ConsumerWidget {
             lastCoveredDay: ledger.lastCoveredDay,
             dates: dates,
             today: ledger.today,
+            info: moneyLeftInfo(
+              title: tr('dashboard.freeMoney'),
+              what: tr('info.leftPeriod'),
+              run: ledger.cascade!.all,
+              money: money,
+              dates: dates,
+              today: ledger.today,
+              startLabel: tr('info.income'),
+            ),
           ),
           const SizedBox(height: SageSpace.md),
           CascadeCard(
@@ -139,6 +149,19 @@ class _PeriodBody extends ConsumerWidget {
             baseRemainder: ledger.baseRemainder,
             baseCoverage: ledger.baseCoverage,
             money: money,
+            info: FigureInfo(
+              title: tr('dashboard.afterBills'),
+              what: tr('info.afterBills'),
+              sum: runSum(
+                ledger.cascade!.mandatory,
+                money,
+                startLabel: tr('info.income'),
+                spendLabel: tr('info.bills'),
+              ),
+              advice: ledger.cascade!.mandatory.hasCutoff
+                  ? tr('info.billsAdvice')
+                  : null,
+            ),
           ),
         ],
         const SizedBox(height: SageSpace.md),
