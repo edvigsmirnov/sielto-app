@@ -562,7 +562,7 @@
     "title": "Backup",
     "manual": "Manual export",
     "export": "Export backup (.finbackup)",
-    "restore": "Restore from file",
+    "restore": "Restore from a backup",
     "restoreInstead": "Restore from a backup",
     "exportWhat": "What goes into the backup?",
     "exportAll": {
