@@ -5,6 +5,7 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/space_repository.dart';
 import 'package:sielto/core/format/currencies.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -188,6 +189,13 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             tr('space.archiveBody'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
+          if (space.ownerId == ref.watch(userIdProvider)) ...<Widget>[
+            const SizedBox(height: SageSpace.lg),
+            _DangerButton(
+              label: tr('space.delete'),
+              onTap: () => _delete(space),
+            ),
+          ],
         ],
       ),
     );
@@ -202,6 +210,20 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     } else if (title != space.title) {
       await ref.read(repositoriesProvider).spaces.setTitle(space.id, title);
     }
+  }
+
+  Future<void> _delete(Space space) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext _) => _DeleteDialog(title: space.title),
+    );
+    if (confirmed != true) return;
+
+    if (ref.read(currentSpaceIdProvider) == space.id) {
+      await ref.read(currentSpaceIdProvider.notifier).select(null);
+    }
+    await ref.read(repositoriesProvider).spaces.deleteForever(space.id);
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _archive(Space space) async {
@@ -225,6 +247,78 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       await ref.read(currentSpaceIdProvider.notifier).select(null);
     }
     if (mounted) Navigator.of(context).pop();
+  }
+}
+
+/// Asks for the Space name before a delete.
+class _DeleteDialog extends StatefulWidget {
+  const _DeleteDialog({required this.title});
+
+  final String title;
+
+  @override
+  State<_DeleteDialog> createState() => _DeleteDialogState();
+}
+
+class _DeleteDialogState extends State<_DeleteDialog> {
+  final TextEditingController _typed = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _typed.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _typed.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    final bool matches = _typed.text.trim() == widget.title.trim();
+    return AlertDialog(
+      backgroundColor: sage.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(SageRadius.card),
+      ),
+      title: Text(
+        tr('space.deleteTitle'),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            tr(
+              'space.deleteConfirm',
+              namedArgs: <String, String>{'title': widget.title},
+            ),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: SageSpace.md),
+          TextField(
+            controller: _typed,
+            autofocus: true,
+            decoration: InputDecoration(hintText: widget.title),
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(tr('common.cancel')),
+        ),
+        TextButton(
+          onPressed: matches ? () => Navigator.of(context).pop(true) : null,
+          style: TextButton.styleFrom(foregroundColor: sage.danger),
+          child: Text(tr('common.delete')),
+        ),
+      ],
+    );
   }
 }
 

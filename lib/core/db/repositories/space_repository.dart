@@ -129,6 +129,34 @@ class SpaceRepository {
       (db.update(db.spaces)..where(($SpacesTable t) => t.id.equals(spaceId)))
           .write(SpacesCompanion(isArchived: Value<bool>(isArchived)));
 
+  /// Hard delete of the Space and every row that belongs to it.
+  Future<void> deleteForever(String spaceId) => db.transaction(() async {
+    await (db.delete(
+      db.payments,
+    )..where(($PaymentsTable t) => t.spaceId.equals(spaceId))).go();
+    await (db.delete(
+      db.incomes,
+    )..where(($IncomesTable t) => t.spaceId.equals(spaceId))).go();
+    await (db.delete(db.incomeRecurrenceRules)
+          ..where(($IncomeRecurrenceRulesTable t) => t.spaceId.equals(spaceId)))
+        .go();
+    await (db.delete(
+      db.budgetPeriods,
+    )..where(($BudgetPeriodsTable t) => t.spaceId.equals(spaceId))).go();
+    await (db.delete(
+      db.categories,
+    )..where(($CategoriesTable t) => t.spaceId.equals(spaceId))).go();
+    await (db.delete(
+      db.memberLocalLabels,
+    )..where(($MemberLocalLabelsTable t) => t.spaceId.equals(spaceId))).go();
+    await (db.delete(
+      db.spaceMembers,
+    )..where(($SpaceMembersTable t) => t.spaceId.equals(spaceId))).go();
+    await (db.delete(
+      db.spaces,
+    )..where(($SpacesTable t) => t.id.equals(spaceId))).go();
+  });
+
   Future<int> setFeedOrderMode(String spaceId, FeedOrderMode mode) =>
       (db.update(db.spaces)..where(($SpacesTable t) => t.id.equals(spaceId)))
           .write(SpacesCompanion(feedOrderMode: Value<FeedOrderMode>(mode)));

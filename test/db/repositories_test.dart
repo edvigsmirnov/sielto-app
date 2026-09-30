@@ -122,6 +122,43 @@ void main() {
       expect(await spaces.canChangeCurrency(space.id), isTrue);
     });
 
+    test('deleting a Space removes its rows and nothing else', () async {
+      final Space gone = await makeSpace();
+      final Space kept = await makeSpace();
+      for (final Space s in <Space>[gone, kept]) {
+        final Category c = await categories.create(
+          spaceId: s.id,
+          title: 'Food',
+        );
+        await payments.create(
+          spaceId: s.id,
+          title: 'Lunch',
+          amount: Decimal.fromInt(12),
+          dueDate: const CalendarDate(2026, 3, 1),
+          expenseType: ExpenseType.variable,
+          categoryId: c.id,
+        );
+        await incomes.create(
+          spaceId: s.id,
+          title: 'Salary',
+          expectedDate: const CalendarDate(2026, 3, 26),
+        );
+      }
+
+      await spaces.deleteForever(gone.id);
+
+      expect(await spaces.byId(gone.id), isNull);
+      expect(await spaces.byId(kept.id), isNotNull);
+      final List<Payment> left = await db.select(db.payments).get();
+      expect(left.map((Payment p) => p.spaceId), <String>[kept.id]);
+      final List<Income> incomesLeft = await db.select(db.incomes).get();
+      expect(incomesLeft.map((Income i) => i.spaceId), <String>[kept.id]);
+      final List<Category> categoriesLeft = await db
+          .select(db.categories)
+          .get();
+      expect(categoriesLeft.map((Category c) => c.spaceId), <String>[kept.id]);
+    });
+
     test('setting the manual balance stamps when it was true', () async {
       final Space space = await makeSpace(mode: BudgetMode.flow);
       await spaces.setManualBalance(space.id, Decimal.fromInt(842));
