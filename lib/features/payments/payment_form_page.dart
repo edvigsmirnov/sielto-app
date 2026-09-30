@@ -699,6 +699,8 @@ class _LivePreview extends ConsumerWidget {
 
     final Decimal? available;
     final List<LedgerEntry> existing;
+    // A cycle only holds the repeats that fall inside it.
+    bool Function(CalendarDate d) counts = (CalendarDate _) => true;
     String label = tr('dashboard.freeMoney');
     // A Budget Space without a fund only counts what it spends.
     bool spentOnly = false;
@@ -709,6 +711,10 @@ class _LivePreview extends ConsumerWidget {
       if (period == null) return const SizedBox.shrink();
       available = period.anchorAmount;
       existing = period.entries;
+      final CalendarDate start = period.period.startDate;
+      final CalendarDate? end = period.period.endDate;
+      counts = (CalendarDate d) =>
+          d == date || (!d.isBefore(start) && (end == null || !d.isAfter(end)));
     } else if (mode == BudgetMode.budget) {
       final BudgetLedger? budget = ref.watch(budgetLedgerProvider).value;
       if (budget == null) return const SizedBox.shrink();
@@ -738,14 +744,15 @@ class _LivePreview extends ConsumerWidget {
                     count: occurrences,
                   )
                 : <CalendarDate>[draftDate])
-          LedgerEntry(
-            id: 'draft:${d.toIso()}',
-            date: d,
-            amount: draftAmount,
-            isIncome: false,
-            // Last within its day.
-            sortOrder: 1 << 30,
-          ),
+          if (counts(d))
+            LedgerEntry(
+              id: 'draft:${d.toIso()}',
+              date: d,
+              amount: draftAmount,
+              isIncome: false,
+              // Last within its day.
+              sortOrder: 1 << 30,
+            ),
     ];
 
     final LedgerRun before = previewRun(
@@ -763,9 +770,26 @@ class _LivePreview extends ConsumerWidget {
 
     // Budget entries are all expenses.
     Decimal spent(LedgerRun run) => run.available - run.finalBalance;
-    final Decimal? beforeFree = spentOnly ? spent(before) : before.freeCash;
-    final Decimal? afterFree = spentOnly ? spent(after) : after.freeCash;
-    final Color afterColor = afterFree == null ? sage.danger : sage.ink;
+    // An overspend is a negative figure.
+    Decimal? shown(LedgerRun run) {
+      if (spentOnly) return spent(run);
+      if (run.freeCash case final Decimal free) return free;
+      return run.finalBalance < Decimal.zero ? run.finalBalance : null;
+    }
+
+    String figure(Decimal? value) {
+      if (value == null) return tr('dashboard.notCovered');
+      return value < Decimal.zero
+          ? money.formatSigned(value)
+          : money.format(value);
+    }
+
+    final Decimal? beforeFree = shown(before);
+    final Decimal? afterFree = shown(after);
+    final Color afterColor =
+        afterFree == null || (!spentOnly && afterFree < Decimal.zero)
+        ? sage.danger
+        : sage.ink;
 
     final String? periodLabel = _periodLabel(ref, context);
 
@@ -794,9 +818,7 @@ class _LivePreview extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               Text(
-                beforeFree == null
-                    ? tr('dashboard.notCovered')
-                    : money.format(beforeFree),
+                figure(beforeFree),
                 style: text.titleSmall?.copyWith(color: sage.inkSecondary),
               ),
               Padding(
@@ -809,9 +831,7 @@ class _LivePreview extends ConsumerWidget {
               ),
               Flexible(
                 child: Text(
-                  afterFree == null
-                      ? tr('dashboard.notCovered')
-                      : money.format(afterFree),
+                  figure(afterFree),
                   overflow: TextOverflow.ellipsis,
                   style: text.titleMedium?.copyWith(color: afterColor),
                 ),
