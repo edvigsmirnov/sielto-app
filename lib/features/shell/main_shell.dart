@@ -61,6 +61,8 @@ class _MainShellState extends ConsumerState<MainShell> {
     });
   }
 
+  static const int _feedTab = 1;
+
   static const int _calendarTab = 2;
 
   /// Back leaves Calendar zoom first, then returns to the Dashboard.
@@ -85,6 +87,10 @@ class _MainShellState extends ConsumerState<MainShell> {
         backgroundColor: context.sage.surface,
         body: PageView(
           controller: _controller,
+          // Feed rows own the horizontal swipe.
+          physics: index == _feedTab
+              ? const NeverScrollableScrollPhysics()
+              : null,
           onPageChanged: _show,
           children: const <Widget>[
             _KeepAlive(child: DashboardPage()),
