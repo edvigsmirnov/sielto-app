@@ -128,9 +128,13 @@ class AppLockGate extends ConsumerWidget {
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        ExcludeFocus(
+        // Hidden from screen readers too, or they would read out the money.
+        ExcludeSemantics(
           excluding: locked,
-          child: IgnorePointer(ignoring: locked, child: child),
+          child: ExcludeFocus(
+            excluding: locked,
+            child: IgnorePointer(ignoring: locked, child: child),
+          ),
         ),
         if (locked) const _LockScreen(),
       ],
