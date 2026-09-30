@@ -107,7 +107,6 @@ class IncomeRulesPage extends ConsumerWidget {
           .incomeRules
           .setAnchor(rule.id, isAnchor: anchor, mode: space.budgetMode);
       ref.invalidate(periodRefreshProvider);
-      if (anchor && context.mounted) announceAnchor(context, rule.title);
     } on LastAnchorRequired {
       if (context.mounted) _sayAnchorRequired(context);
     }

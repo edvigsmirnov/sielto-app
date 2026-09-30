@@ -217,11 +217,6 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         mode: space.budgetMode,
       );
     }
-    if (space.budgetMode == BudgetMode.incomeDriven &&
-        (rule.isAnchor || (_anchorChoiceApplies && _isAnchor)) &&
-        mounted) {
-      announceAnchor(context, rule.title);
-    }
   }
 
   /// A frozen period allows the title and an appended note.

@@ -27,28 +27,6 @@ Future<void> showAnchorHelp(BuildContext context) => showDialog<void>(
   ),
 );
 
-/// Snackbar that an income became the anchor, with a link to [showAnchorHelp].
-/// Uses the app's messenger and navigator, so it outlives the form.
-void announceAnchor(BuildContext context, String title) {
-  final NavigatorState navigator = Navigator.of(context);
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        content: Text(
-          tr(
-            'income.becameAnchor',
-            namedArgs: <String, String>{'title': title},
-          ),
-        ),
-        action: SnackBarAction(
-          label: tr('income.anchorHelpAction'),
-          onPressed: () => showAnchorHelp(navigator.context),
-        ),
-      ),
-    );
-}
-
 class AnchorHelpButton extends StatelessWidget {
   const AnchorHelpButton({super.key});
 

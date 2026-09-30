@@ -261,9 +261,7 @@
     },
     "regenerateNothing": "Everything already matches the schedule.",
     "anchorHelpTitle": "What is an anchor income?",
-    "anchorHelpBody": "Sielto plans in periods. A period runs from one anchor income to the next — usually your salary, from one payday to the next.\n\nThe anchor's amount is what the period starts with: everything due before the next anchor comes out of it, and the Dashboard shows what is left.\n\nOther regular incomes are additional: they add to the period they land in but do not start a new one.\n\nYou can change which income is the anchor with the pin on the Incomes screen. At least one regular income must stay the anchor.",
-    "anchorHelpAction": "What is this?",
-    "becameAnchor": "\"{title}\" is now the anchor: periods run from one payment to the next."
+    "anchorHelpBody": "Sielto plans in periods. A period runs from one anchor income to the next — usually your salary, from one payday to the next.\n\nThe anchor's amount is what the period starts with: everything due before the next anchor comes out of it, and the Dashboard shows what is left.\n\nOther regular incomes are additional: they add to the period they land in but do not start a new one.\n\nYou can change which income is the anchor with the pin on the Incomes screen. At least one regular income must stay the anchor."
   },
   "category": {
     "title": "Categories",
