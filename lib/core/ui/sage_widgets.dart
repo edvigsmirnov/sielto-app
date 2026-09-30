@@ -340,12 +340,16 @@ class StatRow extends StatelessWidget {
     required this.value,
     this.valueColor,
     this.emphasised = false,
+    this.labelTrailing,
     super.key,
   });
 
   final String label;
   final String value;
   final Color? valueColor;
+
+  /// Right after the label, such as an (i).
+  final Widget? labelTrailing;
 
   /// Value at title weight.
   final bool emphasised;
@@ -360,11 +364,18 @@ class StatRow extends StatelessWidget {
         textBaseline: TextBaseline.alphabetic,
         children: <Widget>[
           Expanded(
-            child: Text(
-              label,
-              style: text.bodyMedium?.copyWith(
-                color: context.sage.inkSecondary,
-              ),
+            child: Row(
+              children: <Widget>[
+                Flexible(
+                  child: Text(
+                    label,
+                    style: text.bodyMedium?.copyWith(
+                      color: context.sage.inkSecondary,
+                    ),
+                  ),
+                ),
+                ?labelTrailing,
+              ],
             ),
           ),
           const SizedBox(width: SageSpace.md),

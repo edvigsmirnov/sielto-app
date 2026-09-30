@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/features/categories/category_icons.dart';
 
 /// Category colours, stored as `#rrggbb`. Not theme tokens.
@@ -30,7 +31,7 @@ class CategoryMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color ground = parseCategoryColor(color) ?? const Color(0xFF8FB996);
+    final Color ground = parseCategoryColor(color) ?? context.sage.sand;
     final String? glyph = sanitiseCategoryIcon(icon);
 
     return Container(

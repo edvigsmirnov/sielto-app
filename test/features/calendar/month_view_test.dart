@@ -102,7 +102,7 @@ void main() {
       },
     );
 
-    expect(find.textContaining('-').at(0), findsOneWidget);
+    expect(find.textContaining('−').at(0), findsOneWidget);
     expect(find.textContaining('22'), findsWidgets);
     expect(find.textContaining('+'), findsOneWidget);
   });

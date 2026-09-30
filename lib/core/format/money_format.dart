@@ -25,8 +25,10 @@ class MoneyFormat {
 
   String get symbol => _format.currencySymbol;
 
-  String format(Decimal amount) =>
-      _format.format(amount.round(scale: _decimalDigits).toDouble());
+  /// A true minus sign, as the rest of the UI writes it.
+  String format(Decimal amount) => _format
+      .format(amount.round(scale: _decimalDigits).toDouble())
+      .replaceFirst('-', '−');
 
   /// Explicit `+` on positive values.
   String formatSigned(Decimal amount) {
@@ -35,12 +37,13 @@ class MoneyFormat {
   }
 
   /// Whole units.
-  String short(Decimal amount) => _whole.format(amount.round().toDouble());
+  String short(Decimal amount) =>
+      _whole.format(amount.round().toDouble()).replaceFirst('-', '−');
 
   /// [short] with an explicit sign.
   String shortSigned(Decimal amount) {
     if (amount == Decimal.zero) return _whole.format(0);
     final String base = short(amount.abs());
-    return amount > Decimal.zero ? '+$base' : '-$base';
+    return amount > Decimal.zero ? '+$base' : '−$base';
   }
 }

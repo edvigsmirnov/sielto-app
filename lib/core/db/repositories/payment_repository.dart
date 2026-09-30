@@ -196,7 +196,8 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     return super.softDelete(id);
   }
 
-  /// One row per occurrence, sharing a `group_recurring_id`.
+  /// One row per occurrence, sharing a `group_recurring_id`. The first
+  /// [paidCount] are paid; null pays them all.
   Future<String> createSeries({
     required String spaceId,
     required String title,
@@ -205,6 +206,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     required ExpenseType expenseType,
     String? categoryId,
     String? notes,
+    int? paidCount = 0,
   }) async {
     for (final CalendarDate date in dates) {
       await _deadline.refuseIfBeyondDeadline(spaceId, date);
@@ -228,6 +230,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
             categoryId: Value<String?>(categoryId),
             groupRecurringId: Value<String>(groupId),
             notes: Value<String?>(notes),
+            isPaid: Value<bool>(paidCount == null || i < paidCount),
             sortOrder: Value<int>(sortOrders[i]),
             syncStatus: const Value<SyncStatus>(SyncStatus.pending),
             lastModifiedBy: Value<String?>(s.author),

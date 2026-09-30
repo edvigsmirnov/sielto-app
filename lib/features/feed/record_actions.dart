@@ -29,7 +29,9 @@ Future<void> togglePaid(
   final Repositories repos = ref.read(repositoriesProvider);
   final bool next = !record.isPaid;
 
-  if (!next && record.isMandatory && !await confirmMandatory(context)) {
+  if (!next &&
+      record.isMandatory &&
+      !await confirmMandatory(context, MandatoryChange.unpay)) {
     return;
   }
   if (!context.mounted) return;
@@ -73,7 +75,10 @@ Future<void> deleteRecord(
   WidgetRef ref,
   FeedRecord record,
 ) async {
-  if (record.isMandatory && !await confirmMandatory(context)) return;
+  if (record.isMandatory &&
+      !await confirmMandatory(context, MandatoryChange.delete)) {
+    return;
+  }
   if (!context.mounted) return;
   final Repositories repos = ref.read(repositoriesProvider);
 

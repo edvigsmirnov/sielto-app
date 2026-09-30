@@ -113,11 +113,14 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
                           _reorder(ref, categories, oldIndex, newIndex),
                     ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(SageSpace.gutter),
-              child: DashedButton(
-                label: '+ ${tr('category.add')}',
-                onTap: () => openCategoryForm(context),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(SageSpace.gutter),
+                child: DashedButton(
+                  label: '+ ${tr('category.add')}',
+                  onTap: () => openCategoryForm(context),
+                ),
               ),
             ),
           ],

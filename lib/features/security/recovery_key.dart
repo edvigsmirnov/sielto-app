@@ -178,15 +178,16 @@ class _RecoveryKeyPageState extends ConsumerState<RecoveryKeyPage> {
             const SizedBox(height: SageSpace.md),
             Text(tr('recovery.oldBackups'), style: text.bodySmall),
           ],
-          const SizedBox(height: SageSpace.xl),
-          ListenableBuilder(
-            listenable: _next.listenable,
-            builder: (BuildContext context, Widget? _) => FilledButton(
-              onPressed: _busy || !_next.valid ? null : _save,
-              child: Text(tr(_busy ? 'recovery.working' : 'common.save')),
-            ),
-          ),
         ],
+      ),
+      bottomNavigationBar: FormActionBar(
+        child: ListenableBuilder(
+          listenable: _next.listenable,
+          builder: (BuildContext context, Widget? _) => FilledButton(
+            onPressed: _busy || !_next.valid ? null : _save,
+            child: Text(tr(_busy ? 'recovery.working' : 'common.save')),
+          ),
+        ),
       ),
     );
   }

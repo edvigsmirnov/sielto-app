@@ -219,39 +219,34 @@ class _FundCard extends ConsumerWidget {
           const SizedBox(height: SageSpace.sm),
           const Hairline(),
           const SizedBox(height: SageSpace.sm),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: StatRow(
-                  label: tr('budget.fund'),
-                  value: money.format(ledger.available),
-                  emphasised: true,
-                ),
+          StatRow(
+            label: tr('budget.fund'),
+            value: money.format(ledger.available),
+            emphasised: true,
+            labelTrailing: InfoButton(
+              dense: true,
+              FigureInfo(
+                title: tr('budget.fund'),
+                what: tr('info.fund'),
+                sum: <SumLine>[
+                  SumLine(
+                    '',
+                    money.format(ledger.target ?? Decimal.zero),
+                    tr('info.budgetSet'),
+                  ),
+                  SumLine(
+                    '+',
+                    money.format(ledger.contributions),
+                    tr('info.topUps'),
+                  ),
+                  SumLine(
+                    '=',
+                    money.format(ledger.available),
+                    tr('info.toSpend'),
+                  ),
+                ],
               ),
-              InfoButton(
-                FigureInfo(
-                  title: tr('budget.fund'),
-                  what: tr('info.fund'),
-                  sum: <SumLine>[
-                    SumLine(
-                      '',
-                      money.format(ledger.target ?? Decimal.zero),
-                      tr('info.budgetSet'),
-                    ),
-                    SumLine(
-                      '+',
-                      money.format(ledger.contributions),
-                      tr('info.topUps'),
-                    ),
-                    SumLine(
-                      '=',
-                      money.format(ledger.available),
-                      tr('info.toSpend'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),

@@ -6,9 +6,7 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
-import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/form_fields.dart';
-import 'package:sielto/core/ui/sage_widgets.dart';
 
 /// "Set current balance". Paid expenses dated on or before the snapshot day
 /// are excluded from the walk.
@@ -69,38 +67,21 @@ class _BalanceSheetState extends ConsumerState<_BalanceSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-    return Padding(
-      padding: EdgeInsets.only(
-        left: SageSpace.formGutter,
-        right: SageSpace.formGutter,
-        top: SageSpace.lg,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + SageSpace.lg,
+    return FormSheet(
+      title: tr('balance.sheetTitle'),
+      body: tr('balance.sheetBody'),
+      action: FilledButton(
+        onPressed: _parsed == null ? null : _save,
+        child: Text(tr('common.save')),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(tr('balance.sheetTitle'), style: text.titleMedium),
-          const SizedBox(height: SageSpace.sm),
-          Text(tr('balance.sheetBody'), style: text.bodyMedium),
-          const SizedBox(height: SageSpace.lg),
-          LabelledField(
-            label: tr('balance.fieldAmount'),
-            child: MoneyField(
-              controller: _amount,
-              symbol: widget.money.symbol,
-              autofocus: true,
-              onSubmitted: (String _) => _save(),
-            ),
-          ),
-          const SizedBox(height: SageSpace.lg),
-          FilledButton(
-            onPressed: _parsed == null ? null : _save,
-            child: Text(tr('common.save')),
-          ),
-        ],
-      ),
+      children: <Widget>[
+        MoneyField(
+          controller: _amount,
+          symbol: widget.money.symbol,
+          autofocus: true,
+          onSubmitted: (String _) => _save(),
+        ),
+      ],
     );
   }
 }

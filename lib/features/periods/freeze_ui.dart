@@ -10,6 +10,7 @@ import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 
 /// Runs [write] and reports a freeze or deadline refusal as a message.
@@ -20,23 +21,28 @@ Future<bool> guardWrite(
   try {
     await write();
     return true;
-  } on PeriodFrozen {
-    if (context.mounted) _say(context, tr('freeze.refused'));
-    return false;
-  } on BeyondHardDeadline catch (e) {
-    if (context.mounted) {
-      _say(
-        context,
-        tr(
-          'budget.refusedBeyondDeadline',
-          namedArgs: <String, String>{
-            'date': DateLabels(context.locale.toString()).short(e.deadline),
-          },
-        ),
-      );
-    }
+  } on Exception catch (e) {
+    if (e is! PeriodFrozen && e is! BeyondHardDeadline) rethrow;
+    if (context.mounted) sayRefusal(context, e);
     return false;
   }
+}
+
+/// Explains a freeze or deadline refusal. False for any other error.
+bool sayRefusal(BuildContext context, Exception error) {
+  final String? message = switch (error) {
+    PeriodFrozen() => tr('freeze.refused'),
+    BeyondHardDeadline(:final CalendarDate deadline) => tr(
+      'budget.refusedBeyondDeadline',
+      namedArgs: <String, String>{
+        'date': DateLabels(context.locale.toString()).dayMonth(deadline),
+      },
+    ),
+    _ => null,
+  };
+  if (message == null) return false;
+  _say(context, message);
+  return true;
 }
 
 void _say(BuildContext context, String message) => ScaffoldMessenger.of(context)

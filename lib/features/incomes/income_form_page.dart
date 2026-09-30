@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
@@ -19,6 +20,7 @@ import 'package:sielto/features/incomes/anchor_help.dart';
 import 'package:sielto/features/incomes/income_rule_form_page.dart';
 import 'package:sielto/features/incomes/income_scope_dialog.dart';
 import 'package:sielto/features/incomes/schedule_editor.dart';
+import 'package:sielto/features/payments/series_scope_dialog.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/periods/period_choice.dart';
@@ -188,6 +190,8 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
 
       ref.invalidate(periodRefreshProvider);
       if (mounted) Navigator.of(context).pop();
+    } on Exception catch (e) {
+      if (!mounted || !sayRefusal(context, e)) rethrow;
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -252,6 +256,19 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       scope = await askIncomeScope(context);
       if (scope == IncomeScope.cancelled) return;
     }
+    final String? ruleId = existing.recurrenceRuleId;
+    StatusScope receivedScope = StatusScope.thisOne;
+    if (ruleId != null && _isReceived != existing.isPaid) {
+      if (!mounted) return;
+      receivedScope = await askStatusScope(
+        context,
+        titleKey: _isReceived
+            ? 'statusScope.received'
+            : 'statusScope.notReceived',
+        bodyKey: _isReceived ? 'statusScope.receivedBody' : null,
+      );
+      if (receivedScope == StatusScope.cancelled) return;
+    }
 
     await repos.incomes.update(
       existing.id,
@@ -262,6 +279,28 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       isPaid: Value<bool>(_isReceived),
       actualDate: Value<CalendarDate?>(_isReceived ? _actualDate : null),
     );
+
+    if (ruleId != null && receivedScope != StatusScope.thisOne) {
+      for (final Income i in await repos.incomes.forRule(ruleId)) {
+        if (i.id == existing.id ||
+            i.isPaid == _isReceived ||
+            (_isReceived && i.amount == null) ||
+            !receivedScope.reaches(i.expectedDate, existing.expectedDate)) {
+          continue;
+        }
+        try {
+          await (_isReceived
+              ? repos.incomes.markReceived(i.id)
+              : repos.incomes.update(
+                  i.id,
+                  isPaid: const Value<bool>(false),
+                  actualDate: const Value<CalendarDate?>(null),
+                ));
+        } on PeriodFrozen {
+          continue;
+        }
+      }
+    }
 
     if (scope == IncomeScope.allFuture) {
       await repos.incomeRules.setAmount(
@@ -350,6 +389,12 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
               onPressed: _delete,
             ),
         ],
+      ),
+      bottomNavigationBar: FormActionBar(
+        child: FilledButton(
+          onPressed: _isValid ? _save : null,
+          child: Text(tr('common.save')),
+        ),
       ),
       body: SafeArea(
         child: ListView(
@@ -533,12 +578,6 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                   ),
               ],
             ],
-
-            const SizedBox(height: SageSpace.lg),
-            FilledButton(
-              onPressed: _isValid ? _save : null,
-              child: Text(tr('common.save')),
-            ),
           ],
         ),
       ),

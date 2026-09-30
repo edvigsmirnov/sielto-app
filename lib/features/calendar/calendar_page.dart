@@ -229,12 +229,13 @@ class _DateNavigator extends ConsumerWidget {
                 horizontal: SageSpace.sm,
                 vertical: SageSpace.xs,
               ),
-              child: Text(
-                _label(),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _label(),
+                  maxLines: 1,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
               ),
             ),
           ),

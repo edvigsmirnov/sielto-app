@@ -149,7 +149,7 @@ Future<bool> _setDone(
   ];
   if (!done &&
       targets.any((FeedRecord r) => r.isMandatory) &&
-      !await confirmMandatory(context)) {
+      !await confirmMandatory(context, MandatoryChange.unpay)) {
     return false;
   }
   final Repositories repos = ref.read(repositoriesProvider);
@@ -198,7 +198,7 @@ Future<bool> _delete(
   List<FeedRecord> records,
 ) async {
   if (records.any((FeedRecord r) => r.isMandatory) &&
-      !await confirmMandatory(context)) {
+      !await confirmMandatory(context, MandatoryChange.delete)) {
     return false;
   }
   final Repositories repos = ref.read(repositoriesProvider);

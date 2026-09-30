@@ -110,9 +110,12 @@ FigureInfo moneyLeftInfo({
 
 /// A small (i) that opens [info].
 class InfoButton extends StatelessWidget {
-  const InfoButton(this.info, {super.key});
+  const InfoButton(this.info, {this.dense = false, super.key});
 
   final FigureInfo info;
+
+  /// Fits a text line, for rows of figures.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -127,7 +130,9 @@ class InfoButton extends StatelessWidget {
       ),
       customBorder: const CircleBorder(),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: dense
+            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+            : const EdgeInsets.all(12),
         child: Icon(Icons.info_outline, size: 16, color: context.sage.inkLabel),
       ),
     ),

@@ -96,55 +96,62 @@ class _Body extends ConsumerWidget {
           today: ledger.today,
         ),
         const SizedBox(height: SageSpace.md),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: _FigureTile(
-                value: money.format(ledger.available),
-                label: tr('dashboard.currentMoney'),
-                // When the balance was set, so a stale one shows as stale.
-                caption: _balanceCaption(space, ledger, dates),
-                // Tapping the balance edits it.
-                onTap: () =>
-                    showBalanceSheet(context, ref, space: space, money: money),
-                info: FigureInfo(
-                  title: tr('dashboard.currentMoney'),
-                  what: tr('info.balance'),
-                  note: ledger.excludedCount > 0
-                      ? tr('info.balanceNote')
-                      : null,
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Expanded(
+                child: _FigureTile(
+                  value: money.format(ledger.available),
+                  label: tr('dashboard.currentMoney'),
+                  // When the balance was set, so a stale one shows as stale.
+                  caption: _balanceCaption(space, ledger, dates),
+                  // Tapping the balance edits it.
+                  onTap: () => showBalanceSheet(
+                    context,
+                    ref,
+                    space: space,
+                    money: money,
+                  ),
+                  info: FigureInfo(
+                    title: tr('dashboard.currentMoney'),
+                    what: tr('info.balance'),
+                    note: ledger.excludedCount > 0
+                        ? tr('info.balanceNote')
+                        : null,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: SageSpace.sm),
-            Expanded(
-              child: _FigureTile(
-                value: money.format(projection.averageSpendPerDay),
-                label: tr('dashboard.perDay'),
-                info: FigureInfo(
-                  title: tr('dashboard.perDay'),
-                  what: tr('info.perDay'),
-                  sum: <SumLine>[
-                    SumLine(
-                      '',
-                      money.format(projection.spend),
-                      plural('info.plannedFor', DailyProjection.horizonDays),
-                    ),
-                    SumLine(
-                      '÷',
-                      '${DailyProjection.horizonDays}',
-                      tr('info.days'),
-                    ),
-                    SumLine(
-                      '=',
-                      money.format(projection.averageSpendPerDay),
-                      tr('info.aDay'),
-                    ),
-                  ],
+              const SizedBox(width: SageSpace.sm),
+              Expanded(
+                child: _FigureTile(
+                  value: money.format(projection.averageSpendPerDay),
+                  label: tr('dashboard.perDay'),
+                  info: FigureInfo(
+                    title: tr('dashboard.perDay'),
+                    what: tr('info.perDay'),
+                    sum: <SumLine>[
+                      SumLine(
+                        '',
+                        money.format(projection.spend),
+                        plural('info.plannedFor', DailyProjection.horizonDays),
+                      ),
+                      SumLine(
+                        '÷',
+                        '${DailyProjection.horizonDays}',
+                        tr('info.days'),
+                      ),
+                      SumLine(
+                        '=',
+                        money.format(projection.averageSpendPerDay),
+                        tr('info.aDay'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: SageSpace.md),
         NearestIncomeCard(
@@ -176,11 +183,13 @@ String? _balanceCaption(Space space, FlowLedger ledger, DateLabels dates) {
     if (setOn != null)
       tr(
         'dashboard.balanceSetOn',
-        namedArgs: <String, String>{'date': dates.short(setOn)},
+        namedArgs: <String, String>{
+          'date': dates.dayMonth(setOn, reference: ledger.today),
+        },
       ),
     if (ledger.excludedCount > 0)
       plural('balance.excludedFromWalker', ledger.excludedCount),
-  ].join(' · ').ifEmptyNull();
+  ].join('\n').ifEmptyNull();
 }
 
 extension on String {
@@ -211,10 +220,6 @@ class _FigureTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final TextTheme text = Theme.of(context).textTheme;
     return SageCard(
-      padding: const EdgeInsets.symmetric(
-        horizontal: SageSpace.sm,
-        vertical: SageSpace.md,
-      ),
       onTap: onTap,
       child: Column(
         children: <Widget>[
@@ -225,25 +230,26 @@ class _FigureTile extends StatelessWidget {
             style: text.titleMedium,
           ),
           const SizedBox(height: 2),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.bodySmall?.copyWith(color: context.sage.inkLabel),
-                ),
-              ),
-              if (info != null) InfoButton(info!),
-            ],
+          Text.rich(
+            TextSpan(
+              text: label,
+              children: <InlineSpan>[
+                if (info != null)
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: InfoButton(info!, dense: true),
+                  ),
+              ],
+            ),
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: text.bodySmall?.copyWith(color: context.sage.inkLabel),
           ),
           if (caption != null)
             Text(
               caption!,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: text.labelSmall?.copyWith(color: context.sage.inkLabel),

@@ -8,7 +8,6 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/form_fields.dart';
-import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
 
@@ -69,44 +68,27 @@ class _FundSheetState extends ConsumerState<_FundSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
     final MoneyFormat money = MoneyFormat(
       locale: context.locale.toString(),
       currencyCode: ref.space.currencyCode,
     );
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: SageSpace.formGutter,
-        right: SageSpace.formGutter,
-        top: SageSpace.lg,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + SageSpace.lg,
+    return FormSheet(
+      title: tr('budget.fundSheetTitle'),
+      body: tr('budget.fundSheetBody'),
+      action: FilledButton(
+        onPressed: _isValid ? _save : null,
+        child: Text(tr('common.save')),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(tr('budget.fundSheetTitle'), style: text.titleMedium),
-          const SizedBox(height: SageSpace.sm),
-          Text(tr('budget.fundSheetBody'), style: text.bodyMedium),
-          const SizedBox(height: SageSpace.lg),
-          LabelledField(
-            label: tr('budget.target'),
-            child: MoneyField(
-              controller: _amount,
-              symbol: money.symbol,
-              autofocus: true,
-              hintText: tr('budget.targetHint'),
-              onSubmitted: (String _) => _save(),
-            ),
-          ),
-          const SizedBox(height: SageSpace.lg),
-          FilledButton(
-            onPressed: _isValid ? _save : null,
-            child: Text(tr('common.save')),
-          ),
-        ],
-      ),
+      children: <Widget>[
+        MoneyField(
+          controller: _amount,
+          symbol: money.symbol,
+          autofocus: true,
+          hintText: tr('budget.targetHint'),
+          onSubmitted: (String _) => _save(),
+        ),
+      ],
     );
   }
 }
@@ -156,77 +138,45 @@ class _DeadlineSheetState extends ConsumerState<_DeadlineSheet> {
     final TextTheme text = Theme.of(context).textTheme;
     final DateLabels dates = DateLabels(context.locale.toString());
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: SageSpace.formGutter,
-        right: SageSpace.formGutter,
-        top: SageSpace.lg,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + SageSpace.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(tr('budget.deadlineSheetTitle'), style: text.titleMedium),
-          const SizedBox(height: SageSpace.sm),
-          Text(tr('budget.deadlineSheetBody'), style: text.bodyMedium),
-          const SizedBox(height: SageSpace.lg),
-          LabelledField(
-            label: tr('budget.deadline'),
-            child: InkWell(
-              onTap: _pick,
-              borderRadius: BorderRadius.circular(SageRadius.button),
-              child: InputDecorator(
-                decoration: const InputDecoration(),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        _date == null
-                            ? tr('budget.noDeadline')
-                            : dates.short(_date!),
-                        style: text.bodyLarge?.copyWith(
-                          color: _date == null ? sage.inkLabel : sage.ink,
-                        ),
-                      ),
-                    ),
-                    if (_date != null)
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 18),
-                        tooltip: tr('common.clear'),
-                        onPressed: () => setState(() {
-                          _date = null;
-                          _isHard = false;
-                        }),
-                      ),
-                    Icon(
-                      Icons.calendar_today_outlined,
-                      size: 18,
-                      color: sage.inkLabel,
-                    ),
-                  ],
-                ),
+    return FormSheet(
+      title: tr('budget.deadlineSheetTitle'),
+      body: tr('budget.deadlineSheetBody'),
+      action: FilledButton(onPressed: _save, child: Text(tr('common.save'))),
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: DateField(
+                label: _date == null
+                    ? tr('budget.noDeadline')
+                    : dates.dayMonth(_date!, reference: widget.ledger.today),
+                onTap: _pick,
               ),
             ),
-          ),
-          const SizedBox(height: SageSpace.md),
-          // Soft: a marker only. Hard: refuses later records.
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _isHard,
-            onChanged: _date == null
-                ? null
-                : (bool value) => setState(() => _isHard = value),
-            title: Text(tr('budget.hardDeadline'), style: text.bodyLarge),
-            subtitle: Text(
-              tr('budget.hardDeadlineHint'),
-              style: text.bodySmall,
-            ),
-          ),
-          const SizedBox(height: SageSpace.lg),
-          FilledButton(onPressed: _save, child: Text(tr('common.save'))),
-        ],
-      ),
+            if (_date != null)
+              IconButton(
+                icon: const Icon(Icons.close),
+                tooltip: tr('common.clear'),
+                color: sage.inkLabel,
+                onPressed: () => setState(() {
+                  _date = null;
+                  _isHard = false;
+                }),
+              ),
+          ],
+        ),
+        const SizedBox(height: SageSpace.md),
+        // Soft: a marker only. Hard: refuses later records.
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _isHard,
+          onChanged: _date == null
+              ? null
+              : (bool value) => setState(() => _isHard = value),
+          title: Text(tr('budget.hardDeadline'), style: text.bodyLarge),
+          subtitle: Text(tr('budget.hardDeadlineHint'), style: text.bodySmall),
+        ),
+      ],
     );
   }
 }

@@ -40,13 +40,16 @@ Future<bool> confirmDialog(
   return answer ?? false;
 }
 
-/// Confirmation for moving or deleting a mandatory payment.
-Future<bool> confirmMandatory(BuildContext context) => confirmDialog(
-  context,
-  title: tr('payment.mandatoryConfirmTitle'),
-  body: tr('payment.mandatoryConfirmBody'),
-  confirmLabel: tr('common.continue'),
-);
+enum MandatoryChange { move, unpay, delete }
+
+/// Confirmation before a mandatory payment is moved, unpaid or deleted.
+Future<bool> confirmMandatory(BuildContext context, MandatoryChange change) =>
+    confirmDialog(
+      context,
+      title: tr('payment.mandatoryConfirmTitle'),
+      body: tr('payment.mandatoryConfirm.${change.name}'),
+      confirmLabel: tr('common.continue'),
+    );
 
 const Duration undoWindow = Duration(seconds: 5);
 

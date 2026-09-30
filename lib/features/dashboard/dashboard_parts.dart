@@ -216,7 +216,7 @@ class CascadeCard extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Expanded(
+              Flexible(
                 child: Text(tr('dashboard.afterBills'), style: text.titleSmall),
               ),
               if (info != null) InfoButton(info!),
@@ -296,26 +296,21 @@ class TotalsCard extends StatelessWidget {
   Widget build(BuildContext context) => SageCard(
     child: Column(
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: StatRow(
-                label: tr('dashboard.planned'),
-                value: money.format(planned),
-              ),
+        StatRow(
+          label: tr('dashboard.planned'),
+          value: money.format(planned),
+          labelTrailing: InfoButton(
+            dense: true,
+            FigureInfo(
+              title: tr('dashboard.planned'),
+              what: tr('info.totals'),
+              sum: <SumLine>[
+                SumLine('', money.format(planned), tr('info.planned')),
+                SumLine('−', money.format(paid), tr('info.paid')),
+                SumLine('=', money.format(remaining), tr('info.toPay')),
+              ],
             ),
-            InfoButton(
-              FigureInfo(
-                title: tr('dashboard.planned'),
-                what: tr('info.totals'),
-                sum: <SumLine>[
-                  SumLine('', money.format(planned), tr('info.planned')),
-                  SumLine('−', money.format(paid), tr('info.paid')),
-                  SumLine('=', money.format(remaining), tr('info.toPay')),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
         StatRow(label: tr('dashboard.paid'), value: money.format(paid)),
         StatRow(

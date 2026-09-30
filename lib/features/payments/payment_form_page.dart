@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
@@ -101,6 +102,8 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
   ExpenseType _type = ExpenseType.variable;
   String? _categoryId;
   bool _isPaid = false;
+
+  bool _paidAll = false;
   bool _isRecurring = false;
   RecurrenceInterval _interval = RecurrenceInterval.monthly;
 
@@ -267,6 +270,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
             expenseType: _type,
             categoryId: _categoryId,
             notes: notes,
+            paidCount: !_isPaid ? 0 : (_paidAll ? null : 1),
           );
         } else {
           final Payment created = await repos.payments.create(
@@ -284,11 +288,30 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
           }
         }
       } else {
+        final bool movesOrUnpays =
+            date != existing.dueDate || (existing.isPaid && !_isPaid);
         if (existing.expenseType == ExpenseType.mandatory &&
-            !await confirmMandatory(context)) {
+            movesOrUnpays &&
+            !await confirmMandatory(
+              context,
+              date != existing.dueDate
+                  ? MandatoryChange.move
+                  : MandatoryChange.unpay,
+            )) {
           return;
         }
-        final SeriesScope scope = await _resolveScope(existing);
+        final SeriesScope scope = await _resolveScope(existing, notes);
+        if (scope == SeriesScope.cancelled) return;
+        final String? group = existing.groupRecurringId;
+        StatusScope paidScope = StatusScope.thisOne;
+        if (group != null && _isPaid != existing.isPaid) {
+          if (!mounted) return;
+          paidScope = await askStatusScope(
+            context,
+            titleKey: _isPaid ? 'statusScope.paid' : 'statusScope.notPaid',
+          );
+          if (paidScope == StatusScope.cancelled) return;
+        }
         // Date and paid status are this occurrence's own in every scope.
         Future<void> applyOwn() async {
           if (date == existing.dueDate && _isPaid == existing.isPaid) return;
@@ -339,10 +362,26 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
           case SeriesScope.cancelled:
             return;
         }
+        if (group != null && paidScope != StatusScope.thisOne) {
+          for (final Payment p in await repos.payments.seriesOf(group)) {
+            if (p.id == existing.id ||
+                p.isPaid == _isPaid ||
+                !paidScope.reaches(p.dueDate, existing.dueDate)) {
+              continue;
+            }
+            try {
+              await repos.payments.setPaid(p.id, isPaid: _isPaid);
+            } on PeriodFrozen {
+              continue;
+            }
+          }
+        }
       }
       // The recompute binds the payment to its period.
       ref.invalidate(periodRefreshProvider);
       if (mounted) Navigator.of(context).pop();
+    } on Exception catch (e) {
+      if (!mounted || !sayRefusal(context, e)) rethrow;
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -393,7 +432,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     final SeriesScope scope = await askSeriesDeleteScope(context);
     if (scope == SeriesScope.cancelled || !mounted) return;
     if (existing.expenseType == ExpenseType.mandatory &&
-        !await confirmMandatory(context)) {
+        !await confirmMandatory(context, MandatoryChange.delete)) {
       return;
     }
     if (!mounted) return;
@@ -410,8 +449,17 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
   }
 
   /// Records in a series ask for the scope.
-  Future<SeriesScope> _resolveScope(Payment payment) async {
+  /// Date and paid status are the occurrence's own, so changing only those
+  /// asks nothing.
+  Future<SeriesScope> _resolveScope(Payment payment, String? notes) async {
     if (payment.groupRecurringId == null) return SeriesScope.thisOne;
+    final bool shared =
+        _title.text.trim() != payment.title ||
+        _parsedAmount != payment.amount ||
+        _type != payment.expenseType ||
+        _categoryId != payment.categoryId ||
+        notes != payment.notes;
+    if (!shared) return SeriesScope.thisOne;
     if (!mounted) return SeriesScope.cancelled;
     return askSeriesScope(context);
   }
@@ -420,7 +468,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     final Payment? existing = _existing;
     if (existing == null) return;
     if (existing.expenseType == ExpenseType.mandatory &&
-        !await confirmMandatory(context)) {
+        !await confirmMandatory(context, MandatoryChange.delete)) {
       return;
     }
     await ref.read(repositoriesProvider).payments.softDelete(existing.id);
@@ -455,6 +503,12 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
               onPressed: _delete,
             ),
         ],
+      ),
+      bottomNavigationBar: FormActionBar(
+        child: FilledButton(
+          onPressed: _isValid ? _save : null,
+          child: Text(tr('common.save')),
+        ),
       ),
       body: SafeArea(
         child: Column(
@@ -601,11 +655,14 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                         ? null
                         : (bool value) => setState(() => _isPaid = value),
                   ),
-                  const SizedBox(height: SageSpace.lg),
-                  FilledButton(
-                    onPressed: _isValid ? _save : null,
-                    child: Text(tr('common.save')),
-                  ),
+                  if (_isPaid && _isRecurring && _existing == null)
+                    SegmentedChoice<bool>(
+                      values: const <bool>[false, true],
+                      selected: _paidAll,
+                      labelOf: (bool all) =>
+                          tr(all ? 'payment.paidAll' : 'payment.paidFirst'),
+                      onChanged: (bool all) => setState(() => _paidAll = all),
+                    ),
                 ],
               ),
             ),
@@ -689,7 +746,7 @@ class _LivePreview extends ConsumerWidget {
     if (target == null || end == null) return null;
 
     final DateLabels dates = DateLabels(context.locale.toString());
-    return '${dates.short(target.startDate)} – ${dates.short(end)}';
+    return '${dates.dayMonth(target.startDate)} – ${dates.dayMonth(end)}';
   }
 
   @override
@@ -759,7 +816,6 @@ class _LivePreview extends ConsumerWidget {
       available: available,
       entries: existing,
       draft: const <LedgerEntry>[],
-      replacingId: replacingId,
     );
     final LedgerRun after = previewRun(
       available: available,
@@ -784,6 +840,8 @@ class _LivePreview extends ConsumerWidget {
           : money.format(value);
     }
 
+    // What this form changes; zero while editing leaves it as it was.
+    final Decimal change = after.finalBalance - before.finalBalance;
     final Decimal? beforeFree = shown(before);
     final Decimal? afterFree = shown(after);
     final Color afterColor =
@@ -807,15 +865,15 @@ class _LivePreview extends ConsumerWidget {
         borderRadius: BorderRadius.circular(SageRadius.card),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
             periodLabel == null ? label : '$label ($periodLabel)',
+            textAlign: TextAlign.center,
             style: text.bodySmall?.copyWith(color: sage.inkSecondary),
           ),
           const SizedBox(height: SageSpace.xs),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Text(
                 figure(beforeFree),
@@ -836,8 +894,7 @@ class _LivePreview extends ConsumerWidget {
                   style: text.titleMedium?.copyWith(color: afterColor),
                 ),
               ),
-              if (draftAmount != null &&
-                  draftAmount > Decimal.zero) ...<Widget>[
+              if (change != Decimal.zero) ...<Widget>[
                 const SizedBox(width: SageSpace.sm),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -845,12 +902,18 @@ class _LivePreview extends ConsumerWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: sage.dangerTint,
+                    color: change < Decimal.zero
+                        ? sage.dangerTint
+                        : sage.accentTint,
                     borderRadius: BorderRadius.circular(SageRadius.pill),
                   ),
                   child: Text(
-                    '−${money.format(draftAmount)}',
-                    style: text.labelSmall?.copyWith(color: sage.danger),
+                    money.formatSigned(change),
+                    style: text.labelSmall?.copyWith(
+                      color: change < Decimal.zero
+                          ? sage.danger
+                          : sage.accentStrong,
+                    ),
                   ),
                 ),
               ],
@@ -869,6 +932,7 @@ class _LivePreview extends ConsumerWidget {
                   'count': '${draft.length}',
                 },
               ),
+              textAlign: TextAlign.center,
               style: text.bodySmall,
             ),
           ],

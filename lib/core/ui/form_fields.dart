@@ -5,6 +5,81 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
+/// A form's main action: stays on screen, above the keyboard, while the
+/// fields scroll. Goes in `Scaffold.bottomNavigationBar`.
+class FormActionBar extends StatelessWidget {
+  const FormActionBar({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    child: ColoredBox(
+      color: context.sage.surface,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            SageSpace.formGutter,
+            SageSpace.sm,
+            SageSpace.formGutter,
+            SageSpace.md,
+          ),
+          child: child,
+        ),
+      ),
+    ),
+  );
+}
+
+/// A small form in a bottom sheet: centred title and text, fields, and a
+/// full-width action.
+class FormSheet extends StatelessWidget {
+  const FormSheet({
+    required this.title,
+    required this.body,
+    required this.children,
+    required this.action,
+    super.key,
+  });
+
+  final String title;
+  final String body;
+  final List<Widget> children;
+  final Widget action;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: SageSpace.formGutter,
+        right: SageSpace.formGutter,
+        top: SageSpace.lg,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + SageSpace.lg,
+      ),
+      // Clear of the system navigation bar.
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(title, textAlign: TextAlign.center, style: text.titleMedium),
+            const SizedBox(height: SageSpace.sm),
+            Text(body, textAlign: TextAlign.center, style: text.bodyMedium),
+            const SizedBox(height: SageSpace.lg),
+            ...children,
+            const SizedBox(height: SageSpace.lg),
+            action,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// The one span every record date picker offers. Null when dismissed.
 Future<CalendarDate?> pickDate(
   BuildContext context,
@@ -46,6 +121,11 @@ class MoneyField extends StatelessWidget {
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
     inputFormatters: <TextInputFormatter>[
       FilteringTextInputFormatter.allow(RegExp(r'[\d.,\s]')),
+      // Cents at most, and one decimal separator.
+      TextInputFormatter.withFunction(
+        (TextEditingValue old, TextEditingValue next) =>
+            RegExp(r'^[\d\s]*([.,]\d{0,2})?$').hasMatch(next.text) ? next : old,
+      ),
     ],
     decoration: InputDecoration(suffixText: symbol, hintText: hintText),
     onSubmitted: onSubmitted,

@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/features/payments/series_scope_dialog.dart';
 
 /// How far an amount change on one occurrence reaches.
 enum IncomeScope {
@@ -23,26 +24,33 @@ Future<IncomeScope> askIncomeScope(BuildContext context) async {
       ),
       title: Text(
         tr('incomeScope.title'),
+        textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.titleMedium,
       ),
-      content: Text(
-        tr('incomeScope.body'),
-        style: Theme.of(context).textTheme.bodyMedium,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            tr('incomeScope.body'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: SageSpace.lg),
+          ChoiceGrid(
+            choices: <(String, VoidCallback)>[
+              (
+                tr('incomeScope.thisOne'),
+                () => Navigator.of(context).pop(IncomeScope.thisOne),
+              ),
+              (
+                tr('incomeScope.allFuture'),
+                () => Navigator.of(context).pop(IncomeScope.allFuture),
+              ),
+            ],
+          ),
+        ],
       ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(IncomeScope.cancelled),
-          child: Text(tr('common.cancel')),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(IncomeScope.thisOne),
-          child: Text(tr('incomeScope.thisOne')),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(IncomeScope.allFuture),
-          child: Text(tr('incomeScope.allFuture')),
-        ),
-      ],
     ),
   );
   return answer ?? IncomeScope.cancelled;

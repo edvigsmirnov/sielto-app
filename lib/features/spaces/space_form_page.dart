@@ -8,6 +8,7 @@ import 'package:sielto/core/format/currencies.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
@@ -162,17 +163,16 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
     return Scaffold(
       backgroundColor: sage.surface,
       appBar: AppBar(title: Text(tr('space.createTitle'))),
+      bottomNavigationBar: FormActionBar(
+        child: FilledButton(
+          onPressed: _canSave ? _create : null,
+          child: Text(tr('space.create')),
+        ),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(SageSpace.formGutter),
-          children: <Widget>[
-            ..._fields(locale, currency, showCurrency: true),
-            const SizedBox(height: SageSpace.xl),
-            FilledButton(
-              onPressed: _canSave ? _create : null,
-              child: Text(tr('space.create')),
-            ),
-          ],
+          children: <Widget>[..._fields(locale, currency, showCurrency: true)],
         ),
       ),
     );

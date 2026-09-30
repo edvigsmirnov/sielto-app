@@ -150,7 +150,7 @@
   },
   "balance": {
     "sheetTitle": "Set current balance",
-    "sheetBody": "The money you actually have right now. Expenses already paid on or before today are left out of the forecast so they are not counted twice.",
+    "sheetBody": "The money you have right now. Expenses you've already paid by today aren't counted again.",
     "fieldAmount": "Amount",
     "excludedFromWalker": {
       "one": "{} paid expense excluded",
@@ -205,6 +205,8 @@
     "fieldType": "Type",
     "fieldNotes": "Note",
     "markPaid": "Already paid",
+    "paidFirst": "Only the first",
+    "paidAll": "All of them",
     "togglePaid": "Paid",
     "paid": "Paid",
     "unpaid": "Planned",
@@ -217,7 +219,11 @@
     "recurringPreview": "Takes {now} now, reserves {total} across {count} payments",
     "dateOutOfRange": "That's a long way off. Double-check the date; you can still save it.",
     "mandatoryConfirmTitle": "This is a mandatory payment",
-    "mandatoryConfirmBody": "This is a bill you have to pay. Move it anyway?",
+    "mandatoryConfirm": {
+      "move": "This is a bill you have to pay. Move it anyway?",
+      "unpay": "This is a bill you have to pay. Mark it as not paid anyway?",
+      "delete": "This is a bill you have to pay. Delete it anyway?"
+    },
     "fieldPeriod": "Period",
     "periodAuto": "By date",
     "periodCurrent": "Current period",
@@ -249,6 +255,17 @@
     "wholeSeries": "Whole series",
     "deleteTitle": "Delete the repeating payment?",
     "deleteBody": "Ones you've already paid stay either way."
+  },
+  "statusScope": {
+    "paid": "Mark the other dates as paid too?",
+    "notPaid": "Mark the other dates as not paid too?",
+    "received": "Mark the other dates as received too?",
+    "notReceived": "Mark the other dates as not received too?",
+    "receivedBody": "Dates with no amount yet stay as they are.",
+    "thisOne": "Only this one",
+    "earlier": "This and earlier",
+    "later": "This and later",
+    "all": "All of them"
   },
   "income": {
     "add": "Add income",
@@ -354,7 +371,7 @@
       "highLoad": "Heavy spending day",
       "highLoadOver": "Heavy spending day: {amount} or more",
       "uncertainIncome": "The salary may arrive on any of these days",
-      "hardDeadline": "Fixed date: nothing can be dated after it",
+      "hardDeadline": "Fixed date: nothing can be added after it",
       "softDeadline": "Date as a guide only"
     }
   },
@@ -514,12 +531,12 @@
     "targetHint": "Leave empty to just track spending",
     "noTarget": "Not set",
     "contributions": "Top-ups",
-    "fundSheetTitle": "The budget for this goal",
-    "fundSheetBody": "What you plan to spend. Top-ups in the feed add to it. Leave it empty and the Space simply records what you spend.",
+    "fundSheetTitle": "Set a budget",
+    "fundSheetBody": "How much you plan to spend. Top-ups in the Feed add to it. Leave it empty to simply keep track of what you spend.",
     "deadline": "Date",
     "noDeadline": "No date",
-    "deadlineSheetTitle": "The date this is for",
-    "deadlineSheetBody": "The day of the trip, the deadline, the event. Move it whenever plans change — nothing is ever lost by moving it.",
+    "deadlineSheetTitle": "Set a date",
+    "deadlineSheetBody": "The day of the trip, the deadline or the event. Move it whenever plans change; nothing is lost.",
     "deadlineToday": "Today",
     "daysLeft": {
       "one": "{} day left",
@@ -531,8 +548,8 @@
     },
     "hard": "Fixed",
     "hardDeadline": "Fixed date",
-    "hardDeadlineHint": "Nothing can be dated after it. Turned off, the date is just a guide.",
-    "refusedBeyondDeadline": "The date is fixed at {date}. Nothing can be dated after it.",
+    "hardDeadlineHint": "Nothing can be added after it. When it's off, the date is only a guide.",
+    "refusedBeyondDeadline": "The date is fixed at {date}. Nothing can be added after it.",
     "topUp": "Top up the budget",
     "beyondDeadline": "Past the date"
   },

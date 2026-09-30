@@ -7,6 +7,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/category_repository.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/category_colors.dart';
@@ -167,14 +168,12 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
 
     return Scaffold(
       backgroundColor: sage.surface,
-      appBar: AppBar(
-        title: Text(existing?.shownTitle ?? tr('category.add')),
-        actions: <Widget>[
-          TextButton(
-            onPressed: _title.text.trim().isEmpty ? null : _save,
-            child: Text(tr('common.save')),
-          ),
-        ],
+      appBar: AppBar(title: Text(existing?.shownTitle ?? tr('category.add'))),
+      bottomNavigationBar: FormActionBar(
+        child: FilledButton(
+          onPressed: _title.text.trim().isEmpty ? null : _save,
+          child: Text(tr('common.save')),
+        ),
       ),
       body: SafeArea(
         child: ListView(
@@ -249,13 +248,8 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
               ),
             ),
 
-            const SizedBox(height: SageSpace.xl),
-            FilledButton(
-              onPressed: _title.text.trim().isEmpty ? null : _save,
-              child: Text(tr('common.save')),
-            ),
             if (existing != null) ...<Widget>[
-              const SizedBox(height: SageSpace.sm),
+              const SizedBox(height: SageSpace.xl),
               OutlinedButton.icon(
                 icon: const Icon(Icons.drive_file_move_outline, size: 20),
                 label: Text(tr('category.moveRecords')),

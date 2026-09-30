@@ -215,6 +215,25 @@ void main() {
       expect(rows.last.sortOrder, greaterThan(rows.first.sortOrder));
     });
 
+    test('a series paid on creation marks only its first payment', () async {
+      final Space space = await makeSpace();
+      await payments.createSeries(
+        spaceId: space.id,
+        title: 'Gym',
+        amount: Decimal.one,
+        dates: const <CalendarDate>[
+          CalendarDate(2026, 3, 1),
+          CalendarDate(2026, 4, 1),
+          CalendarDate(2026, 5, 1),
+        ],
+        expenseType: ExpenseType.mandatory,
+        paidCount: 1,
+      );
+      final List<Payment> rows = await payments.inSpace(space.id);
+      rows.sort((Payment a, Payment b) => a.dueDate.compareTo(b.dueDate));
+      expect(rows.map((Payment p) => p.isPaid), <bool>[true, false, false]);
+    });
+
     test('a series cannot pass a hard deadline', () async {
       final Space space = await makeSpace(mode: BudgetMode.budget);
       final BudgetPeriod period = await periods.ensureContinuous(

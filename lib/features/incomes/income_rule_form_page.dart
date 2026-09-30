@@ -188,6 +188,12 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: AppBar(title: Text(tr('income.editRule'))),
+      bottomNavigationBar: FormActionBar(
+        child: FilledButton(
+          onPressed: _isValid ? _save : null,
+          child: Text(tr('common.save')),
+        ),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(SageSpace.formGutter),
@@ -227,11 +233,6 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
                     ?.copyWith(color: context.sage.warning),
               ),
             ],
-            const SizedBox(height: SageSpace.lg),
-            FilledButton(
-              onPressed: _isValid ? _save : null,
-              child: Text(tr('common.save')),
-            ),
             if (space.budgetMode == BudgetMode.incomeDriven) ...<Widget>[
               const SizedBox(height: SageSpace.sm),
               TextButton.icon(

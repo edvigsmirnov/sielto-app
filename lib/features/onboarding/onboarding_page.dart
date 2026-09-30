@@ -35,6 +35,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   late final int _stepCount = _protectStep ? 4 : 3;
 
   bool _started = false;
+  int _page = 0;
 
   final GlobalKey _welcome = GlobalKey();
 
@@ -81,26 +82,38 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     }
 
     final ui.Image? leaving = _leaving;
-    final Widget steps = Scaffold(
-      backgroundColor: context.sage.surface,
-      body: PageView(
-        controller: _controller,
-        physics: const NeverScrollableScrollPhysics(),
-        children: <Widget>[
-          _ProfileStep(stepCount: _stepCount, onContinue: _next),
-          if (_protectStep)
-            _ProtectStep(stepCount: _stepCount, onContinue: _next),
-          _RecoveryKeyStep(
-            step: _stepCount - 1,
-            stepCount: _stepCount,
-            onContinue: _next,
-          ),
-          SpaceFormPage(
-            isFirstSpace: true,
-            step: _stepCount,
-            stepCount: _stepCount,
-          ),
-        ],
+    final Widget steps = PopScope(
+      canPop: _page == 0,
+      onPopInvokedWithResult: (bool didPop, Object? _) {
+        if (!didPop) {
+          _controller.previousPage(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: context.sage.surface,
+        body: PageView(
+          controller: _controller,
+          physics: const NeverScrollableScrollPhysics(),
+          onPageChanged: (int page) => setState(() => _page = page),
+          children: <Widget>[
+            _ProfileStep(stepCount: _stepCount, onContinue: _next),
+            if (_protectStep)
+              _ProtectStep(stepCount: _stepCount, onContinue: _next),
+            _RecoveryKeyStep(
+              step: _stepCount - 1,
+              stepCount: _stepCount,
+              onContinue: _next,
+            ),
+            SpaceFormPage(
+              isFirstSpace: true,
+              step: _stepCount,
+              stepCount: _stepCount,
+            ),
+          ],
+        ),
       ),
     );
     if (leaving == null) return steps;
