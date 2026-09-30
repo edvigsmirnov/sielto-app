@@ -76,6 +76,20 @@ class AnalyticsRepository {
     category: (id: categoryId, present: true),
   );
 
+  /// Grouped by `lower(trim(title))` across every category.
+  Future<List<AnalyticsSlice>> byTitleAll({
+    required String spaceId,
+    required CalendarDate from,
+    required CalendarDate to,
+    ExpenseType? expenseType,
+  }) => _slices(
+    columns: 'lower(trim(title)) AS grouping_key, title AS label',
+    spaceId: spaceId,
+    from: from,
+    to: to,
+    expenseType: expenseType,
+  );
+
   /// SQL filters, Dart sums. Optional filters are appended as clauses: drift's
   /// `Variable` rejects null.
   Future<List<AnalyticsSlice>> _slices({

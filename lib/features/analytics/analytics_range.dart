@@ -88,3 +88,18 @@ expenseTypeFilterProvider =
     NotifierProvider<ExpenseTypeFilterController, ExpenseType?>(
       ExpenseTypeFilterController.new,
     );
+
+enum AnalyticsGrouping { category, name }
+
+class AnalyticsGroupingController extends Notifier<AnalyticsGrouping> {
+  @override
+  AnalyticsGrouping build() => AnalyticsGrouping.category;
+
+  void select(AnalyticsGrouping grouping) => state = grouping;
+}
+
+final NotifierProvider<AnalyticsGroupingController, AnalyticsGrouping>
+analyticsGroupingProvider =
+    NotifierProvider<AnalyticsGroupingController, AnalyticsGrouping>(
+      AnalyticsGroupingController.new,
+    );

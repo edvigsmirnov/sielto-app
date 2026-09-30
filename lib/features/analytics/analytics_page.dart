@@ -11,6 +11,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/analytics/analytics_data.dart';
 import 'package:sielto/features/analytics/analytics_parts.dart';
+import 'package:sielto/features/analytics/analytics_range.dart';
 import 'package:sielto/features/analytics/category_breakdown_page.dart';
 import 'package:sielto/features/analytics/donut_chart.dart';
 import 'package:sielto/features/categories/category_colors.dart';
@@ -39,8 +40,11 @@ class AnalyticsPage extends ConsumerWidget {
     );
     final Map<String, Category> categories =
         ref.watch(categoryIndexProvider).value ?? const <String, Category>{};
+    final bool byName =
+        ref.watch(analyticsGroupingProvider) == AnalyticsGrouping.name;
     final List<AnalyticsSlice> slices =
-        ref.watch(categoryTotalsProvider).value ?? const <AnalyticsSlice>[];
+        ref.watch(byName ? nameTotalsProvider : categoryTotalsProvider).value ??
+        const <AnalyticsSlice>[];
 
     final Decimal total = slices.fold(
       Decimal.zero,
@@ -74,13 +78,36 @@ class AnalyticsPage extends ConsumerWidget {
               const RangeHeader(),
               const SizedBox(height: SageSpace.md),
               const ExpenseTypeFilter(),
+              const SizedBox(height: SageSpace.sm),
+              SegmentedChoice<AnalyticsGrouping>(
+                values: AnalyticsGrouping.values,
+                selected: byName
+                    ? AnalyticsGrouping.name
+                    : AnalyticsGrouping.category,
+                labelOf: (AnalyticsGrouping g) => tr('analytics.by.${g.name}'),
+                onChanged: (AnalyticsGrouping g) =>
+                    ref.read(analyticsGroupingProvider.notifier).select(g),
+              ),
               const SizedBox(height: SageSpace.lg),
               if (slices.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: SageSpace.xl),
                   child: EmptyState(message: tr('analytics.empty')),
                 )
-              else ...<Widget>[
+              else if (byName) ...<Widget>[
+                Center(
+                  child: Text(
+                    money.format(total),
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                const SizedBox(height: SageSpace.md),
+                for (final AnalyticsSlice slice in slices)
+                  SliceRow(
+                    label: '${slice.label} · ${slice.count}',
+                    value: money.format(slice.total),
+                  ),
+              ] else ...<Widget>[
                 _Summary(
                   slices: slices,
                   total: total,

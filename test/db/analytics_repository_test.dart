@@ -184,6 +184,24 @@ void main() {
     });
   });
 
+  group('level 1, by name', () {
+    test('one name adds up across categories', () async {
+      final Category food = await category('Groceries');
+      final Category home = await category('Home');
+      await spend('Lidl', '100', on: summerStart, categoryId: food.id);
+      await spend('lidl', '40', on: summerStart, categoryId: home.id);
+      await spend('Lidl', '10', on: summerStart);
+
+      final List<AnalyticsSlice> slices = await analytics.byTitleAll(
+        spaceId: space.id,
+        from: summerStart,
+        to: summerEnd,
+      );
+      expect(slices.single.total, Decimal.parse('150'));
+      expect(slices.single.count, 3);
+    });
+  });
+
   group('level 2, by title', () {
     test('spelling variants collapse into one line', () async {
       final Category food = await category('Groceries');

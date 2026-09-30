@@ -519,6 +519,10 @@
       "one": "{} record",
       "other": "{} records"
     },
+    "by": {
+      "category": "By category",
+      "name": "By name"
+    },
     "averageTicket": "Average payment in the range",
     "swipeBack": "Swipe right to go back"
   }
