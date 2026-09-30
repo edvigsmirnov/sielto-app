@@ -4,7 +4,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// Bundled public holidays, nationwide only. Must cover
+/// Bundled public holidays: nationwide, plus a region's own. Must cover
 /// `recurrenceHorizonMonths` ahead; regenerate with `tools/fetch_holidays.py`.
 class HolidayBundle {
   const HolidayBundle();
@@ -27,8 +27,12 @@ class HolidayBundle {
     };
   }
 
-  /// Null when not bundled.
-  Future<List<CalendarDate>?> datesFor(String countryCode, int year) async {
+  /// Null when not bundled. [region] adds that region's days.
+  Future<List<CalendarDate>?> datesFor(
+    String countryCode,
+    int year, {
+    String? region,
+  }) async {
     final String code = countryCode.toUpperCase();
     if (!(await bundledCodes()).contains(code)) return null;
 
@@ -47,7 +51,46 @@ class HolidayBundle {
     return <CalendarDate>[
       for (final Object? d in dates)
         if (d is String) CalendarDate.parse(d),
+      if (region != null) ...await _regionalDates(code, region, year),
     ];
+  }
+
+  Future<List<CalendarDate>> _regionalDates(
+    String countryCode,
+    String region,
+    int year,
+  ) async {
+    final Object? dates = (await regionsOf(
+      countryCode,
+    ))[region.toUpperCase()]?['$year'];
+    if (dates is! List<dynamic>) return const <CalendarDate>[];
+    return <CalendarDate>[
+      for (final Object? d in dates)
+        if (d is String) CalendarDate.parse(d),
+    ];
+  }
+
+  /// Region code to year to dates. Empty for a country without regional days.
+  Future<Map<String, Map<String, dynamic>>> regionsOf(
+    String countryCode,
+  ) async {
+    final String raw;
+    try {
+      raw = await rootBundle.loadString(
+        '$_dir/regions/${countryCode.toUpperCase()}.json',
+      );
+    } on Object {
+      return const <String, Map<String, dynamic>>{};
+    }
+    final Object? parsed = jsonDecode(raw);
+    if (parsed is! Map<String, dynamic>) {
+      return const <String, Map<String, dynamic>>{};
+    }
+    return <String, Map<String, dynamic>>{
+      for (final MapEntry<String, dynamic> e in parsed.entries)
+        if (e.value is Map<String, dynamic>)
+          e.key: e.value as Map<String, dynamic>,
+    };
   }
 
   /// Names per date: English, then local where different. Empty when none are
@@ -85,8 +128,12 @@ class NagerHolidayApi {
 
   static const Duration _timeout = Duration(seconds: 10);
 
-  /// Null on any failure.
-  Future<List<CalendarDate>?> fetch(String countryCode, int year) async {
+  /// Null on any failure. [region] adds that region's days.
+  Future<List<CalendarDate>?> fetch(
+    String countryCode,
+    int year, {
+    String? region,
+  }) async {
     final Uri url = Uri.https(
       'date.nager.at',
       '/api/v3/PublicHolidays/$year/${countryCode.toUpperCase()}',
@@ -102,7 +149,12 @@ class NagerHolidayApi {
       return <CalendarDate>[
         for (final Object? row in parsed)
           if (row is Map<String, dynamic> &&
-              row['global'] == true &&
+              (row['global'] == true ||
+                  (region != null &&
+                      row['counties'] is List<dynamic> &&
+                      (row['counties'] as List<dynamic>).contains(
+                        region.toUpperCase(),
+                      ))) &&
               row['date'] is String)
             CalendarDate.parse(row['date'] as String),
       ];

@@ -83,6 +83,10 @@
     "Constitution Day / Whit Monday",
     "Syttende mai / Andre pinsedag"
   ],
+  "2027-12-24": [
+    "Christmas Eve",
+    "Julaften"
+  ],
   "2027-12-25": [
     "Christmas Day",
     "Første juledag"
@@ -227,6 +231,10 @@
     "Whit Monday",
     "Andre pinsedag"
   ],
+  "2030-12-24": [
+    "Christmas Eve",
+    "Julaften"
+  ],
   "2030-12-25": [
     "Christmas Day",
     "Første juledag"
@@ -274,6 +282,10 @@
   "2031-06-02": [
     "Whit Monday",
     "Andre pinsedag"
+  ],
+  "2031-12-24": [
+    "Christmas Eve",
+    "Julaften"
   ],
   "2031-12-25": [
     "Christmas Day",

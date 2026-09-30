@@ -448,6 +448,8 @@
     "setAmount": "Set the amount"
   },
   "holidays": {
+    "region": "Region, for its own holidays",
+    "wholeCountry": "Whole country",
     "addDay": "Add a date",
     "blockedByOffline": "Turned off by fully offline mode.",
     "consentAllow": "Allow",

@@ -53,11 +53,31 @@ class DefaultCountryController extends Notifier<String?> {
   @override
   String? build() => ref.watch(localSettingsProvider).defaultCountryCode;
 
+  /// A region of another country is dropped.
   Future<void> set(String? code) async {
     await ref.read(localSettingsProvider).setDefaultCountryCode(code);
+    final String? region = ref.read(holidayRegionProvider);
+    if (region != null && (code == null || !region.startsWith('$code-'))) {
+      await ref.read(holidayRegionProvider.notifier).set(null);
+    }
     state = code;
   }
 }
+
+class HolidayRegionController extends Notifier<String?> {
+  @override
+  String? build() => ref.watch(localSettingsProvider).holidayRegion;
+
+  Future<void> set(String? code) async {
+    await ref.read(localSettingsProvider).setHolidayRegion(code);
+    state = code;
+  }
+}
+
+final NotifierProvider<HolidayRegionController, String?> holidayRegionProvider =
+    NotifierProvider<HolidayRegionController, String?>(
+      HolidayRegionController.new,
+    );
 
 final NotifierProvider<DefaultCountryController, String?>
 defaultCountryProvider = NotifierProvider<DefaultCountryController, String?>(

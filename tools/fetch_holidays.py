@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """Regenerate assets/holidays/ from date.nager.at.
 
-Only entries the source marks nationwide (`global: true`) are kept: a holiday
-observed in one federal state must not shift a national pay date.
+Nationwide entries (`global: true`) go to <CODE>.json. Entries observed only
+in some regions go to regions/<CODE>.json, keyed by region code (`DE-BY`), so
+a regional holiday shifts a pay date only for someone who chose that region.
 
     python tools/fetch_holidays.py .                 # default year span
     python tools/fetch_holidays.py . --years 2026 2031
     python tools/fetch_holidays.py . --codes RU DE US
 
-Writes one <CODE>.json per bundled country, names/<CODE>.json with the names of
-those days, index.json listing the codes, and countries.json listing every
-country the API knows.
+Writes one <CODE>.json per bundled country, regions/<CODE>.json where it has
+regional days, names/<CODE>.json with the names of all those days, index.json
+listing the codes, countries.json listing every country the API knows, and
+regions.<locale>.json with region names from CLDR.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 
 API = 'https://date.nager.at/api/v3'
 
@@ -53,21 +56,16 @@ def get(url: str) -> object:
     raise AssertionError('unreachable')
 
 
-def nationwide(code: str, year: int) -> dict[str, list[str]]:
+# Subdivision names per language, from CLDR's XML: cldr-json has none.
+CLDR_SUBDIVISIONS = ('https://raw.githubusercontent.com/unicode-org/cldr/main'
+                     '/common/subdivisions')
+
+
+def _joined(names: dict[str, list[list[str]]]) -> dict[str, list[str]]:
     """Date -> [English name, local name]; the local one only when it differs.
 
     Two holidays on one date are joined into one name.
     """
-    entries = get(f'{API}/PublicHolidays/{year}/{code}')
-    if not isinstance(entries, list):
-        raise ValueError(f'{code} {year}: unexpected payload')
-    names: dict[str, list[list[str]]] = {}
-    for e in entries:
-        if not (isinstance(e, dict) and e.get('global') is True
-                and e.get('date')):
-            continue
-        names.setdefault(e['date'], []).append(
-            [e.get('name') or '', e.get('localName') or ''])
     out: dict[str, list[str]] = {}
     for date, pairs in sorted(names.items()):
         english = ' / '.join(dict.fromkeys(p[0] for p in pairs if p[0]))
@@ -75,6 +73,63 @@ def nationwide(code: str, year: int) -> dict[str, list[str]]:
         out[date] = [english] if not local or local == english else [
             english, local]
     return out
+
+
+def holidays(code: str, year: int) -> tuple[
+        dict[str, list[str]], dict[str, list[str]], dict[str, list[str]]]:
+    """Nationwide names, region -> dates, and regional names, by date."""
+    entries = get(f'{API}/PublicHolidays/{year}/{code}')
+    if not isinstance(entries, list):
+        raise ValueError(f'{code} {year}: unexpected payload')
+    national: dict[str, list[list[str]]] = {}
+    regional: dict[str, list[list[str]]] = {}
+    regions: dict[str, list[str]] = {}
+    for e in entries:
+        if not (isinstance(e, dict) and e.get('date')):
+            continue
+        pair = [e.get('name') or '', e.get('localName') or '']
+        if e.get('global') is True:
+            national.setdefault(e['date'], []).append(pair)
+            continue
+        counties = e.get('counties')
+        if not isinstance(counties, list) or not counties:
+            continue
+        regional.setdefault(e['date'], []).append(pair)
+        for county in counties:
+            if isinstance(county, str):
+                regions.setdefault(county.upper(), []).append(e['date'])
+    return (_joined(national),
+            {r: sorted(set(d)) for r, d in regions.items()},
+            _joined(regional))
+
+
+def write_region_names(out: pathlib.Path, locales: list[str],
+                       codes: set[str]) -> None:
+    """One `regions.<locale>.json` per locale: `DE-BY` -> localized name."""
+    for locale in locales:
+        try:
+            with urllib.request.urlopen(
+                    f'{CLDR_SUBDIVISIONS}/{locale}.xml',
+                    timeout=TIMEOUT) as response:
+                root = ET.fromstring(response.read())
+        except (urllib.error.URLError, ET.ParseError):
+            print(f'{locale}: no CLDR subdivisions, skipped', file=sys.stderr)
+            continue
+        # CLDR writes `deby` for `DE-BY`.
+        by_cldr = {c.replace('-', '').lower(): c for c in codes}
+        localized = {
+            by_cldr[s.get('type', '')]: s.text
+            for s in root.iter('subdivision')
+            if s.get('type') in by_cldr and s.text
+        }
+        path = out / f'regions.{locale}.json'
+        path.write_text(
+            json.dumps(dict(sorted(localized.items())), ensure_ascii=False,
+                       indent=2) + '\n',
+            encoding='utf-8')
+        missing = len(codes) - len(localized)
+        note = f', {missing} without a name' if missing else ''
+        print(f'regions.{locale}.json: {len(localized)} names{note}')
 
 
 def write_country_names(out: pathlib.Path, locales: list[str],
@@ -159,15 +214,23 @@ def main() -> int:
 
     names_dir = out / 'names'
     names_dir.mkdir(exist_ok=True)
+    regions_dir = out / 'regions'
+    regions_dir.mkdir(exist_ok=True)
     written: list[str] = []
+    all_regions: set[str] = set()
     for code in codes:
         by_year: dict[str, list[str]] = {}
+        by_region: dict[str, dict[str, list[str]]] = {}
         names: dict[str, list[str]] = {}
         for year in years:
-            days = nationwide(code, year)
+            days, regions, regional_names = holidays(code, year)
             if days:
                 by_year[str(year)] = list(days)
                 names.update(days)
+            for region, dates in regions.items():
+                by_region.setdefault(region, {})[str(year)] = dates
+            for date, name in regional_names.items():
+                names.setdefault(date, name)
             time.sleep(0.2)
         if not by_year:
             print(f'{code}: no nationwide days in {first}-{last}, skipped',
@@ -176,8 +239,17 @@ def main() -> int:
         path = out / f'{code}.json'
         path.write_text(json.dumps(by_year, indent=2) + '\n', encoding='utf-8')
         (names_dir / f'{code}.json').write_text(
-            json.dumps(names, ensure_ascii=False, indent=2) + '\n',
+            json.dumps(dict(sorted(names.items())), ensure_ascii=False,
+                       indent=2) + '\n',
             encoding='utf-8')
+        region_path = regions_dir / f'{code}.json'
+        if by_region:
+            region_path.write_text(
+                json.dumps(dict(sorted(by_region.items())), indent=2) + '\n',
+                encoding='utf-8')
+            all_regions.update(by_region)
+        elif region_path.exists():
+            region_path.unlink()
         written.append(code)
         total = sum(len(v) for v in by_year.values())
         print(f'{code}: {total} days across {len(by_year)} years')
@@ -191,8 +263,8 @@ def main() -> int:
     for stale in sorted(p for p in out.glob('*.json') if p.name not in keep):
         stale.unlink()
         print(f'removed stale {stale.name}', file=sys.stderr)
-    for stale in sorted(p for p in names_dir.glob('*.json')
-                        if p.stem not in written):
+    for stale in sorted(p for d in (names_dir, regions_dir)
+                        for p in d.glob('*.json') if p.stem not in written):
         stale.unlink()
         print(f'removed stale names/{stale.name}', file=sys.stderr)
 
@@ -211,6 +283,8 @@ def main() -> int:
         if args.names:
             write_country_names(out, args.names,
                                 {r['code'] for r in rows})
+    if args.names:
+        write_region_names(out, args.names, all_regions)
 
     print(f'years {first}-{last}')
     return 0

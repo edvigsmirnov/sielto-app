@@ -458,6 +458,8 @@
     "setAmount": "Указать сумму"
   },
   "holidays": {
+    "region": "Регион — для его праздников",
+    "wholeCountry": "Вся страна",
     "addDay": "Добавить дату",
     "blockedByOffline": "Отключено режимом «Полностью офлайн».",
     "consentAllow": "Разрешить",

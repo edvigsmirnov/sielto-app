@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meta/meta.dart';
+import 'package:sielto/core/holidays/holiday_source.dart';
 
 @immutable
 class HolidayCountry {
@@ -49,10 +50,15 @@ final holidayCountriesProvider =
     });
 
 /// Empty when no names are bundled for [language].
-Future<Map<String, String>> _namesFor(String language) async {
+Future<Map<String, String>> _namesFor(String language) =>
+    _json('countries.$language.json');
+
+/// A flat string map from [file] under the holidays directory. Empty when the
+/// file is missing.
+Future<Map<String, String>> _json(String file) async {
   final String raw;
   try {
-    raw = await rootBundle.loadString('$_dir/countries.$language.json');
+    raw = await rootBundle.loadString('$_dir/$file');
   } on Object {
     // A missing asset throws FlutterError, an Error, not an Exception.
     return const <String, String>{};
@@ -65,3 +71,31 @@ Future<Map<String, String>> _namesFor(String language) async {
       if (e.value is String) e.key: e.value as String,
   };
 }
+
+/// Regions of [country] with their own holidays, named in [language], then in
+/// English, then by code. Empty for a country without any.
+final holidayRegionsProvider =
+    FutureProvider.family<
+      List<HolidayCountry>,
+      ({String country, String language})
+    >((Ref ref, ({String country, String language}) key) async {
+      final Set<String> codes = (await const HolidayBundle().regionsOf(
+        key.country,
+      )).keys.toSet();
+      if (codes.isEmpty) return const <HolidayCountry>[];
+
+      final Map<String, String> english = await _json('regions.en.json');
+      final Map<String, String> localized = key.language == 'en'
+          ? english
+          : await _json('regions.${key.language}.json');
+      return <HolidayCountry>[
+        for (final String code in codes)
+          HolidayCountry(
+            code: code,
+            name: localized[code] ?? english[code] ?? code,
+          ),
+      ]..sort(
+        (HolidayCountry a, HolidayCountry b) =>
+            a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+    });

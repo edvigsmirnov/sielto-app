@@ -42,6 +42,7 @@ class HolidaysPage extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _pickCountry(context, ref),
           ),
+          if (country != null) _RegionTile(country: country),
           SwitchListTile.adaptive(
             secondary: const Icon(Icons.cloud_download_outlined),
             title: Text(tr('holidays.download')),
@@ -234,10 +235,84 @@ final _yearHolidaysProvider = FutureProvider.autoDispose
         days: await ref
             .read(repositoriesProvider)
             .holidays
-            .cached(key.country, key.year),
+            .cached(
+              cacheKey(key.country, ref.watch(holidayRegionProvider)),
+              key.year,
+            ),
         names: await const HolidayBundle().namesFor(key.country),
       );
     });
+
+/// Shown only for a country with regional holidays.
+class _RegionTile extends ConsumerWidget {
+  const _RegionTile({required this.country});
+
+  final String country;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<HolidayCountry> regions =
+        ref
+            .watch(
+              holidayRegionsProvider((
+                country: country,
+                language: context.locale.languageCode,
+              )),
+            )
+            .value ??
+        const <HolidayCountry>[];
+    if (regions.isEmpty) return const SizedBox.shrink();
+
+    final String? region = ref.watch(holidayRegionProvider);
+    final String label = region == null
+        ? tr('holidays.wholeCountry')
+        : regions
+                  .where((HolidayCountry r) => r.code == region)
+                  .firstOrNull
+                  ?.name ??
+              region;
+
+    return ListTile(
+      leading: const Icon(Icons.map_outlined),
+      title: Text(label),
+      subtitle: Text(tr('holidays.region')),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () async {
+        final _CountryResult? picked =
+            await showModalBottomSheet<_CountryResult>(
+              context: context,
+              isScrollControlled: true,
+              showDragHandle: true,
+              builder: (BuildContext sheet) => SafeArea(
+                child: SizedBox(
+                  height: MediaQuery.sizeOf(sheet).height * 0.6,
+                  child: ListView(
+                    children: <Widget>[
+                      ListTile(
+                        title: Text(tr('holidays.wholeCountry')),
+                        selected: region == null,
+                        onTap: () =>
+                            Navigator.of(sheet).pop(const _CountryResult(null)),
+                      ),
+                      const Hairline(),
+                      for (final HolidayCountry r in regions)
+                        ListTile(
+                          title: Text(r.name),
+                          selected: r.code == region,
+                          onTap: () =>
+                              Navigator.of(sheet).pop(_CountryResult(r.code)),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+        if (picked == null) return;
+        await ref.read(holidayRegionProvider.notifier).set(picked.code);
+      },
+    );
+  }
+}
 
 /// This year's public holidays for the default country.
 class _PublicHolidays extends ConsumerWidget {

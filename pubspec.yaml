@@ -74,6 +74,7 @@ flutter:
     # One file per country.
     - assets/holidays/
     - assets/holidays/names/
+    - assets/holidays/regions/
     # The wordmark for the welcome screen, cut from tools/icon/wordmark.png
     # by tools/make_icon.py.
     - assets/brand/

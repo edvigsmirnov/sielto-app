@@ -184,6 +184,7 @@ Future<ResolvedCalendar> _resolveCalendar(Ref ref, Set<int> years) {
 
   // Watched through the controllers, which notify on change.
   final String? defaultCountry = ref.watch(defaultCountryProvider);
+  final String? region = ref.watch(holidayRegionProvider);
   final bool consented = ref.watch(holidayConsentProvider) ?? false;
   final bool offline = ref.watch(offlineModeProvider);
 
@@ -193,6 +194,7 @@ Future<ResolvedCalendar> _resolveCalendar(Ref ref, Set<int> years) {
       .watch(holidayServiceProvider)
       .resolve(
         countryCode: space?.countryCode ?? defaultCountry,
+        region: space?.countryCode == null ? region : null,
         years: years,
         mayFetch: !offline && consented,
       );

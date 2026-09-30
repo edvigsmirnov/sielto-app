@@ -23,6 +23,10 @@
     "Labour Day",
     "Dia do Trabalhador"
   ],
+  "2026-06-01": [
+    "Azores Day",
+    "Dia dos Açores"
+  ],
   "2026-06-04": [
     "Corpus Christi",
     "Corpo de Deus"
@@ -30,6 +34,10 @@
   "2026-06-10": [
     "National Day",
     "Dia de Portugal, de Camões e das Comunidades Portuguesas"
+  ],
+  "2026-07-01": [
+    "Madeira Day",
+    "Dia da Madeira"
   ],
   "2026-08-15": [
     "Assumption Day",
@@ -54,6 +62,10 @@
   "2026-12-25": [
     "Christmas Day",
     "Natal"
+  ],
+  "2026-12-26": [
+    "St. Stephen's Day",
+    "Primeira Oitava"
   ],
   "2027-01-01": [
     "New Year's Day",
@@ -83,9 +95,17 @@
     "Corpus Christi",
     "Corpo de Deus"
   ],
+  "2027-06-01": [
+    "Azores Day",
+    "Dia dos Açores"
+  ],
   "2027-06-10": [
     "National Day",
     "Dia de Portugal, de Camões e das Comunidades Portuguesas"
+  ],
+  "2027-07-01": [
+    "Madeira Day",
+    "Dia da Madeira"
   ],
   "2027-08-15": [
     "Assumption Day",
@@ -111,6 +131,10 @@
     "Christmas Day",
     "Natal"
   ],
+  "2027-12-26": [
+    "St. Stephen's Day",
+    "Primeira Oitava"
+  ],
   "2028-01-01": [
     "New Year's Day",
     "Ano Novo"
@@ -135,6 +159,10 @@
     "Labour Day",
     "Dia do Trabalhador"
   ],
+  "2028-06-01": [
+    "Azores Day",
+    "Dia dos Açores"
+  ],
   "2028-06-10": [
     "National Day",
     "Dia de Portugal, de Camões e das Comunidades Portuguesas"
@@ -142,6 +170,10 @@
   "2028-06-15": [
     "Corpus Christi",
     "Corpo de Deus"
+  ],
+  "2028-07-01": [
+    "Madeira Day",
+    "Dia da Madeira"
   ],
   "2028-08-15": [
     "Assumption Day",
@@ -166,6 +198,10 @@
   "2028-12-25": [
     "Christmas Day",
     "Natal"
+  ],
+  "2028-12-26": [
+    "St. Stephen's Day",
+    "Primeira Oitava"
   ],
   "2029-01-01": [
     "New Year's Day",
@@ -195,9 +231,17 @@
     "Corpus Christi",
     "Corpo de Deus"
   ],
+  "2029-06-01": [
+    "Azores Day",
+    "Dia dos Açores"
+  ],
   "2029-06-10": [
     "National Day",
     "Dia de Portugal, de Camões e das Comunidades Portuguesas"
+  ],
+  "2029-07-01": [
+    "Madeira Day",
+    "Dia da Madeira"
   ],
   "2029-08-15": [
     "Assumption Day",
@@ -223,6 +267,10 @@
     "Christmas Day",
     "Natal"
   ],
+  "2029-12-26": [
+    "St. Stephen's Day",
+    "Primeira Oitava"
+  ],
   "2030-01-01": [
     "New Year's Day",
     "Ano Novo"
@@ -247,6 +295,10 @@
     "Labour Day",
     "Dia do Trabalhador"
   ],
+  "2030-06-01": [
+    "Azores Day",
+    "Dia dos Açores"
+  ],
   "2030-06-10": [
     "National Day",
     "Dia de Portugal, de Camões e das Comunidades Portuguesas"
@@ -254,6 +306,10 @@
   "2030-06-20": [
     "Corpus Christi",
     "Corpo de Deus"
+  ],
+  "2030-07-01": [
+    "Madeira Day",
+    "Dia da Madeira"
   ],
   "2030-08-15": [
     "Assumption Day",
@@ -279,6 +335,10 @@
     "Christmas Day",
     "Natal"
   ],
+  "2030-12-26": [
+    "St. Stephen's Day",
+    "Primeira Oitava"
+  ],
   "2031-01-01": [
     "New Year's Day",
     "Ano Novo"
@@ -303,6 +363,10 @@
     "Labour Day",
     "Dia do Trabalhador"
   ],
+  "2031-06-01": [
+    "Azores Day",
+    "Dia dos Açores"
+  ],
   "2031-06-10": [
     "National Day",
     "Dia de Portugal, de Camões e das Comunidades Portuguesas"
@@ -310,6 +374,10 @@
   "2031-06-12": [
     "Corpus Christi",
     "Corpo de Deus"
+  ],
+  "2031-07-01": [
+    "Madeira Day",
+    "Dia da Madeira"
   ],
   "2031-08-15": [
     "Assumption Day",
@@ -334,5 +402,9 @@
   "2031-12-25": [
     "Christmas Day",
     "Natal"
+  ],
+  "2031-12-26": [
+    "St. Stephen's Day",
+    "Primeira Oitava"
   ]
 }

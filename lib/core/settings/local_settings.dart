@@ -25,6 +25,7 @@ class LocalSettings {
   static const String _keyCurrencyCode = 'currency_code';
   static const String _keyCurrentSpaceId = 'current_space_id';
   static const String _keyDefaultCountry = 'default_country_code';
+  static const String _keyHolidayRegion = 'holiday_region';
   static const String _keyHolidayConsent = 'holiday_fetch_consent';
   static const String _keyOfflineMode = 'fully_offline';
   static const String _keyControlsAtBottom = 'controls_at_bottom';
@@ -95,6 +96,17 @@ class LocalSettings {
       return;
     }
     await _prefs.setString(_keyDefaultCountry, code.trim().toUpperCase());
+  }
+
+  /// A region of the default country, such as `DE-BY`. Null: nationwide only.
+  String? get holidayRegion => _prefs.getString(_keyHolidayRegion);
+
+  Future<void> setHolidayRegion(String? code) async {
+    if (code == null || code.trim().isEmpty) {
+      await _prefs.remove(_keyHolidayRegion);
+      return;
+    }
+    await _prefs.setString(_keyHolidayRegion, code.trim().toUpperCase());
   }
 
   /// Null means not asked yet.

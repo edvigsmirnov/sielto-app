@@ -15,9 +15,13 @@ class _FakeBundle extends HolidayBundle {
 
   final Map<String, Map<int, List<CalendarDate>>> data;
 
+  /// Keyed by the region, if any.
   @override
-  Future<List<CalendarDate>?> datesFor(String countryCode, int year) async =>
-      data[countryCode.toUpperCase()]?[year];
+  Future<List<CalendarDate>?> datesFor(
+    String countryCode,
+    int year, {
+    String? region,
+  }) async => data[(region ?? countryCode).toUpperCase()]?[year];
 }
 
 class _FakeApi extends NagerHolidayApi {
@@ -27,9 +31,13 @@ class _FakeApi extends NagerHolidayApi {
   int calls = 0;
 
   @override
-  Future<List<CalendarDate>?> fetch(String countryCode, int year) async {
+  Future<List<CalendarDate>?> fetch(
+    String countryCode,
+    int year, {
+    String? region,
+  }) async {
     calls++;
-    return data[countryCode.toUpperCase()]?[year];
+    return data[(region ?? countryCode).toUpperCase()]?[year];
   }
 }
 
@@ -97,6 +105,35 @@ void main() {
       expect(api.calls, 0);
       expect(resolved.isComplete, isTrue);
       expect(await holidays.has('DE', 2026), isTrue);
+    });
+
+    test('a region is resolved and cached apart from its country', () async {
+      final HolidayService service = serviceWith(
+        bundle: <String, Map<int, List<CalendarDate>>>{
+          'DE': <int, List<CalendarDate>>{
+            2026: <CalendarDate>[d('2026-05-01')],
+          },
+          'DE-BY': <int, List<CalendarDate>>{
+            2026: <CalendarDate>[d('2026-05-01'), d('2026-01-06')],
+          },
+        },
+      );
+
+      final ResolvedCalendar bavaria = await service.resolve(
+        countryCode: 'DE',
+        region: 'DE-BY',
+        years: <int>{2026},
+        mayFetch: false,
+      );
+      final ResolvedCalendar germany = await service.resolve(
+        countryCode: 'DE',
+        years: <int>{2026},
+        mayFetch: false,
+      );
+
+      expect(bavaria.calendar.isNonWorkingDay(d('2026-01-06')), isTrue);
+      expect(germany.calendar.isNonWorkingDay(d('2026-01-06')), isFalse);
+      expect(germany.calendar.isNonWorkingDay(d('2026-05-01')), isTrue);
     });
 
     test('the network fills a year the bundle does not cover', () async {

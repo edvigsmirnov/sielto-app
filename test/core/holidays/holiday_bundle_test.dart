@@ -38,8 +38,13 @@ void main() {
         .map((FileSystemEntity e) => e.uri.pathSegments.last)
         .where((String n) => n.endsWith('.json'))
         .map((String n) => n.substring(0, n.length - 5))
-        // Manifest and country-name files, not holiday data.
-        .where((String n) => n != 'index' && !n.startsWith('countries'))
+        // Manifest and name files, not holiday data.
+        .where(
+          (String n) =>
+              n != 'index' &&
+              !n.startsWith('countries') &&
+              !n.startsWith('regions'),
+        )
         .toSet();
     expect(onDisk, codes.toSet(), reason: 'index.json and the files disagree');
   });
@@ -50,6 +55,41 @@ void main() {
       final List<CalendarDate> dates = (await bundle.datesFor(code, 2026))!;
       for (final CalendarDate d in dates) {
         expect(names[d], isNotEmpty, reason: '$code $d has no name');
+      }
+    }
+  });
+
+  test('a region adds its own days to the nationwide ones', () async {
+    final List<CalendarDate> germany = (await bundle.datesFor('DE', 2026))!;
+    final List<CalendarDate> bavaria = (await bundle.datesFor(
+      'DE',
+      2026,
+      region: 'DE-BY',
+    ))!;
+    const CalendarDate epiphany = CalendarDate(2026, 1, 6);
+    expect(germany, isNot(contains(epiphany)));
+    expect(bavaria, containsAll(<Object>[...germany, epiphany]));
+  });
+
+  test('every region has a name and every regional day too', () async {
+    final Map<String, dynamic> english = jsonDecode(
+      File('assets/holidays/regions.en.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    for (final String code in bundledCodes()) {
+      final Map<String, Map<String, dynamic>> regions = await bundle.regionsOf(
+        code,
+      );
+      final Map<CalendarDate, List<String>> names = await bundle.namesFor(code);
+      for (final MapEntry<String, Map<String, dynamic>> r in regions.entries) {
+        expect(english[r.key], isNotNull, reason: '${r.key} has no name');
+        for (final Object? d
+            in r.value['2026'] as List<dynamic>? ?? <Object>[]) {
+          expect(
+            names[CalendarDate.parse(d! as String)],
+            isNotEmpty,
+            reason: '${r.key} $d has no name',
+          );
+        }
       }
     }
   });
