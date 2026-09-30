@@ -24,7 +24,9 @@ import 'package:sielto/features/incomes/schedule_editor.dart';
 import 'package:sielto/features/payments/series_scope_dialog.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
+import 'package:sielto/features/periods/holiday_service.dart';
 import 'package:sielto/features/periods/period_choice.dart';
+import 'package:sielto/features/periods/period_service.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
@@ -202,7 +204,10 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       } else if (existing != null) {
         await _saveExisting(existing, repos, date, notes);
       } else if (_isRegular) {
-        await _createRule(space, repos);
+        final IncomeRecurrenceRule rule = await _createRule(space, repos);
+        if (space.budgetMode == BudgetMode.incomeDriven && mounted) {
+          await _offerPastDates(space, repos, rule.id);
+        }
       } else {
         await repos.incomes.create(
           spaceId: space.id,
@@ -223,7 +228,10 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     }
   }
 
-  Future<void> _createRule(Space space, Repositories repos) async {
+  Future<IncomeRecurrenceRule> _createRule(
+    Space space,
+    Repositories repos,
+  ) async {
     final IncomeRecurrenceRule rule = await repos.incomeRules
         .createFirstAsAnchor(
           spaceId: space.id,
@@ -247,6 +255,66 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         mode: space.budgetMode,
       );
     }
+    return rule;
+  }
+
+  /// A schedule already under way asks whether its latest date arrived, and
+  /// how far back to add earlier ones.
+  Future<void> _offerPastDates(
+    Space space,
+    Repositories repos,
+    String ruleId,
+  ) async {
+    final IncomeRecurrenceRule? rule = await repos.incomeRules.byId(ruleId);
+    final ResolvedCalendar resolved = await ref.read(
+      resolvedCalendarProvider.future,
+    );
+    final PeriodService service = PeriodService(
+      repos: repos,
+      calendar: resolved.calendar,
+      missingHolidayYears: resolved.missingYears,
+    );
+    final CalendarDate today = ref.read(spaceClockProvider).today();
+    final CalendarDate? last = rule == null
+        ? null
+        : service.lastDateOf(rule, today);
+    if (rule == null || last == null || !mounted) return;
+
+    final String date = DateLabels(context.locale.toString())
+        .dayMonth(last, reference: today);
+    final bool? received = await chooseDialog<bool?>(
+      context,
+      title: tr(
+        'income.pastTitle',
+        namedArgs: <String, String>{'title': rule.title, 'date': date},
+      ),
+      options: <(String, bool?)>[
+        if (rule.amount != null) (tr('income.pastReceived'), true),
+        (tr('income.pastExpected'), false),
+        (tr('income.pastSkip'), null),
+      ],
+    );
+    if (received == null || !mounted) return;
+
+    final int? months = await chooseDialog<int>(
+      context,
+      title: tr('income.pastEarlierTitle'),
+      body: tr('income.pastEarlierBody'),
+      options: <(String, int)>[
+        (tr('income.pastEarlierNone'), 0),
+        for (final int n in const <int>[3, 6, 12])
+          (plural('income.pastEarlierMonths', n), n),
+      ],
+    );
+    if (months == null) return;
+    final CalendarDate start = last.addMonths(-months);
+    await service.backfill(
+      space,
+      rule,
+      from: months == 0 ? last : CalendarDate(start.year, start.month, 1),
+      today: today,
+      currentReceived: received,
+    );
   }
 
   /// A frozen period allows the title and an appended note.

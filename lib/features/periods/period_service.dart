@@ -364,6 +364,119 @@ class PeriodService {
     return written;
   }
 
+  /// The latest scheduled date of [rule] on or before [today], or null.
+  CalendarDate? lastDateOf(IncomeRecurrenceRule rule, CalendarDate today) {
+    final IncomeSchedule? schedule = scheduleOf(rule);
+    if (schedule == null) return null;
+    final CalendarDate here = schedule
+        .resolveFor(today.year, today.month, calendar: calendar)
+        .anchorDate;
+    if (!here.isAfter(today)) return here;
+    final CalendarDate before = today.addMonths(-1);
+    return schedule
+        .resolveFor(before.year, before.month, calendar: calendar)
+        .anchorDate;
+  }
+
+  /// Adds [rule]'s dates from [from] through [today], received before the
+  /// current period; an anchor also gets those periods, closed.
+  Future<void> backfill(
+    Space space,
+    IncomeRecurrenceRule rule, {
+    required CalendarDate from,
+    required CalendarDate today,
+    required bool currentReceived,
+  }) async {
+    final IncomeSchedule? schedule = scheduleOf(rule);
+    if (schedule == null || space.budgetMode != BudgetMode.incomeDriven) {
+      return;
+    }
+    await refresh(space, today);
+    final CalendarDate currentStart = (await _occurrenceWindow(
+      space,
+      today,
+    )).from;
+
+    await repos.db.transaction(() async {
+      if (rule.isAnchor && from.isBefore(currentStart)) {
+        final List<BudgetPeriod> existing = await repos.periods.incomeDrivenIn(
+          space.id,
+        );
+        final List<MaterializedPeriod> past = PeriodMaterializer.materialize(
+          anchors: <AnchorSchedule>[
+            AnchorSchedule(ruleId: rule.id, schedule: schedule),
+          ],
+          from: from,
+          calendar: calendar,
+          count:
+              (currentStart.year - from.year) * 12 +
+              currentStart.month -
+              from.month +
+              2,
+        );
+        for (int i = 0; i < past.length; i++) {
+          final MaterializedPeriod period = past[i];
+          if (!period.startDate.isBefore(currentStart)) break;
+          if (period.startDate.isBefore(from)) continue;
+          final CalendarDate next = i + 1 < past.length
+              ? past[i + 1].startDate
+              : currentStart;
+          final CalendarDate end =
+              (next.isBefore(currentStart) ? next : currentStart).addDays(-1);
+          final bool taken = existing.any(
+            (BudgetPeriod p) =>
+                !p.startDate.isAfter(end) &&
+                (p.endDate == null || !p.endDate!.isBefore(period.startDate)),
+          );
+          if (taken) continue;
+          await repos.periods.createIncomeDriven(
+            spaceId: space.id,
+            startDate: period.startDate,
+            endDate: end,
+            anchorDate: period.anchorDate,
+            windowStart: period.windowStart,
+            windowEnd: period.windowEnd,
+            holidayDataIncomplete: _incomplete(period),
+          );
+        }
+      }
+
+      final Set<String> already = await repos.incomes.materialisedDatesFor(
+        rule.id,
+      );
+      CalendarDate month = CalendarDate(from.year, from.month, 1);
+      while (!month.isAfter(today)) {
+        final CalendarDate date = schedule
+            .resolveFor(month.year, month.month, calendar: calendar)
+            .anchorDate;
+        month = month.addMonths(1);
+        if (date.isBefore(from) || date.isAfter(today)) continue;
+        if (!already.add(date.toIso())) {
+          if (!date.isBefore(currentStart) && currentReceived) {
+            final Income? row = (await repos.incomes.occurrencesOf(rule.id))
+                .where((Income r) => r.expectedDate == date && !r.isDeleted)
+                .firstOrNull;
+            if (row != null && !row.isPaid && row.amount != null) {
+              await repos.incomes.markReceived(row.id);
+            }
+          }
+          continue;
+        }
+        await repos.incomes.create(
+          spaceId: space.id,
+          title: rule.title,
+          expectedDate: date,
+          amount: rule.amount,
+          recurrenceRuleId: rule.id,
+          isPaid:
+              rule.amount != null &&
+              (date.isBefore(currentStart) || currentReceived),
+        );
+      }
+    });
+    await refresh(space, today);
+  }
+
   /// Resets unreceived, unfrozen occurrences to the schedule. Returns the
   /// number of rows changed.
   Future<int> regenerate(Space space, String ruleId, CalendarDate today) async {

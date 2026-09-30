@@ -51,6 +51,7 @@ Future<T?> chooseDialog<T>(
   BuildContext context, {
   required String title,
   required List<(String, T)> options,
+  String? body,
 }) => showDialog<T>(
   context: context,
   builder: (BuildContext context) => AlertDialog(
@@ -67,6 +68,15 @@ Future<T?> chooseDialog<T>(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (body != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: SageSpace.sm),
+            child: Text(
+              body,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
         for (final (String label, T value) in options)
           Padding(
             padding: const EdgeInsets.only(top: SageSpace.sm),

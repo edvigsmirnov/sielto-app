@@ -649,4 +649,63 @@ void main() {
     expect(result.isEmpty, isTrue);
     expect(await repos.periods.incomeDrivenIn(flow.id), isEmpty);
   });
+
+  group('backfill', () {
+    test('adds past dates as received and their periods, closed', () async {
+      final IncomeRecurrenceRule rule = await anchorOn(5);
+      expect(service.lastDateOf(rule, today), d('2026-03-05'));
+
+      await service.backfill(
+        space,
+        rule,
+        from: d('2026-01-01'),
+        today: today,
+        currentReceived: false,
+      );
+
+      final List<Income> rows =
+          (await repos.incomes.occurrencesOf(rule.id))
+              .where((Income i) => !i.expectedDate.isAfter(today))
+              .toList()
+            ..sort(
+              (Income a, Income b) => a.expectedDate.compareTo(b.expectedDate),
+            );
+      expect(
+        rows.map((Income i) => (i.expectedDate.toIso(), i.isPaid)),
+        <(String, bool)>[
+          ('2026-01-05', true),
+          ('2026-02-05', true),
+          ('2026-03-05', false),
+        ],
+      );
+      final List<BudgetPeriod> all = await periods();
+      all.sort(
+        (BudgetPeriod a, BudgetPeriod b) => a.startDate.compareTo(b.startDate),
+      );
+      expect(
+        all
+            .take(3)
+            .map((BudgetPeriod p) => (p.startDate.toIso(), p.endDate?.toIso())),
+        <(String, String?)>[
+          ('2026-01-05', '2026-02-04'),
+          ('2026-02-05', '2026-03-04'),
+          ('2026-03-05', '2026-04-05'),
+        ],
+      );
+    });
+
+    test('marks the current date received when asked', () async {
+      final IncomeRecurrenceRule rule = await anchorOn(5);
+      await service.backfill(
+        space,
+        rule,
+        from: d('2026-03-05'),
+        today: today,
+        currentReceived: true,
+      );
+      final Income current = (await repos.incomes.occurrencesOf(rule.id))
+          .firstWhere((Income i) => i.expectedDate == d('2026-03-05'));
+      expect(current.isPaid, isTrue);
+    });
+  });
 }

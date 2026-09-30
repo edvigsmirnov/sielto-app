@@ -173,6 +173,8 @@
     "duplicateBefore": "Duplicate to the day before",
     "duplicateAfter": "Duplicate to the day after",
     "bulk": {
+      "mark": {"paid": "Mark as paid", "received": "Mark as received", "done": "Mark as paid or received"},
+      "unmark": {"paid": "Mark as not paid", "received": "Mark as not received", "done": "Mark as not paid or received"},
       "title": "Actions",
       "selected": "Selected: {count}",
       "done": "Mark as done",
@@ -273,6 +275,14 @@
     "all": "All of them"
   },
   "income": {
+    "pastTitle": "Did {title} already come on {date}?",
+    "pastReceived": "Yes, it arrived",
+    "pastExpected": "Not yet, but it's on its way",
+    "pastSkip": "Start from the next date",
+    "pastEarlierTitle": "Add earlier months too?",
+    "pastEarlierBody": "They're added as received, so your history and Analytics start further back.",
+    "pastEarlierNone": "No, just this one",
+    "pastEarlierMonths": {"one": "{} month back", "other": "{} months back"},
     "add": "Add income",
     "edit": "Edit income",
     "fieldTitle": "Title",
