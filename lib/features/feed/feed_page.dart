@@ -326,6 +326,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             ),
           if (filter.isActive)
             FeedFilterBar(shown: _allMatches(filter), money: money),
+          if (!ref.watch(tickHintSeenProvider) &&
+              selection.isEmpty &&
+              items.any((FeedItem i) => i is FeedRow))
+            _TickHint(onClose: ref.read(tickHintSeenProvider.notifier).dismiss),
           Expanded(
             child: items.isEmpty
                 ? EmptyState(
@@ -1040,4 +1044,49 @@ class _SelectionBar extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Explains the paid circle until closed.
+class _TickHint extends StatelessWidget {
+  const _TickHint({required this.onClose});
+
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        SageSpace.gutter,
+        SageSpace.xs,
+        SageSpace.gutter,
+        SageSpace.xs,
+      ),
+      padding: const EdgeInsets.only(left: SageSpace.md),
+      decoration: BoxDecoration(
+        color: sage.accentTint,
+        borderRadius: BorderRadius.circular(SageRadius.card),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.check_circle_outline, size: 20, color: sage.accentStrong),
+          const SizedBox(width: SageSpace.md),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+              child: Text(
+                tr('feed.tickHint'),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: onClose,
+            tooltip: tr('common.close'),
+            icon: const Icon(Icons.close, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
 }

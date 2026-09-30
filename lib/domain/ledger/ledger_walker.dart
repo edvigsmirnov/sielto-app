@@ -75,8 +75,9 @@ class LedgerRun {
     return null;
   }
 
-  /// Last day the money reaches; null when it reaches everything.
-  CalendarDate? get lastCoveredDay => exhaustedDate ?? cutoffDate?.addDays(-1);
+  /// Last day the money reaches, the day before any cutoff; null when it
+  /// reaches everything.
+  CalendarDate? get lastCoveredDay => cutoffDate?.addDays(-1) ?? exhaustedDate;
 
   /// Null once there is a cutoff.
   Decimal? get freeCash => hasCutoff ? null : finalBalance;

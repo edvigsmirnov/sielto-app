@@ -13,7 +13,9 @@ class MoneyFormat {
         locale: locale,
         name: currencyCode,
         decimalDigits: 0,
-      );
+      ),
+      _bare = NumberFormat.decimalPattern(locale)..maximumFractionDigits = 0,
+      _compact = NumberFormat.compact(locale: locale);
 
   static const int _decimalDigits = 2;
 
@@ -22,6 +24,8 @@ class MoneyFormat {
   final NumberFormat _format;
 
   final NumberFormat _whole;
+  final NumberFormat _bare;
+  final NumberFormat _compact;
 
   String get symbol => _format.currencySymbol;
 
@@ -46,4 +50,11 @@ class MoneyFormat {
     final String base = short(amount.abs());
     return amount > Decimal.zero ? '+$base' : '−$base';
   }
+
+  /// Whole units of the size, no symbol and no sign.
+  String bare(Decimal amount) => _bare.format(amount.abs().round().toDouble());
+
+  /// [bare] shortened the locale's way: `12.3K`, `1,23 млн`.
+  String bareCompact(Decimal amount) =>
+      _compact.format(amount.abs().round().toDouble());
 }

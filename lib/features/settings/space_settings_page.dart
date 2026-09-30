@@ -114,6 +114,12 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                   repo.setFeedOrderMode(space.id, mode),
             ),
           ),
+          const SizedBox(height: SageSpace.xs),
+          Text(
+            '${tr('feedOrder.${space.feedOrderMode.name}Hint')} '
+            '${tr('feedOrder.priorityHint')}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: SageSpace.lg),
 
           if (_currencyEditable ?? false)

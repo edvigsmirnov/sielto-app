@@ -44,41 +44,122 @@ class MonthView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final CalendarDate first = rangeOf(CalendarView.month, month).from;
-    return Column(
-      children: <Widget>[
-        _WeekdayHeader(first: first, dates: dates),
-        const SizedBox(height: SageSpace.xs),
-        for (int week = 0; week < monthGridDays ~/ 7; week++)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: _gap),
-              child: Row(
-                children: <Widget>[
-                  for (int weekday = 0; weekday < 7; weekday++)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: _gap),
-                        child: _cell(first.addDays(week * 7 + weekday)),
-                      ),
-                    ),
-                ],
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final _Figures figures = _Figures.fit(
+          context,
+          days: <DayTotals>[
+            for (int i = 0; i < monthGridDays; i++)
+              if (totals[first.addDays(i)] case final DayTotals t) t,
+          ],
+          money: money,
+          width: constraints.maxWidth / 7 - _gap - 2 * _cellInset,
+        );
+        return Column(
+          children: <Widget>[
+            _WeekdayHeader(first: first, dates: dates),
+            const SizedBox(height: SageSpace.xs),
+            for (int week = 0; week < monthGridDays ~/ 7; week++)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: _gap),
+                  child: Row(
+                    children: <Widget>[
+                      for (int weekday = 0; weekday < 7; weekday++)
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: _gap),
+                            child: _cell(
+                              first.addDays(week * 7 + weekday),
+                              figures,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-      ],
+          ],
+        );
+      },
     );
   }
 
-  Widget _cell(CalendarDate date) => _DayCell(
+  static const double _cellInset = 2;
+
+  Widget _cell(CalendarDate date, _Figures figures) => _DayCell(
     date: date,
     totals: totals[date],
     mark: marks[date],
     isSelected: date == selected,
     isToday: date == today,
     isOutsideMonth: !date.isSameMonth(month),
-    money: money,
+    figures: figures,
     onTap: () => onOpenDay(date),
     onHold: (Offset at) => onHoldDay(date, at),
+  );
+}
+
+/// One size for the month's figures, fitted to the widest; figures too wide
+/// even at [_minSize] are shortened.
+class _Figures {
+  const _Figures({
+    required this.money,
+    required this.size,
+    required this.shortened,
+  });
+
+  factory _Figures.fit(
+    BuildContext context, {
+    required List<DayTotals> days,
+    required MoneyFormat money,
+    required double width,
+  }) {
+    final TextPainter painter = TextPainter(
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    );
+    try {
+      double widest = 0;
+      final Set<Decimal> shortened = <Decimal>{};
+      for (final DayTotals d in days) {
+        for (final Decimal a in <Decimal>[d.expenses, d.income]) {
+          if (a <= Decimal.zero) continue;
+          painter
+            ..text = TextSpan(text: money.bare(a), style: _style(_maxSize))
+            ..layout();
+          if (painter.width * _minSize / _maxSize > width) {
+            shortened.add(a);
+          } else if (painter.width > widest) {
+            widest = painter.width;
+          }
+        }
+      }
+      final double size = widest <= width
+          ? _maxSize
+          : (_maxSize * width / widest).clamp(_minSize, _maxSize);
+      return _Figures(money: money, size: size, shortened: shortened);
+    } finally {
+      painter.dispose();
+    }
+  }
+
+  final MoneyFormat money;
+  final double size;
+  final Set<Decimal> shortened;
+
+  String format(Decimal amount) => shortened.contains(amount)
+      ? money.bareCompact(amount)
+      : money.bare(amount);
+
+  static const double _maxSize = 10;
+  static const double _minSize = 8;
+
+  static TextStyle _style(double size) => TextStyle(
+    fontSize: size,
+    fontWeight: FontWeight.w600,
+    fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
   );
 }
 
@@ -121,7 +202,7 @@ class _DayCell extends StatelessWidget {
     required this.isSelected,
     required this.isToday,
     required this.isOutsideMonth,
-    required this.money,
+    required this.figures,
     required this.onTap,
     required this.onHold,
   });
@@ -132,7 +213,7 @@ class _DayCell extends StatelessWidget {
   final bool isSelected;
   final bool isToday;
   final bool isOutsideMonth;
-  final MoneyFormat money;
+  final _Figures figures;
   final VoidCallback onTap;
   final ValueChanged<Offset> onHold;
 
@@ -169,19 +250,25 @@ class _DayCell extends StatelessWidget {
             ),
             if (day != null && day.expenses > Decimal.zero)
               _CellFigure(
-                text: money.shortSigned(-day.expenses),
+                text: figures.format(day.expenses),
+                size: figures.size,
                 color: isToday ? ink : sage.danger,
               ),
             if (day != null && day.income > Decimal.zero)
               _CellFigure(
-                text: money.shortSigned(day.income),
+                text: figures.format(day.income),
+                size: figures.size,
                 color: isToday ? ink : sage.accentStrong,
               ),
             // A dot for a day with only an income without amount.
             if (day != null &&
                 day.expenses == Decimal.zero &&
                 day.income == Decimal.zero)
-              _CellFigure(text: '·', color: isToday ? ink : sage.inkLabel),
+              _CellFigure(
+                text: '·',
+                size: figures.size,
+                color: isToday ? ink : sage.inkLabel,
+              ),
           ],
         ),
       ),
@@ -191,23 +278,22 @@ class _DayCell extends StatelessWidget {
 
 /// Small tabular figure.
 class _CellFigure extends StatelessWidget {
-  const _CellFigure({required this.text, required this.color});
+  const _CellFigure({
+    required this.text,
+    required this.size,
+    required this.color,
+  });
 
   final String text;
+  final double size;
   final Color color;
-
-  static const double _size = 10;
 
   @override
   Widget build(BuildContext context) => Text(
     text,
     maxLines: 1,
+    softWrap: false,
     overflow: TextOverflow.clip,
-    style: TextStyle(
-      fontSize: _size,
-      fontWeight: FontWeight.w600,
-      color: color,
-      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-    ),
+    style: _Figures._style(size).copyWith(color: color),
   );
 }

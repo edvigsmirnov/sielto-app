@@ -101,19 +101,61 @@ class SegmentedChoice<T> extends StatelessWidget {
         border: Border.all(color: sage.border),
       ),
       padding: const EdgeInsets.all(3),
-      child: Row(
-        children: <Widget>[
-          for (final T value in values)
-            Expanded(
-              child: _Segment<T>(
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final List<Widget> segments = <Widget>[
+            for (final T value in values)
+              _Segment<T>(
                 label: labelOf(value),
                 isSelected: value == selected,
                 onTap: enabled ? () => onChanged(value) : null,
               ),
-            ),
-        ],
+          ];
+          // One row, else two columns for an even count, else one per line.
+          final int n = values.length;
+          final int columns = _fits(context, constraints.maxWidth, n)
+              ? n
+              : n > 2 && n.isEven && _fits(context, constraints.maxWidth, 2)
+              ? 2
+              : 1;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              for (int i = 0; i < n; i += columns)
+                Row(
+                  children: <Widget>[
+                    for (int j = i; j < i + columns; j++)
+                      Expanded(child: segments[j]),
+                  ],
+                ),
+            ],
+          );
+        },
       ),
     );
+  }
+
+  bool _fits(BuildContext context, double width, int columns) {
+    final double share = width / columns - 2 * _Segment.inset;
+    final TextPainter painter = TextPainter(
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    );
+    try {
+      for (final T value in values) {
+        painter
+          ..text = TextSpan(
+            text: labelOf(value),
+            style: Theme.of(context).textTheme.labelLarge,
+          )
+          ..layout();
+        if (painter.width > share) return false;
+      }
+      return true;
+    } finally {
+      painter.dispose();
+    }
   }
 }
 
@@ -128,6 +170,8 @@ class _Segment<T> extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onTap;
 
+  static const double inset = 6;
+
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
@@ -136,7 +180,7 @@ class _Segment<T> extends StatelessWidget {
       borderRadius: BorderRadius.circular(SageRadius.chip),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(vertical: 9),
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: inset),
         decoration: BoxDecoration(
           color: isSelected ? sage.accent : Colors.transparent,
           borderRadius: BorderRadius.circular(SageRadius.chip),

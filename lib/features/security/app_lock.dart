@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -70,11 +71,21 @@ final FutureProvider<bool> biometricAvailableProvider = FutureProvider<bool>((
   }
 });
 
-Future<bool> authenticateBiometric() async {
+/// [retryCancelled] tries once more after a system cancel.
+Future<bool> authenticateBiometric({bool retryCancelled = false}) async {
   try {
     return await LocalAuthentication().authenticate(
       localizedReason: tr('lock.biometricReason'),
+      persistAcrossBackgrounding: true,
     );
+  } on LocalAuthException catch (e) {
+    if (retryCancelled &&
+        (e.code == LocalAuthExceptionCode.systemCanceled ||
+            e.code == LocalAuthExceptionCode.uiUnavailable)) {
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      return authenticateBiometric();
+    }
+    return false;
   } on Exception {
     return false;
   }
@@ -136,7 +147,14 @@ class AppLockGate extends ConsumerWidget {
             child: IgnorePointer(ignoring: locked, child: child),
           ),
         ),
-        if (locked) const _LockScreen(),
+        // Appears at once, fades out.
+        AnimatedSwitcher(
+          duration: Duration.zero,
+          reverseDuration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 250),
+          child: locked ? const _LockScreen() : const SizedBox.shrink(),
+        ),
       ],
     );
   }
@@ -163,11 +181,13 @@ class _LockScreenState extends ConsumerState<_LockScreen> {
       ref.read(appLockProvider.notifier).unlock();
       return;
     }
-    if (ref.read(biometricUnlockProvider)) await _biometric();
+    if (!ref.read(biometricUnlockProvider)) return;
+    await WidgetsBinding.instance.waitUntilFirstFrameRasterized;
+    if (mounted) await _biometric(retryCancelled: true);
   }
 
-  Future<void> _biometric() async {
-    if (await authenticateBiometric()) {
+  Future<void> _biometric({bool retryCancelled = false}) async {
+    if (await authenticateBiometric(retryCancelled: retryCancelled)) {
       ref.read(appLockProvider.notifier).unlock();
     }
   }
@@ -211,7 +231,16 @@ class PinEntry extends StatefulWidget {
   State<PinEntry> createState() => _PinEntryState();
 }
 
-class _PinEntryState extends State<PinEntry> {
+class _PinEntryState extends State<PinEntry>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shake = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+
+  /// Dots of the rejected PIN, shown red while they shake.
+  int _rejected = 0;
+
   String _pin = '';
   bool _busy = false;
   bool _wrong = false;
@@ -228,6 +257,7 @@ class _PinEntryState extends State<PinEntry> {
   @override
   void dispose() {
     _tick?.cancel();
+    _shake.dispose();
     super.dispose();
   }
 
@@ -236,6 +266,7 @@ class _PinEntryState extends State<PinEntry> {
   void _type(String digit) {
     if (_busy || _waiting || _pin.length >= pinMaxLength) return;
     setState(() {
+      _rejected = 0;
       _pin += digit;
       _wrong = false;
       _error = null;
@@ -266,10 +297,20 @@ class _PinEntryState extends State<PinEntry> {
     unawaited(HapticFeedback.heavyImpact());
     setState(() {
       _busy = false;
+      _rejected = pin.length;
       _pin = '';
       _wrong = true;
       _retryAt = retryAt;
     });
+    if (MediaQuery.disableAnimationsOf(context)) {
+      setState(() => _rejected = 0);
+    } else {
+      unawaited(
+        _shake.forward(from: 0).then((_) {
+          if (mounted) setState(() => _rejected = 0);
+        }),
+      );
+    }
     _tick?.cancel();
     if (_waiting) {
       _tick = Timer.periodic(const Duration(seconds: 1), (Timer t) {
@@ -313,46 +354,67 @@ class _PinEntryState extends State<PinEntry> {
     return Focus(
       autofocus: true,
       onKeyEvent: _onKey,
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(SageSpace.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(Icons.lock_outline, size: 36, color: sage.inkSecondary),
-              const SizedBox(height: SageSpace.md),
-              Text(
-                widget.title,
-                style: text.titleMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: SageSpace.lg),
-              _Dots(filled: _pin.length),
-              const SizedBox(height: SageSpace.sm),
-              SizedBox(
-                height: 20,
-                child: Text(
-                  _message ?? '',
-                  style: text.bodySmall?.copyWith(color: sage.danger),
-                ),
-              ),
-              const SizedBox(height: SageSpace.md),
-              _Keypad(
-                onDigit: _type,
-                onErase: _erase,
-                onSubmit: _pin.length >= pinMinLength && !_waiting
-                    ? _submit
-                    : null,
-              ),
-              if (widget.onBiometric != null) ...<Widget>[
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints box) => Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(SageSpace.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(Icons.lock_outline, size: 40, color: sage.inkSecondary),
                 const SizedBox(height: SageSpace.md),
-                TextButton.icon(
-                  onPressed: widget.onBiometric,
-                  icon: const Icon(Icons.fingerprint),
-                  label: Text(tr('lock.useBiometric')),
+                Text(
+                  widget.title,
+                  style: text.titleLarge,
+                  textAlign: TextAlign.center,
                 ),
+                const SizedBox(height: SageSpace.xl),
+                AnimatedBuilder(
+                  animation: _shake,
+                  builder: (BuildContext context, Widget? child) {
+                    final double t = _shake.value;
+                    return Transform.translate(
+                      offset: Offset(
+                        math.sin(t * math.pi * 6) * 12 * (1 - t),
+                        0,
+                      ),
+                      child: child,
+                    );
+                  },
+                  child: _Dots(
+                    filled: _rejected > 0 ? _rejected : _pin.length,
+                    rejected: _rejected > 0,
+                  ),
+                ),
+                const SizedBox(height: SageSpace.md),
+                SizedBox(
+                  height: 20,
+                  child: Text(
+                    _message ?? '',
+                    style: text.bodySmall?.copyWith(color: sage.danger),
+                  ),
+                ),
+                const SizedBox(height: SageSpace.md),
+                _Keypad(
+                  keySize:
+                      ((box.maxWidth - 2 * SageSpace.xl) / 3 - 2 * _Keypad.gap)
+                          .clamp(48, 88),
+                  onDigit: _type,
+                  onErase: _erase,
+                  onSubmit: _pin.length >= pinMinLength && !_waiting
+                      ? _submit
+                      : null,
+                ),
+                if (widget.onBiometric != null) ...<Widget>[
+                  const SizedBox(height: SageSpace.md),
+                  TextButton.icon(
+                    onPressed: widget.onBiometric,
+                    icon: const Icon(Icons.fingerprint),
+                    label: Text(tr('lock.useBiometric')),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -361,9 +423,10 @@ class _PinEntryState extends State<PinEntry> {
 }
 
 class _Dots extends StatelessWidget {
-  const _Dots({required this.filled});
+  const _Dots({required this.filled, required this.rejected});
 
   final int filled;
+  final bool rejected;
 
   @override
   Widget build(BuildContext context) {
@@ -372,16 +435,20 @@ class _Dots extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         for (int i = 0; i < pinMaxLength; i++)
-          Container(
-            width: 12,
-            height: 12,
-            margin: const EdgeInsets.symmetric(horizontal: 6),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: 16,
+            height: 16,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: i < filled ? sage.accent : Colors.transparent,
+              color: i < filled
+                  ? (rejected ? sage.danger : sage.accent)
+                  : Colors.transparent,
               border: Border.all(
+                width: 1.5,
                 color: i < filled
-                    ? sage.accent
+                    ? (rejected ? sage.danger : sage.accent)
                     : i < pinMinLength
                     ? sage.inkLabel
                     : sage.hairline,
@@ -395,41 +462,56 @@ class _Dots extends StatelessWidget {
 
 class _Keypad extends StatelessWidget {
   const _Keypad({
+    required this.keySize,
     required this.onDigit,
     required this.onErase,
     required this.onSubmit,
   });
 
+  static const double gap = 8;
+
+  final double keySize;
   final ValueChanged<String> onDigit;
   final VoidCallback onErase;
   final VoidCallback? onSubmit;
 
   @override
   Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
     // No tooltips: the lock screen sits above the Navigator's Overlay.
-    Widget key(Widget label, VoidCallback? onTap, {String? tooltip}) =>
-        Semantics(
-          label: tooltip,
-          button: tooltip != null,
-          onTap: tooltip == null ? null : onTap,
-          excludeSemantics: tooltip != null,
-          child: SizedBox(
-            width: 72,
-            height: 64,
-            child: IconButton(
-              onPressed: onTap == null
-                  ? null
-                  : () {
-                      unawaited(HapticFeedback.lightImpact());
-                      onTap();
-                    },
-              icon: label,
+    Widget key(
+      Widget label,
+      VoidCallback? onTap, {
+      String? tooltip,
+      bool filled = false,
+    }) => Semantics(
+      label: tooltip,
+      button: tooltip != null,
+      onTap: tooltip == null ? null : onTap,
+      excludeSemantics: tooltip != null,
+      child: Padding(
+        padding: const EdgeInsets.all(gap),
+        child: SizedBox.square(
+          dimension: keySize,
+          child: IconButton(
+            style: IconButton.styleFrom(
+              backgroundColor: filled ? sage.card : Colors.transparent,
             ),
+            onPressed: onTap == null
+                ? null
+                : () {
+                    unawaited(HapticFeedback.lightImpact());
+                    onTap();
+                  },
+            icon: label,
           ),
-        );
+        ),
+      ),
+    );
     Widget digit(String d) => key(
-      Text(d, style: Theme.of(context).textTheme.headlineSmall),
+      Text(d, style: Theme.of(context).textTheme.headlineMedium),
       () => onDigit(d),
+      filled: true,
     );
 
     return Column(

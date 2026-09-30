@@ -11,29 +11,11 @@ import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 
-/// Row detail per density.
-enum RowDetail {
-  /// Title and amount.
-  titleOnly,
-
-  /// Plus paid or unpaid, expected or received.
-  status,
-
-  /// Plus the category.
-  categoryAndStatus,
-}
-
-RowDetail detailFor(FeedDensity density) => switch (density) {
-  FeedDensity.compact => RowDetail.titleOnly,
-  FeedDensity.standard => RowDetail.status,
-  FeedDensity.spacious => RowDetail.categoryAndStatus,
-};
-
 /// Minimum row height per density.
 double rowHeightFor(FeedDensity density) => switch (density) {
   FeedDensity.compact => 48,
   FeedDensity.standard => 72,
-  FeedDensity.spacious => 96,
+  FeedDensity.spacious => 100,
 };
 
 /// Frozen rows keep only tap and long-press.
@@ -99,7 +81,6 @@ class FeedRowTile extends StatelessWidget {
 
   Widget _row(BuildContext context, Color amountColor) {
     final SageColors sage = context.sage;
-    final TextTheme text = Theme.of(context).textTheme;
 
     return Dismissible(
       key: ValueKey<String>('dismiss:${record.id}'),
@@ -130,9 +111,14 @@ class FeedRowTile extends StatelessWidget {
         return false;
       },
       child: Ink(
-        color: isSelected
-            ? sage.accentTint
-            : (isOverdue ? sage.dangerTint : Colors.transparent),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? sage.accentTint
+              : (isOverdue ? sage.dangerTint : Colors.transparent),
+          border: density == FeedDensity.spacious
+              ? Border(bottom: BorderSide(color: sage.hairline, width: 0.5))
+              : null,
+        ),
         child: ConstrainedBox(
           // A minimum: the spacious subtitle can be taller.
           constraints: BoxConstraints(minHeight: rowHeightFor(density)),
@@ -161,8 +147,8 @@ class FeedRowTile extends StatelessWidget {
                             dimension: 26,
                             child: Icon(
                               isSelected
-                                  ? Icons.check_circle
-                                  : Icons.radio_button_unchecked,
+                                  ? Icons.check_box
+                                  : Icons.check_box_outline_blank,
                               size: 24,
                               color: isSelected
                                   ? sage.accentStrong
@@ -186,73 +172,13 @@ class FeedRowTile extends StatelessWidget {
                           const SizedBox(width: SageSpace.xs),
                         ],
                         Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                record.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: text.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: record.isPaid
-                                      ? sage.inkSecondary
-                                      : sage.ink,
-                                  decoration: record.isPaid
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  decorationColor: sage.inkLabel.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                ),
-                              ),
-                              if (_subtitle(record, category)
-                                  case final String sub)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Text(
-                                    sub,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: text.bodySmall,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        if (isFrozen)
-                          Padding(
-                            padding: const EdgeInsets.only(left: SageSpace.sm),
-                            child: Icon(
-                              Icons.lock_outline,
-                              size: 16,
-                              color: sage.inkLabel,
-                            ),
-                          ),
-                        if (record.notes != null && record.notes!.isNotEmpty)
-                          InkWell(
-                            onTap: () => _showNote(context, record.notes!),
-                            customBorder: const CircleBorder(),
-                            child: Padding(
-                              padding: const EdgeInsets.all(SageSpace.xs),
-                              child: Icon(
-                                Icons.sticky_note_2_outlined,
-                                size: 18,
-                                color: sage.inkLabel,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(width: SageSpace.sm),
-                        Text(
-                          _amountLabel(record, money),
-                          style: text.bodyLarge?.copyWith(
-                            color: amountColor,
-                            fontWeight: FontWeight.w600,
-                            fontFeatures: const <FontFeature>[
-                              FontFeature.tabularFigures(),
-                            ],
+                          child: _RowBody(
+                            record: record,
+                            category: category,
+                            density: density,
+                            amount: _amountLabel(record, money),
+                            amountColor: amountColor,
+                            isFrozen: isFrozen,
                           ),
                         ),
                       ],
@@ -272,35 +198,200 @@ class FeedRowTile extends StatelessWidget {
     if (r.amount == null) return tr('income.amountUnknown');
     return r.isIncome ? '+${money.format(r.amount!)}' : money.format(r.amount!);
   }
+}
 
-  /// Null for compact rows.
-  String? _subtitle(FeedRecord r, Category? category) {
-    final RowDetail detail = detailFor(density);
-    if (detail == RowDetail.titleOnly) return null;
+/// Title and amount on one line when both fit, else the amount below. Then
+/// the category from standard up, and the note's start in spacious.
+class _RowBody extends StatelessWidget {
+  const _RowBody({
+    required this.record,
+    required this.category,
+    required this.density,
+    required this.amount,
+    required this.amountColor,
+    required this.isFrozen,
+  });
 
-    final String status = r.isIncome
-        ? (r.isPaid ? tr('income.received') : tr('income.expected'))
-        : (r.isPaid ? tr('payment.paid') : tr('payment.unpaid'));
+  final FeedRecord record;
+  final Category? category;
+  final FeedDensity density;
+  final String amount;
+  final Color amountColor;
+  final bool isFrozen;
 
-    if (detail == RowDetail.status || category == null) return status;
-    return '${category.shownTitle} · $status';
-  }
+  /// Wider amounts go under the title.
+  static const double _amountShare = 0.4;
 
-  void _showNote(BuildContext context, String note) {
-    showDialog<void>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        backgroundColor: context.sage.card,
-        content: Text(note, style: Theme.of(context).textTheme.bodyLarge),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(tr('common.close')),
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    final TextTheme text = Theme.of(context).textTheme;
+    final String? note = record.notes?.trim().isEmpty ?? true
+        ? null
+        : record.notes!.trim();
+    final bool spacious = density == FeedDensity.spacious;
+
+    final TextStyle titleStyle = text.bodyLarge!.copyWith(
+      fontWeight: FontWeight.w600,
+      color: record.isPaid ? sage.inkSecondary : sage.ink,
+    );
+    final TextStyle amountStyle = text.bodyLarge!.copyWith(
+      color: amountColor,
+      fontWeight: FontWeight.w600,
+      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+    );
+
+    final List<Widget> marks = <Widget>[
+      if (isFrozen)
+        Padding(
+          padding: const EdgeInsets.only(left: SageSpace.sm),
+          child: Icon(Icons.lock_outline, size: 16, color: sage.inkLabel),
+        ),
+      if (note != null && !spacious)
+        InkWell(
+          onTap: () => _showNote(context, note),
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(SageSpace.xs),
+            child: Icon(
+              Icons.sticky_note_2_outlined,
+              size: 18,
+              color: sage.inkLabel,
+            ),
           ),
-        ],
-      ),
+        ),
+    ];
+    final double marksWidth =
+        (isFrozen ? 24 : 0) + (note != null && !spacious ? 26 : 0);
+
+    final Widget title = Text(
+      record.title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: titleStyle,
+    );
+    final Widget amountText = Text(
+      amount,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: amountStyle,
+    );
+
+    final Category? c = category;
+    final Widget? meta = density == FeedDensity.compact || c == null
+        ? null
+        : Row(
+            children: <Widget>[
+              CategoryMark(color: c.color, icon: c.icon, size: 20),
+              const SizedBox(width: SageSpace.xs),
+              Flexible(
+                child: Text(
+                  c.shownTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyMedium?.copyWith(color: sage.inkSecondary),
+                ),
+              ),
+            ],
+          );
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        double width(String value, TextStyle style) {
+          final TextPainter painter = TextPainter(
+            text: TextSpan(text: value, style: style),
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+            maxLines: 1,
+          )..layout();
+          final double w = painter.width;
+          painter.dispose();
+          return w;
+        }
+
+        final double titleWidth = width(record.title, titleStyle);
+        final double amountWidth = width(amount, amountStyle);
+        final double room = constraints.maxWidth - marksWidth - SageSpace.sm;
+        final bool oneLine =
+            titleWidth + amountWidth <= room ||
+            amountWidth <= constraints.maxWidth * _amountShare;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            if (oneLine)
+              Row(
+                children: <Widget>[
+                  Expanded(child: title),
+                  ...marks,
+                  const SizedBox(width: SageSpace.sm),
+                  amountText,
+                ],
+              )
+            else ...<Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(child: title),
+                  ...marks,
+                ],
+              ),
+              Align(alignment: Alignment.centerRight, child: amountText),
+            ],
+            if (meta != null)
+              Padding(padding: const EdgeInsets.only(top: 2), child: meta),
+            if (spacious && note != null)
+              GestureDetector(
+                onTap: () => _showNote(context, note),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Icon(
+                          Icons.sticky_note_2_outlined,
+                          size: 14,
+                          color: sage.inkLabel,
+                        ),
+                      ),
+                      const SizedBox(width: SageSpace.xs),
+                      Expanded(
+                        child: Text(
+                          note,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
+}
+
+/// The whole note.
+void _showNote(BuildContext context, String note) {
+  showDialog<void>(
+    context: context,
+    builder: (BuildContext context) => AlertDialog(
+      backgroundColor: context.sage.card,
+      content: Text(note, style: Theme.of(context).textTheme.bodyLarge),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(tr('common.close')),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Filled once paid. Becoming paid sends short rays out of it.
@@ -379,9 +470,11 @@ class _PaidCircleState extends State<_PaidCircle>
                     width: 1.5,
                   ),
                 ),
-                child: paid
-                    ? Icon(Icons.check, size: 15, color: sage.accentOn)
-                    : null,
+                child: Icon(
+                  Icons.check,
+                  size: 15,
+                  color: paid ? sage.accentOn : sage.border,
+                ),
               ),
             ),
           ),

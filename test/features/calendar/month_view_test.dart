@@ -81,14 +81,14 @@ void main() {
     }
   });
 
-  testWidgets('a day with figures draws them, signed', (
+  testWidgets('figures are unsigned and share one size', (
     WidgetTester tester,
   ) async {
     await pumpMonth(
       tester,
       totals: <CalendarDate, DayTotals>{
         const CalendarDate(2026, 8, 12): DayTotals.empty.add(
-          Decimal.parse('22'),
+          Decimal.parse('75'),
           isIncome: false,
           isPaid: false,
           amountKnown: true,
@@ -102,9 +102,10 @@ void main() {
       },
     );
 
-    expect(find.textContaining('−').at(0), findsOneWidget);
-    expect(find.textContaining('22'), findsWidgets);
-    expect(find.textContaining('+'), findsOneWidget);
+    final Text small = tester.widget<Text>(find.text('75'));
+    final Text large = tester.widget<Text>(find.textContaining('224'));
+    expect(large.data, isNot(contains('+')));
+    expect(small.style!.fontSize, large.style!.fontSize);
   });
 
   testWidgets('a day with a record but no figure still shows something', (

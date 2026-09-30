@@ -34,13 +34,21 @@ Future<void> showCalendarLegend(
               tr('calendar.legend.title'),
               style: Theme.of(sheet).textTheme.titleSmall,
             ),
+            const SizedBox(height: SageSpace.xs),
+            Text(
+              tr(
+                'calendar.legend.units',
+                namedArgs: <String, String>{'symbol': money.symbol},
+              ),
+              style: Theme.of(sheet).textTheme.bodySmall,
+            ),
             const SizedBox(height: SageSpace.md),
             _Entry(
-              figure: ('−', sage.danger),
+              figure: ('120', sage.danger),
               label: tr('calendar.legend.expenses'),
             ),
             _Entry(
-              figure: ('+', sage.accentStrong),
+              figure: ('120', sage.accentStrong),
               label: tr('calendar.legend.income'),
             ),
             _Entry(

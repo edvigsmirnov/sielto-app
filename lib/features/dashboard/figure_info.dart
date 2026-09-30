@@ -85,9 +85,14 @@ FigureInfo moneyLeftInfo({
   final bool shortToday = short && lastDay.isBefore(today);
   return FigureInfo(
     title: shortToday
-        ? tr('dashboard.shortFrom')
+        ? tr('info.shortNow')
         : short
-        ? tr('dashboard.lasts')
+        ? tr(
+            'info.lastsTitle',
+            namedArgs: <String, String>{
+              'date': dates.dayMonth(lastDay, reference: today),
+            },
+          )
         : title,
     what: short
         ? shortToday

@@ -154,6 +154,7 @@ void main() {
       expect(run.exhaustedEntryId, 'rent');
       expect(run.cutoffEntryId, 'card');
       expect(run.moneyEndsAt, (entryId: 'rent', below: true));
+      expect(run.lastCoveredDay, d('2026-03-09'));
     });
 
     test('money left over draws no line at all', () {

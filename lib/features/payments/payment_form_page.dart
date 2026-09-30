@@ -897,8 +897,10 @@ class _LivePreview extends ConsumerWidget {
             style: text.bodySmall?.copyWith(color: sage.inkSecondary),
           ),
           const SizedBox(height: SageSpace.xs),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: SageSpace.xs,
             children: <Widget>[
               Text(
                 figure(beforeFree),
@@ -912,12 +914,9 @@ class _LivePreview extends ConsumerWidget {
                   color: sage.inkLabel,
                 ),
               ),
-              Flexible(
-                child: Text(
-                  figure(afterFree),
-                  overflow: TextOverflow.ellipsis,
-                  style: text.titleMedium?.copyWith(color: afterColor),
-                ),
+              Text(
+                figure(afterFree),
+                style: text.titleMedium?.copyWith(color: afterColor),
               ),
               if (change != Decimal.zero) ...<Widget>[
                 const SizedBox(width: SageSpace.sm),

@@ -134,3 +134,16 @@ controlsAtBottomProvider =
     NotifierProvider<ControlsAtBottomController, Set<ControlsScreen>>(
       ControlsAtBottomController.new,
     );
+
+class TickHintSeenController extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(localSettingsProvider).tickHintSeen;
+
+  Future<void> dismiss() async {
+    await ref.read(localSettingsProvider).setTickHintSeen();
+    state = true;
+  }
+}
+
+final NotifierProvider<TickHintSeenController, bool> tickHintSeenProvider =
+    NotifierProvider<TickHintSeenController, bool>(TickHintSeenController.new);

@@ -3,11 +3,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 enum FeedDensity {
-  /// Amount and title on one line.
+  /// Title and amount.
   compact,
+
+  /// Adds the category.
   standard,
 
-  /// Adds category and status on a second line.
+  /// Title, amount, category and the start of the note.
   spacious,
 }
 
@@ -32,6 +34,7 @@ class LocalSettings {
   static const String _keyAppLock = 'app_lock_enabled';
   static const String _keyAppLockBiometric = 'app_lock_biometric';
   static const String _keyBlockScreenshots = 'block_screenshots';
+  static const String _keyTickHintSeen = 'feed_tick_hint_seen';
   static const String _keyDriveEmail = 'drive_email';
   static const String _keyDriveLastBackup = 'drive_last_backup';
 
@@ -147,6 +150,11 @@ class LocalSettings {
 
   Future<void> setBlockScreenshots({required bool value}) =>
       _prefs.setBool(_keyBlockScreenshots, value);
+
+  /// The Feed's one-time note on what the circle does.
+  bool get tickHintSeen => _prefs.getBool(_keyTickHintSeen) ?? false;
+
+  Future<void> setTickHintSeen() => _prefs.setBool(_keyTickHintSeen, true);
 
   /// Null when Google Drive backup is off.
   String? get driveEmail => _prefs.getString(_keyDriveEmail);

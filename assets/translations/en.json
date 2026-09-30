@@ -100,7 +100,10 @@
   },
   "feedOrder": {
     "grouped": "By type",
-    "free": "Free"
+    "free": "Free",
+    "groupedHint": "Within a day: incomes first, then mandatory payments, then everything else. You can drag them around within their group.",
+    "freeHint": "Drag payments and incomes into any order within a day.",
+    "priorityHint": "When money runs short, the payments higher up in a day are covered first."
   },
   "settings": {
     "title": "Settings",
@@ -162,7 +165,8 @@
     }
   },
   "feed": {
-    "empty": "Nothing here yet. Add your first expense with +.",
+    "tickHint": "When you pay an expense or get an income, tap the circle on the left.",
+    "empty": "Nothing here yet. Tap + to add an expense or an income.",
     "today": "Today",
     "currentMoney": "Balance",
     "runsShort": "Runs short",
@@ -196,8 +200,18 @@
       },
       "status": {
         "all": "All",
-        "done": "Done",
-        "pending": "Not yet"
+        "any": {
+          "done": "Paid or received",
+          "pending": "Planned"
+        },
+        "expense": {
+          "done": "Paid",
+          "pending": "Not paid yet"
+        },
+        "income": {
+          "done": "Received",
+          "pending": "Expected"
+        }
       }
     },
     "income": "Income"
@@ -375,6 +389,7 @@
     "back": "Return",
     "holiday": "Public holiday",
     "legend": {
+      "units": "Month cells show whole amounts in {symbol}, without a sign.",
       "title": "What the colours mean",
       "expenses": "Spent or planned that day",
       "income": "Income that day",
@@ -731,7 +746,9 @@
     "leftFlow": "What's left once everything planned ahead is paid, starting from the money you have now.",
     "leftBudget": "What you can still spend on this goal.",
     "lasts": "Your money covers everything up to {date}. After that, planned spending is more than you have.",
-    "shortToday": "Something due today needs more money than you have right now.",
+    "lastsTitle": "Lasts until {date}",
+    "shortNow": "You're short right now",
+    "shortToday": "What's due today or earlier costs more than you have right now.",
     "lastsAdvice": "Move or cut something later on, or add the income you're expecting.",
     "afterBills": "What's left if you pay only the bills you can't skip, like rent and loans, and nothing else.",
     "billsAdvice": "The bills alone don't fit this period. They come first, so start with them.",
@@ -751,6 +768,6 @@
     "budgetSet": "budget",
     "topUps": "top-ups",
     "toSpend": "to spend",
-    "shortTodayAdvice": "Move today's payment to a later day, or update your balance if you have more."
+    "shortTodayAdvice": "Move a payment to a later day, or update your balance if you have more."
   }
 }

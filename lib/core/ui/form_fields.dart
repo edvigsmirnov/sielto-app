@@ -96,6 +96,8 @@ Future<CalendarDate?> pickDate(
   return picked == null ? null : CalendarDate.fromDateTime(picked);
 }
 
+final RegExp _amountShape = RegExp(r'^(\s*\d){0,12}\s*([.,]\d{0,2})?$');
+
 /// Digits, separators and spaces; parsing happens on save.
 class MoneyField extends StatelessWidget {
   const MoneyField({
@@ -123,10 +125,10 @@ class MoneyField extends StatelessWidget {
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
     inputFormatters: <TextInputFormatter>[
       FilteringTextInputFormatter.allow(RegExp(r'[\d.,\s]')),
-      // Cents at most, and one decimal separator.
+      // 12 whole digits, cents at most, one decimal separator.
       TextInputFormatter.withFunction(
         (TextEditingValue old, TextEditingValue next) =>
-            RegExp(r'^[\d\s]*([.,]\d{0,2})?$').hasMatch(next.text) ? next : old,
+            _amountShape.hasMatch(next.text) ? next : old,
       ),
     ],
     decoration: InputDecoration(suffixText: symbol, hintText: hintText),

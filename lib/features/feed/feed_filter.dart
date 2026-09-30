@@ -17,6 +17,18 @@ enum FeedKind { all, mandatory, variable, income }
 
 enum FeedStatus { all, done, pending }
 
+/// Named the way the type reads it: paid for expenses, received for incomes.
+String statusLabel(FeedStatus status, FeedKind kind) => switch (status) {
+  FeedStatus.all => tr('feed.filter.status.all'),
+  _ => tr(
+    'feed.filter.status.${switch (kind) {
+      FeedKind.all => 'any',
+      FeedKind.income => 'income',
+      FeedKind.mandatory || FeedKind.variable => 'expense',
+    }}.${status.name}',
+  ),
+};
+
 /// Every condition must hold. Empty [categoryIds] means any category.
 @immutable
 class FeedFilter {
@@ -163,7 +175,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
               SegmentedChoice<FeedStatus>(
                 values: FeedStatus.values,
                 selected: filter.status,
-                labelOf: (FeedStatus s) => tr('feed.filter.status.${s.name}'),
+                labelOf: (FeedStatus s) => statusLabel(s, filter.kind),
                 onChanged: (FeedStatus s) =>
                     _update((FeedFilter f) => f.copyWith(status: s)),
               ),
@@ -171,28 +183,41 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                 const SizedBox(height: SageSpace.lg),
                 Text(tr('category.title'), style: text.labelLarge),
                 const SizedBox(height: SageSpace.sm),
-                Wrap(
-                  spacing: SageSpace.sm,
-                  runSpacing: SageSpace.sm,
-                  children: <Widget>[
-                    for (final Category c in categories)
-                      FilterChip(
-                        avatar: CategoryMark(
-                          color: c.color,
-                          icon: c.icon,
-                          size: 22,
-                        ),
-                        label: Text(c.shownTitle),
-                        selected: filter.categoryIds.contains(c.id),
-                        onSelected: (bool on) => _update(
-                          (FeedFilter f) => f.copyWith(
-                            categoryIds: on
-                                ? <String>{...f.categoryIds, c.id}
-                                : (Set<String>.of(f.categoryIds)..remove(c.id)),
+                LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints box) => Wrap(
+                    spacing: SageSpace.sm,
+                    runSpacing: SageSpace.sm,
+                    children: <Widget>[
+                      for (final Category c in categories)
+                        SizedBox(
+                          width: (box.maxWidth - SageSpace.sm) / 2,
+                          child: FilterChip(
+                            avatar: CategoryMark(
+                              color: c.color,
+                              icon: c.icon,
+                              size: 22,
+                            ),
+                            label: SizedBox(
+                              width: double.infinity,
+                              child: Text(
+                                c.shownTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            selected: filter.categoryIds.contains(c.id),
+                            onSelected: (bool on) => _update(
+                              (FeedFilter f) => f.copyWith(
+                                categoryIds: on
+                                    ? <String>{...f.categoryIds, c.id}
+                                    : (Set<String>.of(f.categoryIds)
+                                        ..remove(c.id)),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
               if (filter.isActive) ...<Widget>[
@@ -274,7 +299,7 @@ class FeedFilterBar extends ConsumerWidget {
                   ),
                 if (filter.status != FeedStatus.all)
                   chip(
-                    tr('feed.filter.status.${filter.status.name}'),
+                    statusLabel(filter.status, filter.kind),
                     filter.copyWith(status: FeedStatus.all),
                   ),
                 for (final String id in filter.categoryIds)
