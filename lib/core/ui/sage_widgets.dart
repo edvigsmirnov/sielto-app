@@ -2,6 +2,7 @@ import 'dart:ui' show PathMetric;
 
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 
@@ -476,4 +477,58 @@ class MenuLine extends StatelessWidget {
       Text(label, style: Theme.of(context).textTheme.bodyLarge),
     ],
   );
+}
+
+/// Reorder grip for a [ReorderableListView] item: 48 dp wide, and it
+/// lights up on touch, before the drag starts.
+class DragGrip extends StatefulWidget {
+  const DragGrip({required this.index, super.key});
+
+  final int index;
+
+  @override
+  State<DragGrip> createState() => _DragGripState();
+}
+
+class _DragGripState extends State<DragGrip> {
+  bool _pressed = false;
+
+  void _press(bool pressed) {
+    if (pressed == _pressed) return;
+    if (pressed) HapticFeedback.lightImpact();
+    setState(() => _pressed = pressed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return ReorderableDragStartListener(
+      index: widget.index,
+      child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (_) => _press(true),
+        onPointerUp: (_) => _press(false),
+        onPointerCancel: (_) => _press(false),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              padding: const EdgeInsets.all(SageSpace.xs),
+              decoration: BoxDecoration(
+                color: _pressed ? sage.accentTint : Colors.transparent,
+                borderRadius: BorderRadius.circular(SageRadius.chip),
+              ),
+              child: Icon(
+                Icons.drag_indicator,
+                size: 22,
+                color: _pressed ? sage.accentStrong : sage.inkLabel,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -541,22 +541,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               showRecordMenu(context, ref, record: record, today: today),
           // The grip is outside the row's gesture area, so the row's long-press does not
           // compete with it.
-          dragHandle: ReorderableDragStartListener(
-            index: index,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                SageSpace.sm,
-                SageSpace.md,
-                SageSpace.md,
-                SageSpace.md,
-              ),
-              child: Icon(
-                Icons.drag_indicator,
-                size: 20,
-                color: context.sage.inkLabel,
-              ),
-            ),
-          ),
+          dragHandle: DragGrip(index: index),
         );
     }
   }

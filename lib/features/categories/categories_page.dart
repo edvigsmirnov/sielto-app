@@ -167,21 +167,16 @@ class _CategoryTile extends StatelessWidget {
       child: InkWell(
         onTap: onEdit,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: SageSpace.gutter,
-            vertical: SageSpace.md,
+          padding: const EdgeInsets.fromLTRB(
+            SageSpace.xs,
+            SageSpace.xs,
+            SageSpace.gutter,
+            SageSpace.xs,
           ),
           child: Row(
             children: <Widget>[
-              ReorderableDragStartListener(
-                index: index,
-                child: Icon(
-                  Icons.drag_indicator,
-                  size: 20,
-                  color: sage.inkLabel,
-                ),
-              ),
-              const SizedBox(width: SageSpace.md),
+              DragGrip(index: index),
+              const SizedBox(width: SageSpace.xs),
               CategoryMark(color: category.color, icon: category.icon),
               const SizedBox(width: SageSpace.md),
               Expanded(
