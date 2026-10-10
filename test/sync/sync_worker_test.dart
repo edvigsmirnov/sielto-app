@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/app/startup.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/repositories/budget_period_repository.dart';
 import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/db/repositories/payment_repository.dart';
 import 'package:sielto/core/db/repositories/space_repository.dart';
@@ -281,6 +282,51 @@ void main() {
       expect(await ids(a, table), alone[table], reason: table);
       expect(await ids(b, table), alone[table], reason: table);
     }
+  }, skip: skip);
+
+  test('an edit the server refuses as frozen is kept and not resent', () async {
+    final SpaceClock clock = SpaceClock(timezone: 'UTC');
+    final BudgetPeriod closed =
+        await BudgetPeriodRepository(
+          db: a,
+          clock: clock,
+          userId: userId,
+        ).createIncomeDriven(
+          spaceId: spaceId,
+          startDate: const CalendarDate(2026, 1, 1),
+          endDate: const CalendarDate(2026, 1, 31),
+          anchorDate: const CalendarDate(2026, 1, 1),
+        );
+    final String frozenId =
+        (await PaymentRepository(db: a, clock: clock, userId: userId).create(
+          spaceId: spaceId,
+          budgetPeriodId: closed.id,
+          title: 'Groceries',
+          amount: Decimal.parse('80'),
+          dueDate: const CalendarDate(2026, 1, 20),
+          expenseType: ExpenseType.variable,
+        )).id;
+    await syncA.syncAll();
+    await syncB.syncAll();
+
+    await a.customUpdate(
+      "UPDATE payments SET amount = '95', sync_status = 'pending', "
+      'client_edited_at = ? WHERE id = ?',
+      variables: <Variable<Object>>[
+        Variable<DateTime>(DateTime.now().toUtc()),
+        Variable<String>(frozenId),
+      ],
+    );
+    await syncA.syncAll();
+    await syncA.syncAll();
+    await syncB.syncAll();
+
+    Future<Payment> row(AppDatabase db) => (db.select(
+      db.payments,
+    )..where(($PaymentsTable t) => t.id.equals(frozenId))).getSingle();
+    expect((await row(a)).syncStatus, SyncStatus.rejected);
+    expect((await row(a)).amount, Decimal.parse('95'));
+    expect((await row(b)).amount, Decimal.parse('80'));
   }, skip: skip);
 
   test('a Space edit reaches the other device', () async {

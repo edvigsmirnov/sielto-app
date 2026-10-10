@@ -17,7 +17,14 @@ enum ExpenseType { mandatory, variable }
 
 enum PeriodAssignment { auto, manual }
 
-enum SyncStatus { none, pending, synced }
+enum SyncStatus {
+  none,
+  pending,
+  synced,
+
+  /// The server refused the edit (a frozen period). Kept, not sent again.
+  rejected,
+}
 
 /// `continuous`: the single row of a Flow or Budget Space. `incomeDriven`: one
 /// row per income cycle.

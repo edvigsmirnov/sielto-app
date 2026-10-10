@@ -91,13 +91,14 @@ class SyncWorker {
         if (e.code != '23505') rethrow;
       }
     }
-    await _markSynced('spaces', rows);
+    await _mark('spaces', rows, SyncStatus.synced);
   }
 
   /// Rows the app filled in by itself are insert-only: they never overwrite.
   Future<void> _push(String table, String spaceId) async {
     final List<QueryRow> rows = await _pending(table, 'space_id', spaceId);
     final List<QueryRow> sent = <QueryRow>[];
+    final List<QueryRow> rejected = <QueryRow>[];
     for (final bool generated in <bool>[false, true]) {
       final List<QueryRow> group = <QueryRow>[
         for (final QueryRow r in rows)
@@ -114,21 +115,22 @@ class SyncWorker {
           ], ignoreDuplicates: generated);
           sent.addAll(chunk);
         } on PostgrestException {
-          // One refused row must not hold back the rest; it stays pending.
+          // One refused row must not hold back the rest.
           for (final QueryRow r in chunk) {
             try {
               await client
                   .from(table)
                   .upsert(_toServer(table, r), ignoreDuplicates: generated);
               sent.add(r);
-            } on PostgrestException {
-              continue;
+            } on PostgrestException catch (e) {
+              if (e.message == 'period_frozen') rejected.add(r);
             }
           }
         }
       }
     }
-    await _markSynced(table, sent);
+    await _mark(table, sent, SyncStatus.synced);
+    await _mark(table, rejected, SyncStatus.rejected);
   }
 
   bool _isGenerated(QueryRow row) =>
@@ -194,6 +196,7 @@ class SyncWorker {
             ],
           )
           .getSingleOrNull();
+      if (local?.read<String>('sync_status') == 'rejected') continue;
       if (local != null && local.read<String>('sync_status') == 'pending') {
         final DateTime? mine = local.readNullable<DateTime>('client_edited_at');
         final DateTime theirs = DateTime.parse(
@@ -239,21 +242,24 @@ class SyncWorker {
       .get();
 
   /// Skips a row edited again since it was read.
-  Future<void> _markSynced(String table, List<QueryRow> rows) => db.transaction(
-    () async {
-      for (final QueryRow r in rows) {
-        await db.customUpdate(
-          "UPDATE $table SET sync_status = 'synced' "
-          "WHERE id = ? AND client_edited_at IS ? AND sync_status = 'pending'",
-          variables: <Variable<Object>>[
-            Variable<String>(r.data['id'] as String),
-            Variable<Object>(r.data['client_edited_at']),
-          ],
-          updates: <TableInfo<Table, dynamic>>{_table(table)},
-        );
-      }
-    },
-  );
+  Future<void> _mark(
+    String table,
+    List<QueryRow> rows,
+    SyncStatus status,
+  ) => db.transaction(() async {
+    for (final QueryRow r in rows) {
+      await db.customUpdate(
+        'UPDATE $table SET sync_status = ? '
+        "WHERE id = ? AND client_edited_at IS ? AND sync_status = 'pending'",
+        variables: <Variable<Object>>[
+          Variable<String>(status.name),
+          Variable<String>(r.data['id'] as String),
+          Variable<Object>(r.data['client_edited_at']),
+        ],
+        updates: <TableInfo<Table, dynamic>>{_table(table)},
+      );
+    }
+  });
 
   TableInfo<Table, dynamic> _table(String name) => db.allTables.firstWhere(
     (TableInfo<Table, dynamic> t) => t.actualTableName == name,
