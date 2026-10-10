@@ -56,3 +56,4 @@ app.*.map.json
 /.claude/sielto_design/
 /.claude/hooks/
 /google.env.json
+node_modules/
