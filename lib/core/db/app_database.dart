@@ -28,13 +28,14 @@ part 'app_database.g.dart';
     Payments,
     HolidayCache,
     CustomNonWorkingDays,
+    CloudIdentity,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   /// Bump with a new [migration] step and a new schema snapshot.
-  static const int currentSchemaVersion = 4;
+  static const int currentSchemaVersion = 5;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -75,6 +76,9 @@ class AppDatabase extends _$AppDatabase {
         );
         await customStatement('DROP INDEX IF EXISTS payments_space_title');
         await _createIndexes(this);
+      }
+      if (from < 5) {
+        await m.createTable(cloudIdentity);
       }
     },
     beforeOpen: (OpeningDetails details) async {

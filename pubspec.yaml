@@ -54,6 +54,8 @@ dependencies:
   shared_preferences: ^2.5.3
   # Bundles SQLCipher through Dart hooks; see the `hooks` block below.
   sqlite3: ^3.5.2
+  # Cloud sync transport. The pure Dart client needs no global init.
+  supabase: ^2.16.4
   # IANA database. A Space's "today" is its own timezone's, not the device's
   # (plan section 2, invariant 7).
   timezone: ^0.11.1

@@ -425,3 +425,18 @@ class CustomNonWorkingDays extends Table {
     <Column<Object>>{date, countryCode},
   ];
 }
+
+/// This device's cloud sign-in. One row at most; never synced or backed up.
+class CloudIdentity extends Table {
+  TextColumn get deviceId => text().named('device_id')();
+
+  /// A serialized Supabase session.
+  TextColumn get session => text().nullable()();
+
+  /// The local user id is bound to this session on the server.
+  BoolColumn get registered =>
+      boolean().withDefault(const Constant<bool>(false))();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{deviceId};
+}

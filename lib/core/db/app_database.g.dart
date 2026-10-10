@@ -8676,6 +8676,284 @@ class CustomNonWorkingDaysCompanion
   }
 }
 
+class $CloudIdentityTable extends CloudIdentity
+    with TableInfo<$CloudIdentityTable, CloudIdentityData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CloudIdentityTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sessionMeta = const VerificationMeta(
+    'session',
+  );
+  @override
+  late final GeneratedColumn<String> session = GeneratedColumn<String>(
+    'session',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _registeredMeta = const VerificationMeta(
+    'registered',
+  );
+  @override
+  late final GeneratedColumn<bool> registered = GeneratedColumn<bool>(
+    'registered',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("registered" IN (0, 1))',
+    ),
+    defaultValue: const Constant<bool>(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [deviceId, session, registered];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cloud_identity';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CloudIdentityData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('session')) {
+      context.handle(
+        _sessionMeta,
+        session.isAcceptableOrUnknown(data['session']!, _sessionMeta),
+      );
+    }
+    if (data.containsKey('registered')) {
+      context.handle(
+        _registeredMeta,
+        registered.isAcceptableOrUnknown(data['registered']!, _registeredMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {deviceId};
+  @override
+  CloudIdentityData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CloudIdentityData(
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      )!,
+      session: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session'],
+      ),
+      registered: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}registered'],
+      )!,
+    );
+  }
+
+  @override
+  $CloudIdentityTable createAlias(String alias) {
+    return $CloudIdentityTable(attachedDatabase, alias);
+  }
+}
+
+class CloudIdentityData extends DataClass
+    implements Insertable<CloudIdentityData> {
+  final String deviceId;
+
+  /// A serialized Supabase session.
+  final String? session;
+
+  /// The local user id is bound to this session on the server.
+  final bool registered;
+  const CloudIdentityData({
+    required this.deviceId,
+    this.session,
+    required this.registered,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['device_id'] = Variable<String>(deviceId);
+    if (!nullToAbsent || session != null) {
+      map['session'] = Variable<String>(session);
+    }
+    map['registered'] = Variable<bool>(registered);
+    return map;
+  }
+
+  CloudIdentityCompanion toCompanion(bool nullToAbsent) {
+    return CloudIdentityCompanion(
+      deviceId: Value(deviceId),
+      session: session == null && nullToAbsent
+          ? const Value.absent()
+          : Value(session),
+      registered: Value(registered),
+    );
+  }
+
+  factory CloudIdentityData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CloudIdentityData(
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+      session: serializer.fromJson<String?>(json['session']),
+      registered: serializer.fromJson<bool>(json['registered']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'deviceId': serializer.toJson<String>(deviceId),
+      'session': serializer.toJson<String?>(session),
+      'registered': serializer.toJson<bool>(registered),
+    };
+  }
+
+  CloudIdentityData copyWith({
+    String? deviceId,
+    Value<String?> session = const Value.absent(),
+    bool? registered,
+  }) => CloudIdentityData(
+    deviceId: deviceId ?? this.deviceId,
+    session: session.present ? session.value : this.session,
+    registered: registered ?? this.registered,
+  );
+  CloudIdentityData copyWithCompanion(CloudIdentityCompanion data) {
+    return CloudIdentityData(
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      session: data.session.present ? data.session.value : this.session,
+      registered: data.registered.present
+          ? data.registered.value
+          : this.registered,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CloudIdentityData(')
+          ..write('deviceId: $deviceId, ')
+          ..write('session: $session, ')
+          ..write('registered: $registered')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(deviceId, session, registered);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CloudIdentityData &&
+          other.deviceId == this.deviceId &&
+          other.session == this.session &&
+          other.registered == this.registered);
+}
+
+class CloudIdentityCompanion extends UpdateCompanion<CloudIdentityData> {
+  final Value<String> deviceId;
+  final Value<String?> session;
+  final Value<bool> registered;
+  final Value<int> rowid;
+  const CloudIdentityCompanion({
+    this.deviceId = const Value.absent(),
+    this.session = const Value.absent(),
+    this.registered = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CloudIdentityCompanion.insert({
+    required String deviceId,
+    this.session = const Value.absent(),
+    this.registered = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : deviceId = Value(deviceId);
+  static Insertable<CloudIdentityData> custom({
+    Expression<String>? deviceId,
+    Expression<String>? session,
+    Expression<bool>? registered,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (deviceId != null) 'device_id': deviceId,
+      if (session != null) 'session': session,
+      if (registered != null) 'registered': registered,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CloudIdentityCompanion copyWith({
+    Value<String>? deviceId,
+    Value<String?>? session,
+    Value<bool>? registered,
+    Value<int>? rowid,
+  }) {
+    return CloudIdentityCompanion(
+      deviceId: deviceId ?? this.deviceId,
+      session: session ?? this.session,
+      registered: registered ?? this.registered,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (session.present) {
+      map['session'] = Variable<String>(session.value);
+    }
+    if (registered.present) {
+      map['registered'] = Variable<bool>(registered.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CloudIdentityCompanion(')
+          ..write('deviceId: $deviceId, ')
+          ..write('session: $session, ')
+          ..write('registered: $registered, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8693,6 +8971,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $HolidayCacheTable holidayCache = $HolidayCacheTable(this);
   late final $CustomNonWorkingDaysTable customNonWorkingDays =
       $CustomNonWorkingDaysTable(this);
+  late final $CloudIdentityTable cloudIdentity = $CloudIdentityTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8709,6 +8988,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     payments,
     holidayCache,
     customNonWorkingDays,
+    cloudIdentity,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -14944,6 +15224,183 @@ typedef $$CustomNonWorkingDaysTableProcessedTableManager =
       CustomNonWorkingDay,
       PrefetchHooks Function()
     >;
+typedef $$CloudIdentityTableCreateCompanionBuilder =
+    CloudIdentityCompanion Function({
+      required String deviceId,
+      Value<String?> session,
+      Value<bool> registered,
+      Value<int> rowid,
+    });
+typedef $$CloudIdentityTableUpdateCompanionBuilder =
+    CloudIdentityCompanion Function({
+      Value<String> deviceId,
+      Value<String?> session,
+      Value<bool> registered,
+      Value<int> rowid,
+    });
+
+class $$CloudIdentityTableFilterComposer
+    extends Composer<_$AppDatabase, $CloudIdentityTable> {
+  $$CloudIdentityTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get session => $composableBuilder(
+    column: $table.session,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get registered => $composableBuilder(
+    column: $table.registered,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CloudIdentityTableOrderingComposer
+    extends Composer<_$AppDatabase, $CloudIdentityTable> {
+  $$CloudIdentityTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get session => $composableBuilder(
+    column: $table.session,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get registered => $composableBuilder(
+    column: $table.registered,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CloudIdentityTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CloudIdentityTable> {
+  $$CloudIdentityTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get session =>
+      $composableBuilder(column: $table.session, builder: (column) => column);
+
+  GeneratedColumn<bool> get registered => $composableBuilder(
+    column: $table.registered,
+    builder: (column) => column,
+  );
+}
+
+class $$CloudIdentityTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CloudIdentityTable,
+          CloudIdentityData,
+          $$CloudIdentityTableFilterComposer,
+          $$CloudIdentityTableOrderingComposer,
+          $$CloudIdentityTableAnnotationComposer,
+          $$CloudIdentityTableCreateCompanionBuilder,
+          $$CloudIdentityTableUpdateCompanionBuilder,
+          (
+            CloudIdentityData,
+            BaseReferences<
+              _$AppDatabase,
+              $CloudIdentityTable,
+              CloudIdentityData
+            >,
+          ),
+          CloudIdentityData,
+          PrefetchHooks Function()
+        > {
+  $$CloudIdentityTableTableManager(_$AppDatabase db, $CloudIdentityTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CloudIdentityTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CloudIdentityTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CloudIdentityTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> deviceId = const Value.absent(),
+                Value<String?> session = const Value.absent(),
+                Value<bool> registered = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CloudIdentityCompanion(
+                deviceId: deviceId,
+                session: session,
+                registered: registered,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String deviceId,
+                Value<String?> session = const Value.absent(),
+                Value<bool> registered = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CloudIdentityCompanion.insert(
+                deviceId: deviceId,
+                session: session,
+                registered: registered,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$CloudIdentityTable, CloudIdentityData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CloudIdentityTable,
+                    CloudIdentityData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CloudIdentityTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CloudIdentityTable,
+      CloudIdentityData,
+      $$CloudIdentityTableFilterComposer,
+      $$CloudIdentityTableOrderingComposer,
+      $$CloudIdentityTableAnnotationComposer,
+      $$CloudIdentityTableCreateCompanionBuilder,
+      $$CloudIdentityTableUpdateCompanionBuilder,
+      (
+        CloudIdentityData,
+        BaseReferences<_$AppDatabase, $CloudIdentityTable, CloudIdentityData>,
+      ),
+      CloudIdentityData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -14970,4 +15427,6 @@ class $AppDatabaseManager {
       $$HolidayCacheTableTableManager(_db, _db.holidayCache);
   $$CustomNonWorkingDaysTableTableManager get customNonWorkingDays =>
       $$CustomNonWorkingDaysTableTableManager(_db, _db.customNonWorkingDays);
+  $$CloudIdentityTableTableManager get cloudIdentity =>
+      $$CloudIdentityTableTableManager(_db, _db.cloudIdentity);
 }
