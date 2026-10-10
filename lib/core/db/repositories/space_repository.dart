@@ -161,6 +161,21 @@ class SpaceRepository {
     SpacesCompanion(feedOrderMode: Value<FeedOrderMode>(mode)),
   );
 
+  /// A shared Space kept after it left the cloud becomes this user's own.
+  Future<int> keepAsOwn(String spaceId, String ownerId) =>
+      (db.update(
+        db.spaces,
+      )..where(($SpacesTable t) => t.id.equals(spaceId))).write(
+        SpacesCompanion(
+          ownerId: Value<String>(ownerId),
+          isArchived: const Value<bool>(false),
+        ),
+      );
+
+  /// Null means no limit.
+  Future<int> setMaxMembers(String spaceId, int? max) =>
+      _edit(spaceId, SpacesCompanion(maxMembers: Value<int?>(max)));
+
   Future<int> _edit(String spaceId, SpacesCompanion change) =>
       (db.update(
         db.spaces,

@@ -94,8 +94,30 @@ class SyncWorker {
     return channel.subscribe();
   }
 
-  /// Cloud Spaces gone from the server become local, read-only archives.
+  /// True when a cloud Space here is gone from the server.
+  Future<bool> anyVanished() async {
+    final List<Map<String, dynamic>> remote = await client
+        .from('spaces')
+        .select('id');
+    final Set<String> onServer = <String>{
+      for (final Map<String, dynamic> r in remote) r['id'] as String,
+    };
+    final List<Space> here =
+        await (db.select(db.spaces)..where(
+              ($SpacesTable t) =>
+                  t.storageMode.equalsValue(StorageMode.cloud) &
+                  t.serverReceivedAt.isNotNull(),
+            ))
+            .get();
+    return here.any((Space s) => !onServer.contains(s.id));
+  }
+
+  /// Spaces the last [syncAll] archived.
+  final List<String> vanished = <String>[];
+
+  /// Cloud Spaces gone from the server become local archives.
   Future<void> _archiveVanished(Set<String> onServer) async {
+    vanished.clear();
     final List<Space> gone =
         await (db.select(db.spaces)..where(
               ($SpacesTable t) =>
@@ -116,6 +138,7 @@ class SyncWorker {
           syncedUntil: Value<DateTime?>(null),
         ),
       );
+      vanished.add(space.id);
     }
   }
 

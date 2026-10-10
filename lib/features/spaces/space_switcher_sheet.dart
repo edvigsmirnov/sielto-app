@@ -8,6 +8,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/members/join_space_page.dart';
 import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/settings/space_settings_page.dart';
 import 'package:sielto/features/spaces/space_avatar.dart';
@@ -122,6 +123,17 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
             DashedButton(
               label: '+ ${tr('space.createTitle')}',
               onTap: _createSpace,
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (BuildContext _) => const JoinSpacePage(),
+                  ),
+                );
+              },
+              child: Text(tr('members.joinWithCode')),
             ),
             const SizedBox(height: SageSpace.md),
             const Hairline(),

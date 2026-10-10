@@ -147,3 +147,25 @@ class TickHintSeenController extends Notifier<bool> {
 
 final NotifierProvider<TickHintSeenController, bool> tickHintSeenProvider =
     NotifierProvider<TickHintSeenController, bool>(TickHintSeenController.new);
+
+class VanishedSpacesController extends Notifier<List<String>> {
+  @override
+  List<String> build() => ref.watch(localSettingsProvider).vanishedSpaces;
+
+  Future<void> add(Iterable<String> ids) => _set(<String>{...state, ...ids});
+
+  Future<void> remove(String id) =>
+      _set(state.where((String s) => s != id).toSet());
+
+  Future<void> _set(Set<String> ids) async {
+    await ref.read(localSettingsProvider).setVanishedSpaces(ids.toList());
+    state = ids.toList();
+  }
+}
+
+/// Shared Spaces that left the cloud; each asks keep or delete once.
+final NotifierProvider<VanishedSpacesController, List<String>>
+vanishedSpacesProvider =
+    NotifierProvider<VanishedSpacesController, List<String>>(
+      VanishedSpacesController.new,
+    );

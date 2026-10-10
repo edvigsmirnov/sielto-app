@@ -24,6 +24,7 @@ import 'package:sielto/features/security/passphrase_page.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/shell/main_shell.dart';
+import 'package:sielto/features/sync/vanished_prompt.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -199,8 +200,8 @@ class AppGate extends ConsumerWidget {
     return switch (resolved) {
       AsyncData<Space?>(value: final Space? space) =>
         space == null
-            ? const BudgetApp(home: OnboardingPage())
-            : const BudgetApp(home: MainShell()),
+            ? const BudgetApp(home: VanishedPrompt(child: OnboardingPage()))
+            : const BudgetApp(home: VanishedPrompt(child: MainShell())),
       AsyncError<Space?>() => const BudgetApp(home: _StartupError()),
       _ => const BudgetApp(home: _StartupLoading()),
     };

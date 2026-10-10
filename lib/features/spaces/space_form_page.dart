@@ -11,6 +11,7 @@ import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/members/join_space_page.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/spaces/starter_categories.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
@@ -166,6 +167,12 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
           body: tr('space.firstBody'),
           primaryLabel: tr('space.create'),
           onPrimary: _canSave ? _create : null,
+          secondaryLabel: tr('members.joinWithCode'),
+          onSecondary: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (BuildContext _) => const JoinSpacePage(),
+            ),
+          ),
           // Currency was asked in the previous step.
           children: _fields(locale, currency, showCurrency: false),
         ),

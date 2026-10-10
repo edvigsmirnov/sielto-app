@@ -2,12 +2,11 @@ import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
+import 'package:sielto/features/devices/code_card.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
@@ -92,39 +91,7 @@ class _AddDevicePageState extends ConsumerState<AddDevicePage> {
             _Stage.loading => const Center(child: LeafLoader()),
             _Stage.waiting => Column(
               children: <Widget>[
-                SelectableText(
-                  _code!,
-                  textAlign: TextAlign.center,
-                  style: text.displaySmall?.copyWith(
-                    fontFeatures: const <FontFeature>[
-                      FontFeature.tabularFigures(),
-                    ],
-                    letterSpacing: 4,
-                  ),
-                ),
-                const SizedBox(height: SageSpace.sm),
-                Text(
-                  tr('devices.expiresIn', args: <String>[_clock(left)]),
-                  style: text.bodySmall,
-                ),
-                const SizedBox(height: SageSpace.lg),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.copy_outlined, size: 18),
-                      label: Text(tr('devices.copy')),
-                      onPressed: () => _copy(_code!),
-                    ),
-                    const SizedBox(width: SageSpace.sm),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.share_outlined, size: 18),
-                      label: Text(tr('devices.share')),
-                      onPressed: () =>
-                          SharePlus.instance.share(ShareParams(text: _code)),
-                    ),
-                  ],
-                ),
+                CodeCard(code: _code!, left: left),
                 const SizedBox(height: SageSpace.xl),
                 Text(tr('devices.waiting'), style: text.bodyMedium),
               ],
@@ -156,15 +123,5 @@ class _AddDevicePageState extends ConsumerState<AddDevicePage> {
         ],
       ),
     );
-  }
-
-  static String _clock(Duration left) =>
-      '${left.inMinutes}:${(left.inSeconds % 60).toString().padLeft(2, '0')}';
-
-  Future<void> _copy(String code) async {
-    await Clipboard.setData(ClipboardData(text: code));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(tr('devices.copied'))));
   }
 }

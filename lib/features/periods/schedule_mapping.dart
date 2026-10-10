@@ -63,13 +63,13 @@ String scheduleSummary(IncomeRecurrenceRule rule) {
 
     case ScheduleType.boundaryDays:
       final BoundaryAnchor? anchor = rule.boundaryAnchor;
-      if (anchor == null) return tr('schedule.incomplete');
-      return tr(
-        'schedule.boundaryDays.summary',
-        namedArgs: <String, String>{
-          'count': '${rule.boundaryCount ?? '?'}',
-          'anchor': tr('boundary.${anchor.name}'),
-        },
+      final int? count = rule.boundaryCount;
+      if (anchor == null || count == null) return tr('schedule.incomplete');
+      return plural(
+        anchor == BoundaryAnchor.start
+            ? 'schedule.boundaryDays.fromStart'
+            : 'schedule.boundaryDays.fromEnd',
+        count,
       );
   }
 }

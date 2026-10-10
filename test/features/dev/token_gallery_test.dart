@@ -149,6 +149,6 @@ void main() {
     // Russian: 2 is "few", 5 is "many".
     expect(find.text('1 оплаченный расход исключён'), findsOneWidget);
     expect(find.text('2 оплаченных расхода исключены'), findsOneWidget);
-    expect(find.text('5 оплаченных расходов исключены'), findsOneWidget);
+    expect(find.text('5 оплаченных расходов исключено'), findsOneWidget);
   });
 }

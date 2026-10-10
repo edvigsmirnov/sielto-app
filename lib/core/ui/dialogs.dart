@@ -303,6 +303,7 @@ Future<String?> textDialog(
   String initial = '',
   String? hint,
   int? maxLength,
+  TextInputType? keyboardType,
 }) => showDialog<String>(
   context: context,
   builder: (BuildContext context) => _TextDialog(
@@ -310,6 +311,7 @@ Future<String?> textDialog(
     initial: initial,
     hint: hint,
     maxLength: maxLength,
+    keyboardType: keyboardType,
   ),
 );
 
@@ -319,12 +321,14 @@ class _TextDialog extends StatefulWidget {
     required this.initial,
     required this.hint,
     required this.maxLength,
+    required this.keyboardType,
   });
 
   final String title;
   final String initial;
   final String? hint;
   final int? maxLength;
+  final TextInputType? keyboardType;
 
   @override
   State<_TextDialog> createState() => _TextDialogState();
@@ -360,6 +364,7 @@ class _TextDialogState extends State<_TextDialog> {
           controller: _controller,
           autofocus: true,
           maxLength: widget.maxLength,
+          keyboardType: widget.keyboardType,
           textCapitalization: TextCapitalization.words,
           decoration: InputDecoration(hintText: widget.hint, hintMaxLines: 2),
           onSubmitted: (String value) => Navigator.of(context).pop(value),

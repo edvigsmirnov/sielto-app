@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +15,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
+import 'package:sielto/features/members/members_page.dart';
 import 'package:sielto/features/spaces/space_avatar.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
@@ -35,10 +39,30 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   bool? _currencyEditable;
   bool _moving = false;
 
+  /// Null until the cloud answers.
+  int? _memberCount;
+  bool _countFailed = false;
+
   @override
   void initState() {
     super.initState();
     _checkCurrency();
+    unawaited(_countMembers(widget.space));
+  }
+
+  Future<void> _countMembers(Space space) async {
+    if (space.storageMode != StorageMode.cloud ||
+        space.ownerId != ref.read(userIdProvider)) {
+      return;
+    }
+    final ({CloudResult result, List<Member> members}) loaded = await ref
+        .read(syncProvider.notifier)
+        .members(space.id);
+    if (!mounted) return;
+    setState(() {
+      _countFailed = loaded.result != CloudResult.done;
+      if (!_countFailed) _memberCount = loaded.members.length;
+    });
   }
 
   @override
@@ -68,6 +92,9 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     final bool isCurrent = ref.watch(currentSpaceProvider)?.id == space.id;
     final SpaceRepository repo = ref.watch(repositoriesProvider).spaces;
     final String locale = context.locale.toString();
+    final bool owner = space.ownerId == ref.watch(userIdProvider);
+    final bool shared =
+        space.storageMode == StorageMode.cloud && !space.isArchived;
 
     return Scaffold(
       backgroundColor: context.sage.surface,
@@ -186,6 +213,40 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           ),
           const SizedBox(height: SageSpace.lg),
 
+          if (shared && owner) ...<Widget>[
+            LabelledField(
+              label: tr('members.limit'),
+              child: _LimitStepper(
+                limit: space.maxMembers,
+                min: _memberCount ?? 1,
+                enabled: _memberCount != null,
+                onChanged: (int? n) => _setLimit(space, n),
+              ),
+            ),
+            Text(
+              tr(
+                _memberCount == null
+                    ? 'storage.noNetwork'
+                    : 'members.limitHint',
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: SageSpace.md),
+          ],
+          if (shared) ...<Widget>[
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(tr('members.title')),
+              trailing: const Icon(Icons.chevron_right, size: 18),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (BuildContext _) => MembersPage(spaceId: space.id),
+                ),
+              ),
+            ),
+            const Hairline(),
+          ],
+
           // Categories and income rules are for the open Space only.
           if (isCurrent) ...<Widget>[
             ListTile(
@@ -222,11 +283,17 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             tr('space.archiveBody'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          if (space.ownerId == ref.watch(userIdProvider)) ...<Widget>[
+          if (owner) ...<Widget>[
             const SizedBox(height: SageSpace.lg),
             _DangerButton(
               label: tr('space.delete'),
               onTap: () => _delete(space),
+            ),
+          ] else if (shared) ...<Widget>[
+            const SizedBox(height: SageSpace.lg),
+            _DangerButton(
+              label: tr('members.leave'),
+              onTap: () => _leave(space),
             ),
           ],
         ],
@@ -267,6 +334,9 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     if (!mounted) return;
     setState(() => _moving = false);
     _tellIfFailed(result);
+    if (result == CloudResult.done && mode == StorageMode.cloud) {
+      unawaited(_countMembers(space.copyWith(storageMode: StorageMode.cloud)));
+    }
   }
 
   void _tellIfFailed(CloudResult result) {
@@ -308,6 +378,44 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  Future<void> _setLimit(Space space, int? max) async {
+    if (max != null && max < (_memberCount ?? 1)) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(tr('members.belowMembers'))));
+      return;
+    }
+    await ref.read(repositoriesProvider).spaces.setMaxMembers(space.id, max);
+    unawaited(ref.read(syncProvider.notifier).syncNow());
+  }
+
+  Future<void> _leave(Space space) async {
+    final bool confirmed = await confirmDialog(
+      context,
+      title: tr(
+        'members.leaveTitle',
+        namedArgs: <String, String>{'title': space.title},
+      ),
+      body: tr('members.leaveBody'),
+      confirmLabel: tr('members.leave'),
+      isDestructive: true,
+    );
+    if (!confirmed) return;
+    final bool wasOpen = ref.read(currentSpaceIdProvider) == space.id;
+    if (wasOpen) await ref.read(currentSpaceIdProvider.notifier).select(null);
+    final bool left = await ref
+        .read(syncProvider.notifier)
+        .leaveSpace(space.id);
+    if (!mounted) return;
+    if (!left) {
+      if (wasOpen) {
+        await ref.read(currentSpaceIdProvider.notifier).select(space.id);
+      }
+      _tellIfFailed(CloudResult.noNetwork);
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
   Future<void> _archive(Space space) async {
     final bool confirmed = await confirmDialog(
       context,
@@ -328,6 +436,77 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       await ref.read(currentSpaceIdProvider.notifier).select(null);
     }
     if (mounted) Navigator.of(context).pop();
+  }
+}
+
+/// The member limit: minus, the number (tap to type), plus, and no limit.
+class _LimitStepper extends StatelessWidget {
+  const _LimitStepper({
+    required this.limit,
+    required this.min,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  /// Null means no limit.
+  final int? limit;
+  final int min;
+  final bool enabled;
+  final ValueChanged<int?> onChanged;
+
+  Future<void> _type(BuildContext context, int value) async {
+    final int? typed = int.tryParse(
+      (await textDialog(
+            context,
+            title: tr('members.limit'),
+            initial: '$value',
+            keyboardType: TextInputType.number,
+          )) ??
+          '',
+    );
+    if (typed != null) onChanged(typed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool unlimited = limit == null;
+    final int value = math.max(limit ?? min, min);
+    final bool editable = enabled && !unlimited;
+    return Column(
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            IconButton.outlined(
+              tooltip: tr('members.fewer'),
+              icon: const Icon(Icons.remove),
+              onPressed: editable && value > min
+                  ? () => onChanged(value - 1)
+                  : null,
+            ),
+            Expanded(
+              child: TextButton(
+                onPressed: editable ? () => _type(context, value) : null,
+                child: Text(
+                  unlimited ? '∞' : '$value',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+            ),
+            IconButton.outlined(
+              tooltip: tr('members.more'),
+              icon: const Icon(Icons.add),
+              onPressed: editable ? () => onChanged(value + 1) : null,
+            ),
+          ],
+        ),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text(tr('members.noLimit')),
+          value: unlimited,
+          onChanged: enabled ? (bool on) => onChanged(on ? null : value) : null,
+        ),
+      ],
+    );
   }
 }
 

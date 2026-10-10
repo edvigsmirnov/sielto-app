@@ -37,8 +37,8 @@
     "welcomeTitle": "Welcome",
     "welcomeBody": "No account, no email, no password. Your money stays on this device unless you decide otherwise.",
     "fieldName": "Name",
-    "nameHint": "What should we call you? (optional)",
-    "currencyWhy": "We picked this from your device. Change it now if it's wrong. Later you can only change it while a Space is still empty.",
+    "nameHint": "What's your name? (optional)",
+    "currencyWhy": "Taken from your device settings. If it's wrong, change it now. Later you can only change it in an empty Space.",
     "profileTitle": "Let's get you set up",
     "profileWhy": "You can change any of this later in Settings."
   },
@@ -71,7 +71,7 @@
     "toCloudTitle": "Move to the cloud?",
     "toCloudBody": "\"{title}\" will sync across your devices. This device keeps its copy.",
     "toLocalTitle": "Keep on this device only?",
-    "toLocalBody": "\"{title}\" leaves the cloud. Your other devices keep a read-only copy in Archived.",
+    "toLocalBody": "\"{title}\" leaves the cloud. Your other devices and members will be asked whether to keep a copy.",
     "offlineMode": "Fully offline is on. Turn it off in Settings to use the cloud.",
     "noNetwork": "Can't reach the cloud. Check your connection and try again.",
     "unlinked": "This device is no longer linked, so the cloud is off here."
@@ -83,7 +83,7 @@
     "fieldTitle": "Name",
     "titleHint": "Family, Trip, Freelance…",
     "fieldMode": "Type",
-    "modeIsPermanent": "You choose this once. Each type works out money its own way, so a Space keeps the type it started with.",
+    "modeIsPermanent": "You choose this once: each type works out money its own way, so it can't be changed later.",
     "fieldCurrency": "Currency",
     "currencyFreezes": "You can change it until the first entry is added.",
     "currencyFrozen": "This Space already has entries, so its currency stays. A new Space can use another one.",
@@ -102,7 +102,7 @@
     "search": "Search Spaces",
     "archived": "Archived ({})",
     "unarchive": "Unarchive",
-    "deleteConfirmCloud": "This erases everything in \"{title}\" here and in the cloud, for good. Your other devices keep a read-only copy. Type its name to confirm."
+    "deleteConfirmCloud": "This erases everything in \"{title}\" here and in the cloud, for good. Your other devices and members will be asked whether to keep a copy. Type its name to confirm."
   },
   "spaceSettings": {
     "title": "Space settings"
@@ -124,7 +124,7 @@
     "language": "Language",
     "data": "Data",
     "spaces": "Spaces",
-    "accountSettings": "Account settings",
+    "accountSettings": "General settings",
     "network": "Network",
     "fullyOffline": "Fully offline",
     "fullyOfflineHint": "No feature reaches the network while this is on.",
@@ -202,7 +202,7 @@
       "notDone": "Mark as not done",
       "category": "Change category",
       "deleted": "Deleted: {count}",
-      "skipped": "Left as they were, their period is closed: {count}"
+      "skipped": "Unchanged, because their period is closed: {count}"
     },
     "filter": {
       "title": "Search and filter",
@@ -254,7 +254,7 @@
     "uncertain": "Uncertain",
     "oneOff": "One-off",
     "recurring": "Repeating",
-    "recurringPreview": "Takes {now} now, reserves {total} across {count} payments",
+    "recurringPreview": "Now: {now}. Total: {total}, payments: {count}",
     "dateOutOfRange": "That's a long way off. Double-check the date; you can still save it.",
     "mandatoryConfirmTitle": "This is a mandatory payment",
     "mandatoryConfirm": {
@@ -353,7 +353,7 @@
     "landsIn": "Joins the cycle {period}",
     "regenerate": "Reset to schedule",
     "regenerateTitle": "Reset \"{title}\" to its schedule?",
-    "regenerateBody": "We'll set out the upcoming dates for \"{title}\" from its schedule again. Dates you deleted come back, and changed amounts or names go back to the usual ones. Anything already received or in a closed period stays as it is.",
+    "regenerateBody": "The upcoming dates of \"{title}\" are set out from its schedule again. Dates you deleted come back, and changed amounts or names go back to the usual ones. Anything already received or in a closed period stays as it is.",
     "regenerated": {
       "one": "{} date restored",
       "other": "{} dates restored"
@@ -431,13 +431,13 @@
     "short": "Runs short before your next income"
   },
   "decryption": {
-    "title": "We can't open your data right now",
+    "title": "Your data can't be opened right now",
     "body": "Your data is still here, but the key that opens it is missing. It usually happens after clearing app data or moving to a new phone.",
     "enterRecoveryKey": "Enter Recovery Key",
     "restoreFromBackup": "Restore from backup",
     "startOver": "Start over",
     "confirmTitle": "Delete the unreadable data?",
-    "confirmBody": "The database stays unreadable without the key. Starting over deletes it and opens onboarding. This cannot be undone.",
+    "confirmBody": "The data stays unreadable without the key. Starting over deletes it and runs the setup again. This can't be undone.",
     "confirmAction": "Delete and start over",
     "noRecoveryKey": "No Recovery Key was set on this device"
   },
@@ -451,7 +451,7 @@
     "boundaryEnd": "Counting from",
     "boundaryCount": "Number of days",
     "shortMonthHint": "In short months, the last day of the month.",
-    "latestDayRule": "We plan for the latest day, so you never count on money that hasn't arrived.",
+    "latestDayRule": "Plans use the latest possible day, so you never count on money that hasn't arrived.",
     "rangeInverted": "The last day cannot come before the first.",
     "incomplete": "Schedule incomplete",
     "fixedDate": {
@@ -467,14 +467,21 @@
     "dateRange": {
       "name": "A range of dates",
       "hint": "Somewhere between two days of the month.",
-      "summary": "Between the {start}th and the {end}th"
+      "summary": "Between day {start} and day {end}"
     },
     "boundaryDays": {
       "name": "Days from the month edge",
       "hint": "The first or last few days of the month.",
-      "summary": "{count} days from the {anchor} of the month"
+      "fromStart": {
+        "one": "First {} day of the month",
+        "other": "First {} days of the month"
+      },
+      "fromEnd": {
+        "one": "Last {} day of the month",
+        "other": "Last {} days of the month"
+      }
     },
-    "uncertaintyNote": "If the date falls on a weekend or a holiday, the anchor moves to the nearest working day — forward, unless that would leave the month."
+    "uncertaintyNote": "If the date falls on a weekend or a holiday, the income is expected on the nearest working day after it, or before it if that would be next month."
   },
   "ordinal": {
     "first": "First",
@@ -514,7 +521,7 @@
     "noAnchorTitle": "Add an anchor income to start planning periods",
     "noAnchorBody": "Without a regular income, Flow or Budget may suit better — but you can carry on here.",
     "amountUnknownTitle": "Income expected, amount not specified",
-    "amountUnknownBody": "Your spending is all counted. We'll show what's left once you know the amount.",
+    "amountUnknownBody": "Your spending is all counted. What's left shows up once you know the amount.",
     "setAmount": "Set the amount"
   },
   "holidays": {
@@ -523,7 +530,7 @@
     "addDay": "Add a date",
     "blockedByOffline": "Turned off by fully offline mode.",
     "consentAllow": "Allow",
-    "consentBody": "The list comes from the public API at date.nager.at. Without it the app uses the holidays shipped with it, weekends and your own non-working days.",
+    "consentBody": "The list comes from the open service date.nager.at. Without it, the app uses its built-in holidays, weekends and your own non-working days.",
     "consentTitle": "Download public holidays?",
     "country": "Country",
     "countryHint": "Decides which public holidays apply where a Space has not set its own.",
@@ -532,24 +539,24 @@
     "dayTitle": "Name this day",
     "dayTitleHint": "Company day, moved weekend, …",
     "download": "Download the holiday list",
-    "incomplete": "This year's holidays are not loaded — the window may still narrow.",
+    "incomplete": "This year's holidays aren't loaded yet, so income dates may still shift.",
     "markDay": "Mark a non-working day",
     "markDayHint": "Affects when income is expected, nothing else.",
     "noCountry": "No country",
     "noCountryBody": "Only weekends and your own non-working days count.",
-    "noCustomDays": "You haven't added any days off yet.",
+    "noCustomDays": "You haven't added any non-working days yet.",
     "notLoaded": "Not loaded for this year yet.",
-    "needsDownload": "No offline list ships for this country. Turn on the download above to fetch it.",
+    "needsDownload": "This country has no built-in list. Turn on the download above to get it.",
     "publicTitle": "Public holidays",
     "searchCountry": "Search",
-    "source": "From the public API at date.nager.at.",
+    "source": "From the open service date.nager.at.",
     "title": "Weekends and holidays"
   },
   "freeze": {
     "addNote": "Add a note",
-    "addNoteHint": "Appended and dated. What is already written stays.",
+    "addNoteHint": "Added with today's date. What's already written stays.",
     "formNotice": "This period is closed, so its numbers stay as they are. You can still add a note.",
-    "frozenBody": "The numbers here are settled. You can still change categories and add notes.",
+    "frozenBody": "The numbers here are final. You can still change categories and add notes.",
     "frozenTitle": "Period closed",
     "reasonHint": "Reason",
     "refused": "This period is closed, so that can't change any more.",
@@ -637,7 +644,7 @@
       "one": "All Spaces ({})",
       "other": "All Spaces ({})"
     },
-    "exportOne": "Only “{}”",
+    "exportOne": "Only \"{}\"",
     "whereTo": "Where should it go?",
     "toDevice": "Save to this device",
     "share": "Share or send",
@@ -647,15 +654,15 @@
     "alreadyHere": "Already on this device. What should happen to it?",
     "willAdd": "New on this device. It will be added.",
     "choice": {
-      "replace": "Replace local",
+      "replace": "Replace the one here",
       "copy": "Import as copy",
       "skip": "Skip"
     },
     "restoreAction": "Restore",
     "restored": {
       "zero": "Nothing restored",
-      "one": "Welcome back. {} Space restored.",
-      "other": "Welcome back. {} Spaces restored."
+      "one": "Welcome back! {} Space restored.",
+      "other": "Welcome back! {} Spaces restored."
     },
     "problem": {
       "notABackup": "This is not a Sielto backup",
@@ -668,7 +675,7 @@
   "recovery": {
     "title": "Recovery Key",
     "changeTitle": "Change Recovery Key",
-    "why": "A password only you know. It protects your backups and gets you back in if this device loses its encryption key. Keep it somewhere safe, like a password manager or on paper. Without it, nobody can recover your data, not even us.",
+    "why": "A password only you know. It protects your backups and gets you back in if this device loses its encryption key. Keep it somewhere safe, like a password manager or on paper. Without it, nobody can recover your data.",
     "fieldKey": "Password",
     "fieldRepeat": "Repeat",
     "fieldCurrent": "Current Recovery Key",
@@ -732,7 +739,7 @@
     "setTitle": "Set a password to protect your data",
     "enterTitle": "Enter your password",
     "forgotTitle": "Reset the password",
-    "why": "This computer has no place to store keys safely, so we'll ask for this password each time you start. If you forget it, your Recovery Key gets you back in.",
+    "why": "This computer has no place to store keys safely, so the app asks for this password each time it starts. If you forget it, your Recovery Key gets you back in.",
     "noRecovery": "No Recovery Key was set on this device, so the data cannot be opened without the password.",
     "wrong": "Wrong password",
     "forgot": "Forgot the password?"
@@ -753,7 +760,7 @@
     "kb": "{} KB"
   },
   "info": {
-    "spent": "What you've paid for this goal so far. Planned payments count once you mark them paid.",
+    "spent": "What you've spent on this goal. Planned payments count once you mark them paid.",
     "dot": {
       "covered": "The green dot: covered, with room to spare.",
       "exact": "The orange dot: covered, but only just.",
@@ -782,7 +789,7 @@
     "afterBills": "What's left if you pay only the bills you can't skip, like rent and loans, and nothing else.",
     "billsAdvice": "The bills alone don't fit this period. They come first, so start with them.",
     "totals": "Every expense here: what you've already paid and what's still to go.",
-    "balance": "The money you told us you have. Tap it whenever it changes.",
+    "balance": "The money you said you have. Tap it whenever it changes.",
     "balanceNote": "Expenses you'd already paid by then aren't subtracted again.",
     "perDay": "Your planned spending for the next 10 days, spread evenly across them.",
     "plannedFor": {
@@ -804,7 +811,7 @@
     "addBody": "On the new device, tap \"I already use Sielto\" and enter this code.",
     "expiresIn": "Valid for {}",
     "waiting": "Waiting for the other device…",
-    "linked": "Your new device is linked. Your cloud Spaces are on their way.",
+    "linked": "Your new device is linked. Your cloud Spaces will appear on it in a few seconds.",
     "expired": "This code has expired.",
     "newCode": "New code",
     "copy": "Copy",
@@ -813,8 +820,8 @@
     "joinTitle": "Link this device",
     "joinBody": "On a device that already uses Sielto, open Settings › Your devices › Add a device and enter the code it shows.",
     "codeField": "Code",
-    "join": "Join",
-    "joining": "Joining…",
+    "join": "Link",
+    "joining": "Linking…",
     "wrongCode": "That code didn't work. Check it, or make a new one on the other device.",
     "tooManyAttempts": "Too many tries for now. Wait a minute, then try again.",
     "keyLater": "Your other device didn't send the Recovery Key in time. Enter it in Settings › Backup to turn on backups here.",
@@ -840,5 +847,53 @@
     "unlinkOthersBody": "For a lost or sold device. Your cloud Spaces disappear from them the next time they're online.",
     "tryAgain": "Try again",
     "wasUnlinked": "This device was unlinked, so your cloud Spaces were removed from it."
+  },
+  "members": {
+    "title": "Members",
+    "limit": "Member limit",
+    "noLimit": "No limit",
+    "limitHint": "How many people can be in this Space, you included.",
+    "belowMembers": "More people are already in this Space. Remove someone first.",
+    "count": {
+      "one": "{} person",
+      "other": "{} people"
+    },
+    "countOf": "{} of {} places taken",
+    "you": "{} (you)",
+    "noName": "No name yet",
+    "owner": "Space creator",
+    "actions": "Member options",
+    "makeOwner": "Make creator",
+    "ownerTitle": "Make {name} the creator?",
+    "ownerBody": "The new creator manages members and can delete the Space. You stay in it as a member.",
+    "remove": "Remove",
+    "removeTitle": "Remove {name}?",
+    "removeBody": "They lose access at once and will be asked whether to keep a copy.",
+    "invite": "Invite someone",
+    "inviteTitle": "Invite",
+    "inviteBody": "Send this code to the person you're inviting. In Sielto, they tap \"Join with a code\" and enter it.",
+    "revoke": "Cancel this invite",
+    "full": "No places left. To invite more people, raise the member limit in the Space settings.",
+    "joinWithCode": "Join with a code",
+    "joinTitle": "Join a Space",
+    "joinBody": "Enter the code from the Space's creator.",
+    "wrongCode": "That code didn't work. Check it, or ask for a new one.",
+    "joinFull": "This Space has no places left. Ask its creator to raise the member limit.",
+    "nameTitle": "Your name",
+    "nameHint": "People in the Space will see it",
+    "leave": "Leave this Space",
+    "leaveTitle": "Leave \"{title}\"?",
+    "leaveBody": "It disappears from your devices. To come back, you'll need a new invite.",
+    "fewer": "Fewer",
+    "more": "More",
+    "localName": "Member name",
+    "localRole": "Role",
+    "localRoleHint": "Partner, flatmate, accountant…",
+    "labelsPrivate": "Only you see these on your devices."
+  },
+  "vanished": {
+    "title": "The Space \"{title}\" is no longer shared",
+    "body": "You were removed from it, or it was moved off the cloud or deleted. You can keep a copy on this device as your own Space, or delete it.",
+    "keep": "Keep a copy"
   }
 }

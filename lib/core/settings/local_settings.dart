@@ -38,6 +38,7 @@ class LocalSettings {
   static const String _keyDriveEmail = 'drive_email';
   static const String _keyDriveLastBackup = 'drive_last_backup';
   static const String _keyJoinedAccount = 'joined_account';
+  static const String _keyVanished = 'vanished_spaces';
 
   final SharedPreferences _prefs;
 
@@ -49,6 +50,12 @@ class LocalSettings {
   Future<void> adoptUserId(String id) async {
     await _prefs.setString(_keyUserId, id);
     _userId = id;
+  }
+
+  /// A new identity, as on a fresh install.
+  Future<void> startOver() async {
+    await adoptUserId(_uuid.v4());
+    await _prefs.remove(_keyJoinedAccount);
   }
 
   /// Creates the user id on first launch.
@@ -67,6 +74,13 @@ class LocalSettings {
   bool get joinedAccount => _prefs.getBool(_keyJoinedAccount) ?? false;
 
   Future<void> setJoinedAccount() => _prefs.setBool(_keyJoinedAccount, true);
+
+  /// Shared Spaces that left the cloud, waiting for keep or delete.
+  List<String> get vanishedSpaces =>
+      _prefs.getStringList(_keyVanished) ?? <String>[];
+
+  Future<void> setVanishedSpaces(List<String> ids) =>
+      _prefs.setStringList(_keyVanished, ids);
 
   /// Null when skipped at onboarding.
   String? get name => _prefs.getString(_keyName);

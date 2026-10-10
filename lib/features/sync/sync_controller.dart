@@ -16,9 +16,22 @@ import 'package:supabase/supabase.dart';
 
 enum CloudResult { done, offlineMode, noNetwork, unlinked }
 
-enum JoinResult { joined, wrongCode, tooManyAttempts, offlineMode, noNetwork }
+enum JoinResult {
+  joined,
+  wrongCode,
+  tooManyAttempts,
+  spaceFull,
+  offlineMode,
+  noNetwork,
+  unlinked,
+}
 
 typedef SyncState = ({bool unlinked, DateTime? lastSync});
+
+typedef Member = ({String userId, String? name, bool owner, bool me});
+
+/// What this user calls another member; visible to no one else.
+typedef MemberLabel = ({String? name, String? role});
 
 typedef LinkedDevice = ({
   String id,
@@ -40,6 +53,7 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   bool _queued = false;
   Timer? _debounce;
   Timer? _tick;
+  String? _uploadedName;
   RealtimeChannel? _channel;
 
   AppDatabase get _db => ref.read(databaseProvider);
@@ -105,7 +119,9 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       if (await _identity.ensure() == CloudAccess.unlinked ||
           !await _worker.touch()) {
         await _unlinked();
+        return;
       }
+      if (await _worker.anyVanished()) _soon();
     } on Exception catch (e) {
       debugPrint('sync: $e');
     }
@@ -128,6 +144,10 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
           await _unlinked();
           return;
         }
+        if (_worker.vanished.isNotEmpty) {
+          await ref.read(vanishedSpacesProvider.notifier).add(_worker.vanished);
+        }
+        await _uploadProfile();
         state = (unlinked: false, lastSync: DateTime.now());
       } on Exception catch (e) {
         debugPrint('sync: $e');
@@ -153,6 +173,11 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       }
     }
     await _identity.forget();
+    // An empty device starts over, as a fresh install.
+    if ((await _db.select(_db.spaces).get()).isEmpty) {
+      await ref.read(localSettingsProvider).startOver();
+      ref.invalidate(userIdProvider);
+    }
   }
 
   void _soon() {
@@ -303,6 +328,258 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     }
     await _identity.forget();
     return CloudResult.done;
+  });
+
+  /// Makes the name visible to people who share a Space with this user.
+  Future<void> _uploadProfile() async {
+    final String? name = ref.read(nameProvider)?.trim();
+    if (name == null || name.isEmpty || name == _uploadedName) return;
+    await _client.from('user_profiles').upsert(<String, String>{
+      'user_id': ref.read(userIdProvider),
+      'nickname': name,
+      'client_edited_at': DateTime.now().toUtc().toIso8601String(),
+    });
+    _uploadedName = name;
+  }
+
+  /// A 15-minute code for joining [spaceId]; null with [full] when there is
+  /// no room, or with a failure result.
+  Future<({CloudResult result, String? code, bool full})> createInvite(
+    String spaceId,
+  ) => _serial(() async {
+    final CloudResult signedIn = await _signIn();
+    if (signedIn != CloudResult.done) {
+      return (result: signedIn, code: null, full: false);
+    }
+    try {
+      await _uploadProfile();
+      final String code = await _client.rpc<String>(
+        'create_space_invite',
+        params: <String, String>{'p_space_id': spaceId},
+      );
+      return (result: CloudResult.done, code: code, full: false);
+    } on PostgrestException catch (e) {
+      return (
+        result: e.message == 'space_full'
+            ? CloudResult.done
+            : CloudResult.noNetwork,
+        code: null,
+        full: e.message == 'space_full',
+      );
+    } on Exception {
+      return (result: CloudResult.noNetwork, code: null, full: false);
+    }
+  });
+
+  /// Drops the unused code before anyone joins with it.
+  Future<bool> revokeInvites(String spaceId) => _online(
+    () => _client.from('space_invites').delete().eq('space_id', spaceId),
+  );
+
+  /// Joins someone else's Space and brings it here. Returns its id.
+  Future<({JoinResult result, String? spaceId})> joinSpace(String code) async {
+    if (ref.read(offlineModeProvider)) {
+      return (result: JoinResult.offlineMode, spaceId: null);
+    }
+    final ({JoinResult result, String? spaceId}) joined = await _serial(
+      () async {
+        final CloudResult signedIn = await _signIn();
+        if (signedIn != CloudResult.done) {
+          return (
+            result: signedIn == CloudResult.unlinked
+                ? JoinResult.unlinked
+                : JoinResult.noNetwork,
+            spaceId: null,
+          );
+        }
+        try {
+          await _uploadProfile();
+          final String? spaceId = await _client.rpc<String?>(
+            'join_space_by_token',
+            params: <String, String>{'p_code': code.trim()},
+          );
+          return (
+            result: spaceId == null ? JoinResult.wrongCode : JoinResult.joined,
+            spaceId: spaceId,
+          );
+        } on PostgrestException catch (e) {
+          return (
+            result: switch (e.message) {
+              'too_many_attempts' => JoinResult.tooManyAttempts,
+              'space_full' => JoinResult.spaceFull,
+              _ => JoinResult.noNetwork,
+            },
+            spaceId: null,
+          );
+        } on Exception {
+          return (result: JoinResult.noNetwork, spaceId: null);
+        }
+      },
+    );
+    if (joined.result == JoinResult.joined) await syncNow();
+    return joined;
+  }
+
+  /// Everyone in [spaceId], the owner first.
+  Future<({CloudResult result, List<Member> members})> members(
+    String spaceId,
+  ) => _serial(() async {
+    final CloudResult signedIn = await _signIn();
+    if (signedIn != CloudResult.done) {
+      return (result: signedIn, members: const <Member>[]);
+    }
+    try {
+      final Map<String, dynamic> space = await _client
+          .from('spaces')
+          .select('owner_id')
+          .eq('id', spaceId)
+          .single();
+      final List<Map<String, dynamic>> rows = await _client
+          .from('space_members')
+          .select('user_id')
+          .eq('space_id', spaceId)
+          .order('joined_at');
+      final List<String> ids = <String>[
+        for (final Map<String, dynamic> r in rows) r['user_id'] as String,
+      ];
+      final List<Map<String, dynamic>> profiles = await _client
+          .from('user_profiles')
+          .select('user_id, nickname')
+          .inFilter('user_id', ids);
+      final Map<String, String> names = <String, String>{
+        for (final Map<String, dynamic> p in profiles)
+          p['user_id'] as String: p['nickname'] as String,
+      };
+      final String me = ref.read(userIdProvider);
+      final String ownerId = space['owner_id'] as String;
+      final List<Member> members = <Member>[
+        for (final String id in ids)
+          (userId: id, name: names[id], owner: id == ownerId, me: id == me),
+      ]..sort((Member a, Member b) => (b.owner ? 1 : 0) - (a.owner ? 1 : 0));
+      return (result: CloudResult.done, members: members);
+    } on Exception {
+      return (result: CloudResult.noNetwork, members: const <Member>[]);
+    }
+  });
+
+  /// This user's private labels in [spaceId], by member. Pending local edits
+  /// go up first; the later edit wins.
+  Future<Map<String, MemberLabel>> labels(String spaceId) => _serial(() async {
+    final String me = ref.read(userIdProvider);
+    if (await _signIn() == CloudResult.done) {
+      try {
+        final List<MemberLocalLabel> pending =
+            await (_db.select(_db.memberLocalLabels)..where(
+                  ($MemberLocalLabelsTable t) =>
+                      t.spaceId.equals(spaceId) &
+                      t.syncStatus.equalsValue(SyncStatus.pending),
+                ))
+                .get();
+        for (final MemberLocalLabel l in pending) {
+          await _client.from('member_local_labels').upsert(_labelRow(l));
+        }
+        final List<Map<String, dynamic>> remote = await _client
+            .from('member_local_labels')
+            .select()
+            .eq('space_id', spaceId)
+            .eq('viewer_user_id', me);
+        await _db.batch((Batch b) {
+          for (final Map<String, dynamic> r in remote) {
+            b.insert(
+              _db.memberLocalLabels,
+              MemberLocalLabelsCompanion.insert(
+                spaceId: spaceId,
+                viewerUserId: me,
+                targetUserId: r['target_user_id'] as String,
+                localName: Value<String?>(r['local_name'] as String?),
+                localRole: Value<String?>(r['local_role'] as String?),
+                clientEditedAt: DateTime.parse(r['client_edited_at'] as String),
+                syncStatus: const Value<SyncStatus>(SyncStatus.synced),
+              ),
+              mode: InsertMode.insertOrReplace,
+            );
+          }
+        });
+      } on Exception catch (e) {
+        debugPrint('labels: $e');
+      }
+    }
+    final List<MemberLocalLabel> rows =
+        await (_db.select(_db.memberLocalLabels)..where(
+              ($MemberLocalLabelsTable t) =>
+                  t.spaceId.equals(spaceId) & t.viewerUserId.equals(me),
+            ))
+            .get();
+    return <String, MemberLabel>{
+      for (final MemberLocalLabel l in rows)
+        l.targetUserId: (name: l.localName, role: l.localRole),
+    };
+  });
+
+  /// Saved here at once; uploaded when the cloud is reachable.
+  Future<void> setLabel(
+    String spaceId,
+    String targetUserId,
+    MemberLabel label,
+  ) async {
+    String? clean(String? s) => s == null || s.trim().isEmpty ? null : s.trim();
+    final MemberLocalLabelsCompanion row = MemberLocalLabelsCompanion.insert(
+      spaceId: spaceId,
+      viewerUserId: ref.read(userIdProvider),
+      targetUserId: targetUserId,
+      localName: Value<String?>(clean(label.name)),
+      localRole: Value<String?>(clean(label.role)),
+      clientEditedAt: DateTime.now().toUtc(),
+      syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+    );
+    await _db
+        .into(_db.memberLocalLabels)
+        .insert(row, mode: InsertMode.insertOrReplace);
+    await labels(spaceId);
+  }
+
+  static Map<String, Object?> _labelRow(MemberLocalLabel l) =>
+      <String, Object?>{
+        'space_id': l.spaceId,
+        'viewer_user_id': l.viewerUserId,
+        'target_user_id': l.targetUserId,
+        'local_name': l.localName,
+        'local_role': l.localRole,
+        'client_edited_at': l.clientEditedAt.toUtc().toIso8601String(),
+      };
+
+  Future<bool> removeMember(String spaceId, String userId) => _online(
+    () => _client.rpc<void>(
+      'remove_member',
+      params: <String, String>{'p_space_id': spaceId, 'p_user_id': userId},
+    ),
+  );
+
+  /// The new owner arrives here with the next sync.
+  Future<bool> transferOwnership(String spaceId, String userId) async {
+    final bool done = await _online(
+      () => _client.rpc<void>(
+        'transfer_ownership',
+        params: <String, String>{'p_space_id': spaceId, 'p_user_id': userId},
+      ),
+    );
+    if (done) await syncNow();
+    return done;
+  }
+
+  /// Leaves someone else's Space; its copy here goes too.
+  Future<bool> leaveSpace(String spaceId) => _serial(() async {
+    if (await _signIn() != CloudResult.done) return false;
+    try {
+      await _client.rpc<void>(
+        'leave_space',
+        params: <String, String>{'p_space_id': spaceId},
+      );
+    } on Exception {
+      return false;
+    }
+    await ref.read(repositoriesProvider).spaces.deleteForever(spaceId);
+    return true;
   });
 
   /// This account's devices, most recently seen first.
