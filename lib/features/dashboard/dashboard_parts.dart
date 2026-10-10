@@ -369,7 +369,11 @@ class NearestIncomeCard extends StatelessWidget {
 
     if (row == null) {
       return SageCard(
-        child: Text(tr('dashboard.noUpcomingIncome'), style: text.bodyMedium),
+        child: Text(
+          tr('dashboard.noUpcomingIncome'),
+          textAlign: TextAlign.center,
+          style: text.bodyMedium,
+        ),
       );
     }
 

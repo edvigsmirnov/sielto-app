@@ -233,7 +233,8 @@ class ChoiceGrid extends StatelessWidget {
     super.key,
   });
 
-  final List<(String, VoidCallback)> choices;
+  /// A null callback disables that choice.
+  final List<(String, VoidCallback?)> choices;
 
   /// Every choice in the danger colour.
   final bool destructive;
@@ -249,7 +250,7 @@ class ChoiceGrid extends StatelessWidget {
     final ButtonStyle danger = OutlinedButton.styleFrom(
       foregroundColor: context.sage.danger,
     );
-    Widget button((String, VoidCallback) choice) {
+    Widget button((String, VoidCallback?) choice) {
       final bool last = identical(choice, choices.last);
       final bool red = destructive || (destructiveLast && last);
       final Widget label = Text(choice.$1, textAlign: TextAlign.center);
@@ -377,4 +378,103 @@ class _TextDialogState extends State<_TextDialog> {
       ],
     ),
   );
+}
+
+/// A destructive confirmation that stays disabled until [word] is typed.
+Future<bool> typedConfirmDialog(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String word,
+  required String confirmLabel,
+}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (BuildContext _) => _TypedConfirmDialog(
+        title: title,
+        body: body,
+        word: word,
+        confirmLabel: confirmLabel,
+      ),
+    ) ??
+    false;
+
+class _TypedConfirmDialog extends StatefulWidget {
+  const _TypedConfirmDialog({
+    required this.title,
+    required this.body,
+    required this.word,
+    required this.confirmLabel,
+  });
+
+  final String title;
+  final String body;
+  final String word;
+  final String confirmLabel;
+
+  @override
+  State<_TypedConfirmDialog> createState() => _TypedConfirmDialogState();
+}
+
+class _TypedConfirmDialogState extends State<_TypedConfirmDialog> {
+  final TextEditingController _typed = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _typed.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _typed.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool matches =
+        _typed.text.trim().toLowerCase() == widget.word.trim().toLowerCase();
+    return AlertDialog(
+      backgroundColor: context.sage.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(SageRadius.card),
+      ),
+      title: Text(
+        widget.title,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            widget.body,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: SageSpace.md),
+          TextField(
+            controller: _typed,
+            autofocus: true,
+            autocorrect: false,
+            decoration: InputDecoration(hintText: widget.word),
+          ),
+          const SizedBox(height: SageSpace.lg),
+          ChoiceGrid(
+            choices: <(String, VoidCallback?)>[
+              (tr('common.cancel'), () => Navigator.of(context).pop(false)),
+              (
+                widget.confirmLabel,
+                matches ? () => Navigator.of(context).pop(true) : null,
+              ),
+            ],
+            destructiveLast: true,
+            primaryLast: true,
+          ),
+        ],
+      ),
+    );
+  }
 }

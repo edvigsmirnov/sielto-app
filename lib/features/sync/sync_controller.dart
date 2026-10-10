@@ -240,12 +240,18 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
           "UPDATE spaces SET storage_mode = 'cloud', sync_status = 'pending' "
           'WHERE id = ?',
           variables: <Variable<Object>>[Variable<String>(spaceId)],
+          updates: <TableInfo<dynamic, dynamic>>{_db.spaces},
         );
         for (final String table in SyncWorker.records) {
           await _db.customUpdate(
             "UPDATE $table SET sync_status = 'pending' "
             "WHERE space_id = ? AND sync_status <> 'rejected'",
             variables: <Variable<Object>>[Variable<String>(spaceId)],
+            updates: <TableInfo<dynamic, dynamic>>{
+              _db.allTables.firstWhere(
+                (TableInfo<dynamic, dynamic> t) => t.actualTableName == table,
+              ),
+            },
           );
         }
       });
@@ -268,7 +274,36 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     "UPDATE spaces SET storage_mode = 'local', sync_status = 'none', "
     'server_received_at = NULL, synced_until = NULL WHERE id = ?',
     variables: <Variable<Object>>[Variable<String>(spaceId)],
+    updates: <TableInfo<dynamic, dynamic>>{_db.spaces},
   );
+
+  /// Deletes everything the cloud holds for this user and unlinks every
+  /// device. Here, own cloud Spaces stay as local ones.
+  Future<CloudResult> deleteCloudData() => _serial(() async {
+    final CloudResult signedIn = await _signIn();
+    if (signedIn != CloudResult.done) return signedIn;
+    try {
+      await _client.rpc<void>('delete_cloud_data');
+    } on Exception {
+      return CloudResult.noNetwork;
+    }
+    _closeChannel();
+    final String me = ref.read(userIdProvider);
+    final List<Space> cloud =
+        await (_db.select(_db.spaces)..where(
+              ($SpacesTable t) => t.storageMode.equalsValue(StorageMode.cloud),
+            ))
+            .get();
+    for (final Space space in cloud) {
+      if (space.ownerId == me) {
+        await _makeLocal(space.id);
+      } else {
+        await ref.read(repositoriesProvider).spaces.deleteForever(space.id);
+      }
+    }
+    await _identity.forget();
+    return CloudResult.done;
+  });
 
   /// This account's devices, most recently seen first.
   Future<({CloudResult result, List<LinkedDevice> devices})> devices() =>

@@ -277,12 +277,17 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
 
   Future<void> _delete(Space space) async {
     final bool cloud = space.storageMode == StorageMode.cloud;
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext _) =>
-          _DeleteDialog(title: space.title, cloud: cloud),
+    final bool confirmed = await typedConfirmDialog(
+      context,
+      title: tr('space.deleteTitle'),
+      body: tr(
+        cloud ? 'space.deleteConfirmCloud' : 'space.deleteConfirm',
+        namedArgs: <String, String>{'title': space.title},
+      ),
+      word: space.title,
+      confirmLabel: tr('common.delete'),
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     final bool wasOpen = ref.read(currentSpaceIdProvider) == space.id;
     if (wasOpen) await ref.read(currentSpaceIdProvider.notifier).select(null);
@@ -323,79 +328,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       await ref.read(currentSpaceIdProvider.notifier).select(null);
     }
     if (mounted) Navigator.of(context).pop();
-  }
-}
-
-/// Asks for the Space name before a delete.
-class _DeleteDialog extends StatefulWidget {
-  const _DeleteDialog({required this.title, required this.cloud});
-
-  final String title;
-  final bool cloud;
-
-  @override
-  State<_DeleteDialog> createState() => _DeleteDialogState();
-}
-
-class _DeleteDialogState extends State<_DeleteDialog> {
-  final TextEditingController _typed = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _typed.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _typed.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    final bool matches = _typed.text.trim() == widget.title.trim();
-    return AlertDialog(
-      backgroundColor: sage.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(SageRadius.card),
-      ),
-      title: Text(
-        tr('space.deleteTitle'),
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            tr(
-              widget.cloud ? 'space.deleteConfirmCloud' : 'space.deleteConfirm',
-              namedArgs: <String, String>{'title': widget.title},
-            ),
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: SageSpace.md),
-          TextField(
-            controller: _typed,
-            autofocus: true,
-            decoration: InputDecoration(hintText: widget.title),
-          ),
-        ],
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(tr('common.cancel')),
-        ),
-        TextButton(
-          onPressed: matches ? () => Navigator.of(context).pop(true) : null,
-          style: TextButton.styleFrom(foregroundColor: sage.danger),
-          child: Text(tr('common.delete')),
-        ),
-      ],
-    );
   }
 }
 

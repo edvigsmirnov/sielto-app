@@ -119,5 +119,9 @@ void main() {
     );
     expect(await SyncWorker(db: b, client: clientB).syncAll(), isFalse);
     expect(await SyncWorker(db: a, client: clientA).syncAll(), isTrue);
+
+    await clientA.rpc<void>('delete_cloud_data');
+    expect(await clientA.from('spaces').select(), isEmpty);
+    expect(await SyncWorker(db: a, client: clientA).syncAll(), isFalse);
   }, skip: skip);
 }

@@ -249,7 +249,7 @@ class _FigureTile extends StatelessWidget {
                   ),
               ],
             ),
-            maxLines: 2,
+            maxLines: 3,
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
             style: text.bodySmall?.copyWith(color: context.sage.inkLabel),

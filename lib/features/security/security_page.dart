@@ -6,9 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/security/app_lock.dart';
 import 'package:sielto/features/security/recovery_key.dart';
+import 'package:sielto/features/sync/sync_controller.dart';
 
 /// `FLAG_SECURE` on Android. Desktop platforms have nothing equivalent.
 abstract final class ScreenshotGuard {
@@ -197,8 +199,50 @@ class SecurityPage extends ConsumerWidget {
               title: Text(tr('security.blockScreenshots')),
               subtitle: Text(tr('security.noScreenshotBlockOnDesktop')),
             ),
+          ListTile(
+            leading: Icon(
+              Icons.delete_forever_outlined,
+              color: context.sage.danger,
+            ),
+            title: Text(
+              tr('security.deleteCloud'),
+              style: TextStyle(color: context.sage.danger),
+            ),
+            subtitle: Text(tr('security.deleteCloudHint')),
+            onTap: () => _deleteCloud(context, ref),
+          ),
         ],
       ),
     );
   }
+}
+
+Future<void> _deleteCloud(BuildContext context, WidgetRef ref) async {
+  final String word = tr('security.deleteCloudWord');
+  final bool confirmed = await typedConfirmDialog(
+    context,
+    title: tr('security.deleteCloudTitle'),
+    body: tr(
+      'security.deleteCloudBody',
+      namedArgs: <String, String>{'word': word},
+    ),
+    word: word,
+    confirmLabel: tr('common.delete'),
+  );
+  if (!confirmed) return;
+  final CloudResult result = await ref
+      .read(syncProvider.notifier)
+      .deleteCloudData();
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        tr(
+          result == CloudResult.done
+              ? 'security.deleteCloudDone'
+              : 'storage.${result.name}',
+        ),
+      ),
+    ),
+  );
 }

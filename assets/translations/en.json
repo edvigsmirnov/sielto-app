@@ -158,7 +158,7 @@
     "averagePerDay": "{amount}/day planned",
     "nearestIncome": "Nearest income",
     "atAverageSpend": "planning {amount} a day on average",
-    "perDay": "Planned per day, on average",
+    "perDay": "Planned per day",
     "moneyEndsOn": "Money lasts until {date}",
     "afterBills": "After bills only",
     "afterBillsLeft": "Left once the bills are paid",
@@ -720,7 +720,13 @@
     "protectTitle": "Protect the app?",
     "protectWhy": "Optional. A PIN keeps curious eyes out; your data is encrypted either way. Fingerprint unlock is added if your device has it.",
     "setPin": "Set a PIN",
-    "passwordAtStart": "Protected by the password asked at every start"
+    "passwordAtStart": "Protected by the password asked at every start",
+    "deleteCloud": "Delete everything from the cloud",
+    "deleteCloudHint": "This device keeps your Spaces.",
+    "deleteCloudTitle": "Delete everything from the cloud?",
+    "deleteCloudBody": "Your cloud Spaces leave the cloud and your other devices, which get unlinked. This device keeps them as local Spaces. Type \"{word}\" to confirm.",
+    "deleteCloudWord": "delete",
+    "deleteCloudDone": "Done. Nothing of yours is left in the cloud."
   },
   "passphrase": {
     "setTitle": "Set a password to protect your data",
