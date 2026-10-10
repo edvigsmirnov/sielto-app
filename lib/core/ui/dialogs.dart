@@ -38,6 +38,7 @@ Future<bool> confirmDialog(
               (confirmLabel, () => Navigator.of(context).pop(true)),
             ],
             destructiveLast: isDestructive,
+            primaryLast: true,
           ),
         ],
       ),
@@ -228,6 +229,7 @@ class ChoiceGrid extends StatelessWidget {
     required this.choices,
     this.destructive = false,
     this.destructiveLast = false,
+    this.primaryLast = false,
     super.key,
   });
 
@@ -239,18 +241,37 @@ class ChoiceGrid extends StatelessWidget {
   /// Only the last one.
   final bool destructiveLast;
 
+  /// The last one is filled: the confirming action.
+  final bool primaryLast;
+
   @override
   Widget build(BuildContext context) {
     final ButtonStyle danger = OutlinedButton.styleFrom(
       foregroundColor: context.sage.danger,
     );
-    Widget button((String, VoidCallback) choice) => OutlinedButton(
-      onPressed: choice.$2,
-      style: destructive || (destructiveLast && identical(choice, choices.last))
-          ? danger
-          : null,
-      child: Text(choice.$1, textAlign: TextAlign.center),
-    );
+    Widget button((String, VoidCallback) choice) {
+      final bool last = identical(choice, choices.last);
+      final bool red = destructive || (destructiveLast && last);
+      final Widget label = Text(choice.$1, textAlign: TextAlign.center);
+      if (primaryLast && last) {
+        return FilledButton(
+          onPressed: choice.$2,
+          style: red
+              ? FilledButton.styleFrom(
+                  backgroundColor: context.sage.dangerTint,
+                  foregroundColor: context.sage.danger,
+                )
+              : null,
+          child: label,
+        );
+      }
+      return OutlinedButton(
+        onPressed: choice.$2,
+        style: red ? danger : null,
+        child: label,
+      );
+    }
+
     return Column(
       children: <Widget>[
         for (int i = 0; i < choices.length; i += 2)
