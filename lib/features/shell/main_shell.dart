@@ -10,6 +10,7 @@ import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/feed/feed_page.dart';
 import 'package:sielto/features/feed/feed_selection.dart';
 import 'package:sielto/features/shell/shell_tab.dart';
+import 'package:sielto/features/sync/sync_controller.dart';
 
 /// Dashboard, Feed and Calendar, switched by the bottom bar.
 class MainShell extends ConsumerStatefulWidget {
@@ -89,6 +90,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     _resetOnSpaceChange();
     // Keeps the daily Drive snapshot running while the shell is up.
     if (driveSupported) ref.watch(driveProvider);
+    ref.watch(syncProvider);
     final int index = ref.watch(shellTabProvider);
     final bool selecting = ref.watch(feedSelectionProvider).isNotEmpty;
     return PopScope(

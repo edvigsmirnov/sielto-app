@@ -65,8 +65,17 @@
     },
     "cloud": {
       "name": "Cloud",
-      "notYet": "Not available in this version yet."
-    }
+      "body": "Kept in step on every device you link, through our server. Your entries are stored there too."
+    },
+    "toCloud": "Move to the cloud",
+    "toCloudTitle": "Move to the cloud?",
+    "toCloudBody": "Everything in \"{title}\" is uploaded and kept in step on your devices. This device keeps its full copy.",
+    "toLocal": "Keep on this device",
+    "toLocalTitle": "Keep on this device only?",
+    "toLocalBody": "\"{title}\" is removed from the server and stays only here. Your other devices keep a read-only copy in the archive.",
+    "offlineMode": "Fully offline mode is on. Turn it off in Settings to use the cloud.",
+    "noNetwork": "Couldn't reach the server. Check your connection and try again.",
+    "unlinked": "This device is no longer linked to your cloud account, so the cloud isn't available here."
   },
   "space": {
     "createTitle": "New Space",
@@ -93,7 +102,8 @@
     "archiveBody": "Archiving hides the Space without deleting anything. It can be brought back from the Spaces switcher, under Archived.",
     "search": "Search Spaces",
     "archived": "Archived ({})",
-    "unarchive": "Unarchive"
+    "unarchive": "Unarchive",
+    "deleteConfirmCloud": "This erases everything in \"{title}\" from this device and from the server, for good. Your other devices keep a read-only copy in the archive. Type its name to confirm."
   },
   "spaceSettings": {
     "title": "Space settings"
@@ -177,8 +187,16 @@
     "duplicateBefore": "Duplicate to the day before",
     "duplicateAfter": "Duplicate to the day after",
     "bulk": {
-      "mark": {"paid": "Mark as paid", "received": "Mark as received", "done": "Mark as paid or received"},
-      "unmark": {"paid": "Mark as not paid", "received": "Mark as not received", "done": "Mark as not paid or received"},
+      "mark": {
+        "paid": "Mark as paid",
+        "received": "Mark as received",
+        "done": "Mark as paid or received"
+      },
+      "unmark": {
+        "paid": "Mark as not paid",
+        "received": "Mark as not received",
+        "done": "Mark as not paid or received"
+      },
       "title": "Actions",
       "selected": "Selected: {count}",
       "done": "Mark as done",
@@ -296,7 +314,10 @@
     "pastEarlierTitle": "Add earlier months too?",
     "pastEarlierBody": "They're added as received, so your history and Analytics start further back.",
     "pastEarlierNone": "No, just this one",
-    "pastEarlierMonths": {"one": "{} month back", "other": "{} months back"},
+    "pastEarlierMonths": {
+      "one": "{} month back",
+      "other": "{} months back"
+    },
     "add": "Add income",
     "edit": "Edit income",
     "fieldTitle": "Title",

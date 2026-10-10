@@ -43,6 +43,7 @@ void main() {
   late SyncWorker syncB;
   late String spaceId;
   late String paymentId;
+  late SupabaseClient clientA;
 
   setUpAll(() {
     SpaceClock.initialize();
@@ -55,7 +56,7 @@ void main() {
     a = inMemoryDatabase();
     b = inMemoryDatabase();
 
-    final SupabaseClient clientA = client();
+    clientA = client();
     final CloudIdentity identity = CloudIdentity(
       db: a,
       client: clientA,
@@ -327,6 +328,25 @@ void main() {
     expect((await row(a)).syncStatus, SyncStatus.rejected);
     expect((await row(a)).amount, Decimal.parse('95'));
     expect((await row(b)).amount, Decimal.parse('80'));
+  }, skip: skip);
+
+  test('a Space taken off the server becomes an archive elsewhere', () async {
+    await clientA.from('spaces').delete().eq('id', spaceId);
+    await a.customUpdate(
+      "UPDATE spaces SET storage_mode = 'local', sync_status = 'none', "
+      'server_received_at = NULL, synced_until = NULL WHERE id = ?',
+      variables: <Variable<Object>>[Variable<String>(spaceId)],
+    );
+
+    await syncA.syncAll();
+    await syncB.syncAll();
+
+    final Space onB = await (b.select(
+      b.spaces,
+    )..where(($SpacesTable t) => t.id.equals(spaceId))).getSingle();
+    expect(onB.isArchived, isTrue);
+    expect(onB.storageMode, StorageMode.local);
+    expect(await clientA.from('spaces').select('id'), isEmpty);
   }, skip: skip);
 
   test('a Space edit reaches the other device', () async {

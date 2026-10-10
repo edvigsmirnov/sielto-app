@@ -13,6 +13,7 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/spaces/space_avatar.dart';
+import 'package:sielto/features/sync/sync_controller.dart';
 
 /// Settings for one Space, passed in so it can be any Space, not only the open
 /// one.
@@ -32,6 +33,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
 
   /// Null while the check runs.
   bool? _currencyEditable;
+  bool _moving = false;
 
   @override
   void initState() {
@@ -159,6 +161,31 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           ),
           const Hairline(),
 
+          if (space.ownerId == ref.watch(userIdProvider))
+            LabelledField(
+              label: tr('space.fieldStorage'),
+              child: SegmentedChoice<StorageMode>(
+                values: StorageMode.values,
+                selected: space.storageMode,
+                labelOf: (StorageMode m) => tr('storage.${m.name}.name'),
+                enabled: !_moving,
+                onChanged: (StorageMode m) => _changeStorage(space, m),
+              ),
+            )
+          else
+            _FactRow(
+              label: tr('space.fieldStorage'),
+              value: _LockedPill(
+                text: tr('storage.${space.storageMode.name}.name'),
+              ),
+            ),
+          const SizedBox(height: SageSpace.xs),
+          Text(
+            tr('storage.${space.storageMode.name}.body'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: SageSpace.lg),
+
           // Categories and income rules are for the open Space only.
           if (isCurrent) ...<Widget>[
             ListTile(
@@ -218,17 +245,61 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     }
   }
 
+  Future<void> _changeStorage(Space space, StorageMode mode) async {
+    if (mode == space.storageMode) return;
+    final String to = mode == StorageMode.cloud ? 'toCloud' : 'toLocal';
+    final bool confirmed = await confirmDialog(
+      context,
+      title: tr('storage.${to}Title'),
+      body: tr(
+        'storage.${to}Body',
+        namedArgs: <String, String>{'title': space.title},
+      ),
+      confirmLabel: tr('storage.$to'),
+    );
+    if (!confirmed) return;
+
+    setState(() => _moving = true);
+    final SyncController sync = ref.read(syncProvider.notifier);
+    final CloudResult result = mode == StorageMode.cloud
+        ? await sync.moveToCloud(space.id)
+        : await sync.moveToLocal(space.id);
+    if (!mounted) return;
+    setState(() => _moving = false);
+    _tellIfFailed(result);
+  }
+
+  void _tellIfFailed(CloudResult result) {
+    if (result == CloudResult.done) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(tr('storage.${result.name}'))));
+  }
+
   Future<void> _delete(Space space) async {
+    final bool cloud = space.storageMode == StorageMode.cloud;
     final bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (BuildContext _) => _DeleteDialog(title: space.title),
+      builder: (BuildContext _) =>
+          _DeleteDialog(title: space.title, cloud: cloud),
     );
     if (confirmed != true) return;
 
-    if (ref.read(currentSpaceIdProvider) == space.id) {
-      await ref.read(currentSpaceIdProvider.notifier).select(null);
+    final bool wasOpen = ref.read(currentSpaceIdProvider) == space.id;
+    if (wasOpen) await ref.read(currentSpaceIdProvider.notifier).select(null);
+    if (cloud) {
+      final CloudResult result = await ref
+          .read(syncProvider.notifier)
+          .deleteEverywhere(space.id);
+      if (result != CloudResult.done) {
+        if (wasOpen) {
+          await ref.read(currentSpaceIdProvider.notifier).select(space.id);
+        }
+        if (mounted) _tellIfFailed(result);
+        return;
+      }
+    } else {
+      await ref.read(repositoriesProvider).spaces.deleteForever(space.id);
     }
-    await ref.read(repositoriesProvider).spaces.deleteForever(space.id);
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -257,9 +328,10 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
 
 /// Asks for the Space name before a delete.
 class _DeleteDialog extends StatefulWidget {
-  const _DeleteDialog({required this.title});
+  const _DeleteDialog({required this.title, required this.cloud});
 
   final String title;
+  final bool cloud;
 
   @override
   State<_DeleteDialog> createState() => _DeleteDialogState();
@@ -299,7 +371,7 @@ class _DeleteDialogState extends State<_DeleteDialog> {
         children: <Widget>[
           Text(
             tr(
-              'space.deleteConfirm',
+              widget.cloud ? 'space.deleteConfirmCloud' : 'space.deleteConfirm',
               namedArgs: <String, String>{'title': widget.title},
             ),
             style: Theme.of(context).textTheme.bodyMedium,

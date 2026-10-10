@@ -13,6 +13,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/spaces/starter_categories.dart';
+import 'package:sielto/features/sync/sync_controller.dart';
 
 /// In the order shown on the form.
 const List<BudgetMode> offeredBudgetModes = <BudgetMode>[
@@ -45,6 +46,7 @@ class SpaceFormPage extends ConsumerStatefulWidget {
 class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
   final TextEditingController _title = TextEditingController();
   BudgetMode _mode = BudgetMode.flow;
+  StorageMode _storage = StorageMode.local;
   String? _currency;
   bool _saving = false;
 
@@ -110,6 +112,16 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
         }
         return space;
       });
+      if (_storage == StorageMode.cloud) {
+        final CloudResult result = await ref
+            .read(syncProvider.notifier)
+            .moveToCloud(space.id);
+        if (result != CloudResult.done && mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(tr('storage.${result.name}'))));
+        }
+      }
       await ref.read(currentSpaceIdProvider.notifier).select(space.id);
       // Pops to the shell.
       if (mounted && !widget.isFirstSpace) {
@@ -232,7 +244,10 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
     ],
     const SizedBox(height: SageSpace.lg),
     FieldLabel(tr('space.fieldStorage')),
-    const _StorageChoice(),
+    _StorageChoice(
+      selected: _storage,
+      onChanged: (StorageMode m) => setState(() => _storage = m),
+    ),
   ];
 }
 
@@ -281,9 +296,12 @@ class _ModeCard extends StatelessWidget {
   }
 }
 
-/// Local or cloud. Cloud is shown disabled.
+/// Local or cloud.
 class _StorageChoice extends StatelessWidget {
-  const _StorageChoice();
+  const _StorageChoice({required this.selected, required this.onChanged});
+
+  final StorageMode selected;
+  final ValueChanged<StorageMode> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -291,31 +309,22 @@ class _StorageChoice extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        SageCard(
-          selected: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(tr('storage.local.name'), style: text.titleSmall),
-              const SizedBox(height: SageSpace.xs),
-              Text(tr('storage.local.body'), style: text.bodyMedium),
-            ],
-          ),
-        ),
-        const SizedBox(height: SageSpace.sm),
-        Opacity(
-          opacity: 0.5,
-          child: SageCard(
+        for (final StorageMode mode in StorageMode.values) ...<Widget>[
+          if (mode != StorageMode.values.first)
+            const SizedBox(height: SageSpace.sm),
+          SageCard(
+            selected: selected == mode,
+            onTap: () => onChanged(mode),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(tr('storage.cloud.name'), style: text.titleSmall),
+                Text(tr('storage.${mode.name}.name'), style: text.titleSmall),
                 const SizedBox(height: SageSpace.xs),
-                Text(tr('storage.cloud.notYet'), style: text.bodyMedium),
+                Text(tr('storage.${mode.name}.body'), style: text.bodyMedium),
               ],
             ),
           ),
-        ),
+        ],
       ],
     );
   }

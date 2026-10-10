@@ -13,7 +13,7 @@ class SyncWorker {
   final SupabaseClient client;
 
   /// Parents first.
-  static const List<String> _records = <String>[
+  static const List<String> records = <String>[
     'categories',
     'budget_periods',
     'income_recurrence_rules',
@@ -49,7 +49,13 @@ class SyncWorker {
   static const Duration _overlap = Duration(minutes: 1);
 
   Future<void> syncAll() async {
-    await _apply('spaces', await client.from('spaces').select());
+    final List<Map<String, dynamic>> remote = await client
+        .from('spaces')
+        .select();
+    await _apply('spaces', remote);
+    await _archiveVanished(<String>{
+      for (final Map<String, dynamic> r in remote) r['id'] as String,
+    });
     final List<Space> spaces =
         await (db.select(db.spaces)..where(
               ($SpacesTable t) =>
@@ -62,9 +68,34 @@ class SyncWorker {
     }
   }
 
+  /// Cloud Spaces gone from the server become local, read-only archives.
+  Future<void> _archiveVanished(Set<String> onServer) async {
+    final List<Space> gone =
+        await (db.select(db.spaces)..where(
+              ($SpacesTable t) =>
+                  t.storageMode.equalsValue(StorageMode.cloud) &
+                  t.serverReceivedAt.isNotNull() &
+                  t.id.isNotIn(onServer),
+            ))
+            .get();
+    for (final Space space in gone) {
+      await (db.update(
+        db.spaces,
+      )..where(($SpacesTable t) => t.id.equals(space.id))).write(
+        const SpacesCompanion(
+          storageMode: Value<StorageMode>(StorageMode.local),
+          isArchived: Value<bool>(true),
+          syncStatus: Value<SyncStatus>(SyncStatus.none),
+          serverReceivedAt: Value<DateTime?>(null),
+          syncedUntil: Value<DateTime?>(null),
+        ),
+      );
+    }
+  }
+
   Future<void> syncSpace(String spaceId) async {
     await _pushSpace(spaceId);
-    for (final String table in _records) {
+    for (final String table in records) {
       await _push(table, spaceId);
     }
     await _pull(spaceId);
@@ -147,7 +178,7 @@ class SyncWorker {
     final DateTime? since = space.syncedUntil?.subtract(_overlap);
     DateTime? newest = space.syncedUntil;
 
-    for (final String table in _records) {
+    for (final String table in records) {
       for (int from = 0; ; from += _page) {
         PostgrestFilterBuilder<List<Map<String, dynamic>>> query = client
             .from(table)
