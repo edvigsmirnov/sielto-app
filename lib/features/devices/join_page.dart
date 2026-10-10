@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -61,9 +62,21 @@ class _JoinPageState extends ConsumerState<JoinPage> {
     if (recoveryKey != null) {
       await ref.read(recoveryKeySetProvider.notifier).set(recoveryKey);
     }
-    // Spaces that arrive switch the app to the main screens.
     await ref.read(syncProvider.notifier).syncNow();
     if (!mounted) return;
+    // The main screens are already underneath once a Space has arrived.
+    final bool hasSpaces =
+        (await ref.read(repositoriesProvider).spaces.watchAll().first)
+            .isNotEmpty;
+    if (!mounted) return;
+    if (hasSpaces) {
+      final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+      Navigator.of(context).pop();
+      if (recoveryKey == null) {
+        messenger.showSnackBar(SnackBar(content: Text(tr('devices.keyLater'))));
+      }
+      return;
+    }
     setState(() {
       _busy = false;
       _done = <String>[
