@@ -177,6 +177,62 @@ class $SpacesTable extends Spaces with TableInfo<$SpacesTable, Space> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _clientEditedAtMeta = const VerificationMeta(
+    'clientEditedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> clientEditedAt =
+      GeneratedColumn<DateTime>(
+        'client_edited_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _serverReceivedAtMeta = const VerificationMeta(
+    'serverReceivedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> serverReceivedAt =
+      GeneratedColumn<DateTime>(
+        'server_received_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _lastModifiedByMeta = const VerificationMeta(
+    'lastModifiedBy',
+  );
+  @override
+  late final GeneratedColumn<String> lastModifiedBy = GeneratedColumn<String>(
+    'last_modified_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<SyncStatus, String> syncStatus =
+      GeneratedColumn<String>(
+        'sync_status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant<String>('none'),
+      ).withConverter<SyncStatus>($SpacesTable.$convertersyncStatus);
+  static const VerificationMeta _syncedUntilMeta = const VerificationMeta(
+    'syncedUntil',
+  );
+  @override
+  late final GeneratedColumn<DateTime> syncedUntil = GeneratedColumn<DateTime>(
+    'synced_until',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -195,6 +251,11 @@ class $SpacesTable extends Spaces with TableInfo<$SpacesTable, Space> {
     minSchemaVersion,
     feedOrderMode,
     createdAt,
+    clientEditedAt,
+    serverReceivedAt,
+    lastModifiedBy,
+    syncStatus,
+    syncedUntil,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -295,6 +356,42 @@ class $SpacesTable extends Spaces with TableInfo<$SpacesTable, Space> {
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('client_edited_at')) {
+      context.handle(
+        _clientEditedAtMeta,
+        clientEditedAt.isAcceptableOrUnknown(
+          data['client_edited_at']!,
+          _clientEditedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('server_received_at')) {
+      context.handle(
+        _serverReceivedAtMeta,
+        serverReceivedAt.isAcceptableOrUnknown(
+          data['server_received_at']!,
+          _serverReceivedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_modified_by')) {
+      context.handle(
+        _lastModifiedByMeta,
+        lastModifiedBy.isAcceptableOrUnknown(
+          data['last_modified_by']!,
+          _lastModifiedByMeta,
+        ),
+      );
+    }
+    if (data.containsKey('synced_until')) {
+      context.handle(
+        _syncedUntilMeta,
+        syncedUntil.isAcceptableOrUnknown(
+          data['synced_until']!,
+          _syncedUntilMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -378,6 +475,28 @@ class $SpacesTable extends Spaces with TableInfo<$SpacesTable, Space> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      clientEditedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}client_edited_at'],
+      ),
+      serverReceivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}server_received_at'],
+      ),
+      lastModifiedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_modified_by'],
+      ),
+      syncStatus: $SpacesTable.$convertersyncStatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}sync_status'],
+        )!,
+      ),
+      syncedUntil: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}synced_until'],
+      ),
     );
   }
 
@@ -402,6 +521,8 @@ class $SpacesTable extends Spaces with TableInfo<$SpacesTable, Space> {
   $converterfeedOrderMode = const EnumNameConverter<FeedOrderMode>(
     FeedOrderMode.values,
   );
+  static JsonTypeConverter2<SyncStatus, String, String> $convertersyncStatus =
+      const EnumNameConverter<SyncStatus>(SyncStatus.values);
 }
 
 class Space extends DataClass implements Insertable<Space> {
@@ -435,6 +556,15 @@ class Space extends DataClass implements Insertable<Space> {
   final int minSchemaVersion;
   final FeedOrderMode feedOrderMode;
   final DateTime createdAt;
+
+  /// Null on a Space never edited; sync uses `created_at`.
+  final DateTime? clientEditedAt;
+  final DateTime? serverReceivedAt;
+  final String? lastModifiedBy;
+  final SyncStatus syncStatus;
+
+  /// Server receipt time of the newest row downloaded for this Space.
+  final DateTime? syncedUntil;
   const Space({
     required this.id,
     required this.title,
@@ -452,6 +582,11 @@ class Space extends DataClass implements Insertable<Space> {
     required this.minSchemaVersion,
     required this.feedOrderMode,
     required this.createdAt,
+    this.clientEditedAt,
+    this.serverReceivedAt,
+    this.lastModifiedBy,
+    required this.syncStatus,
+    this.syncedUntil,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -500,6 +635,23 @@ class Space extends DataClass implements Insertable<Space> {
       );
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || clientEditedAt != null) {
+      map['client_edited_at'] = Variable<DateTime>(clientEditedAt);
+    }
+    if (!nullToAbsent || serverReceivedAt != null) {
+      map['server_received_at'] = Variable<DateTime>(serverReceivedAt);
+    }
+    if (!nullToAbsent || lastModifiedBy != null) {
+      map['last_modified_by'] = Variable<String>(lastModifiedBy);
+    }
+    {
+      map['sync_status'] = Variable<String>(
+        $SpacesTable.$convertersyncStatus.toSql(syncStatus),
+      );
+    }
+    if (!nullToAbsent || syncedUntil != null) {
+      map['synced_until'] = Variable<DateTime>(syncedUntil);
+    }
     return map;
   }
 
@@ -529,6 +681,19 @@ class Space extends DataClass implements Insertable<Space> {
       minSchemaVersion: Value(minSchemaVersion),
       feedOrderMode: Value(feedOrderMode),
       createdAt: Value(createdAt),
+      clientEditedAt: clientEditedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(clientEditedAt),
+      serverReceivedAt: serverReceivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverReceivedAt),
+      lastModifiedBy: lastModifiedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastModifiedBy),
+      syncStatus: Value(syncStatus),
+      syncedUntil: syncedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedUntil),
     );
   }
 
@@ -566,6 +731,15 @@ class Space extends DataClass implements Insertable<Space> {
         serializer.fromJson<String>(json['feedOrderMode']),
       ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      clientEditedAt: serializer.fromJson<DateTime?>(json['clientEditedAt']),
+      serverReceivedAt: serializer.fromJson<DateTime?>(
+        json['serverReceivedAt'],
+      ),
+      lastModifiedBy: serializer.fromJson<String?>(json['lastModifiedBy']),
+      syncStatus: $SpacesTable.$convertersyncStatus.fromJson(
+        serializer.fromJson<String>(json['syncStatus']),
+      ),
+      syncedUntil: serializer.fromJson<DateTime?>(json['syncedUntil']),
     );
   }
   @override
@@ -600,6 +774,13 @@ class Space extends DataClass implements Insertable<Space> {
         $SpacesTable.$converterfeedOrderMode.toJson(feedOrderMode),
       ),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'clientEditedAt': serializer.toJson<DateTime?>(clientEditedAt),
+      'serverReceivedAt': serializer.toJson<DateTime?>(serverReceivedAt),
+      'lastModifiedBy': serializer.toJson<String?>(lastModifiedBy),
+      'syncStatus': serializer.toJson<String>(
+        $SpacesTable.$convertersyncStatus.toJson(syncStatus),
+      ),
+      'syncedUntil': serializer.toJson<DateTime?>(syncedUntil),
     };
   }
 
@@ -620,6 +801,11 @@ class Space extends DataClass implements Insertable<Space> {
     int? minSchemaVersion,
     FeedOrderMode? feedOrderMode,
     DateTime? createdAt,
+    Value<DateTime?> clientEditedAt = const Value.absent(),
+    Value<DateTime?> serverReceivedAt = const Value.absent(),
+    Value<String?> lastModifiedBy = const Value.absent(),
+    SyncStatus? syncStatus,
+    Value<DateTime?> syncedUntil = const Value.absent(),
   }) => Space(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -641,6 +827,17 @@ class Space extends DataClass implements Insertable<Space> {
     minSchemaVersion: minSchemaVersion ?? this.minSchemaVersion,
     feedOrderMode: feedOrderMode ?? this.feedOrderMode,
     createdAt: createdAt ?? this.createdAt,
+    clientEditedAt: clientEditedAt.present
+        ? clientEditedAt.value
+        : this.clientEditedAt,
+    serverReceivedAt: serverReceivedAt.present
+        ? serverReceivedAt.value
+        : this.serverReceivedAt,
+    lastModifiedBy: lastModifiedBy.present
+        ? lastModifiedBy.value
+        : this.lastModifiedBy,
+    syncStatus: syncStatus ?? this.syncStatus,
+    syncedUntil: syncedUntil.present ? syncedUntil.value : this.syncedUntil,
   );
   Space copyWithCompanion(SpacesCompanion data) {
     return Space(
@@ -680,6 +877,21 @@ class Space extends DataClass implements Insertable<Space> {
           ? data.feedOrderMode.value
           : this.feedOrderMode,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      clientEditedAt: data.clientEditedAt.present
+          ? data.clientEditedAt.value
+          : this.clientEditedAt,
+      serverReceivedAt: data.serverReceivedAt.present
+          ? data.serverReceivedAt.value
+          : this.serverReceivedAt,
+      lastModifiedBy: data.lastModifiedBy.present
+          ? data.lastModifiedBy.value
+          : this.lastModifiedBy,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
+      syncedUntil: data.syncedUntil.present
+          ? data.syncedUntil.value
+          : this.syncedUntil,
     );
   }
 
@@ -701,13 +913,18 @@ class Space extends DataClass implements Insertable<Space> {
           ..write('manualBalanceUpdatedAt: $manualBalanceUpdatedAt, ')
           ..write('minSchemaVersion: $minSchemaVersion, ')
           ..write('feedOrderMode: $feedOrderMode, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('clientEditedAt: $clientEditedAt, ')
+          ..write('serverReceivedAt: $serverReceivedAt, ')
+          ..write('lastModifiedBy: $lastModifiedBy, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncedUntil: $syncedUntil')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     title,
     spaceType,
@@ -724,7 +941,12 @@ class Space extends DataClass implements Insertable<Space> {
     minSchemaVersion,
     feedOrderMode,
     createdAt,
-  );
+    clientEditedAt,
+    serverReceivedAt,
+    lastModifiedBy,
+    syncStatus,
+    syncedUntil,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -744,7 +966,12 @@ class Space extends DataClass implements Insertable<Space> {
           other.manualBalanceUpdatedAt == this.manualBalanceUpdatedAt &&
           other.minSchemaVersion == this.minSchemaVersion &&
           other.feedOrderMode == this.feedOrderMode &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.clientEditedAt == this.clientEditedAt &&
+          other.serverReceivedAt == this.serverReceivedAt &&
+          other.lastModifiedBy == this.lastModifiedBy &&
+          other.syncStatus == this.syncStatus &&
+          other.syncedUntil == this.syncedUntil);
 }
 
 class SpacesCompanion extends UpdateCompanion<Space> {
@@ -764,6 +991,11 @@ class SpacesCompanion extends UpdateCompanion<Space> {
   final Value<int> minSchemaVersion;
   final Value<FeedOrderMode> feedOrderMode;
   final Value<DateTime> createdAt;
+  final Value<DateTime?> clientEditedAt;
+  final Value<DateTime?> serverReceivedAt;
+  final Value<String?> lastModifiedBy;
+  final Value<SyncStatus> syncStatus;
+  final Value<DateTime?> syncedUntil;
   final Value<int> rowid;
   const SpacesCompanion({
     this.id = const Value.absent(),
@@ -782,6 +1014,11 @@ class SpacesCompanion extends UpdateCompanion<Space> {
     this.minSchemaVersion = const Value.absent(),
     this.feedOrderMode = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.clientEditedAt = const Value.absent(),
+    this.serverReceivedAt = const Value.absent(),
+    this.lastModifiedBy = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.syncedUntil = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SpacesCompanion.insert({
@@ -801,6 +1038,11 @@ class SpacesCompanion extends UpdateCompanion<Space> {
     this.minSchemaVersion = const Value.absent(),
     this.feedOrderMode = const Value.absent(),
     required DateTime createdAt,
+    this.clientEditedAt = const Value.absent(),
+    this.serverReceivedAt = const Value.absent(),
+    this.lastModifiedBy = const Value.absent(),
+    this.syncStatus = const Value.absent(),
+    this.syncedUntil = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
@@ -828,6 +1070,11 @@ class SpacesCompanion extends UpdateCompanion<Space> {
     Expression<int>? minSchemaVersion,
     Expression<String>? feedOrderMode,
     Expression<DateTime>? createdAt,
+    Expression<DateTime>? clientEditedAt,
+    Expression<DateTime>? serverReceivedAt,
+    Expression<String>? lastModifiedBy,
+    Expression<String>? syncStatus,
+    Expression<DateTime>? syncedUntil,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -848,6 +1095,11 @@ class SpacesCompanion extends UpdateCompanion<Space> {
       if (minSchemaVersion != null) 'min_schema_version': minSchemaVersion,
       if (feedOrderMode != null) 'feed_order_mode': feedOrderMode,
       if (createdAt != null) 'created_at': createdAt,
+      if (clientEditedAt != null) 'client_edited_at': clientEditedAt,
+      if (serverReceivedAt != null) 'server_received_at': serverReceivedAt,
+      if (lastModifiedBy != null) 'last_modified_by': lastModifiedBy,
+      if (syncStatus != null) 'sync_status': syncStatus,
+      if (syncedUntil != null) 'synced_until': syncedUntil,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -869,6 +1121,11 @@ class SpacesCompanion extends UpdateCompanion<Space> {
     Value<int>? minSchemaVersion,
     Value<FeedOrderMode>? feedOrderMode,
     Value<DateTime>? createdAt,
+    Value<DateTime?>? clientEditedAt,
+    Value<DateTime?>? serverReceivedAt,
+    Value<String?>? lastModifiedBy,
+    Value<SyncStatus>? syncStatus,
+    Value<DateTime?>? syncedUntil,
     Value<int>? rowid,
   }) {
     return SpacesCompanion(
@@ -889,6 +1146,11 @@ class SpacesCompanion extends UpdateCompanion<Space> {
       minSchemaVersion: minSchemaVersion ?? this.minSchemaVersion,
       feedOrderMode: feedOrderMode ?? this.feedOrderMode,
       createdAt: createdAt ?? this.createdAt,
+      clientEditedAt: clientEditedAt ?? this.clientEditedAt,
+      serverReceivedAt: serverReceivedAt ?? this.serverReceivedAt,
+      lastModifiedBy: lastModifiedBy ?? this.lastModifiedBy,
+      syncStatus: syncStatus ?? this.syncStatus,
+      syncedUntil: syncedUntil ?? this.syncedUntil,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -956,6 +1218,23 @@ class SpacesCompanion extends UpdateCompanion<Space> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (clientEditedAt.present) {
+      map['client_edited_at'] = Variable<DateTime>(clientEditedAt.value);
+    }
+    if (serverReceivedAt.present) {
+      map['server_received_at'] = Variable<DateTime>(serverReceivedAt.value);
+    }
+    if (lastModifiedBy.present) {
+      map['last_modified_by'] = Variable<String>(lastModifiedBy.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(
+        $SpacesTable.$convertersyncStatus.toSql(syncStatus.value),
+      );
+    }
+    if (syncedUntil.present) {
+      map['synced_until'] = Variable<DateTime>(syncedUntil.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -981,6 +1260,11 @@ class SpacesCompanion extends UpdateCompanion<Space> {
           ..write('minSchemaVersion: $minSchemaVersion, ')
           ..write('feedOrderMode: $feedOrderMode, ')
           ..write('createdAt: $createdAt, ')
+          ..write('clientEditedAt: $clientEditedAt, ')
+          ..write('serverReceivedAt: $serverReceivedAt, ')
+          ..write('lastModifiedBy: $lastModifiedBy, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('syncedUntil: $syncedUntil, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -9012,6 +9296,11 @@ typedef $$SpacesTableCreateCompanionBuilder = SpacesCompanion Function({
   Value<int> minSchemaVersion,
   Value<FeedOrderMode> feedOrderMode,
   required DateTime createdAt,
+  Value<DateTime?> clientEditedAt,
+  Value<DateTime?> serverReceivedAt,
+  Value<String?> lastModifiedBy,
+  Value<SyncStatus> syncStatus,
+  Value<DateTime?> syncedUntil,
   Value<int> rowid,
 });
 typedef $$SpacesTableUpdateCompanionBuilder = SpacesCompanion Function({
@@ -9031,6 +9320,11 @@ typedef $$SpacesTableUpdateCompanionBuilder = SpacesCompanion Function({
   Value<int> minSchemaVersion,
   Value<FeedOrderMode> feedOrderMode,
   Value<DateTime> createdAt,
+  Value<DateTime?> clientEditedAt,
+  Value<DateTime?> serverReceivedAt,
+  Value<String?> lastModifiedBy,
+  Value<SyncStatus> syncStatus,
+  Value<DateTime?> syncedUntil,
   Value<int> rowid,
 });
 
@@ -9268,6 +9562,32 @@ class $$SpacesTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get clientEditedAt => $composableBuilder(
+    column: $table.clientEditedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get serverReceivedAt => $composableBuilder(
+    column: $table.serverReceivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastModifiedBy => $composableBuilder(
+    column: $table.lastModifiedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<SyncStatus, SyncStatus, String>
+  get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<DateTime> get syncedUntil => $composableBuilder(
+    column: $table.syncedUntil,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9536,6 +9856,31 @@ class $$SpacesTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get clientEditedAt => $composableBuilder(
+    column: $table.clientEditedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get serverReceivedAt => $composableBuilder(
+    column: $table.serverReceivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastModifiedBy => $composableBuilder(
+    column: $table.lastModifiedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get syncedUntil => $composableBuilder(
+    column: $table.syncedUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SpacesTableAnnotationComposer
@@ -9618,6 +9963,32 @@ class $$SpacesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get clientEditedAt => $composableBuilder(
+    column: $table.clientEditedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get serverReceivedAt => $composableBuilder(
+    column: $table.serverReceivedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastModifiedBy => $composableBuilder(
+    column: $table.lastModifiedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<SyncStatus, String> get syncStatus =>
+      $composableBuilder(
+        column: $table.syncStatus,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<DateTime> get syncedUntil => $composableBuilder(
+    column: $table.syncedUntil,
+    builder: (column) => column,
+  );
 
   Expression<T> spaceMembersRefs<T extends Object>(
     Expression<T> Function($$SpaceMembersTableAnnotationComposer a) f,
@@ -9849,6 +10220,11 @@ class $$SpacesTableTableManager
                 Value<int> minSchemaVersion = const Value.absent(),
                 Value<FeedOrderMode> feedOrderMode = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> clientEditedAt = const Value.absent(),
+                Value<DateTime?> serverReceivedAt = const Value.absent(),
+                Value<String?> lastModifiedBy = const Value.absent(),
+                Value<SyncStatus> syncStatus = const Value.absent(),
+                Value<DateTime?> syncedUntil = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SpacesCompanion(
                 id: id,
@@ -9867,6 +10243,11 @@ class $$SpacesTableTableManager
                 minSchemaVersion: minSchemaVersion,
                 feedOrderMode: feedOrderMode,
                 createdAt: createdAt,
+                clientEditedAt: clientEditedAt,
+                serverReceivedAt: serverReceivedAt,
+                lastModifiedBy: lastModifiedBy,
+                syncStatus: syncStatus,
+                syncedUntil: syncedUntil,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9887,6 +10268,11 @@ class $$SpacesTableTableManager
                 Value<int> minSchemaVersion = const Value.absent(),
                 Value<FeedOrderMode> feedOrderMode = const Value.absent(),
                 required DateTime createdAt,
+                Value<DateTime?> clientEditedAt = const Value.absent(),
+                Value<DateTime?> serverReceivedAt = const Value.absent(),
+                Value<String?> lastModifiedBy = const Value.absent(),
+                Value<SyncStatus> syncStatus = const Value.absent(),
+                Value<DateTime?> syncedUntil = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SpacesCompanion.insert(
                 id: id,
@@ -9905,6 +10291,11 @@ class $$SpacesTableTableManager
                 minSchemaVersion: minSchemaVersion,
                 feedOrderMode: feedOrderMode,
                 createdAt: createdAt,
+                clientEditedAt: clientEditedAt,
+                serverReceivedAt: serverReceivedAt,
+                lastModifiedBy: lastModifiedBy,
+                syncStatus: syncStatus,
+                syncedUntil: syncedUntil,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

@@ -35,7 +35,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   /// Bump with a new [migration] step and a new schema snapshot.
-  static const int currentSchemaVersion = 5;
+  static const int currentSchemaVersion = 6;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -79,6 +79,13 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await m.createTable(cloudIdentity);
+      }
+      if (from < 6) {
+        await m.addColumn(spaces, spaces.clientEditedAt);
+        await m.addColumn(spaces, spaces.serverReceivedAt);
+        await m.addColumn(spaces, spaces.lastModifiedBy);
+        await m.addColumn(spaces, spaces.syncStatus);
+        await m.addColumn(spaces, spaces.syncedUntil);
       }
     },
     beforeOpen: (OpeningDetails details) async {

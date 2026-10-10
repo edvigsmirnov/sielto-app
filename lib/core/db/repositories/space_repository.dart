@@ -15,7 +15,7 @@ class CurrencyFrozen implements Exception {
   String toString() => 'CurrencyFrozen: $spaceId';
 }
 
-/// Spaces are device rows without sync columns. Archiving is local.
+/// Shared fields sync by last write; archiving is local.
 class SpaceRepository {
   SpaceRepository({required this.db, required this.clock});
 
@@ -51,6 +51,7 @@ class SpaceRepository {
     if (!SpaceClock.isKnownTimezone(timezone)) {
       throw ArgumentError.value(timezone, 'timezone', 'unknown IANA zone');
     }
+    final DateTime now = clock.nowUtc();
     return db
         .into(db.spaces)
         .insertReturning(
@@ -64,23 +65,22 @@ class SpaceRepository {
             timezone: timezone,
             currencyCode: currencyCode,
             countryCode: Value<String?>(countryCode),
-            createdAt: clock.nowUtc(),
+            createdAt: now,
+            clientEditedAt: Value<DateTime?>(now),
+            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
           ),
         );
   }
 
   Future<int> setTitle(String spaceId, String title) =>
-      (db.update(db.spaces)..where(($SpacesTable t) => t.id.equals(spaceId)))
-          .write(SpacesCompanion(title: Value<String>(title.trim())));
+      _edit(spaceId, SpacesCompanion(title: Value<String>(title.trim())));
 
   /// Throws [ArgumentError] on an unknown zone.
   Future<int> setTimezone(String spaceId, String timezone) {
     if (!SpaceClock.isKnownTimezone(timezone)) {
       throw ArgumentError.value(timezone, 'timezone', 'unknown IANA zone');
     }
-    return (db.update(db.spaces)
-          ..where(($SpacesTable t) => t.id.equals(spaceId)))
-        .write(SpacesCompanion(timezone: Value<String>(timezone)));
+    return _edit(spaceId, SpacesCompanion(timezone: Value<String>(timezone)));
   }
 
   /// True until the Space has a live payment or income.
@@ -108,22 +108,21 @@ class SpaceRepository {
 
   Future<int> setCurrency(String spaceId, String currencyCode) async {
     if (!await canChangeCurrency(spaceId)) throw CurrencyFrozen(spaceId);
-    return (db.update(db.spaces)
-          ..where(($SpacesTable t) => t.id.equals(spaceId)))
-        .write(SpacesCompanion(currencyCode: Value<String>(currencyCode)));
+    return _edit(
+      spaceId,
+      SpacesCompanion(currencyCode: Value<String>(currencyCode)),
+    );
   }
 
   /// Paid expenses dated on or before the snapshot time are excluded from the
   /// walk.
-  Future<int> setManualBalance(String spaceId, Decimal balance) =>
-      (db.update(
-        db.spaces,
-      )..where(($SpacesTable t) => t.id.equals(spaceId))).write(
-        SpacesCompanion(
-          manualBalance: Value<Decimal?>(balance),
-          manualBalanceUpdatedAt: Value<DateTime?>(clock.nowUtc()),
-        ),
-      );
+  Future<int> setManualBalance(String spaceId, Decimal balance) => _edit(
+    spaceId,
+    SpacesCompanion(
+      manualBalance: Value<Decimal?>(balance),
+      manualBalanceUpdatedAt: Value<DateTime?>(clock.nowUtc()),
+    ),
+  );
 
   Future<int> setArchived(String spaceId, {required bool isArchived}) =>
       (db.update(db.spaces)..where(($SpacesTable t) => t.id.equals(spaceId)))
@@ -157,9 +156,20 @@ class SpaceRepository {
     )..where(($SpacesTable t) => t.id.equals(spaceId))).go();
   });
 
-  Future<int> setFeedOrderMode(String spaceId, FeedOrderMode mode) =>
-      (db.update(db.spaces)..where(($SpacesTable t) => t.id.equals(spaceId)))
-          .write(SpacesCompanion(feedOrderMode: Value<FeedOrderMode>(mode)));
+  Future<int> setFeedOrderMode(String spaceId, FeedOrderMode mode) => _edit(
+    spaceId,
+    SpacesCompanion(feedOrderMode: Value<FeedOrderMode>(mode)),
+  );
+
+  Future<int> _edit(String spaceId, SpacesCompanion change) =>
+      (db.update(
+        db.spaces,
+      )..where(($SpacesTable t) => t.id.equals(spaceId))).write(
+        change.copyWith(
+          clientEditedAt: Value<DateTime?>(clock.nowUtc()),
+          syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+        ),
+      );
 
   SpaceClock clockFor(Space space) => clock.inZone(space.timezone);
 }

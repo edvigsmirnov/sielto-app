@@ -71,6 +71,24 @@ class Spaces extends Table {
 
   DateTimeColumn get createdAt => dateTime().named('created_at')();
 
+  /// Null on a Space never edited; sync uses `created_at`.
+  DateTimeColumn get clientEditedAt =>
+      dateTime().named('client_edited_at').nullable()();
+
+  DateTimeColumn get serverReceivedAt =>
+      dateTime().named('server_received_at').nullable()();
+
+  TextColumn get lastModifiedBy =>
+      text().named('last_modified_by').nullable()();
+
+  TextColumn get syncStatus => textEnum<SyncStatus>()
+      .named('sync_status')
+      .withDefault(const Constant<String>('none'))();
+
+  /// Server receipt time of the newest row downloaded for this Space.
+  DateTimeColumn get syncedUntil =>
+      dateTime().named('synced_until').nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 
