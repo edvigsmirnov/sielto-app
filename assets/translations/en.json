@@ -805,7 +805,7 @@
     "copied": "Copied",
     "share": "Share",
     "joinTitle": "Link this device",
-    "joinBody": "On a device that already uses Sielto, open Settings › Add a device and enter the code it shows.",
+    "joinBody": "On a device that already uses Sielto, open Settings › Your devices › Add a device and enter the code it shows.",
     "codeField": "Code",
     "join": "Join",
     "joining": "Joining…",
@@ -813,6 +813,26 @@
     "tooManyAttempts": "Too many tries for now. Wait a minute, then try again.",
     "keyLater": "Your other device didn't send the Recovery Key in time. Enter it in Settings › Backup to turn on backups here.",
     "noSpaces": "No cloud Spaces yet. Create one here, or move one to the cloud on your other device.",
-    "continue": "Continue"
+    "continue": "Continue",
+    "listTitle": "Your devices",
+    "thisDevice": "This device",
+    "unnamed": "Unnamed device",
+    "activeToday": "Active today",
+    "lastActive": "Last active {}",
+    "inactive": {
+      "one": "Not used for {} day. You can unlink it.",
+      "other": "Not used for {} days. You can unlink it."
+    },
+    "actions": "Device options",
+    "rename": "Rename",
+    "renameTitle": "Device name",
+    "unlink": "Unlink",
+    "unlinkTitle": "Unlink \"{name}\"?",
+    "unlinkBody": "Your cloud Spaces disappear from it the next time it's online. Until then they stay on it, encrypted.",
+    "unlinkOthers": "Unlink all other devices",
+    "unlinkOthersTitle": "Unlink all other devices?",
+    "unlinkOthersBody": "For a lost or sold device. Your cloud Spaces disappear from them the next time they're online.",
+    "tryAgain": "Try again",
+    "wasUnlinked": "This device was unlinked, so your cloud Spaces were removed from it."
   }
 }

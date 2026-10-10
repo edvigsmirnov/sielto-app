@@ -7,11 +7,12 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/backup_page.dart';
 import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/dev/token_gallery_page.dart';
-import 'package:sielto/features/devices/add_device_page.dart';
+import 'package:sielto/features/devices/devices_page.dart';
 import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
 import 'package:sielto/features/settings/language_picker.dart';
@@ -141,11 +142,11 @@ class SettingsPage extends ConsumerWidget {
           ),
           ListTile(
             leading: const Icon(Icons.devices_outlined),
-            title: Text(tr('devices.addTitle')),
+            title: Text(tr('devices.listTitle')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (BuildContext _) => const AddDevicePage(),
+                builder: (BuildContext _) => const DevicesPage(),
               ),
             ),
           ),
@@ -178,63 +179,11 @@ class SettingsPage extends ConsumerWidget {
 }
 
 Future<void> _editName(BuildContext context, WidgetRef ref) async {
-  final String? typed = await showDialog<String>(
-    context: context,
-    builder: (BuildContext context) =>
-        _NameDialog(initial: ref.read(nameProvider) ?? ''),
+  final String? typed = await textDialog(
+    context,
+    title: tr('settings.name'),
+    initial: ref.read(nameProvider) ?? '',
+    hint: tr('onboarding.nameHint'),
   );
   if (typed != null) await ref.read(nameProvider.notifier).set(typed);
-}
-
-class _NameDialog extends StatefulWidget {
-  const _NameDialog({required this.initial});
-
-  final String initial;
-
-  @override
-  State<_NameDialog> createState() => _NameDialogState();
-}
-
-class _NameDialogState extends State<_NameDialog> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initial,
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    backgroundColor: context.sage.card,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(SageRadius.card),
-    ),
-    title: Text(
-      tr('settings.name'),
-      style: Theme.of(context).textTheme.titleMedium,
-    ),
-    content: TextField(
-      controller: _controller,
-      autofocus: true,
-      textCapitalization: TextCapitalization.words,
-      decoration: InputDecoration(
-        hintText: tr('onboarding.nameHint'),
-        hintMaxLines: 2,
-      ),
-      onSubmitted: (String value) => Navigator.of(context).pop(value),
-    ),
-    actions: <Widget>[
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: Text(tr('common.cancel')),
-      ),
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(_controller.text),
-        child: Text(tr('common.save')),
-      ),
-    ],
-  );
 }

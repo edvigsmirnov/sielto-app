@@ -90,7 +90,19 @@ class _MainShellState extends ConsumerState<MainShell> {
     _resetOnSpaceChange();
     // Keeps the daily Drive snapshot running while the shell is up.
     if (driveSupported) ref.watch(driveProvider);
-    ref.watch(syncProvider);
+    ref.listen(syncProvider.select((SyncState s) => s.unlinked), (
+      bool? was,
+      bool now,
+    ) {
+      if (now && was == false) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(tr('devices.wasUnlinked')),
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      }
+    });
     final int index = ref.watch(shellTabProvider);
     final bool selecting = ref.watch(feedSelectionProvider).isNotEmpty;
     return PopScope(

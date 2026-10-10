@@ -40,73 +40,84 @@ void main() {
     );
   });
 
-  test(
-    'a new device joins with a code and receives the Recovery Key',
-    () async {
-      SupabaseClient client() => SupabaseClient(
-        url!,
-        key!,
-        authOptions: const AuthClientOptions(
-          authFlowType: AuthFlowType.implicit,
-        ),
-      );
-      final String userId = const Uuid().v4();
-      final AppDatabase a = inMemoryDatabase();
-      final AppDatabase b = inMemoryDatabase();
-      final SupabaseClient clientA = client();
-      final SupabaseClient clientB = client();
-      final CloudIdentity identityA = CloudIdentity(
-        db: a,
-        client: clientA,
-        userId: userId,
-      );
-      final CloudIdentity identityB = CloudIdentity(
-        db: b,
-        client: clientB,
-        userId: const Uuid().v4(),
-      );
-      addTearDown(() async {
-        await identityA.dispose();
-        await identityB.dispose();
-        await a.close();
-        await b.close();
-      });
+  test('a new device joins with a code, receives the Recovery Key and can be unlinked', () async {
+    SupabaseClient client() => SupabaseClient(
+      url!,
+      key!,
+      authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
+    );
+    final String userId = const Uuid().v4();
+    final AppDatabase a = inMemoryDatabase();
+    final AppDatabase b = inMemoryDatabase();
+    final SupabaseClient clientA = client();
+    final SupabaseClient clientB = client();
+    final CloudIdentity identityA = CloudIdentity(
+      db: a,
+      client: clientA,
+      userId: userId,
+    );
+    final CloudIdentity identityB = CloudIdentity(
+      db: b,
+      client: clientB,
+      userId: const Uuid().v4(),
+      deviceName: Future<String?>.value('Tablet'),
+    );
+    addTearDown(() async {
+      await identityA.dispose();
+      await identityB.dispose();
+      await a.close();
+      await b.close();
+    });
 
-      await identityA.ensure();
-      final String spaceId =
-          (await SpaceRepository(
-                db: a,
-                clock: SpaceClock(timezone: 'UTC'),
-              ).create(
-                title: 'Home',
-                spaceType: SpaceType.personal,
-                budgetMode: BudgetMode.flow,
-                ownerId: userId,
-                timezone: 'UTC',
-                currencyCode: 'EUR',
-                storageMode: StorageMode.cloud,
-              ))
-              .id;
-      await SyncWorker(db: a, client: clientA).syncAll();
+    await identityA.ensure();
+    final String spaceId =
+        (await SpaceRepository(
+              db: a,
+              clock: SpaceClock(timezone: 'UTC'),
+            ).create(
+              title: 'Home',
+              spaceType: SpaceType.personal,
+              budgetMode: BudgetMode.flow,
+              ownerId: userId,
+              timezone: 'UTC',
+              currencyCode: 'EUR',
+              storageMode: StorageMode.cloud,
+            ))
+            .id;
+    await SyncWorker(db: a, client: clientA).syncAll();
 
-      final String code = await clientA.rpc<String>('create_device_link_code');
-      final SimpleKeyPair pair = await DeviceLink.newKeyPair();
-      expect(await identityB.link('WRONG234', 'x'), isNull);
-      expect(
-        await identityB.link(code, await DeviceLink.publicKeyOf(pair)),
-        userId,
-      );
+    final String code = await clientA.rpc<String>('create_device_link_code');
+    final SimpleKeyPair pair = await DeviceLink.newKeyPair();
+    expect(await identityB.link('WRONG234', 'x'), isNull);
+    expect(
+      await identityB.link(code, await DeviceLink.publicKeyOf(pair)),
+      userId,
+    );
 
-      final Future<bool> handed = DeviceLink.handOver(clientA, 'RK-1234');
-      expect(await DeviceLink.receive(clientB, pair), 'RK-1234');
-      expect(await handed, isTrue);
+    final Future<bool> handed = DeviceLink.handOver(clientA, 'RK-1234');
+    expect(await DeviceLink.receive(clientB, pair), 'RK-1234');
+    expect(await handed, isTrue);
 
-      await SyncWorker(db: b, client: clientB).syncAll();
-      final Space space = await (b.select(
-        b.spaces,
-      )..where(($SpacesTable t) => t.id.equals(spaceId))).getSingle();
-      expect(space.title, 'Home');
-    },
-    skip: skip,
-  );
+    await SyncWorker(db: b, client: clientB).syncAll();
+    final Space space = await (b.select(
+      b.spaces,
+    )..where(($SpacesTable t) => t.id.equals(spaceId))).getSingle();
+    expect(space.title, 'Home');
+
+    final String deviceB = await identityB.deviceId();
+    expect(
+      await clientA
+          .from('user_devices')
+          .select('display_name')
+          .eq('device_id', deviceB)
+          .single(),
+      <String, String>{'display_name': 'Tablet'},
+    );
+    await clientA.rpc<void>(
+      'unlink_device',
+      params: <String, String>{'p_device_id': deviceB},
+    );
+    expect(await SyncWorker(db: b, client: clientB).syncAll(), isFalse);
+    expect(await SyncWorker(db: a, client: clientA).syncAll(), isTrue);
+  }, skip: skip);
 }

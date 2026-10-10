@@ -38,6 +38,7 @@ class CloudIdentity {
     required this.db,
     required this.client,
     required this.userId,
+    this.deviceName,
   }) {
     _saving = client.auth.onAuthStateChange.listen(
       (AuthState state) => unawaited(_store(state.session)),
@@ -47,6 +48,7 @@ class CloudIdentity {
   final AppDatabase db;
   final SupabaseClient client;
   final String userId;
+  final Future<String?>? deviceName;
   late final StreamSubscription<AuthState> _saving;
 
   /// Network failures propagate; call again later.
@@ -58,7 +60,8 @@ class CloudIdentity {
         await client.auth.recoverSession(row.session!);
       } on AuthRetryableFetchException {
         rethrow;
-      } on AuthException {
+      } on AuthException catch (e) {
+        if (!_revoked.contains(e.statusCode)) rethrow;
         row = row.copyWith(session: const Value<String?>(null));
         await db.update(db.cloudIdentity).replace(row);
       }
@@ -73,9 +76,10 @@ class CloudIdentity {
       try {
         await client.rpc<void>(
           'register_new_user',
-          params: <String, String>{
+          params: <String, String?>{
             'p_user_id': userId,
             'p_device_id': row.deviceId,
+            'p_display_name': await deviceName,
           },
         );
       } on PostgrestException catch (e) {
@@ -98,10 +102,11 @@ class CloudIdentity {
     }
     final String? linked = await client.rpc<String?>(
       'link_device_by_code',
-      params: <String, String>{
+      params: <String, String?>{
         'p_code': code.trim(),
         'p_device_id': row.deviceId,
         'p_ephemeral_pubkey': ephemeralPublicKey,
+        'p_display_name': await deviceName,
       },
     );
     if (linked != null) {
@@ -112,7 +117,19 @@ class CloudIdentity {
     return linked;
   }
 
+  /// This device's id on the server.
+  Future<String> deviceId() async => (await _row()).deviceId;
+
+  /// Forgets the session and the device id, so the next cloud use is fresh.
+  Future<void> forget() async {
+    await db.delete(db.cloudIdentity).go();
+    await client.auth.signOut(scope: SignOutScope.local);
+  }
+
   Future<void> dispose() => _saving.cancel();
+
+  /// Status codes of a deleted or revoked session.
+  static const Set<String?> _revoked = <String?>{'400', '401', '403', '404'};
 
   Future<CloudIdentityData> _row() async {
     final CloudIdentityData? row = await db

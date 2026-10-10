@@ -10,6 +10,8 @@ import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/sync/cloud_identity.dart';
 import 'package:sielto/core/sync/device_link.dart';
 import 'package:sielto/core/sync/sync_worker.dart';
+import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/devices/device_name.dart';
 import 'package:supabase/supabase.dart';
 
 enum CloudResult { done, offlineMode, noNetwork, unlinked }
@@ -17,6 +19,13 @@ enum CloudResult { done, offlineMode, noNetwork, unlinked }
 enum JoinResult { joined, wrongCode, tooManyAttempts, offlineMode, noNetwork }
 
 typedef SyncState = ({bool unlinked, DateTime? lastSync});
+
+typedef LinkedDevice = ({
+  String id,
+  String? name,
+  DateTime lastSeen,
+  bool current,
+});
 
 /// Syncs at start, on resume, after cloud edits and on server changes.
 /// Sends nothing while fully offline or before any cloud use.
@@ -36,13 +45,15 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   @override
   SyncState build() {
     final AppDatabase db = ref.watch(databaseProvider);
+    final Future<String?> name = deviceName();
     _client = SupabaseProject.client();
     _identity = CloudIdentity(
       db: db,
       client: _client,
       userId: ref.watch(userIdProvider),
+      deviceName: name,
     );
-    _worker = SyncWorker(db: db, client: _client);
+    _worker = SyncWorker(db: db, client: _client, deviceName: name);
 
     final StreamSubscription<int> edits = _pendingCount(db)
         .distinct()
@@ -82,16 +93,39 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       if (ref.read(offlineModeProvider) || !await _usesCloud()) return;
       try {
         if (await _identity.ensure() == CloudAccess.unlinked) {
-          state = (unlinked: true, lastSync: state.lastSync);
+          await _unlinked();
           return;
         }
         _channel ??= _worker.watchRemote(_soon);
-        await _worker.syncAll();
+        if (!await _worker.syncAll()) {
+          await _unlinked();
+          return;
+        }
         state = (unlinked: false, lastSync: DateTime.now());
       } on Exception catch (e) {
         debugPrint('sync: $e');
       }
     });
+  }
+
+  /// Cloud Spaces leave this device. One that never reached the cloud stays
+  /// as a local Space: this device holds its only copy.
+  Future<void> _unlinked() async {
+    _closeChannel();
+    state = (unlinked: true, lastSync: state.lastSync);
+    final List<Space> cloud =
+        await (_db.select(_db.spaces)..where(
+              ($SpacesTable t) => t.storageMode.equalsValue(StorageMode.cloud),
+            ))
+            .get();
+    for (final Space space in cloud) {
+      if (space.serverReceivedAt == null) {
+        await _makeLocal(space.id);
+      } else {
+        await ref.read(repositoriesProvider).spaces.deleteForever(space.id);
+      }
+    }
+    await _identity.forget();
   }
 
   void _soon() {
@@ -199,12 +233,75 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   Future<CloudResult> moveToLocal(String spaceId) => _serial(() async {
     final CloudResult removed = await _removeFromServer(spaceId);
     if (removed != CloudResult.done) return removed;
-    await _db.customUpdate(
-      "UPDATE spaces SET storage_mode = 'local', sync_status = 'none', "
-      'server_received_at = NULL, synced_until = NULL WHERE id = ?',
-      variables: <Variable<Object>>[Variable<String>(spaceId)],
-    );
+    await _makeLocal(spaceId);
     return CloudResult.done;
+  });
+
+  Future<void> _makeLocal(String spaceId) => _db.customUpdate(
+    "UPDATE spaces SET storage_mode = 'local', sync_status = 'none', "
+    'server_received_at = NULL, synced_until = NULL WHERE id = ?',
+    variables: <Variable<Object>>[Variable<String>(spaceId)],
+  );
+
+  /// This account's devices, most recently seen first.
+  Future<({CloudResult result, List<LinkedDevice> devices})> devices() =>
+      _serial(() async {
+        final CloudResult signedIn = await _signIn();
+        if (signedIn != CloudResult.done) {
+          return (result: signedIn, devices: const <LinkedDevice>[]);
+        }
+        try {
+          final String mine = await _identity.deviceId();
+          final List<Map<String, dynamic>> rows = await _client
+              .from('user_devices')
+              .select('device_id, display_name, last_seen')
+              .order('last_seen');
+          return (
+            result: CloudResult.done,
+            devices: <LinkedDevice>[
+              for (final Map<String, dynamic> r in rows.reversed)
+                (
+                  id: r['device_id'] as String,
+                  name: r['display_name'] as String?,
+                  lastSeen: DateTime.parse(r['last_seen'] as String),
+                  current: r['device_id'] == mine,
+                ),
+            ],
+          );
+        } on Exception {
+          return (
+            result: CloudResult.noNetwork,
+            devices: const <LinkedDevice>[],
+          );
+        }
+      });
+
+  Future<bool> renameDevice(String deviceId, String name) => _online(
+    () => _client
+        .from('user_devices')
+        .update(<String, String>{'display_name': name})
+        .eq('device_id', deviceId),
+  );
+
+  Future<bool> unlinkDevice(String deviceId) => _online(
+    () => _client.rpc<void>(
+      'unlink_device',
+      params: <String, String>{'p_device_id': deviceId},
+    ),
+  );
+
+  Future<bool> unlinkOtherDevices() =>
+      _online(() => _client.rpc<void>('unlink_other_devices'));
+
+  /// False with no network or no cloud access.
+  Future<bool> _online(Future<void> Function() call) => _serial(() async {
+    if (await _signIn() != CloudResult.done) return false;
+    try {
+      await call();
+      return true;
+    } on Exception {
+      return false;
+    }
   });
 
   /// The server copy goes first, or the next sync would bring it back.

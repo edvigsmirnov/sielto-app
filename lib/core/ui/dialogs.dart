@@ -294,3 +294,87 @@ class ChoiceGrid extends StatelessWidget {
     );
   }
 }
+
+/// One line of text; null when cancelled.
+Future<String?> textDialog(
+  BuildContext context, {
+  required String title,
+  String initial = '',
+  String? hint,
+  int? maxLength,
+}) => showDialog<String>(
+  context: context,
+  builder: (BuildContext context) => _TextDialog(
+    title: title,
+    initial: initial,
+    hint: hint,
+    maxLength: maxLength,
+  ),
+);
+
+class _TextDialog extends StatefulWidget {
+  const _TextDialog({
+    required this.title,
+    required this.initial,
+    required this.hint,
+    required this.maxLength,
+  });
+
+  final String title;
+  final String initial;
+  final String? hint;
+  final int? maxLength;
+
+  @override
+  State<_TextDialog> createState() => _TextDialogState();
+}
+
+class _TextDialogState extends State<_TextDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    backgroundColor: context.sage.card,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(SageRadius.card),
+    ),
+    title: Text(
+      widget.title,
+      textAlign: TextAlign.center,
+      style: Theme.of(context).textTheme.titleMedium,
+    ),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        TextField(
+          controller: _controller,
+          autofocus: true,
+          maxLength: widget.maxLength,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(hintText: widget.hint, hintMaxLines: 2),
+          onSubmitted: (String value) => Navigator.of(context).pop(value),
+        ),
+        const SizedBox(height: SageSpace.lg),
+        ChoiceGrid(
+          choices: <(String, VoidCallback)>[
+            (tr('common.cancel'), () => Navigator.of(context).pop()),
+            (
+              tr('common.save'),
+              () => Navigator.of(context).pop(_controller.text),
+            ),
+          ],
+          primaryLast: true,
+        ),
+      ],
+    ),
+  );
+}

@@ -7,10 +7,13 @@ import 'package:supabase/supabase.dart';
 /// Uploads the pending rows of cloud Spaces, then downloads what changed on
 /// the server. The later `client_edited_at` wins, here and on the server.
 class SyncWorker {
-  SyncWorker({required this.db, required this.client});
+  SyncWorker({required this.db, required this.client, this.deviceName});
 
   final AppDatabase db;
   final SupabaseClient client;
+
+  /// Names this device on the server if it has no name yet.
+  final Future<String?>? deviceName;
 
   /// Parents first.
   static const List<String> records = <String>[
@@ -48,8 +51,13 @@ class SyncWorker {
   /// Rows committed out of order carry an earlier receipt time.
   static const Duration _overlap = Duration(minutes: 1);
 
-  Future<void> syncAll() async {
-    await client.rpc<void>('touch_device');
+  /// False when this device has been unlinked; nothing is synced then.
+  Future<bool> syncAll() async {
+    final bool linked = await client.rpc<bool>(
+      'touch_device',
+      params: <String, String?>{'p_display_name': await deviceName},
+    );
+    if (!linked) return false;
     final List<Map<String, dynamic>> remote = await client
         .from('spaces')
         .select();
@@ -67,6 +75,7 @@ class SyncWorker {
     for (final Space space in spaces) {
       await syncSpace(space.id);
     }
+    return true;
   }
 
   /// [onChange] fires for every server change to a row this user can read.

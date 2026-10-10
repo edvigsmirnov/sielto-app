@@ -77,6 +77,11 @@ class MainActivity : FlutterFragmentActivity(), FlutterUiDisplayListener {
                         pendingSave = Pair(call.argument<ByteArray>("bytes")!!, result)
                         createDocument.launch(call.argument<String>("name"))
                     }
+                    "deviceName" -> {
+                        val model = Build.MODEL
+                        val maker = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
+                        result.success(if (model.startsWith(maker, true)) model else "$maker $model")
+                    }
                     else -> result.notImplemented()
                 }
             }
