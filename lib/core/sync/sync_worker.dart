@@ -53,11 +53,7 @@ class SyncWorker {
 
   /// False when this device has been unlinked; nothing is synced then.
   Future<bool> syncAll() async {
-    final bool linked = await client.rpc<bool>(
-      'touch_device',
-      params: <String, String?>{'p_display_name': await deviceName},
-    );
-    if (!linked) return false;
+    if (!await touch()) return false;
     final List<Map<String, dynamic>> remote = await client
         .from('spaces')
         .select();
@@ -77,6 +73,12 @@ class SyncWorker {
     }
     return true;
   }
+
+  /// Marks this device active; false once it has been unlinked.
+  Future<bool> touch() async => client.rpc<bool>(
+    'touch_device',
+    params: <String, String?>{'p_display_name': await deviceName},
+  );
 
   /// [onChange] fires for every server change to a row this user can read.
   RealtimeChannel watchRemote(void Function() onChange) {

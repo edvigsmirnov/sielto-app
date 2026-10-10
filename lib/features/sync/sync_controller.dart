@@ -31,6 +31,7 @@ typedef LinkedDevice = ({
 /// Sends nothing while fully offline or before any cloud use.
 class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   static const Duration _settle = Duration(seconds: 3);
+  static const Duration _linkCheck = Duration(seconds: 60);
 
   late SupabaseClient _client;
   late CloudIdentity _identity;
@@ -38,6 +39,7 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   Future<void> _tail = Future<void>.value();
   bool _queued = false;
   Timer? _debounce;
+  Timer? _tick;
   RealtimeChannel? _channel;
 
   AppDatabase get _db => ref.read(databaseProvider);
@@ -70,19 +72,44 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
       _debounce?.cancel();
+      _tick?.cancel();
       unawaited(edits.cancel());
       _closeChannel();
       unawaited(_identity.dispose());
       _client.dispose();
     });
     Future<void>.microtask(syncNow);
+    _startTick();
     return (unlinked: false, lastSync: null);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(syncNow());
+    if (state == AppLifecycleState.resumed) {
+      unawaited(syncNow());
+      _startTick();
+    } else {
+      _tick?.cancel();
+    }
   }
+
+  /// Notices an unlink while the app stays open.
+  void _startTick() {
+    _tick?.cancel();
+    _tick = Timer.periodic(_linkCheck, (Timer _) => unawaited(_checkLink()));
+  }
+
+  Future<void> _checkLink() => _serial(() async {
+    if (ref.read(offlineModeProvider) || !await _usesCloud()) return;
+    try {
+      if (await _identity.ensure() == CloudAccess.unlinked ||
+          !await _worker.touch()) {
+        await _unlinked();
+      }
+    } on Exception catch (e) {
+      debugPrint('sync: $e');
+    }
+  });
 
   /// Network trouble is left for the next run.
   Future<void> syncNow() {
