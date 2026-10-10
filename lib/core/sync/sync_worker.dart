@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:supabase/supabase.dart';
 
@@ -93,33 +94,49 @@ class SyncWorker {
     await _markSynced('spaces', rows);
   }
 
+  /// Rows the app filled in by itself are insert-only: they never overwrite.
   Future<void> _push(String table, String spaceId) async {
     final List<QueryRow> rows = await _pending(table, 'space_id', spaceId);
     final List<QueryRow> sent = <QueryRow>[];
-    for (int i = 0; i < rows.length; i += _page) {
-      final List<QueryRow> chunk = rows.sublist(
-        i,
-        i + _page > rows.length ? rows.length : i + _page,
-      );
-      try {
-        await client.from(table).upsert(<Map<String, Object?>>[
-          for (final QueryRow r in chunk) _toServer(table, r),
-        ]);
-        sent.addAll(chunk);
-      } on PostgrestException {
-        // One refused row must not hold back the rest; it stays pending.
-        for (final QueryRow r in chunk) {
-          try {
-            await client.from(table).upsert(_toServer(table, r));
-            sent.add(r);
-          } on PostgrestException {
-            continue;
+    for (final bool generated in <bool>[false, true]) {
+      final List<QueryRow> group = <QueryRow>[
+        for (final QueryRow r in rows)
+          if (_isGenerated(r) == generated) r,
+      ];
+      for (int i = 0; i < group.length; i += _page) {
+        final List<QueryRow> chunk = group.sublist(
+          i,
+          i + _page > group.length ? group.length : i + _page,
+        );
+        try {
+          await client.from(table).upsert(<Map<String, Object?>>[
+            for (final QueryRow r in chunk) _toServer(table, r),
+          ], ignoreDuplicates: generated);
+          sent.addAll(chunk);
+        } on PostgrestException {
+          // One refused row must not hold back the rest; it stays pending.
+          for (final QueryRow r in chunk) {
+            try {
+              await client
+                  .from(table)
+                  .upsert(_toServer(table, r), ignoreDuplicates: generated);
+              sent.add(r);
+            } on PostgrestException {
+              continue;
+            }
           }
         }
       }
     }
     await _markSynced(table, sent);
   }
+
+  bool _isGenerated(QueryRow row) =>
+      db.typeMapping.read(
+        DriftSqlType.dateTime,
+        row.data['client_edited_at'],
+      ) ==
+      SyncedRepository.generated;
 
   Future<void> _pull(String spaceId) async {
     final Space space = await (db.select(

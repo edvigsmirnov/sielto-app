@@ -467,7 +467,13 @@ void main() {
     test('a pin to a vanished period falls back to auto', () async {
       await anchorOn(26);
       await service.refresh(space, today);
-      final BudgetPeriod doomed = (await periods()).last;
+      // An open period no schedule month asks for, as after a merge.
+      final BudgetPeriod doomed = await repos.periods.createIncomeDriven(
+        spaceId: space.id,
+        startDate: d('2026-03-10'),
+        endDate: d('2026-03-20'),
+        anchorDate: d('2026-03-10'),
+      );
 
       final Payment payment = await repos.payments.create(
         spaceId: space.id,
@@ -481,9 +487,6 @@ void main() {
         doomed.id,
         assignment: PeriodAssignment.manual,
       );
-
-      // The pinned period is gone, as after a merge.
-      await repos.periods.softDelete(doomed.id);
 
       final PeriodRefresh result = await service.refresh(space, today);
       final Payment after = (await repos.payments.byId(payment.id))!;

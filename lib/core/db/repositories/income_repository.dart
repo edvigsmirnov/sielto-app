@@ -285,6 +285,8 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
     String? budgetPeriodId,
     String? notes,
     bool isPaid = false,
+    String? id,
+    bool generated = false,
   }) async {
     await _deadline.refuseIfBeyondDeadline(spaceId, expectedDate);
 
@@ -293,7 +295,7 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
         .into(db.incomes)
         .insertReturning(
           IncomesCompanion.insert(
-            id: SyncedRepository.newId(),
+            id: id ?? SyncedRepository.newId(),
             spaceId: spaceId,
             title: title.trim(),
             expectedDate: expectedDate,
@@ -304,7 +306,7 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
             isPaid: Value<bool>(isPaid),
             syncStatus: const Value<SyncStatus>(SyncStatus.pending),
             lastModifiedBy: Value<String?>(s.author),
-            clientEditedAt: s.editedAt,
+            clientEditedAt: generated ? SyncedRepository.generated : s.editedAt,
             createdAt: s.editedAt,
           ),
         );
@@ -350,12 +352,6 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
       ),
     );
   }
-
-  /// Expected dates of every occurrence of a rule, deleted ones included: a
-  /// deleted date is not refilled.
-  Future<Set<String>> materialisedDatesFor(String ruleId) async => <String>{
-    for (final Income i in await occurrencesOf(ruleId)) i.expectedDate.toIso(),
-  };
 
   /// Includes deleted rows.
   Future<List<Income>> occurrencesOf(String ruleId) => (db.select(

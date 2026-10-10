@@ -24,6 +24,13 @@ abstract class SyncedRepository<T extends Table, D extends DataClass> {
 
   static String newId() => _uuid.v4();
 
+  /// Edit time of rows the app fills in by itself, so any real edit wins.
+  static final DateTime generated = DateTime.utc(2000);
+
+  /// The same id on every device for the same [slot].
+  static String slotId(String slot) =>
+      _uuid.v5(Namespace.url.value, 'sielto:$slot');
+
   // Every syncable table mixes in `SyncColumns`; schema_test checks it.
   GeneratedColumn<bool> get _isDeleted =>
       table.columnsByName['is_deleted']! as GeneratedColumn<bool>;

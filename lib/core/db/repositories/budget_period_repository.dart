@@ -76,13 +76,15 @@ class BudgetPeriodRepository
     CalendarDate? windowStart,
     CalendarDate? windowEnd,
     bool holidayDataIncomplete = false,
+    String? id,
+    bool generated = false,
   }) {
     final ({String author, DateTime editedAt}) s = stamp();
     return db
         .into(db.budgetPeriods)
         .insertReturning(
           BudgetPeriodsCompanion.insert(
-            id: SyncedRepository.newId(),
+            id: id ?? SyncedRepository.newId(),
             spaceId: spaceId,
             periodType: PeriodType.incomeDriven,
             startDate: startDate,
@@ -93,11 +95,16 @@ class BudgetPeriodRepository
             holidayDataIncomplete: Value<bool>(holidayDataIncomplete),
             syncStatus: const Value<SyncStatus>(SyncStatus.pending),
             lastModifiedBy: Value<String?>(s.author),
-            clientEditedAt: s.editedAt,
+            clientEditedAt: generated ? SyncedRepository.generated : s.editedAt,
             createdAt: s.editedAt,
           ),
         );
   }
+
+  /// Deleted rows included.
+  Future<BudgetPeriod?> anyById(String id) => (db.select(
+    db.budgetPeriods,
+  )..where(($BudgetPeriodsTable t) => t.id.equals(id))).getSingleOrNull();
 
   /// Oldest first.
   Future<List<BudgetPeriod>> incomeDrivenIn(String spaceId) =>

@@ -22,6 +22,7 @@ class MaterializedPeriod {
     required this.windowStart,
     required this.windowEnd,
     required this.ruleIds,
+    required this.slot,
   });
 
   final CalendarDate startDate;
@@ -35,6 +36,10 @@ class MaterializedPeriod {
 
   /// More than one when anchors coincide and periods merge.
   final List<String> ruleIds;
+
+  /// `<YYYY-MM>:<n>`: the schedule month that produced the anchor and its
+  /// place among that month's anchor dates; the smallest when merged.
+  final String slot;
 
   bool get isMerged => ruleIds.length > 1;
 
@@ -85,6 +90,9 @@ abstract final class PeriodMaterializer {
           windowStart: current.windowStart,
           windowEnd: current.windowEnd,
           ruleIds: current.ruleIds,
+          slot: current.slots.reduce(
+            (String a, String b) => a.compareTo(b) <= 0 ? a : b,
+          ),
         ),
       );
     }
@@ -123,13 +131,19 @@ abstract final class PeriodMaterializer {
     // Guard against a schedule that never lands ahead of `from`.
     const int maxMonths = 120;
     for (int i = 0; i < maxMonths && byDate.length < needed + 2; i++) {
-      for (final AnchorSchedule anchor in anchors) {
-        final IncomeWindow window = anchor.schedule.resolveFor(
-          year,
-          month,
-          calendar: calendar,
-        );
+      final List<IncomeWindow> windows = <IncomeWindow>[
+        for (final AnchorSchedule anchor in anchors)
+          anchor.schedule.resolveFor(year, month, calendar: calendar),
+      ];
+      final List<String> dates = <String>{
+        for (final IncomeWindow w in windows) w.anchorDate.toIso(),
+      }.toList()..sort();
+      for (int j = 0; j < anchors.length; j++) {
+        final AnchorSchedule anchor = anchors[j];
+        final IncomeWindow window = windows[j];
         final String key = window.anchorDate.toIso();
+        final String slot =
+            '${scheduleMonth(year, month)}:${dates.indexOf(key)}';
         final _Anchor? existing = byDate[key];
         if (existing == null) {
           byDate[key] = _Anchor(
@@ -137,9 +151,11 @@ abstract final class PeriodMaterializer {
             windowStart: window.windowStart,
             windowEnd: window.windowEnd,
             ruleIds: <String>[anchor.ruleId],
+            slots: <String>[slot],
           );
         } else {
           existing.ruleIds.add(anchor.ruleId);
+          existing.slots.add(slot);
           byDate[key] = existing.widenedTo(window);
         }
       }
@@ -166,12 +182,14 @@ class _Anchor {
     required this.windowStart,
     required this.windowEnd,
     required this.ruleIds,
+    required this.slots,
   });
 
   final CalendarDate date;
   final CalendarDate windowStart;
   final CalendarDate windowEnd;
   final List<String> ruleIds;
+  final List<String> slots;
 
   /// The union of both windows.
   _Anchor widenedTo(IncomeWindow other) => _Anchor(
@@ -181,5 +199,10 @@ class _Anchor {
         : windowStart,
     windowEnd: other.windowEnd.isAfter(windowEnd) ? other.windowEnd : windowEnd,
     ruleIds: ruleIds,
+    slots: slots,
   );
 }
+
+/// `YYYY-MM`.
+String scheduleMonth(int year, int month) =>
+    '$year-${month.toString().padLeft(2, '0')}';

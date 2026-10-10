@@ -3,6 +3,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/period/period_materializer.dart';
 import 'package:sielto/domain/schedule/income_schedule.dart';
@@ -179,24 +180,11 @@ class PeriodService {
     final List<BudgetPeriod> existing = await repos.periods.incomeDrivenIn(
       space.id,
     );
-
-    // Periods that ended before today are closed and left alone.
-    final List<BudgetPeriod> open =
-        existing
-            .where(
-              (BudgetPeriod p) =>
-                  p.endDate == null || !p.endDate!.isBefore(today),
-            )
-            .toList()
-          ..sort(
-            (BudgetPeriod a, BudgetPeriod b) =>
-                a.startDate.compareTo(b.startDate),
-          );
+    bool isClosed(BudgetPeriod p) =>
+        p.endDate != null && p.endDate!.isBefore(today);
 
     final CalendarDate? closedThrough = existing
-        .where(
-          (BudgetPeriod p) => p.endDate != null && p.endDate!.isBefore(today),
-        )
+        .where(isClosed)
         .map((BudgetPeriod p) => p.endDate!)
         .fold<CalendarDate?>(
           null,
@@ -204,13 +192,15 @@ class PeriodService {
               a == null || a.isBefore(b) ? b : a,
         );
 
+    final List<String> ids = <String>[
+      for (final MaterializedPeriod p in computed)
+        SyncedRepository.slotId('period:${space.id}:${p.slot}'),
+    ];
+
     /// Confirmed receipt date, else the scheduled date.
     CalendarDate anchorOf(int i) {
-      if (i >= computed.length) return computed.last.anchorDate;
       final CalendarDate scheduled = computed[i].anchorDate;
-      if (i >= open.length) return scheduled;
-
-      final CalendarDate? actual = settled[open[i].id];
+      final CalendarDate? actual = settled[ids[i]];
       if (actual == null) return scheduled;
       if (closedThrough != null && !actual.isAfter(closedThrough)) {
         return closedThrough.addDays(1);
@@ -223,43 +213,60 @@ class PeriodService {
 
     for (int i = 0; i < computed.length; i++) {
       final MaterializedPeriod period = computed[i];
-      if (i < open.length) {
-        final CalendarDate start = anchorOf(i);
-        final CalendarDate? end = i + 1 < computed.length
-            ? anchorOf(i + 1).addDays(-1)
-            : period.endDate;
-        final bool moved = start != period.anchorDate;
+      final CalendarDate start = anchorOf(i);
+      final CalendarDate? end = i + 1 < computed.length
+          ? anchorOf(i + 1).addDays(-1)
+          : period.endDate;
+      final bool moved = start != period.anchorDate;
+      // A confirmed receipt collapses the window onto its day.
+      final CalendarDate windowStart = moved ? start : period.windowStart;
+      final CalendarDate windowEnd = moved ? start : period.windowEnd;
+      final bool incomplete = !moved && _incomplete(period);
 
+      final BudgetPeriod? row = await repos.periods.anyById(ids[i]);
+      if (row == null) {
+        await repos.periods.createIncomeDriven(
+          id: ids[i],
+          generated: true,
+          spaceId: space.id,
+          startDate: start,
+          // The last period has no successor yet.
+          endDate: end ?? start,
+          anchorDate: start,
+          windowStart: windowStart,
+          windowEnd: windowEnd,
+          holidayDataIncomplete: incomplete,
+        );
+        created++;
+        continue;
+      }
+      if (!row.isDeleted && isClosed(row)) continue;
+      if (row.isDeleted) await repos.periods.restore(row.id);
+      if (row.isDeleted ||
+          row.startDate != start ||
+          row.endDate != end ||
+          row.anchorDate != start ||
+          row.windowStart != windowStart ||
+          row.windowEnd != windowEnd ||
+          row.holidayDataIncomplete != incomplete) {
         await repos.periods.updateBoundaries(
-          open[i].id,
+          row.id,
           startDate: start,
           endDate: end,
           anchorDate: start,
-          // A confirmed receipt collapses the window onto its day.
-          windowStart: moved ? start : period.windowStart,
-          windowEnd: moved ? start : period.windowEnd,
-          holidayDataIncomplete: moved ? false : _incomplete(period),
+          windowStart: windowStart,
+          windowEnd: windowEnd,
+          holidayDataIncomplete: incomplete,
         );
         updated++;
-      } else {
-        await repos.periods.createIncomeDriven(
-          spaceId: space.id,
-          startDate: period.startDate,
-          // The last period has no successor yet.
-          endDate: period.endDate ?? period.startDate,
-          anchorDate: period.anchorDate,
-          windowStart: period.windowStart,
-          windowEnd: period.windowEnd,
-          holidayDataIncomplete: _incomplete(period),
-        );
-        created++;
       }
     }
 
-    // Open rows beyond the computed list: anchors merged or a rule was removed.
+    // Open rows no slot asked for: anchors merged or a rule was removed.
     int removed = 0;
-    for (int i = computed.length; i < open.length; i++) {
-      await repos.periods.softDelete(open[i].id);
+    for (final BudgetPeriod p in existing) {
+      if (isClosed(p) || ids.contains(p.id)) continue;
+      await repos.periods.softDelete(p.id);
       removed++;
     }
 
@@ -292,7 +299,8 @@ class PeriodService {
   }
 
   /// Scheduled dates within the window, never before the rule was created.
-  ({CalendarDate floor, List<CalendarDate> dates}) _scheduledDates(
+  ({CalendarDate floor, List<({String id, CalendarDate date})> dates})
+  _scheduledDates(
     Space space,
     IncomeRecurrenceRule rule,
     IncomeSchedule schedule, {
@@ -304,7 +312,8 @@ class PeriodService {
         .dateOf(rule.createdAt);
     final CalendarDate floor = ruleStart.isAfter(from) ? ruleStart : from;
 
-    final List<CalendarDate> dates = <CalendarDate>[];
+    final List<({String id, CalendarDate date})> dates =
+        <({String id, CalendarDate date})>[];
     int year = floor.year;
     int month = floor.month;
     final int months = horizonEnd == null
@@ -317,7 +326,7 @@ class PeriodService {
           .anchorDate;
       if ((horizonEnd == null || !date.isAfter(horizonEnd)) &&
           !date.isBefore(floor)) {
-        dates.add(date);
+        dates.add((id: incomeSlotId(rule.id, year, month), date: date));
       }
       month++;
       if (month == 13) {
@@ -340,21 +349,24 @@ class PeriodService {
       final IncomeSchedule? schedule = scheduleOf(rule);
       if (schedule == null) continue;
 
-      final Set<String> already = await repos.incomes.materialisedDatesFor(
-        rule.id,
-      );
-      for (final CalendarDate date in _scheduledDates(
+      // A moved or deleted date still holds its month.
+      final Set<String> filled = <String>{
+        for (final Income i in await repos.incomes.occurrencesOf(rule.id)) i.id,
+      };
+      for (final ({String id, CalendarDate date}) slot in _scheduledDates(
         space,
         rule,
         schedule,
         from: from,
         horizonEnd: horizonEnd,
       ).dates) {
-        if (!already.add(date.toIso())) continue;
+        if (!filled.add(slot.id)) continue;
         await repos.incomes.create(
+          id: slot.id,
+          generated: true,
           spaceId: space.id,
           title: rule.title,
-          expectedDate: date,
+          expectedDate: slot.date,
           amount: rule.amount,
           recurrenceRuleId: rule.id,
         );
@@ -428,8 +440,13 @@ class PeriodService {
                 !p.startDate.isAfter(end) &&
                 (p.endDate == null || !p.endDate!.isBefore(period.startDate)),
           );
-          if (taken) continue;
+          final String id = SyncedRepository.slotId(
+            'period:${space.id}:${period.slot}',
+          );
+          if (taken || await repos.periods.anyById(id) != null) continue;
           await repos.periods.createIncomeDriven(
+            id: id,
+            generated: true,
             spaceId: space.id,
             startDate: period.startDate,
             endDate: end,
@@ -441,28 +458,31 @@ class PeriodService {
         }
       }
 
-      final Set<String> already = await repos.incomes.materialisedDatesFor(
-        rule.id,
-      );
+      final Map<String, Income> filled = <String, Income>{
+        for (final Income i in await repos.incomes.occurrencesOf(rule.id))
+          i.id: i,
+      };
       CalendarDate month = CalendarDate(from.year, from.month, 1);
       while (!month.isAfter(today)) {
+        final String id = incomeSlotId(rule.id, month.year, month.month);
         final CalendarDate date = schedule
             .resolveFor(month.year, month.month, calendar: calendar)
             .anchorDate;
         month = month.addMonths(1);
         if (date.isBefore(from) || date.isAfter(today)) continue;
-        if (!already.add(date.toIso())) {
-          if (!date.isBefore(currentStart) && currentReceived) {
-            final Income? row = (await repos.incomes.occurrencesOf(rule.id))
-                .where((Income r) => r.expectedDate == date && !r.isDeleted)
-                .firstOrNull;
-            if (row != null && !row.isPaid && row.amount != null) {
-              await repos.incomes.markReceived(row.id);
-            }
+        final Income? row = filled[id];
+        if (row != null) {
+          if (!date.isBefore(currentStart) &&
+              currentReceived &&
+              !row.isDeleted &&
+              !row.isPaid &&
+              row.amount != null) {
+            await repos.incomes.markReceived(row.id);
           }
           continue;
         }
         await repos.incomes.create(
+          id: id,
           spaceId: space.id,
           title: rule.title,
           expectedDate: date,
@@ -490,56 +510,47 @@ class PeriodService {
     final int changed = await repos.db.transaction(() async {
       final ({CalendarDate from, CalendarDate? horizonEnd}) window =
           await _occurrenceWindow(space, today);
-      final ({CalendarDate floor, List<CalendarDate> dates}) planned =
-          _scheduledDates(
-            space,
-            rule,
-            schedule,
-            from: window.from,
-            horizonEnd: window.horizonEnd,
-          );
-      final Set<String> scheduled = <String>{
-        for (final CalendarDate date in planned.dates) date.toIso(),
-      };
-
-      // Received rows first keep their date, then live rows before deleted ones.
-      final List<Income> rows = await repos.incomes.occurrencesOf(ruleId)
-        ..sort(
-          (Income a, Income b) =>
-              (a.isDeleted ? 1 : 0).compareTo(b.isDeleted ? 1 : 0),
-        );
-      final Set<String> held = <String>{
-        for (final Income r in rows)
-          if (r.isPaid && !r.isDeleted) r.expectedDate.toIso(),
+      final ({CalendarDate floor, List<({String id, CalendarDate date})> dates})
+      planned = _scheduledDates(
+        space,
+        rule,
+        schedule,
+        from: window.from,
+        horizonEnd: window.horizonEnd,
+      );
+      final Map<String, CalendarDate> scheduled = <String, CalendarDate>{
+        for (final ({String id, CalendarDate date}) slot in planned.dates)
+          slot.id: slot.date,
       };
 
       int changed = 0;
-      for (final Income row in rows) {
+      for (final Income row in await repos.incomes.occurrencesOf(ruleId)) {
         if (row.isPaid || row.expectedDate.isBefore(planned.floor)) continue;
-        final String iso = row.expectedDate.toIso();
         if (await repos.incomes.freezeStateOf(row) == FreezeState.frozen) {
-          if (!row.isDeleted) held.add(iso);
           continue;
         }
-
-        if (scheduled.contains(iso) && held.add(iso)) {
-          if (row.isDeleted) await repos.incomes.restore(row.id);
-          if (row.title != rule.title || row.amount != rule.amount) {
-            await repos.incomes.update(
-              row.id,
-              title: Value<String>(rule.title),
-              amount: Value<Decimal?>(rule.amount),
-            );
-          }
-          if (row.isDeleted ||
-              row.title != rule.title ||
-              row.amount != rule.amount) {
+        final CalendarDate? date = scheduled[row.id];
+        if (date == null) {
+          if (!row.isDeleted) {
+            await repos.incomes.softDelete(row.id);
             changed++;
           }
-        } else if (!row.isDeleted) {
-          await repos.incomes.softDelete(row.id);
-          changed++;
+          continue;
         }
+        if (!row.isDeleted &&
+            row.expectedDate == date &&
+            row.title == rule.title &&
+            row.amount == rule.amount) {
+          continue;
+        }
+        if (row.isDeleted) await repos.incomes.restore(row.id);
+        await repos.incomes.update(
+          row.id,
+          title: Value<String>(rule.title),
+          amount: Value<Decimal?>(rule.amount),
+          expectedDate: Value<CalendarDate>(date),
+        );
+        changed++;
       }
       return changed;
     });
@@ -603,3 +614,7 @@ class PeriodService {
     return rebound;
   }
 }
+
+/// One schedule month of one regular income, the same on every device.
+String incomeSlotId(String ruleId, int year, int month) =>
+    SyncedRepository.slotId('income:$ruleId:${scheduleMonth(year, month)}');

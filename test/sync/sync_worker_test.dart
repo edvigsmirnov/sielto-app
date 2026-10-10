@@ -3,15 +3,19 @@ import 'dart:io';
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sielto/app/providers.dart';
 import 'package:sielto/app/startup.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/db/repositories/payment_repository.dart';
 import 'package:sielto/core/db/repositories/space_repository.dart';
 import 'package:sielto/core/sync/cloud_identity.dart';
 import 'package:sielto/core/sync/sync_worker.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/periods/period_service.dart';
 import 'package:supabase/supabase.dart';
 import 'package:uuid/uuid.dart';
 
@@ -161,6 +165,122 @@ void main() {
 
     expect((await payment(a)).isDeleted, isTrue);
     expect((await payment(b)).isDeleted, isTrue);
+  }, skip: skip);
+
+  for (final bool generatedFirst in <bool>[true, false]) {
+    test(
+      'a date both devices fill in becomes one row and keeps the edit '
+      '(${generatedFirst ? 'untouched' : 'edited'} copy syncs first)',
+      () async {
+        final SpaceClock clock = SpaceClock(timezone: 'UTC');
+        final String ruleId =
+            (await IncomeRuleRepository(
+                  db: a,
+                  clock: clock,
+                  userId: userId,
+                ).create(
+                  spaceId: spaceId,
+                  title: 'Salary',
+                  scheduleType: ScheduleType.fixedDate,
+                  amount: Decimal.parse('3000'),
+                  fixedDay: 1,
+                ))
+                .id;
+        await syncA.syncAll();
+        await syncB.syncAll();
+
+        Future<Income> fillIn(AppDatabase db) =>
+            IncomeRepository(db: db, clock: clock, userId: userId).create(
+              spaceId: spaceId,
+              title: 'Salary',
+              expectedDate: const CalendarDate(2026, 11, 1),
+              amount: Decimal.parse('3000'),
+              recurrenceRuleId: ruleId,
+              id: incomeSlotId(ruleId, 2026, 11),
+              generated: true,
+            );
+        final Income onA = await fillIn(a);
+        await IncomeRepository(
+          db: a,
+          clock: clock,
+          userId: userId,
+        ).update(onA.id, amount: Value<Decimal?>(Decimal.parse('3100')));
+        await fillIn(b);
+
+        final List<SyncWorker> order = generatedFirst
+            ? <SyncWorker>[syncB, syncA]
+            : <SyncWorker>[syncA, syncB];
+        for (final SyncWorker w in <SyncWorker>[...order, ...order]) {
+          await w.syncAll();
+        }
+
+        for (final AppDatabase db in <AppDatabase>[a, b]) {
+          final List<Income> rows = await db.select(db.incomes).get();
+          expect(rows.single.id, onA.id);
+          expect(rows.single.amount, Decimal.parse('3100'));
+        }
+      },
+      skip: skip,
+    );
+  }
+
+  test('periods and income dates both devices work out are not '
+      'duplicated', () async {
+    final DateTime now = DateTime.now().toUtc();
+    final CalendarDate today = CalendarDate(now.year, now.month, now.day);
+    final SpaceClock clock = SpaceClock(timezone: 'UTC');
+    Repositories repos(AppDatabase db) =>
+        Repositories(db: db, clock: clock, userId: userId);
+    PeriodService service(AppDatabase db) => PeriodService(
+      repos: repos(db),
+      calendar: WorkingDayCalendar.weekendsOnly(),
+    );
+
+    final Space space = await repos(a).spaces.create(
+      title: 'Salary',
+      spaceType: SpaceType.personal,
+      budgetMode: BudgetMode.incomeDriven,
+      ownerId: userId,
+      timezone: 'UTC',
+      currencyCode: 'EUR',
+      storageMode: StorageMode.cloud,
+    );
+    await repos(a).incomeRules.create(
+      spaceId: space.id,
+      title: 'Salary',
+      scheduleType: ScheduleType.fixedDate,
+      fixedDay: 26,
+      amount: Decimal.parse('3000'),
+      isAnchor: true,
+    );
+    await syncA.syncAll();
+    await syncB.syncAll();
+
+    Future<Set<String>> ids(AppDatabase db, String table) async => <String>{
+      for (final QueryRow r
+          in await db
+              .customSelect(
+                'SELECT id FROM $table WHERE space_id = ? AND is_deleted = 0',
+                variables: <Variable<Object>>[Variable<String>(space.id)],
+              )
+              .get())
+        r.read<String>('id'),
+    };
+    await service(a).refresh(space, today);
+    final Map<String, Set<String>> alone = <String, Set<String>>{
+      for (final String table in <String>['budget_periods', 'incomes'])
+        table: await ids(a, table),
+    };
+    await service(b).refresh(space, today);
+    for (final SyncWorker w in <SyncWorker>[syncA, syncB, syncA, syncB]) {
+      await w.syncAll();
+    }
+
+    for (final String table in <String>['budget_periods', 'incomes']) {
+      expect(alone[table], isNotEmpty);
+      expect(await ids(a, table), alone[table], reason: table);
+      expect(await ids(b, table), alone[table], reason: table);
+    }
   }, skip: skip);
 
   test('a Space edit reaches the other device', () async {
