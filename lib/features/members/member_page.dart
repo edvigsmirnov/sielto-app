@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
 /// One member: their public name, the reader's private name and role for
@@ -70,7 +71,8 @@ class _MemberPageState extends ConsumerState<MemberPage> {
       confirmLabel: tr(remove ? 'members.remove' : 'members.makeOwner'),
       isDestructive: remove,
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
+    if (!await confirmIdentity(context, ref)) return;
     final bool done = remove
         ? await sync.removeMember(widget.spaceId, widget.member.userId)
         : await sync.transferOwnership(widget.spaceId, widget.member.userId);

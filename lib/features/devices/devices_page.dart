@@ -9,6 +9,7 @@ import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/devices/add_device_page.dart';
+import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
 enum _Action { rename, unlink }
@@ -77,7 +78,9 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
           confirmLabel: tr('devices.unlink'),
           isDestructive: true,
         );
-        if (confirmed) await _after(sync.unlinkDevice(device.id));
+        if (confirmed && mounted && await confirmIdentity(context, ref)) {
+          await _after(sync.unlinkDevice(device.id));
+        }
     }
   }
 
@@ -89,7 +92,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
       confirmLabel: tr('devices.unlink'),
       isDestructive: true,
     );
-    if (confirmed) {
+    if (confirmed && mounted && await confirmIdentity(context, ref)) {
       await _after(ref.read(syncProvider.notifier).unlinkOtherDevices());
     }
   }

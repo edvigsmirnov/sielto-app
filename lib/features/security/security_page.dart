@@ -65,6 +65,37 @@ Future<bool> confirmPin(BuildContext context, WidgetRef ref) async =>
     ) ??
     false;
 
+/// Before a change to access or anything that cannot be undone. Passes when
+/// app lock is off.
+Future<bool> confirmIdentity(BuildContext context, WidgetRef ref) async {
+  if (!ref.read(appLockEnabledProvider)) return true;
+  final bool biometric = ref.read(biometricUnlockProvider);
+  if (biometric && await authenticateBiometric()) return true;
+  if (!context.mounted) return false;
+  return await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          builder: (BuildContext context) => Scaffold(
+            backgroundColor: context.sage.surface,
+            appBar: AppBar(),
+            body: PinEntry(
+              title: tr('lock.confirmAction'),
+              check: (String pin) =>
+                  ref.read(pinStoreProvider).check(pin, DateTime.now()),
+              onAccepted: (_) => Navigator.of(context).pop(true),
+              onBiometric: biometric
+                  ? () async {
+                      if (await authenticateBiometric() && context.mounted) {
+                        Navigator.of(context).pop(true);
+                      }
+                    }
+                  : null,
+            ),
+          ),
+        ),
+      ) ??
+      false;
+}
+
 class _ChoosePin extends StatefulWidget {
   const _ChoosePin();
 
@@ -229,7 +260,8 @@ Future<void> _deleteCloud(BuildContext context, WidgetRef ref) async {
     word: word,
     confirmLabel: tr('common.delete'),
   );
-  if (!confirmed) return;
+  if (!confirmed || !context.mounted) return;
+  if (!await confirmIdentity(context, ref)) return;
   final CloudResult result = await ref
       .read(syncProvider.notifier)
       .deleteCloudData();

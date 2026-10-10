@@ -16,6 +16,7 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
 import 'package:sielto/features/members/members_page.dart';
+import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/spaces/space_avatar.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
@@ -42,6 +43,9 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   /// Null until the cloud answers.
   int? _memberCount;
   bool _countFailed = false;
+
+  /// The limit asks for the PIN once per visit, not on every step.
+  bool _limitConfirmed = false;
 
   @override
   void initState() {
@@ -324,7 +328,8 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       ),
       confirmLabel: tr('common.ok'),
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
+    if (!await confirmIdentity(context, ref)) return;
 
     setState(() => _moving = true);
     final SyncController sync = ref.read(syncProvider.notifier);
@@ -357,7 +362,8 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       word: space.title,
       confirmLabel: tr('common.delete'),
     );
-    if (!confirmed) return;
+    if (!confirmed || !mounted) return;
+    if (!await confirmIdentity(context, ref)) return;
 
     final bool wasOpen = ref.read(currentSpaceIdProvider) == space.id;
     if (wasOpen) await ref.read(currentSpaceIdProvider.notifier).select(null);
@@ -379,6 +385,10 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   }
 
   Future<void> _setLimit(Space space, int? max) async {
+    if (!_limitConfirmed) {
+      if (!await confirmIdentity(context, ref) || !mounted) return;
+      _limitConfirmed = true;
+    }
     if (max != null && max < (_memberCount ?? 1)) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(tr('members.belowMembers'))));

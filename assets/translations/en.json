@@ -69,9 +69,9 @@
       "body": "Synced across all your devices. A copy is kept in the cloud."
     },
     "toCloudTitle": "Move to the cloud?",
-    "toCloudBody": "\"{title}\" will sync across your devices. This device keeps its copy.",
+    "toCloudBody": "The Space \"{title}\" will sync across your devices. This device keeps its copy.",
     "toLocalTitle": "Keep on this device only?",
-    "toLocalBody": "\"{title}\" leaves the cloud. Your other devices and members will be asked whether to keep a copy.",
+    "toLocalBody": "The Space \"{title}\" leaves the cloud. Your other devices, and the members, will be asked whether to keep a copy.",
     "offlineMode": "Fully offline is on. Turn it off in Settings to use the cloud.",
     "noNetwork": "Can't reach the cloud. Check your connection and try again.",
     "unlinked": "This device is no longer linked, so the cloud is off here."
@@ -94,15 +94,15 @@
     "noneYet": "No Spaces yet.",
     "delete": "Delete Space",
     "deleteTitle": "Delete this Space?",
-    "deleteConfirm": "This erases everything in \"{title}\" from this device, for good. Type its name to confirm.",
+    "deleteConfirm": "This erases everything in the Space \"{title}\" from this device, for good. Type its name to confirm.",
     "archive": "Archive Space",
     "archiveTitle": "Archive this Space?",
-    "archiveConfirm": "\"{title}\" moves out of sight. Nothing is deleted, and you can bring it back any time.",
+    "archiveConfirm": "The Space \"{title}\" moves out of sight. Nothing is deleted, and you can bring it back any time.",
     "archiveBody": "Archiving hides the Space without deleting anything. It can be brought back from the Spaces switcher, under Archived.",
     "search": "Search Spaces",
     "archived": "Archived ({})",
     "unarchive": "Unarchive",
-    "deleteConfirmCloud": "This erases everything in \"{title}\" here and in the cloud, for good. Your other devices and members will be asked whether to keep a copy. Type its name to confirm."
+    "deleteConfirmCloud": "This erases everything in the Space \"{title}\" here and in the cloud, for good. Your other devices, and the members, will be asked whether to keep a copy. Type its name to confirm."
   },
   "spaceSettings": {
     "title": "Space settings"
@@ -712,7 +712,8 @@
     "useBiometric": "Use biometrics",
     "biometricReason": "Unlock Sielto",
     "erase": "Erase",
-    "pinChanged": "PIN changed"
+    "pinChanged": "PIN changed",
+    "confirmAction": "Enter your PIN to confirm"
   },
   "security": {
     "title": "Security",
