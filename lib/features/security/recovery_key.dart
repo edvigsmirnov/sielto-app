@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/crypto/envelope.dart';
 import 'package:sielto/core/crypto/key_store.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -160,7 +161,14 @@ class _RecoveryKeyPageState extends ConsumerState<RecoveryKeyPage> {
       body: ListView(
         padding: const EdgeInsets.all(SageSpace.formGutter),
         children: <Widget>[
-          Text(tr('recovery.why'), style: text.bodySmall),
+          Text(
+            tr(
+              !_changing && ref.read(localSettingsProvider).joinedAccount
+                  ? 'recovery.existingWhy'
+                  : 'recovery.why',
+            ),
+            style: text.bodySmall,
+          ),
           const SizedBox(height: SageSpace.lg),
           if (_changing) ...<Widget>[
             LabelledField(
@@ -297,7 +305,11 @@ class RecoveryKeyPlate extends ConsumerWidget {
                 const SizedBox(width: SageSpace.sm),
                 Expanded(
                   child: Text(
-                    tr('recovery.plate'),
+                    tr(
+                      ref.watch(localSettingsProvider).joinedAccount
+                          ? 'recovery.plateExisting'
+                          : 'recovery.plate',
+                    ),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),

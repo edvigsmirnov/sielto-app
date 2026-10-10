@@ -37,6 +37,7 @@ class LocalSettings {
   static const String _keyTickHintSeen = 'feed_tick_hint_seen';
   static const String _keyDriveEmail = 'drive_email';
   static const String _keyDriveLastBackup = 'drive_last_backup';
+  static const String _keyJoinedAccount = 'joined_account';
 
   final SharedPreferences _prefs;
 
@@ -60,6 +61,12 @@ class LocalSettings {
     }
     return LocalSettings._(prefs, id);
   }
+
+  /// This device joined through another one, so the Recovery Key already
+  /// exists.
+  bool get joinedAccount => _prefs.getBool(_keyJoinedAccount) ?? false;
+
+  Future<void> setJoinedAccount() => _prefs.setBool(_keyJoinedAccount, true);
 
   /// Null when skipped at onboarding.
   String? get name => _prefs.getString(_keyName);

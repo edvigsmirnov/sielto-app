@@ -57,6 +57,7 @@ class _JoinPageState extends ConsumerState<JoinPage> {
     }
 
     await ref.read(localSettingsProvider).adoptUserId(userId);
+    await ref.read(localSettingsProvider).setJoinedAccount();
     ref.invalidate(userIdProvider);
     final String? recoveryKey = joined.recoveryKey;
     if (recoveryKey != null) {

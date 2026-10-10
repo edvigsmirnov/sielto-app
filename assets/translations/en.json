@@ -65,17 +65,17 @@
     },
     "cloud": {
       "name": "Cloud",
-      "body": "Kept in step on every device you link, through our server. Your entries are stored there too."
+      "body": "Synced across all your devices. A copy is kept in the cloud."
     },
-    "toCloud": "Move to the cloud",
+    "toCloud": "Move",
     "toCloudTitle": "Move to the cloud?",
-    "toCloudBody": "Everything in \"{title}\" is uploaded and kept in step on your devices. This device keeps its full copy.",
-    "toLocal": "Keep on this device",
+    "toCloudBody": "\"{title}\" will sync across your devices. This device keeps its copy.",
+    "toLocal": "Keep here",
     "toLocalTitle": "Keep on this device only?",
-    "toLocalBody": "\"{title}\" is removed from the server and stays only here. Your other devices keep a read-only copy in the archive.",
-    "offlineMode": "Fully offline mode is on. Turn it off in Settings to use the cloud.",
-    "noNetwork": "Couldn't reach the server. Check your connection and try again.",
-    "unlinked": "This device is no longer linked to your cloud account, so the cloud isn't available here."
+    "toLocalBody": "\"{title}\" leaves the cloud. Your other devices keep a read-only copy in Archived.",
+    "offlineMode": "Fully offline is on. Turn it off in Settings to use the cloud.",
+    "noNetwork": "Can't reach the cloud. Check your connection and try again.",
+    "unlinked": "This device is no longer linked, so the cloud is off here."
   },
   "space": {
     "createTitle": "New Space",
@@ -103,7 +103,7 @@
     "search": "Search Spaces",
     "archived": "Archived ({})",
     "unarchive": "Unarchive",
-    "deleteConfirmCloud": "This erases everything in \"{title}\" from this device and from the server, for good. Your other devices keep a read-only copy in the archive. Type its name to confirm."
+    "deleteConfirmCloud": "This erases everything in \"{title}\" here and in the cloud, for good. Your other devices keep a read-only copy. Type its name to confirm."
   },
   "spaceSettings": {
     "title": "Space settings"
@@ -688,7 +688,9 @@
     "plate": "Your data isn't backed up yet. Set it up in a minute.",
     "isSet": "Set",
     "notSet": "Not set",
-    "notSetWarning": "Without a Recovery Key there are no backups, and a lost key on this device means lost data."
+    "notSetWarning": "Without a Recovery Key there are no backups, and a lost key on this device means lost data.",
+    "plateExisting": "Enter your Recovery Key to turn on backups here.",
+    "existingWhy": "Use the Recovery Key from your other device. All your devices share one."
   },
   "lock": {
     "enterPin": "Enter your PIN",
@@ -793,27 +795,25 @@
     "shortTodayAdvice": "Move a payment to a later day, or update your balance if you have more."
   },
   "devices": {
-    "title": "Devices",
     "addTitle": "Add a device",
-    "addBody": "On the new device, choose \"I already use Sielto\" and type this code. Your cloud Spaces will move over.",
-    "expiresIn": "Works for {}",
+    "addBody": "On the new device, tap \"I already use Sielto\" and enter this code.",
+    "expiresIn": "Valid for {}",
     "waiting": "Waiting for the other device…",
-    "linked": "Done. The new device is linked, and your cloud Spaces are on their way to it.",
-    "expired": "This code has expired. Make a new one when you're ready.",
+    "linked": "Your new device is linked. Your cloud Spaces are on their way.",
+    "expired": "This code has expired.",
     "newCode": "New code",
     "copy": "Copy",
     "copied": "Copied",
     "share": "Share",
-    "joinTitle": "Join your account",
-    "joinBody": "On a device that already has Sielto, open Settings, then Add a device. Type the code it shows.",
+    "joinTitle": "Link this device",
+    "joinBody": "On a device that already uses Sielto, open Settings › Add a device and enter the code it shows.",
     "codeField": "Code",
     "join": "Join",
     "joining": "Joining…",
     "wrongCode": "That code didn't work. Check it, or make a new one on the other device.",
     "tooManyAttempts": "Too many tries for now. Wait a minute, then try again.",
-    "joined": "You're in. Your cloud Spaces will appear in a moment.",
-    "keyLater": "Your other device didn't send the Recovery Key in time. You'll be asked for it when you open backups.",
-    "noSpaces": "This account has no cloud Spaces yet. You can create one here, or move one to the cloud from your other device.",
+    "keyLater": "Your other device didn't send the Recovery Key in time. Enter it in Settings › Backup to turn on backups here.",
+    "noSpaces": "No cloud Spaces yet. Create one here, or move one to the cloud on your other device.",
     "continue": "Continue"
   }
 }

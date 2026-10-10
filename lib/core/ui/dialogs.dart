@@ -256,14 +256,17 @@ class ChoiceGrid extends StatelessWidget {
         for (int i = 0; i < choices.length; i += 2)
           Padding(
             padding: EdgeInsets.only(top: i == 0 ? 0 : SageSpace.sm),
-            child: Row(
-              children: <Widget>[
-                Expanded(child: button(choices[i])),
-                if (i + 1 < choices.length) ...<Widget>[
-                  const SizedBox(width: SageSpace.sm),
-                  Expanded(child: button(choices[i + 1])),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Expanded(child: button(choices[i])),
+                  if (i + 1 < choices.length) ...<Widget>[
+                    const SizedBox(width: SageSpace.sm),
+                    Expanded(child: button(choices[i + 1])),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
       ],
