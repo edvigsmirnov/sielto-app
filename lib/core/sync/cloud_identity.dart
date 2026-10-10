@@ -89,6 +89,29 @@ class CloudIdentity {
     return CloudAccess.ready;
   }
 
+  /// Joins the account that made [code]. Returns its user id, or null for a
+  /// wrong or spent code; the session is kept for another try.
+  Future<String?> link(String code, String ephemeralPublicKey) async {
+    final CloudIdentityData row = await _row();
+    if (client.auth.currentSession == null) {
+      await _store((await client.auth.signInAnonymously()).session);
+    }
+    final String? linked = await client.rpc<String?>(
+      'link_device_by_code',
+      params: <String, String>{
+        'p_code': code.trim(),
+        'p_device_id': row.deviceId,
+        'p_ephemeral_pubkey': ephemeralPublicKey,
+      },
+    );
+    if (linked != null) {
+      await db
+          .update(db.cloudIdentity)
+          .write(const CloudIdentityCompanion(registered: Value<bool>(true)));
+    }
+    return linked;
+  }
+
   Future<void> dispose() => _saving.cancel();
 
   Future<CloudIdentityData> _row() async {
