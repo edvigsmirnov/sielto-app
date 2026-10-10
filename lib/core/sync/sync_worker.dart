@@ -49,6 +49,7 @@ class SyncWorker {
   static const Duration _overlap = Duration(minutes: 1);
 
   Future<void> syncAll() async {
+    await client.rpc<void>('touch_device');
     final List<Map<String, dynamic>> remote = await client
         .from('spaces')
         .select();
