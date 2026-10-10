@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cryptography/cryptography.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,10 +8,13 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/sync/cloud_identity.dart';
+import 'package:sielto/core/sync/device_link.dart';
 import 'package:sielto/core/sync/sync_worker.dart';
 import 'package:supabase/supabase.dart';
 
 enum CloudResult { done, offlineMode, noNetwork, unlinked }
+
+enum JoinResult { joined, wrongCode, tooManyAttempts, offlineMode, noNetwork }
 
 typedef SyncState = ({bool unlinked, DateTime? lastSync});
 
@@ -100,6 +104,69 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       unawaited(_client.removeChannel(channel));
     }
     _channel = null;
+  }
+
+  /// A one-time code for a new device; null with no network.
+  Future<String?> newLinkCode() => _serial(() async {
+    if (await _signIn() != CloudResult.done) return null;
+    try {
+      return await _client.rpc<String>('create_device_link_code');
+    } on Exception {
+      return null;
+    }
+  });
+
+  /// Waits for the code to be claimed and seals the Recovery Key to the new
+  /// device. False when the code went unclaimed or the network dropped.
+  Future<bool> handOver(
+    String? recoveryKey, {
+    required bool Function() keepGoing,
+  }) async {
+    try {
+      return await DeviceLink.handOver(
+        _client,
+        recoveryKey,
+        keepGoing: keepGoing,
+      );
+    } on Exception {
+      return false;
+    }
+  }
+
+  /// Joins the account behind [code]. The Recovery Key is null when the
+  /// other device does not send it in time.
+  Future<({JoinResult result, String? userId, String? recoveryKey})> join(
+    String code,
+  ) async {
+    if (ref.read(offlineModeProvider)) {
+      return (result: JoinResult.offlineMode, userId: null, recoveryKey: null);
+    }
+    try {
+      final SimpleKeyPair pair = await DeviceLink.newKeyPair();
+      final String? userId = await _identity.link(
+        code,
+        await DeviceLink.publicKeyOf(pair),
+      );
+      if (userId == null) {
+        return (result: JoinResult.wrongCode, userId: null, recoveryKey: null);
+      }
+      return (
+        result: JoinResult.joined,
+        userId: userId,
+        recoveryKey: await DeviceLink.receive(_client, pair),
+      );
+    } on PostgrestException catch (e) {
+      if (e.message == 'too_many_attempts') {
+        return (
+          result: JoinResult.tooManyAttempts,
+          userId: null,
+          recoveryKey: null,
+        );
+      }
+      return (result: JoinResult.noNetwork, userId: null, recoveryKey: null);
+    } on Exception {
+      return (result: JoinResult.noNetwork, userId: null, recoveryKey: null);
+    }
   }
 
   /// Uploads the Space and keeps it in step from now on.

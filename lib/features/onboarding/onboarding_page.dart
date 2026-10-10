@@ -11,6 +11,7 @@ import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/leaf_scatter.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/backup_page.dart';
+import 'package:sielto/features/devices/join_page.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/onboarding/welcome_page.dart';
 import 'package:sielto/features/security/app_lock.dart';
@@ -77,7 +78,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     if (!_started) {
       return RepaintBoundary(
         key: _welcome,
-        child: WelcomePage(onStart: _start),
+        child: WelcomePage(
+          onStart: _start,
+          onJoin: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (BuildContext _) => const JoinPage(),
+            ),
+          ),
+        ),
       );
     }
 

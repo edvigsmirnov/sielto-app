@@ -11,6 +11,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/backup_page.dart';
 import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/dev/token_gallery_page.dart';
+import 'package:sielto/features/devices/add_device_page.dart';
 import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
 import 'package:sielto/features/settings/language_picker.dart';
@@ -135,6 +136,16 @@ class SettingsPage extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (BuildContext _) => const BackupPage(),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.devices_outlined),
+            title: Text(tr('devices.addTitle')),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (BuildContext _) => const AddDevicePage(),
               ),
             ),
           ),

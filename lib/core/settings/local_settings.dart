@@ -16,7 +16,7 @@ enum FeedDensity {
 /// Device-local settings, never uploaded. In shared_preferences so the theme
 /// is readable before the database opens.
 class LocalSettings {
-  LocalSettings._(this._prefs, this.userId);
+  LocalSettings._(this._prefs, this._userId);
 
   static const Uuid _uuid = Uuid();
 
@@ -41,7 +41,14 @@ class LocalSettings {
   final SharedPreferences _prefs;
 
   /// Generated at first install; author of every edit.
-  final String userId;
+  String get userId => _userId;
+  String _userId;
+
+  /// Takes the user id of the account that linked this device.
+  Future<void> adoptUserId(String id) async {
+    await _prefs.setString(_keyUserId, id);
+    _userId = id;
+  }
 
   /// Creates the user id on first launch.
   static Future<LocalSettings> load() async {

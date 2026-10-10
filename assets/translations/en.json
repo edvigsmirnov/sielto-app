@@ -505,7 +505,8 @@
   },
   "welcome": {
     "tagline": "A simple space\nfor complicated money",
-    "start": "Create a Space"
+    "start": "Create a Space",
+    "haveAccount": "I already use Sielto"
   },
   "period": {
     "previous": "Previous period",
@@ -790,5 +791,29 @@
     "topUps": "top-ups",
     "toSpend": "to spend",
     "shortTodayAdvice": "Move a payment to a later day, or update your balance if you have more."
+  },
+  "devices": {
+    "title": "Devices",
+    "addTitle": "Add a device",
+    "addBody": "On the new device, choose \"I already use Sielto\" and type this code. Your cloud Spaces will move over.",
+    "expiresIn": "Works for {}",
+    "waiting": "Waiting for the other device…",
+    "linked": "Done. The new device is linked, and your cloud Spaces are on their way to it.",
+    "expired": "This code has expired. Make a new one when you're ready.",
+    "newCode": "New code",
+    "copy": "Copy",
+    "copied": "Copied",
+    "share": "Share",
+    "joinTitle": "Join your account",
+    "joinBody": "On a device that already has Sielto, open Settings, then Add a device. Type the code it shows.",
+    "codeField": "Code",
+    "join": "Join",
+    "joining": "Joining…",
+    "wrongCode": "That code didn't work. Check it, or make a new one on the other device.",
+    "tooManyAttempts": "Too many tries for now. Wait a minute, then try again.",
+    "joined": "You're in. Your cloud Spaces will appear in a moment.",
+    "keyLater": "Your other device didn't send the Recovery Key in time. You'll be asked for it when you open backups.",
+    "noSpaces": "This account has no cloud Spaces yet. You can create one here, or move one to the cloud from your other device.",
+    "continue": "Continue"
   }
 }

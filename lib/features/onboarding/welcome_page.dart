@@ -10,10 +10,12 @@ import 'package:sielto/features/launch/launch_curtain.dart';
 /// First screen of a fresh install, on [SageBrand.night] in both themes. Leaves
 /// gather onto the "i", then the name, motto and button fade in. A tap skips.
 class WelcomePage extends StatefulWidget {
-  const WelcomePage({required this.onStart, super.key});
+  const WelcomePage({required this.onStart, required this.onJoin, super.key});
 
   /// Receives the button centre, for the transition.
   final ValueChanged<Offset> onStart;
+
+  final VoidCallback onJoin;
 
   static const Duration intro = Duration(milliseconds: 2600);
 
@@ -27,6 +29,13 @@ class _WelcomePageState extends State<WelcomePage>
     vsync: this,
     duration: WelcomePage.intro,
   );
+  final GlobalKey _start = GlobalKey();
+
+  Offset _startCentre() {
+    final RenderBox box =
+        _start.currentContext!.findRenderObject()! as RenderBox;
+    return box.localToGlobal(box.size.center(Offset.zero));
+  }
 
   @override
   void initState() {
@@ -139,30 +148,37 @@ class _WelcomePageState extends State<WelcomePage>
                         Positioned(
                           left: SageSpace.xl,
                           right: SageSpace.xl,
-                          bottom: SageSpace.xl,
+                          bottom: SageSpace.md,
                           child: Opacity(
                             opacity: button,
                             child: Transform.translate(
                               offset: Offset(0, 16 * (1 - button)),
-                              child: FilledButton(
-                                onPressed: button > 0.5
-                                    ? () => widget.onStart(
-                                        Offset(
-                                          box.maxWidth / 2,
-                                          box.maxHeight -
-                                              SageSpace.xl -
-                                              _buttonHalf,
-                                        ).translate(
-                                          0,
-                                          MediaQuery.paddingOf(context).top,
-                                        ),
-                                      )
-                                    : null,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: SageBrand.leaf,
-                                  foregroundColor: SageBrand.night,
-                                ),
-                                child: Text(tr('welcome.start')),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  FilledButton(
+                                    key: _start,
+                                    onPressed: button > 0.5
+                                        ? () => widget.onStart(_startCentre())
+                                        : null,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: SageBrand.leaf,
+                                      foregroundColor: SageBrand.night,
+                                    ),
+                                    child: Text(tr('welcome.start')),
+                                  ),
+                                  const SizedBox(height: SageSpace.xs),
+                                  TextButton(
+                                    onPressed: button > 0.5
+                                        ? widget.onJoin
+                                        : null,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: SageBrand.leaf,
+                                    ),
+                                    child: Text(tr('welcome.haveAccount')),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -178,8 +194,6 @@ class _WelcomePageState extends State<WelcomePage>
       ),
     );
   }
-
-  static const double _buttonHalf = 24;
 
   /// 0 before [from], 1 after [to], eased.
   static double _phase(double t, double from, double to) =>

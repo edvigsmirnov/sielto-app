@@ -69,11 +69,12 @@ abstract final class DeviceLink {
   /// then seals [recoveryKey] to it. False when nobody claimed it in time.
   static Future<bool> handOver(
     SupabaseClient client,
-    String recoveryKey, {
+    String? recoveryKey, {
     Duration timeout = const Duration(minutes: 5),
+    bool Function()? keepGoing,
   }) async {
     final DateTime until = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(until)) {
+    while (DateTime.now().isBefore(until) && (keepGoing?.call() ?? true)) {
       final Map<String, dynamic>? claimed = await client
           .from('device_link_codes')
           .select('id, ephemeral_pubkey')
@@ -82,6 +83,7 @@ abstract final class DeviceLink {
           .eq('owner_auth_uid', client.auth.currentUser!.id)
           .maybeSingle();
       if (claimed != null) {
+        if (recoveryKey == null) return true;
         await client
             .from('device_link_codes')
             .update(<String, String>{

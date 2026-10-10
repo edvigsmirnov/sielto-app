@@ -19,7 +19,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: SageTheme.light,
-        home: WelcomePage(onStart: (Offset _) => started++),
+        home: WelcomePage(onStart: (Offset _) => started++, onJoin: () {}),
       ),
     );
     await tester.pump(const Duration(milliseconds: 200));
