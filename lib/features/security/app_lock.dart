@@ -71,15 +71,15 @@ final FutureProvider<bool> biometricAvailableProvider = FutureProvider<bool>((
   }
 });
 
-/// [retries] more tries after a system cancel.
+/// [retries] more tries after a system cancel while in the foreground.
 Future<bool> authenticateBiometric({int retries = 0}) async {
   try {
     return await LocalAuthentication().authenticate(
       localizedReason: tr('lock.biometricReason'),
-      persistAcrossBackgrounding: true,
     );
   } on LocalAuthException catch (e) {
     if (retries > 0 &&
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed &&
         (e.code == LocalAuthExceptionCode.systemCanceled ||
             e.code == LocalAuthExceptionCode.uiUnavailable)) {
       await Future<void>.delayed(const Duration(milliseconds: 500));
@@ -168,10 +168,30 @@ class _LockScreen extends ConsumerStatefulWidget {
 }
 
 class _LockScreenState extends ConsumerState<_LockScreen> {
+  late final AppLifecycleListener _lifecycle;
+  bool _hidden = false;
+  bool _authenticating = false;
+  bool _promptAgain = false;
+
   @override
   void initState() {
     super.initState();
+    // A prompt cancelled by the phone's own unlock is asked again on return.
+    _lifecycle = AppLifecycleListener(
+      onHide: () => _hidden = true,
+      onResume: () {
+        if (!_hidden) return;
+        _hidden = false;
+        unawaited(_autoPrompt());
+      },
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   Future<void> _start() async {
@@ -181,15 +201,34 @@ class _LockScreenState extends ConsumerState<_LockScreen> {
       ref.read(appLockProvider.notifier).unlock();
       return;
     }
-    if (!ref.read(biometricUnlockProvider)) return;
     await WidgetsBinding.instance.waitUntilFirstFrameRasterized;
+    await _autoPrompt();
+  }
+
+  Future<void> _autoPrompt() async {
+    if (!mounted || !ref.read(biometricUnlockProvider)) return;
+    if (_authenticating) {
+      _promptAgain = true;
+      return;
+    }
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    if (mounted) await _biometric(retries: 2);
+    if (mounted &&
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      await _biometric(retries: 2);
+    }
   }
 
   Future<void> _biometric({int retries = 0}) async {
-    if (await authenticateBiometric(retries: retries)) {
+    if (_authenticating) return;
+    _authenticating = true;
+    final bool ok = await authenticateBiometric(retries: retries);
+    _authenticating = false;
+    if (!mounted) return;
+    if (ok) {
       ref.read(appLockProvider.notifier).unlock();
+    } else if (_promptAgain) {
+      _promptAgain = false;
+      await _autoPrompt();
     }
   }
 
