@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:decimal/decimal.dart';
@@ -347,6 +348,25 @@ void main() {
     expect(onB.isArchived, isTrue);
     expect(onB.storageMode, StorageMode.local);
     expect(await clientA.from('spaces').select('id'), isEmpty);
+  }, skip: skip);
+
+  test('the other device hears about a change at once', () async {
+    final Completer<void> heard = Completer<void>();
+    final RealtimeChannel channel = syncB.watchRemote(() {
+      if (!heard.isCompleted) heard.complete();
+    });
+    addTearDown(() => syncB.client.removeChannel(channel));
+
+    // Edits until heard: the subscription joins on its own time.
+    for (int i = 0; i < 10 && !heard.isCompleted; i++) {
+      await editOffline(a, "amount = '${1250 + i}'", Duration.zero);
+      await syncA.syncAll();
+      await Future.any(<Future<void>>[
+        heard.future,
+        Future<void>.delayed(const Duration(seconds: 1)),
+      ]);
+    }
+    expect(heard.isCompleted, isTrue);
   }, skip: skip);
 
   test('a Space edit reaches the other device', () async {

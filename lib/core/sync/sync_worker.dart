@@ -69,6 +69,20 @@ class SyncWorker {
     }
   }
 
+  /// [onChange] fires for every server change to a row this user can read.
+  RealtimeChannel watchRemote(void Function() onChange) {
+    RealtimeChannel channel = client.channel('sync');
+    for (final String table in <String>['spaces', ...records]) {
+      channel = channel.onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: table,
+        callback: (PostgresChangePayload _) => onChange(),
+      );
+    }
+    return channel.subscribe();
+  }
+
   /// Cloud Spaces gone from the server become local, read-only archives.
   Future<void> _archiveVanished(Set<String> onServer) async {
     final List<Space> gone =

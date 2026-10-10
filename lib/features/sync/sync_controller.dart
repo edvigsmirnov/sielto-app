@@ -14,8 +14,8 @@ enum CloudResult { done, offlineMode, noNetwork, unlinked }
 
 typedef SyncState = ({bool unlinked, DateTime? lastSync});
 
-/// Runs the worker at start, on resume and shortly after an edit to a cloud
-/// Space. Sends nothing while fully offline or before any cloud use.
+/// Syncs at start, on resume, after cloud edits and on server changes.
+/// Sends nothing while fully offline or before any cloud use.
 class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   static const Duration _settle = Duration(seconds: 3);
 
@@ -25,6 +25,7 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   Future<void> _tail = Future<void>.value();
   bool _queued = false;
   Timer? _debounce;
+  RealtimeChannel? _channel;
 
   AppDatabase get _db => ref.read(databaseProvider);
 
@@ -42,15 +43,20 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     final StreamSubscription<int> edits = _pendingCount(db)
         .distinct()
         .where((int n) => n > 0)
-        .listen((int _) {
-          _debounce?.cancel();
-          _debounce = Timer(_settle, () => unawaited(syncNow()));
-        });
+        .listen((int _) => _soon());
+    ref.listen(offlineModeProvider, (bool? _, bool offline) {
+      if (offline) {
+        _closeChannel();
+      } else {
+        unawaited(syncNow());
+      }
+    });
     WidgetsBinding.instance.addObserver(this);
     ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
       _debounce?.cancel();
       unawaited(edits.cancel());
+      _closeChannel();
       unawaited(_identity.dispose());
       _client.dispose();
     });
@@ -75,12 +81,25 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
           state = (unlinked: true, lastSync: state.lastSync);
           return;
         }
+        _channel ??= _worker.watchRemote(_soon);
         await _worker.syncAll();
         state = (unlinked: false, lastSync: DateTime.now());
       } on Exception catch (e) {
         debugPrint('sync: $e');
       }
     });
+  }
+
+  void _soon() {
+    _debounce?.cancel();
+    _debounce = Timer(_settle, () => unawaited(syncNow()));
+  }
+
+  void _closeChannel() {
+    if (_channel case final RealtimeChannel channel) {
+      unawaited(_client.removeChannel(channel));
+    }
+    _channel = null;
   }
 
   /// Uploads the Space and keeps it in step from now on.
