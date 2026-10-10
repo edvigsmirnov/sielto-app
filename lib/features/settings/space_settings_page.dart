@@ -255,7 +255,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
         'storage.${to}Body',
         namedArgs: <String, String>{'title': space.title},
       ),
-      confirmLabel: tr('storage.$to'),
+      confirmLabel: tr('common.ok'),
     );
     if (!confirmed) return;
 

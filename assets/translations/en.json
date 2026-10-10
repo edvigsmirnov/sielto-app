@@ -15,7 +15,8 @@
     "skip": "Skip",
     "clear": "Clear",
     "show": "Show",
-    "hide": "Hide"
+    "hide": "Hide",
+    "ok": "OK"
   },
   "theme": {
     "system": "System",
@@ -67,10 +68,8 @@
       "name": "Cloud",
       "body": "Synced across all your devices. A copy is kept in the cloud."
     },
-    "toCloud": "Move",
     "toCloudTitle": "Move to the cloud?",
     "toCloudBody": "\"{title}\" will sync across your devices. This device keeps its copy.",
-    "toLocal": "Keep here",
     "toLocalTitle": "Keep on this device only?",
     "toLocalBody": "\"{title}\" leaves the cloud. Your other devices keep a read-only copy in Archived.",
     "offlineMode": "Fully offline is on. Turn it off in Settings to use the cloud.",

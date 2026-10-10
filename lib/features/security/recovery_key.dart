@@ -104,6 +104,10 @@ class _RecoveryKeyPageState extends ConsumerState<RecoveryKeyPage> {
   final TextEditingController _current = TextEditingController();
   final NewRecoveryKey _next = NewRecoveryKey();
   late final bool _changing = ref.read(recoveryKeySetProvider);
+
+  /// The key exists on another device: typed once, nothing to confirm.
+  late final bool _existing =
+      !_changing && ref.read(localSettingsProvider).joinedAccount;
   bool _busy = false;
   bool _wrongCurrent = false;
 
@@ -162,11 +166,7 @@ class _RecoveryKeyPageState extends ConsumerState<RecoveryKeyPage> {
         padding: const EdgeInsets.all(SageSpace.formGutter),
         children: <Widget>[
           Text(
-            tr(
-              !_changing && ref.read(localSettingsProvider).joinedAccount
-                  ? 'recovery.existingWhy'
-                  : 'recovery.why',
-            ),
+            tr(_existing ? 'recovery.existingWhy' : 'recovery.why'),
             style: text.bodySmall,
           ),
           const SizedBox(height: SageSpace.lg),
@@ -181,7 +181,13 @@ class _RecoveryKeyPageState extends ConsumerState<RecoveryKeyPage> {
             ),
             const SizedBox(height: SageSpace.lg),
           ],
-          NewRecoveryKeyFields(draft: _next),
+          if (_existing)
+            LabelledField(
+              label: tr('recovery.title'),
+              child: SecretField(controller: _next.first, autofocus: true),
+            )
+          else
+            NewRecoveryKeyFields(draft: _next),
           if (_changing) ...<Widget>[
             const SizedBox(height: SageSpace.md),
             Text(tr('recovery.oldBackups'), style: text.bodySmall),
@@ -192,7 +198,13 @@ class _RecoveryKeyPageState extends ConsumerState<RecoveryKeyPage> {
         child: ListenableBuilder(
           listenable: _next.listenable,
           builder: (BuildContext context, Widget? _) => FilledButton(
-            onPressed: _busy || !_next.valid ? null : _save,
+            onPressed:
+                _busy ||
+                    !(_existing
+                        ? _next.first.text.length >= recoveryKeyMinLength
+                        : _next.valid)
+                ? null
+                : _save,
             child: Text(tr(_busy ? 'recovery.working' : 'common.save')),
           ),
         ),
