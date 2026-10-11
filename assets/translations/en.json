@@ -155,14 +155,14 @@
       "one": "Next {} day",
       "other": "Next {} days"
     },
-    "averagePerDay": "{amount}/day planned",
     "nearestIncome": "Nearest income",
-    "atAverageSpend": "planning {amount} a day on average",
-    "perDay": "Planned per day",
+    "atAverageSpend": "Planned spending: {amount} a day for the next {days} days",
+    "perDay": "Planned spending a day",
     "moneyEndsOn": "Money lasts until {date}",
     "afterBills": "After bills only",
     "afterBillsLeft": "Left once the bills are paid",
-    "shortFrom": "Runs short from"
+    "shortFrom": "Runs short from",
+    "perDayEmpty": "Appears once you plan expenses"
   },
   "balance": {
     "sheetTitle": "Set current balance",
@@ -231,7 +231,10 @@
         }
       }
     },
-    "income": "Income"
+    "income": "Income",
+    "a11y": {
+      "showNote": "Show note"
+    }
   },
   "payment": {
     "add": "Add expense",

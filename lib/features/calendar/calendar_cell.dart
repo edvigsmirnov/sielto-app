@@ -1,6 +1,88 @@
+import 'package:decimal/decimal.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:sielto/core/db/repositories/calendar_repository.dart';
+import 'package:sielto/core/format/date_format.dart';
+import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
+
+/// What a screen reader says for a day cell: the date, its sums and marks.
+String describeDay(
+  CalendarDate date, {
+  required DayTotals? totals,
+  required DayMark mark,
+  required CalendarDate today,
+  required MoneyFormat money,
+  required DateLabels dates,
+}) => <String>[
+  dates.weekdayAndDate(date, reference: today),
+  if (date == today) tr('calendar.legend.today'),
+  if (totals case final DayTotals t when t.expenses > Decimal.zero)
+    '${tr('calendar.dayExpenses')}: ${money.format(t.expenses)}',
+  if (totals case final DayTotals t when t.income > Decimal.zero)
+    '${tr('calendar.dayIncome')}: ${money.format(t.income)}',
+  if (totals case final DayTotals t when t.hasUnknownAmount)
+    tr('calendar.legend.noAmount'),
+  if (mark.isHoliday)
+    tr('calendar.legend.holiday')
+  else if (mark.isNonWorking)
+    tr('calendar.legend.nonWorking'),
+  if (mark.isHighLoad) tr('calendar.legend.highLoad'),
+  if (mark.isUncertainIncome) tr('calendar.legend.uncertainIncome'),
+  if (mark.deadline case final DeadlineKind kind)
+    tr('calendar.legend.${kind.name}Deadline'),
+].join('. ');
+
+/// A day cell's tap, long-press and spoken [label]. The menu opens at the
+/// finger, or mid-cell for a screen reader.
+class DayCellTap extends StatelessWidget {
+  const DayCellTap({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    required this.onHold,
+    required this.child,
+    this.radius = SageRadius.chip,
+    super.key,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final ValueChanged<Offset> onHold;
+  final double radius;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    Offset? down;
+    void hold() {
+      HapticFeedback.mediumImpact();
+      final RenderBox box = context.findRenderObject()! as RenderBox;
+      onHold(down ?? box.localToGlobal(box.size.center(Offset.zero)));
+      down = null;
+    }
+
+    return Semantics(
+      label: label,
+      button: true,
+      selected: isSelected,
+      excludeSemantics: true,
+      onTap: onTap,
+      onLongPress: hold,
+      child: InkWell(
+        onTap: onTap,
+        onTapDown: (TapDownDetails d) => down = d.globalPosition,
+        onLongPress: hold,
+        borderRadius: BorderRadius.circular(radius),
+        child: child,
+      ),
+    );
+  }
+}
 
 /// Shared by the Month and Week views. [showCalendarLegend] documents every
 /// decoration.
@@ -21,7 +103,7 @@ class CellDecoration extends StatelessWidget {
   final bool isToday;
   final double radius;
 
-  /// A neighbouring month's day in the Month grid.
+  /// A neighbouring month's day in the Month grid: no ground, muted ink.
   final bool dimmed;
 
   static const double dotSize = 5;
@@ -32,7 +114,7 @@ class CellDecoration extends StatelessWidget {
 
     final Widget body = DecoratedBox(
       decoration: BoxDecoration(
-        color: groundOf(sage, mark, isToday: isToday),
+        color: dimmed ? null : groundOf(sage, mark, isToday: isToday),
         borderRadius: BorderRadius.circular(radius),
       ),
       child: Stack(
@@ -85,7 +167,7 @@ class CellDecoration extends StatelessWidget {
       ),
     );
 
-    return dimmed ? Opacity(opacity: 0.35, child: body) : body;
+    return body;
   }
 
   static Color groundOf(

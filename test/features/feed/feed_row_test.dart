@@ -1,5 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
@@ -21,28 +23,30 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      MaterialApp(
-        theme: SageTheme.light,
-        home: Scaffold(
-          body: FeedRowTile(
-            record: FeedRecord(
-              id: 'a',
-              date: const CalendarDate(2026, 3, 1),
-              title: 'Groceries for the week',
-              amount: Decimal.parse(amount),
-              isIncome: false,
-              isPaid: false,
-              sortOrder: 0,
-              expenseType: ExpenseType.variable,
+      ProviderScope(
+        child: MaterialApp(
+          theme: SageTheme.light,
+          home: Scaffold(
+            body: FeedRowTile(
+              record: FeedRecord(
+                id: 'a',
+                date: const CalendarDate(2026, 3, 1),
+                title: 'Groceries for the week',
+                amount: Decimal.parse(amount),
+                isIncome: false,
+                isPaid: false,
+                sortOrder: 0,
+                expenseType: ExpenseType.variable,
+              ),
+              isCovered: true,
+              density: density,
+              money: money,
+              category: null,
+              onTap: () {},
+              onTogglePaid: () {},
+              onDelete: () {},
+              onLongPress: () {},
             ),
-            isCovered: true,
-            density: density,
-            money: money,
-            category: null,
-            onTap: () {},
-            onTogglePaid: () {},
-            onDelete: () {},
-            onLongPress: () {},
           ),
         ),
       ),
@@ -66,5 +70,25 @@ void main() {
       t.getTopLeft(amount).dy,
       greaterThan(t.getBottomLeft(find.text('Groceries for the week')).dy - 1),
     );
+  });
+
+  testWidgets('a row is one announcement; the paid circle is a button', (
+    WidgetTester t,
+  ) async {
+    final SemanticsHandle handle = t.ensureSemantics();
+    await pumpRow(t, amount: '12.50');
+    final SemanticsData row = t
+        .getSemantics(find.byType(FeedRowTile))
+        .getSemanticsData();
+    expect(row.label, startsWith('Groceries for the week. €12.50. '));
+    expect(row.hasAction(SemanticsAction.tap), isTrue);
+    expect(row.hasAction(SemanticsAction.longPress), isTrue);
+    expect(find.bySemanticsLabel('feed.bulk.mark.paid'), findsOneWidget);
+    final SemanticsData circle = t
+        .getSemantics(find.bySemanticsLabel('feed.bulk.mark.paid'))
+        .getSemanticsData();
+    expect(circle.hasAction(SemanticsAction.tap), isTrue);
+    expect(t.getSize(find.bySemanticsLabel('feed.bulk.mark.paid')).height, 48);
+    handle.dispose();
   });
 }

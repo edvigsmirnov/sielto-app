@@ -42,8 +42,8 @@ class _MainShellState extends ConsumerState<MainShell> {
   void _goTo(int index) {
     final int distance = (index - _index).abs();
     _show(index);
-    // Jumps over intermediate tabs.
-    if (distance > 1) {
+    // Jumps over intermediate tabs, and always with reduced motion.
+    if (distance > 1 || MediaQuery.disableAnimationsOf(context)) {
       _controller.jumpToPage(index);
       return;
     }

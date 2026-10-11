@@ -429,9 +429,12 @@ class _PinEntryState extends State<PinEntry>
                 const SizedBox(height: SageSpace.md),
                 SizedBox(
                   height: 20,
-                  child: Text(
-                    _message ?? '',
-                    style: text.bodySmall?.copyWith(color: sage.danger),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      _message ?? '',
+                      style: text.bodySmall?.copyWith(color: sage.danger),
+                    ),
                   ),
                 ),
                 const SizedBox(height: SageSpace.md),

@@ -229,10 +229,13 @@ class SwipeBack extends StatelessWidget {
                     color: sage.inkLabel,
                   ),
                   const SizedBox(width: SageSpace.xs),
-                  Text(
-                    tr('analytics.swipeBack'),
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: sage.inkLabel),
+                  Flexible(
+                    child: Text(
+                      tr('analytics.swipeBack'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: sage.inkLabel),
+                    ),
                   ),
                 ],
               ),

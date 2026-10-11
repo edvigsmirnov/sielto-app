@@ -178,7 +178,9 @@ class _LaunchCurtainState extends ConsumerState<LaunchCurtain> {
                 begin: 1,
                 end: _phase == _Phase.fading ? 0 : 1,
               ),
-              duration: const Duration(milliseconds: 600),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? const Duration(milliseconds: 200)
+                  : const Duration(milliseconds: 600),
               curve: Curves.easeOut,
               onEnd: _phase == _Phase.fading ? _finish : null,
               builder: (BuildContext context, double opacity, Widget? child) =>

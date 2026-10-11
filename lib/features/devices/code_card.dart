@@ -16,12 +16,17 @@ class CodeCard extends StatelessWidget {
     final TextTheme text = Theme.of(context).textTheme;
     return Column(
       children: <Widget>[
-        SelectableText(
-          code,
-          textAlign: TextAlign.center,
-          style: text.displaySmall?.copyWith(
-            fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-            letterSpacing: 4,
+        // Spelled out for screen readers.
+        Semantics(
+          label: code.split('').join(' '),
+          excludeSemantics: true,
+          child: SelectableText(
+            code,
+            textAlign: TextAlign.center,
+            style: text.displaySmall?.copyWith(
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+              letterSpacing: 4,
+            ),
           ),
         ),
         const SizedBox(height: SageSpace.sm),

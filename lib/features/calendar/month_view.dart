@@ -1,6 +1,5 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:sielto/core/db/repositories/calendar_repository.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
@@ -57,7 +56,10 @@ class MonthView extends StatelessWidget {
         );
         return Column(
           children: <Widget>[
-            _WeekdayHeader(first: first, dates: dates),
+            // Each cell says its weekday.
+            ExcludeSemantics(
+              child: _WeekdayHeader(first: first, dates: dates),
+            ),
             const SizedBox(height: SageSpace.xs),
             for (int week = 0; week < monthGridDays ~/ 7; week++)
               Expanded(
@@ -94,6 +96,14 @@ class MonthView extends StatelessWidget {
     isSelected: date == selected,
     isToday: date == today,
     isOutsideMonth: !date.isSameMonth(month),
+    label: describeDay(
+      date,
+      totals: totals[date],
+      mark: marks[date],
+      today: today,
+      money: money,
+      dates: dates,
+    ),
     figures: figures,
     onTap: () => onOpenDay(date),
     onHold: (Offset at) => onHoldDay(date, at),
@@ -163,7 +173,7 @@ class _Figures {
   );
 }
 
-/// Weekend columns in `warningAccent`.
+/// Weekend columns in `warning`.
 class _WeekdayHeader extends StatelessWidget {
   const _WeekdayHeader({required this.first, required this.dates});
 
@@ -184,9 +194,8 @@ class _WeekdayHeader extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.clip,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: i >= 5 ? sage.warningAccent : sage.inkLabel,
-              ),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: i >= 5 ? sage.warning : sage.inkLabel),
             ),
           ),
       ],
@@ -202,6 +211,7 @@ class _DayCell extends StatelessWidget {
     required this.isSelected,
     required this.isToday,
     required this.isOutsideMonth,
+    required this.label,
     required this.figures,
     required this.onTap,
     required this.onHold,
@@ -213,6 +223,7 @@ class _DayCell extends StatelessWidget {
   final bool isSelected;
   final bool isToday;
   final bool isOutsideMonth;
+  final String label;
   final _Figures figures;
   final VoidCallback onTap;
   final ValueChanged<Offset> onHold;
@@ -222,15 +233,15 @@ class _DayCell extends StatelessWidget {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
     final DayTotals? day = totals;
-    final Color ink = CellDecoration.inkOf(sage, mark, isToday: isToday);
+    final Color ink = isOutsideMonth && !isToday
+        ? sage.inkLabel
+        : CellDecoration.inkOf(sage, mark, isToday: isToday);
 
-    return GestureDetector(
+    return DayCellTap(
+      label: label,
+      isSelected: isSelected,
       onTap: onTap,
-      // Opens the menu at the finger.
-      onLongPressStart: (LongPressStartDetails d) {
-        HapticFeedback.mediumImpact();
-        onHold(d.globalPosition);
-      },
+      onHold: onHold,
       child: CellDecoration(
         mark: mark,
         isSelected: isSelected,

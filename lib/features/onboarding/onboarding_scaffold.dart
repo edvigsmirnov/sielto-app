@@ -46,9 +46,16 @@ class OnboardingScaffold extends StatelessWidget {
           children: <Widget>[
             _ProgressBar(step: step, stepCount: stepCount),
             const SizedBox(height: SageSpace.xl),
-            Text(title, style: text.titleMedium),
+            Semantics(
+              container: true,
+              header: true,
+              child: Text(title, style: text.titleMedium),
+            ),
             const SizedBox(height: SageSpace.sm),
-            Text(body, style: text.bodySmall),
+            Semantics(
+              container: true,
+              child: Text(body, style: text.bodySmall),
+            ),
             const SizedBox(height: SageSpace.lg),
             Expanded(
               child: ListView(padding: EdgeInsets.zero, children: children),

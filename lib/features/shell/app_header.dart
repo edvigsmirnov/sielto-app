@@ -37,7 +37,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
       titleSpacing: 0,
       centerTitle: true,
       toolbarHeight: _toolbarHeight,
-      leadingWidth: _controlSize + SageSpace.md * 2,
+      leadingWidth: kMinInteractiveDimension + SageSpace.md * 2,
       leading: Center(
         child: _ProfileAvatar(
           size: _controlSize,
@@ -53,27 +53,33 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
         ),
       ),
       // Tapping the Space name opens the switcher.
-      title: InkWell(
-        onTap: () => showSpaceSwitcher(context),
-        borderRadius: BorderRadius.circular(SageRadius.chip),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: SageSpace.sm,
-            vertical: SageSpace.xs,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Flexible(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
+      title: Semantics(
+        button: true,
+        child: InkWell(
+          onTap: () => showSpaceSwitcher(context),
+          borderRadius: BorderRadius.circular(SageRadius.chip),
+          child: Container(
+            constraints: const BoxConstraints(
+              minHeight: kMinInteractiveDimension,
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: SageSpace.sm,
+              vertical: SageSpace.xs,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Flexible(
+                  child: Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
-              ),
-              const SizedBox(width: SageSpace.xs),
-              Icon(Icons.expand_more, size: 18, color: sage.inkLabel),
-            ],
+                const SizedBox(width: SageSpace.xs),
+                Icon(Icons.expand_more, size: 18, color: sage.inkLabel),
+              ],
+            ),
           ),
         ),
       ),
@@ -117,30 +123,42 @@ class _ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Tooltip(
-        message: tr('settings.title'),
-        child: Container(
-          width: size,
-          height: size,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: sage.accentTintAlt,
-            shape: BoxShape.circle,
-          ),
-          child: initial == null
-              ? Icon(
-                  Icons.person_outline,
-                  size: size / 2,
-                  color: sage.accentStrong,
-                )
-              : Text(
-                  initial!,
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(color: sage.accentStrong),
+    return Tooltip(
+      message: tr('settings.title'),
+      excludeFromSemantics: true,
+      child: Semantics(
+        button: true,
+        label: tr('settings.title'),
+        excludeSemantics: true,
+        onTap: onTap,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox.square(
+            dimension: kMinInteractiveDimension,
+            child: Center(
+              child: Container(
+                width: size,
+                height: size,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: sage.accentTintAlt,
+                  shape: BoxShape.circle,
                 ),
+                child: initial == null
+                    ? Icon(
+                        Icons.person_outline,
+                        size: size / 2,
+                        color: sage.accentStrong,
+                      )
+                    : Text(
+                        initial!,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: sage.accentStrong),
+                      ),
+              ),
+            ),
+          ),
         ),
       ),
     );

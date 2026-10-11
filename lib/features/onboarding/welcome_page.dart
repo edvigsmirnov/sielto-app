@@ -87,6 +87,7 @@ class _WelcomePageState extends State<WelcomePage>
         backgroundColor: SageBrand.night,
         body: GestureDetector(
           behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: true,
           onTap: _skip,
           child: SafeArea(
             child: LayoutBuilder(

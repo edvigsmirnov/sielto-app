@@ -111,15 +111,24 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
         children: <Widget>[
           Row(
             children: <Widget>[
-              SpaceAvatar(spaceId: space.id, title: space.title, size: 48),
+              ExcludeSemantics(
+                child: SpaceAvatar(
+                  spaceId: space.id,
+                  title: space.title,
+                  size: 48,
+                ),
+              ),
               const SizedBox(width: SageSpace.md),
               Expanded(
-                child: TextField(
-                  controller: _title,
-                  textCapitalization: TextCapitalization.sentences,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  onSubmitted: (String _) => _saveTitle(space),
-                  onTapOutside: (PointerDownEvent _) => _saveTitle(space),
+                child: Semantics(
+                  label: tr('space.fieldTitle'),
+                  child: TextField(
+                    controller: _title,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    onSubmitted: (String _) => _saveTitle(space),
+                    onTapOutside: (PointerDownEvent _) => _saveTitle(space),
+                  ),
                 ),
               ),
             ],
@@ -588,7 +597,7 @@ class _FactRow extends StatelessWidget {
           child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
         ),
         const SizedBox(width: SageSpace.md),
-        value,
+        Flexible(child: value),
       ],
     ),
   );
@@ -615,10 +624,12 @@ class _LockedPill extends StatelessWidget {
         children: <Widget>[
           Icon(Icons.lock_outline, size: 13, color: sage.inkLabel),
           const SizedBox(width: SageSpace.xs),
-          Text(
-            text,
-            style: Theme.of(context).textTheme.labelMedium
-                ?.copyWith(color: sage.inkSecondary),
+          Flexible(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: sage.inkSecondary),
+            ),
           ),
         ],
       ),

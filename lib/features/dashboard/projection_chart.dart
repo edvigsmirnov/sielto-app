@@ -133,7 +133,12 @@ class ProjectionCard extends StatelessWidget {
           const SizedBox(height: SageSpace.md),
           SizedBox(
             height: 72,
-            child: _Columns(projection: projection, today: today),
+            child: _Columns(
+              projection: projection,
+              today: today,
+              money: money,
+              dates: dates,
+            ),
           ),
           const SizedBox(height: SageSpace.sm),
           Row(
@@ -153,10 +158,17 @@ class ProjectionCard extends StatelessWidget {
 }
 
 class _Columns extends StatelessWidget {
-  const _Columns({required this.projection, required this.today});
+  const _Columns({
+    required this.projection,
+    required this.today,
+    required this.money,
+    required this.dates,
+  });
 
   final DailyProjection projection;
   final CalendarDate today;
+  final MoneyFormat money;
+  final DateLabels dates;
 
   @override
   Widget build(BuildContext context) {
@@ -174,15 +186,20 @@ class _Columns extends StatelessWidget {
       children: <Widget>[
         for (int i = 0; i < projection.days.length; i++)
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: _Column(
-                fraction: span == 0
-                    ? 0
-                    : (projection.balances[i] - bottom).toDouble() / span,
-                isNegative: projection.balances[i] < Decimal.zero,
-                isToday: projection.days[i] == today,
-                sage: sage,
+            child: Semantics(
+              label:
+                  '${dates.dayMonth(projection.days[i])}: '
+                  '${money.format(projection.balances[i])}',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: _Column(
+                  fraction: span == 0
+                      ? 0
+                      : (projection.balances[i] - bottom).toDouble() / span,
+                  isNegative: projection.balances[i] < Decimal.zero,
+                  isToday: projection.days[i] == today,
+                  sage: sage,
+                ),
               ),
             ),
           ),

@@ -30,15 +30,18 @@ class SageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final Widget body = Padding(padding: padding, child: child);
-    return Card(
-      color: color ?? (selected ? sage.accentTint : sage.card),
-      child: onTap == null
-          ? body
-          : InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(SageRadius.card),
-              child: body,
-            ),
+    return Semantics(
+      selected: selected ? true : null,
+      child: Card(
+        color: color ?? (selected ? sage.accentTint : sage.card),
+        child: onTap == null
+            ? body
+            : InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(SageRadius.card),
+                child: body,
+              ),
+      ),
     );
   }
 }
@@ -52,9 +55,13 @@ class FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: SageSpace.sm),
-    child: Text(
-      text.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall,
+    child: Semantics(
+      header: true,
+      child: Text(
+        text.toUpperCase(),
+        semanticsLabel: text,
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
     ),
   );
 }
@@ -68,7 +75,10 @@ class LabelledField extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
-    children: <Widget>[FieldLabel(label), child],
+    children: <Widget>[
+      ExcludeSemantics(child: FieldLabel(label)),
+      Semantics(label: label, child: child),
+    ],
   );
 }
 
@@ -175,23 +185,33 @@ class _Segment<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(SageRadius.chip),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: inset),
-        decoration: BoxDecoration(
-          color: isSelected ? sage.accent : Colors.transparent,
-          borderRadius: BorderRadius.circular(SageRadius.chip),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelLarge
-              ?.copyWith(color: isSelected ? sage.accentOn : sage.inkSecondary),
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      inMutuallyExclusiveGroup: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(SageRadius.chip),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          constraints: const BoxConstraints(
+            minHeight: kMinInteractiveDimension,
+          ),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: inset),
+          decoration: BoxDecoration(
+            color: isSelected ? sage.accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(SageRadius.chip),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: isSelected ? sage.accentOn : sage.inkSecondary,
+            ),
+          ),
         ),
       ),
     );
@@ -293,21 +313,32 @@ class SoftIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(SageRadius.button),
-      child: Tooltip(
-        message: tooltip,
-        child: Container(
-          width: size,
-          height: size,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: sage.canvas,
-            borderRadius: BorderRadius.circular(SageRadius.button),
-            border: Border.all(color: sage.border),
+    final double target = size < kMinInteractiveDimension
+        ? kMinInteractiveDimension
+        : size;
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox.square(
+            dimension: target,
+            child: Center(
+              child: Container(
+                width: size,
+                height: size,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: sage.canvas,
+                  borderRadius: BorderRadius.circular(SageRadius.button),
+                  border: Border.all(color: sage.border),
+                ),
+                child: Icon(icon, size: size / 2, color: sage.inkSecondary),
+              ),
+            ),
           ),
-          child: Icon(icon, size: size / 2, color: sage.inkSecondary),
         ),
       ),
     );
@@ -459,7 +490,9 @@ class AnimatedMoney extends StatelessWidget {
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<double>(
     tween: Tween<double>(end: value.toDouble()),
-    duration: duration,
+    duration: MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : duration,
     curve: Curves.easeOutCubic,
     builder: (BuildContext context, double frame, Widget? _) => Text(
       format(Decimal.parse(frame.toStringAsFixed(2))),
@@ -479,7 +512,7 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-    child: Padding(
+    child: SingleChildScrollView(
       padding: const EdgeInsets.all(SageSpace.xl),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -513,9 +546,13 @@ class SectionLabel extends StatelessWidget {
       SageSpace.gutter,
       SageSpace.xs,
     ),
-    child: Text(
-      text.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall,
+    child: Semantics(
+      header: true,
+      child: Text(
+        text.toUpperCase(),
+        semanticsLabel: text,
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
     ),
   );
 }

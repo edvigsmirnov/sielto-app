@@ -201,7 +201,7 @@ class _InfoSheet extends StatelessWidget {
               const SizedBox(height: SageSpace.md),
               Text(
                 info.advice!,
-                style: text.bodySmall?.copyWith(color: sage.warningAccent),
+                style: text.bodySmall?.copyWith(color: sage.warning),
               ),
             ],
           ],

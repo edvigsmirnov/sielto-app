@@ -142,7 +142,7 @@ class MainFigure extends StatelessWidget {
                   },
                 ),
                 textAlign: TextAlign.center,
-                style: text.bodySmall?.copyWith(color: sage.warningAccent),
+                style: text.bodySmall?.copyWith(color: sage.warning),
               ),
             ],
             if (subtitle != null) ...<Widget>[

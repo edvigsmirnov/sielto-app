@@ -322,12 +322,35 @@ class _StorageChoice extends StatelessWidget {
           SageCard(
             selected: selected == mode,
             onTap: () => onChanged(mode),
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(tr('storage.${mode.name}.name'), style: text.titleSmall),
-                const SizedBox(height: SageSpace.xs),
-                Text(tr('storage.${mode.name}.body'), style: text.bodyMedium),
+                Icon(
+                  selected == mode
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  size: 20,
+                  color: selected == mode
+                      ? context.sage.accentStrong
+                      : context.sage.inkLabel,
+                ),
+                const SizedBox(width: SageSpace.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        tr('storage.${mode.name}.name'),
+                        style: text.titleSmall,
+                      ),
+                      const SizedBox(height: SageSpace.xs),
+                      Text(
+                        tr('storage.${mode.name}.body'),
+                        style: text.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

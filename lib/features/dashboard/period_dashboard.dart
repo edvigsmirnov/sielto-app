@@ -53,7 +53,7 @@ class _NoAnchorState extends StatelessWidget {
   Widget build(BuildContext context) {
     final TextTheme text = Theme.of(context).textTheme;
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(SageSpace.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,

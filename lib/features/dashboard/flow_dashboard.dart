@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,6 +55,7 @@ class _Body extends ConsumerWidget {
       from: ledger.today,
     );
 
+    final bool planned = projection.averageSpendPerDay > Decimal.zero;
     return ListView(
       padding: const EdgeInsets.all(SageSpace.gutter),
       children: <Widget>[
@@ -66,12 +68,15 @@ class _Body extends ConsumerWidget {
           lastCoveredDay: ledger.lastCoveredDay,
           dates: dates,
           today: ledger.today,
-          subtitle: tr(
-            'dashboard.atAverageSpend',
-            namedArgs: <String, String>{
-              'amount': money.format(projection.averageSpendPerDay),
-            },
-          ),
+          subtitle: planned
+              ? tr(
+                  'dashboard.atAverageSpend',
+                  namedArgs: <String, String>{
+                    'amount': money.format(projection.averageSpendPerDay),
+                    'days': '${DailyProjection.horizonDays}',
+                  },
+                )
+              : null,
           onTap: () =>
               showBalanceSheet(context, ref, space: space, money: money),
           info: moneyLeftInfo(
@@ -133,7 +138,10 @@ class _Body extends ConsumerWidget {
               const SizedBox(width: SageSpace.sm),
               Expanded(
                 child: _FigureTile(
-                  value: money.format(projection.averageSpendPerDay),
+                  value: planned
+                      ? money.format(projection.averageSpendPerDay)
+                      : null,
+                  placeholder: tr('dashboard.perDayEmpty'),
                   label: tr('dashboard.perDay'),
                   info: FigureInfo(
                     title: tr('dashboard.perDay'),
@@ -209,12 +217,15 @@ class _FigureTile extends StatelessWidget {
   const _FigureTile({
     required this.value,
     required this.label,
+    this.placeholder,
     this.caption,
     this.onTap,
     this.info,
   });
 
-  final String value;
+  /// Null shows [placeholder] in its place.
+  final String? value;
+  final String? placeholder;
   final String label;
 
   final FigureInfo? info;
@@ -231,24 +242,22 @@ class _FigureTile extends StatelessWidget {
       onTap: onTap,
       child: Column(
         children: <Widget>[
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: text.titleMedium,
-          ),
-          const SizedBox(height: 2),
-          Text.rich(
-            TextSpan(
-              text: label,
-              children: <InlineSpan>[
-                if (info != null)
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: InfoButton(info!, dense: true),
-                  ),
-              ],
+          if (value case final String figure)
+            Text(
+              figure,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.titleMedium,
+            )
+          else
+            Text(
+              placeholder ?? '',
+              textAlign: TextAlign.center,
+              style: text.bodySmall?.copyWith(color: context.sage.inkSecondary),
             ),
+          const SizedBox(height: 2),
+          Text(
+            label,
             maxLines: 3,
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
@@ -262,6 +271,7 @@ class _FigureTile extends StatelessWidget {
               textAlign: TextAlign.center,
               style: text.labelSmall?.copyWith(color: context.sage.inkLabel),
             ),
+          if (info != null) InfoButton(info!, dense: true),
         ],
       ),
     );

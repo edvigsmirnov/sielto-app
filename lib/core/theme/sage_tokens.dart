@@ -108,18 +108,18 @@ class SageColors extends ThemeExtension<SageColors> {
     ink: Color(0xFF2B2F28),
     inkHeading: Color(0xFF243226),
     inkSecondary: Color(0xC72B2F28), // ink @ .78 -> 6.20:1 on canvas
-    inkLabel: Color(0xAC2B2F28), // ink @ .675 -> 4.55:1 on canvas
+    inkLabel: Color(0xB82B2F28), // ink @ .72 -> 5.06:1 on accentTintAlt
     hairline: Color(0x142B2F28), // ink @ .08
     border: Color(0x262B2F28), // ink @ .15
     accent: SageBrand.night,
-    accentStrong: Color(0xFF4C7A52),
+    accentStrong: Color(0xFF44704A),
     accentFill: SageBrand.night,
     accentOn: SageBrand.leaf,
     accentTint: Color(0xFFEEF5EC),
     accentTintAlt: Color(0xFFE6ECDF),
     danger: Color(0xFFA34B3A),
     dangerTint: Color(0xFFF7E3DE),
-    warning: Color(0xFFA35A1F),
+    warning: Color(0xFF9A531B),
     warningAccent: Color(0xFFE29A5C),
     warningTint: Color(0xFFF7EBDD),
     sand: Color(0xFFCBB98F),
@@ -134,7 +134,7 @@ class SageColors extends ThemeExtension<SageColors> {
     ink: Color(0xFFE3EAE0),
     inkHeading: Color(0xFFEEF3EC),
     inkSecondary: Color(0xFFA9B5A6),
-    inkLabel: Color(0xFF8B9889),
+    inkLabel: Color(0xFF9AA697),
     hairline: Color(0x17E3EAE0), // paper @ .09
     border: Color(0x29E3EAE0), // paper @ .16
     accent: SageBrand.leaf,
@@ -248,7 +248,7 @@ abstract final class SageBrand {
   /// Space avatars, picked by id; the same in light and dark.
   static const List<Color> avatars = <Color>[
     Color(0xFF6F9A74),
-    Color(0xFFCB8B52),
+    Color(0xFFBE8049),
     Color(0xFF6E8FA8),
     Color(0xFF8A7BA8),
     Color(0xFF5F7D7A),

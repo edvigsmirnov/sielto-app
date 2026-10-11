@@ -648,9 +648,12 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                   contentPadding: EdgeInsets.zero,
                   title: Text(tr('income.markReceived')),
                   subtitle: _isReceived && _parsedAmount == null
-                      ? Text(
-                          tr('income.amountRequired'),
-                          style: TextStyle(color: context.sage.danger),
+                      ? Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            tr('income.amountRequired'),
+                            style: TextStyle(color: context.sage.danger),
+                          ),
                         )
                       : null,
                   onChanged: _isFrozen

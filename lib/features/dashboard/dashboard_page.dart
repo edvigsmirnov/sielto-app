@@ -40,7 +40,10 @@ class DashboardPage extends ConsumerWidget {
               SageSpace.gutter,
               SageSpace.sm,
             ),
-            child: ModeBadge(tr('mode.${space.budgetMode.name}.name')),
+            child: Semantics(
+              container: true,
+              child: ModeBadge(tr('mode.${space.budgetMode.name}.name')),
+            ),
           ),
           Expanded(
             child: switch (space.budgetMode) {

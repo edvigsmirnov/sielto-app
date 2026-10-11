@@ -1,4 +1,5 @@
 import 'package:decimal/decimal.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/db/repositories/calendar_repository.dart';
 import 'package:sielto/core/format/date_format.dart';
@@ -78,11 +79,22 @@ class _MonthCard extends StatelessWidget {
     final DayTotals? sums = totals;
     final bool empty = sums == null || sums.isEmpty;
 
-    return InkWell(
+    return Semantics(
+      label: <String>[
+        dates.monthYear(month),
+        if (empty) tr('calendar.noRecords'),
+        if (sums != null && sums.income > Decimal.zero)
+          '${tr('calendar.dayIncome')}: ${money.format(sums.income)}',
+        if (sums != null && sums.expenses > Decimal.zero)
+          '${tr('calendar.dayExpenses')}: ${money.format(sums.expenses)}',
+      ].join('. '),
+      button: true,
+      selected: isSelected,
+      excludeSemantics: true,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(SageRadius.card),
-      child: Opacity(
-        opacity: empty ? 0.45 : 1,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(SageRadius.card),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: isSelected ? sage.accentTint : sage.card,
@@ -101,12 +113,17 @@ class _MonthCard extends StatelessWidget {
                   dates.monthShort(month),
                   maxLines: 1,
                   style: text.labelLarge?.copyWith(
-                    color: isCurrent ? sage.accentStrong : sage.inkHeading,
+                    color: isCurrent
+                        ? sage.accentStrong
+                        : (empty ? sage.inkLabel : sage.inkHeading),
                   ),
                 ),
                 const SizedBox(height: SageSpace.xs),
                 if (empty)
-                  Text('—', style: text.bodyMedium)
+                  Text(
+                    '—',
+                    style: text.bodyMedium?.copyWith(color: sage.inkLabel),
+                  )
                 else ...<Widget>[
                   if (sums.income > Decimal.zero)
                     _Line(

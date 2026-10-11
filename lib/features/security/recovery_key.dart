@@ -300,33 +300,40 @@ class RecoveryKeyPlate extends ConsumerWidget {
         SageSpace.gutter,
         SageSpace.sm,
       ),
-      child: Material(
-        color: sage.warningTint,
-        borderRadius: BorderRadius.circular(SageRadius.card),
-        child: InkWell(
-          onTap: onTap,
+      child: Semantics(
+        container: true,
+        button: true,
+        child: Material(
+          color: sage.warningTint,
           borderRadius: BorderRadius.circular(SageRadius.card),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: SageSpace.md,
-              vertical: SageSpace.sm,
-            ),
-            child: Row(
-              children: <Widget>[
-                Icon(Icons.shield_outlined, size: 18, color: sage.warning),
-                const SizedBox(width: SageSpace.sm),
-                Expanded(
-                  child: Text(
-                    tr(
-                      ref.watch(localSettingsProvider).joinedAccount
-                          ? 'recovery.plateExisting'
-                          : 'recovery.plate',
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(SageRadius.card),
+            child: Container(
+              constraints: const BoxConstraints(
+                minHeight: kMinInteractiveDimension,
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: SageSpace.md,
+                vertical: SageSpace.sm,
+              ),
+              child: Row(
+                children: <Widget>[
+                  Icon(Icons.shield_outlined, size: 18, color: sage.warning),
+                  const SizedBox(width: SageSpace.sm),
+                  Expanded(
+                    child: Text(
+                      tr(
+                        ref.watch(localSettingsProvider).joinedAccount
+                            ? 'recovery.plateExisting'
+                            : 'recovery.plate',
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-                Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),
-              ],
+                  Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),
+                ],
+              ),
             ),
           ),
         ),

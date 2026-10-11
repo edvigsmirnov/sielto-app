@@ -87,39 +87,45 @@ class _AddDevicePageState extends ConsumerState<AddDevicePage> {
         children: <Widget>[
           Text(tr('devices.addBody'), style: text.bodyMedium),
           const SizedBox(height: SageSpace.xl),
-          switch (_stage) {
-            _Stage.loading => const Center(child: LeafLoader()),
-            _Stage.waiting => Column(
-              children: <Widget>[
-                CodeCard(code: _code!, left: left),
-                const SizedBox(height: SageSpace.xl),
-                Text(tr('devices.waiting'), style: text.bodyMedium),
-              ],
-            ),
-            _Stage.linked => Text(tr('devices.linked'), style: text.bodyLarge),
-            _Stage.offline => Text(
-              tr('storage.offlineMode'),
-              style: text.bodyLarge,
-            ),
-            _Stage.expired || _Stage.failed => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text(
-                  tr(
-                    _stage == _Stage.failed
-                        ? 'storage.noNetwork'
-                        : 'devices.expired',
+          Semantics(
+            liveRegion: _stage != _Stage.loading && _stage != _Stage.waiting,
+            child: switch (_stage) {
+              _Stage.loading => const Center(child: LeafLoader()),
+              _Stage.waiting => Column(
+                children: <Widget>[
+                  CodeCard(code: _code!, left: left),
+                  const SizedBox(height: SageSpace.xl),
+                  Text(tr('devices.waiting'), style: text.bodyMedium),
+                ],
+              ),
+              _Stage.linked => Text(
+                tr('devices.linked'),
+                style: text.bodyLarge,
+              ),
+              _Stage.offline => Text(
+                tr('storage.offlineMode'),
+                style: text.bodyLarge,
+              ),
+              _Stage.expired || _Stage.failed => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text(
+                    tr(
+                      _stage == _Stage.failed
+                          ? 'storage.noNetwork'
+                          : 'devices.expired',
+                    ),
+                    style: text.bodyLarge,
                   ),
-                  style: text.bodyLarge,
-                ),
-                const SizedBox(height: SageSpace.lg),
-                FilledButton(
-                  onPressed: _start,
-                  child: Text(tr('devices.newCode')),
-                ),
-              ],
-            ),
-          },
+                  const SizedBox(height: SageSpace.lg),
+                  FilledButton(
+                    onPressed: _start,
+                    child: Text(tr('devices.newCode')),
+                  ),
+                ],
+              ),
+            },
+          ),
         ],
       ),
     );

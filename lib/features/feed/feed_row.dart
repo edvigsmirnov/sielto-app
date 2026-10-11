@@ -8,17 +8,24 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/sync/refused_mark.dart';
 
+/// How much the Feed's fixed extents grow with the reader's text size.
+double feedGrowth(BuildContext context) =>
+    math.max(1, MediaQuery.textScalerOf(context).scale(14) / 14);
+
 /// Minimum row height per density.
-double rowHeightFor(FeedDensity density) => switch (density) {
-  FeedDensity.compact => 48,
-  FeedDensity.standard => 72,
-  FeedDensity.spacious => 100,
-};
+double rowHeightFor(BuildContext context, FeedDensity density) =>
+    feedGrowth(context) *
+    switch (density) {
+      FeedDensity.compact => 48,
+      FeedDensity.standard => 72,
+      FeedDensity.spacious => 100,
+    };
 
 /// Frozen rows keep only tap and long-press.
 class FeedRowTile extends StatelessWidget {
@@ -75,11 +82,32 @@ class FeedRowTile extends StatelessWidget {
         ? sage.accentStrong
         : (isOverdue || !isCovered ? sage.danger : sage.ink);
 
-    if (isBeyondDeadline) {
-      return Opacity(opacity: 0.45, child: _row(context, amountColor));
-    }
-    return _row(context, amountColor);
+    final Widget row = _spoken(context, _row(context, amountColor));
+    if (isBeyondDeadline) return Opacity(opacity: 0.45, child: row);
+    return row;
   }
+
+  /// One announcement for the row. The paid circle, the note and the refused
+  /// mark stay buttons of their own.
+  Widget _spoken(BuildContext context, Widget row) => Semantics(
+    label: <String>[
+      record.title,
+      _amountLabel(record, money),
+      if (record.isIncome)
+        tr(record.isPaid ? 'income.received' : 'income.expected')
+      else
+        tr(record.isPaid ? 'payment.paid' : 'payment.unpaid'),
+      if (record.expenseType == ExpenseType.mandatory) tr('payment.mandatory'),
+      if (category case final Category c) c.shownTitle,
+      if (isOverdue) tr('payment.overdue'),
+      if (!record.isIncome && !isCovered && !record.isPaid)
+        tr('coverage.short'),
+      if (isFrozen) tr('freeze.frozenTitle'),
+    ].join('. '),
+    selected: isSelected,
+    button: true,
+    child: row,
+  );
 
   Widget _row(BuildContext context, Color amountColor) {
     final SageColors sage = context.sage;
@@ -126,7 +154,9 @@ class FeedRowTile extends StatelessWidget {
           ),
           child: ConstrainedBox(
             // A minimum: the spacious subtitle can be taller.
-            constraints: BoxConstraints(minHeight: rowHeightFor(density)),
+            constraints: BoxConstraints(
+              minHeight: rowHeightFor(context, density),
+            ),
             child: Row(
               children: <Widget>[
                 // The grip is outside the tappable area, so long-press does not compete with
@@ -140,7 +170,7 @@ class FeedRowTile extends StatelessWidget {
                     },
                     child: Padding(
                       padding: EdgeInsets.fromLTRB(
-                        SageSpace.gutter,
+                        SageSpace.gutter - _leadInset,
                         density == FeedDensity.compact ? 4 : SageSpace.sm,
                         dragHandle == null ? SageSpace.gutter : SageSpace.xs,
                         density == FeedDensity.compact ? 4 : SageSpace.sm,
@@ -149,7 +179,7 @@ class FeedRowTile extends StatelessWidget {
                         children: <Widget>[
                           if (selecting)
                             SizedBox.square(
-                              dimension: 26,
+                              dimension: kMinInteractiveDimension,
                               child: Icon(
                                 isSelected
                                     ? Icons.check_box
@@ -165,7 +195,7 @@ class FeedRowTile extends StatelessWidget {
                               record: record,
                               onTap: isFrozen ? null : onTogglePaid,
                             ),
-                          const SizedBox(width: SageSpace.md),
+                          const SizedBox(width: SageSpace.md - _leadInset),
                           _TypeMarker(record: record, category: category),
                           const SizedBox(width: SageSpace.md),
                           if (isOverdue) ...<Widget>[
@@ -199,6 +229,9 @@ class FeedRowTile extends StatelessWidget {
       ),
     );
   }
+
+  /// The 48 dp circle box reaches this far past the 26 dp circle.
+  static const double _leadInset = (kMinInteractiveDimension - 26) / 2;
 
   String _amountLabel(FeedRecord r, MoneyFormat money) {
     if (r.amount == null) return tr('income.amountUnknown');
@@ -255,53 +288,66 @@ class _RowBody extends StatelessWidget {
           child: Icon(Icons.lock_outline, size: 16, color: sage.inkLabel),
         ),
       if (note != null && !spacious)
-        InkWell(
+        Semantics(
+          label: tr('feed.a11y.showNote'),
+          button: true,
+          excludeSemantics: true,
           onTap: () => _showNote(context, note),
-          customBorder: const CircleBorder(),
-          child: Padding(
-            padding: const EdgeInsets.all(SageSpace.xs),
-            child: Icon(
-              Icons.sticky_note_2_outlined,
-              size: 18,
-              color: sage.inkLabel,
+          child: InkWell(
+            onTap: () => _showNote(context, note),
+            customBorder: const CircleBorder(),
+            child: Padding(
+              padding: const EdgeInsets.all(15),
+              child: Icon(
+                Icons.sticky_note_2_outlined,
+                size: 18,
+                color: sage.inkLabel,
+              ),
             ),
           ),
         ),
     ];
     final double marksWidth =
-        (record.refused ? 40 : 0) +
+        (record.refused ? 48 : 0) +
         (isFrozen ? 24 : 0) +
-        (note != null && !spacious ? 26 : 0);
+        (note != null && !spacious ? 48 : 0);
 
-    final Widget title = Text(
-      record.title,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: titleStyle,
+    // The row's own label says all of this.
+    final Widget title = ExcludeSemantics(
+      child: Text(
+        record.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: titleStyle,
+      ),
     );
-    final Widget amountText = Text(
-      amount,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: amountStyle,
+    final Widget amountText = ExcludeSemantics(
+      child: Text(
+        amount,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: amountStyle,
+      ),
     );
 
     final Category? c = category;
     final Widget? meta = density == FeedDensity.compact || c == null
         ? null
-        : Row(
-            children: <Widget>[
-              CategoryMark(color: c.color, icon: c.icon, size: 20),
-              const SizedBox(width: SageSpace.xs),
-              Flexible(
-                child: Text(
-                  c.shownTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: text.bodyMedium?.copyWith(color: sage.inkSecondary),
+        : ExcludeSemantics(
+            child: Row(
+              children: <Widget>[
+                CategoryMark(color: c.color, icon: c.icon, size: 20),
+                const SizedBox(width: SageSpace.xs),
+                Flexible(
+                  child: Text(
+                    c.shownTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodyMedium?.copyWith(color: sage.inkSecondary),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
 
     return LayoutBuilder(
@@ -350,32 +396,41 @@ class _RowBody extends StatelessWidget {
             if (meta != null)
               Padding(padding: const EdgeInsets.only(top: 2), child: meta),
             if (spacious && note != null)
-              GestureDetector(
+              Semantics(
+                label: tr('feed.a11y.showNote'),
+                button: true,
+                excludeSemantics: true,
                 onTap: () => _showNote(context, note),
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Padding(
-                        padding: const EdgeInsets.only(top: 1),
-                        child: Icon(
-                          Icons.sticky_note_2_outlined,
-                          size: 14,
-                          color: sage.inkLabel,
+                child: InkWell(
+                  onTap: () => _showNote(context, note),
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minHeight: kMinInteractiveDimension,
+                    ),
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 1),
+                          child: Icon(
+                            Icons.sticky_note_2_outlined,
+                            size: 14,
+                            color: sage.inkLabel,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: SageSpace.xs),
-                      Expanded(
-                        child: Text(
-                          note,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.bodySmall,
+                        const SizedBox(width: SageSpace.xs),
+                        Expanded(
+                          child: Text(
+                            note,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodySmall,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -450,39 +505,45 @@ class _PaidCircleState extends State<_PaidCircle>
         '${widget.record.isIncome ? 'received' : 'paid'}',
       ),
       excludeSemantics: true,
-      child: GestureDetector(
+      onTap: widget.onTap,
+      child: InkWell(
         onTap: widget.onTap == null
             ? null
             : () {
                 HapticFeedback.lightImpact();
                 widget.onTap!();
               },
-        behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          width: 26,
-          height: 26,
-          child: CustomPaint(
-            foregroundPainter: _RaysPainter(
-              progress: _rays,
-              color: sage.accentStrong,
-            ),
-            child: Center(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: paid ? sage.accent : Colors.transparent,
-                  border: Border.all(
-                    color: paid ? sage.accent : sage.border,
-                    width: 1.5,
-                  ),
+        customBorder: const CircleBorder(),
+        child: SizedBox.square(
+          dimension: kMinInteractiveDimension,
+          child: Center(
+            child: SizedBox(
+              width: 26,
+              height: 26,
+              child: CustomPaint(
+                foregroundPainter: _RaysPainter(
+                  progress: _rays,
+                  color: sage.accentStrong,
                 ),
-                child: Icon(
-                  Icons.check,
-                  size: 15,
-                  color: paid ? sage.accentOn : sage.border,
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 140),
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: paid ? sage.accent : Colors.transparent,
+                      border: Border.all(
+                        color: paid ? sage.accent : sage.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.check,
+                      size: 15,
+                      color: paid ? sage.accentOn : sage.border,
+                    ),
+                  ),
                 ),
               ),
             ),

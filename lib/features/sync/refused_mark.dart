@@ -22,7 +22,6 @@ class RefusedMark extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => IconButton(
     tooltip: tr('refused.tooltip'),
-    visualDensity: VisualDensity.compact,
     icon: Icon(Icons.sync_problem, size: 18, color: context.sage.warningAccent),
     onPressed: () => _resolve(context, ref),
   );

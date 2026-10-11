@@ -89,7 +89,10 @@ class _JoinSpacePageState extends ConsumerState<JoinSpacePage> {
           ),
           if (_problem case final String problem) ...<Widget>[
             const SizedBox(height: SageSpace.sm),
-            Text(problem, style: text.bodyMedium),
+            Semantics(
+              liveRegion: true,
+              child: Text(problem, style: text.bodyMedium),
+            ),
           ],
           const SizedBox(height: SageSpace.lg),
           FilledButton(

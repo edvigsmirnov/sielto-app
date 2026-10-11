@@ -225,7 +225,11 @@ class _DateNavigator extends ConsumerWidget {
           child: InkWell(
             onTap: () => _pick(context, ref),
             borderRadius: BorderRadius.circular(SageRadius.chip),
-            child: Padding(
+            child: Container(
+              constraints: const BoxConstraints(
+                minHeight: kMinInteractiveDimension,
+              ),
+              alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(
                 horizontal: SageSpace.sm,
                 vertical: SageSpace.xs,
@@ -425,7 +429,9 @@ class _StepSlideState extends State<_StepSlide> {
     );
     return ClipRect(
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 240),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 240),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
         layoutBuilder: (Widget? child, List<Widget> previous) => Stack(

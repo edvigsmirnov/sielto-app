@@ -1,7 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:sielto/core/db/repositories/calendar_repository.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
@@ -101,12 +100,19 @@ class _WeekRow extends StatelessWidget {
     final bool isToday = date == today;
     final Color ink = CellDecoration.inkOf(sage, mark, isToday: isToday);
 
-    return GestureDetector(
+    return DayCellTap(
+      label: describeDay(
+        date,
+        totals: totals,
+        mark: mark,
+        today: today,
+        money: money,
+        dates: dates,
+      ),
+      isSelected: isSelected,
       onTap: onTap,
-      onLongPressStart: (LongPressStartDetails d) {
-        HapticFeedback.mediumImpact();
-        onHold(d.globalPosition);
-      },
+      onHold: onHold,
+      radius: SageRadius.card,
       child: CellDecoration(
         mark: mark,
         isSelected: isSelected,
@@ -120,23 +126,22 @@ class _WeekRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Row(
+              // The figures go under the date when both do not fit.
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: SageSpace.sm,
                 children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      '${dates.weekdayShort(date)}, '
-                      '${dates.dayMonth(date, reference: today)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodyLarge?.copyWith(
-                        color: ink,
-                        fontWeight: isSelected || isToday
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ),
+                  Text(
+                    '${dates.weekdayShort(date)}, '
+                    '${dates.dayMonth(date, reference: today)}',
+                    style: text.bodyLarge?.copyWith(
+                      color: ink,
+                      fontWeight: isSelected || isToday
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(width: SageSpace.sm),
                   _Figures(
                     totals: day,
                     money: money,

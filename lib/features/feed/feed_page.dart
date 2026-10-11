@@ -80,6 +80,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   /// Whether the list has been scrolled to the selected period.
   bool _placed = false;
 
+  /// The [feedGrowth] behind the current offsets.
+  double? _grow;
+
   @override
   void initState() {
     super.initState();
@@ -161,24 +164,25 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     return i < 0 ? null : _starts[i];
   }
 
-  void _measure(List<FeedItem> items, double rowHeight) {
+  void _measure(List<FeedItem> items, double rowHeight, double grow) {
     final List<double> starts = <double>[0];
     final List<CalendarDate?> headers = <CalendarDate?>[];
     CalendarDate? header;
     for (final FeedItem item in items) {
       if (item is FeedHeader) header = item.date;
       headers.add(header);
-      starts.add(starts.last + _extentOf(item, rowHeight));
+      starts.add(starts.last + _extentOf(item, rowHeight, grow));
     }
     _starts = starts;
     _headers = headers;
   }
 
-  static double _extentOf(FeedItem item, double rowHeight) => switch (item) {
-    FeedHeader() => _headerExtent,
-    FeedCutoff() => _cutoffExtent,
-    FeedRow() => rowHeight,
-  };
+  static double _extentOf(FeedItem item, double rowHeight, double grow) =>
+      switch (item) {
+        FeedHeader() => _headerExtent * grow,
+        FeedCutoff() => _cutoffExtent * grow,
+        FeedRow() => rowHeight,
+      };
 
   /// Room under the last row so the last period can reach the top.
   double _bottomSlack(double viewport, bool byPeriod) {
@@ -231,7 +235,16 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           : _emptyPeriodStarts(source.records),
     );
     final List<FeedItem> items = _items;
-    _measure(items, rowHeightFor(density));
+    final double grow = feedGrowth(context);
+    _measure(items, rowHeightFor(context, density), grow);
+    // Every extent scales by the same factor, so the same day stays on top.
+    if (_grow case final double was when was != grow && _scroll.hasClients) {
+      final double offset = _scroll.position.pixels * grow / was;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scroll.hasClients) _scroll.jumpTo(offset);
+      });
+    }
+    _grow = grow;
     if (_extending) _afterExtend(items);
     // Checks the edges after layout: a list that fits never scrolls.
     if (!_edgeCheckQueued) {
@@ -323,16 +336,28 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       body: Column(
         children: <Widget>[
           if (selection.isNotEmpty)
-            _SelectionBar(
-              count: selection.length,
-              onClose: ref.read(feedSelectionProvider.notifier).clear,
+            Semantics(
+              container: true,
+              liveRegion: true,
+              child: _SelectionBar(
+                count: selection.length,
+                onClose: ref.read(feedSelectionProvider.notifier).clear,
+              ),
             ),
           if (filter.isActive)
-            FeedFilterBar(shown: _allMatches(filter), money: money),
+            Semantics(
+              container: true,
+              child: FeedFilterBar(shown: _allMatches(filter), money: money),
+            ),
           if (!ref.watch(tickHintSeenProvider) &&
               selection.isEmpty &&
               items.any((FeedItem i) => i is FeedRow))
-            _TickHint(onClose: ref.read(tickHintSeenProvider.notifier).dismiss),
+            Semantics(
+              container: true,
+              child: _TickHint(
+                onClose: ref.read(tickHintSeenProvider.notifier).dismiss,
+              ),
+            ),
           Expanded(
             child: items.isEmpty
                 ? EmptyState(
@@ -591,7 +616,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       _scroll.position.minScrollExtent,
       _scroll.position.maxScrollExtent,
     );
-    if (!animate) {
+    if (!animate || MediaQuery.disableAnimationsOf(context)) {
       _scroll.jumpTo(target);
       return;
     }
@@ -807,7 +832,7 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
   final bool hasOverdue;
 
   static const double _tileHeight = 58;
-  static const double _chipHeight = 48;
+  static const double _chipHeight = 56;
 
   @override
   Size get preferredSize => Size.fromHeight(
@@ -829,78 +854,82 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
               ? tr('income.amountUnknown')
               : tr('feed.runsShort'));
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        SageSpace.gutter,
-        0,
-        SageSpace.gutter,
-        SageSpace.md,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          ?selector,
-          SizedBox(
-            height: _tileHeight,
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: _Tile(
-                    label: tr(source.availableLabel),
-                    text: available == null
-                        ? tr('income.amountUnknown')
-                        : money.format(available),
-                    value: available,
-                    money: money,
-                    highlighted: true,
-                    onTap: onBalanceTap,
+    // The bar declares its height up front, so its text grows only so far.
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.3,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          SageSpace.gutter,
+          0,
+          SageSpace.gutter,
+          SageSpace.md,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ?selector,
+            SizedBox(
+              height: _tileHeight,
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: _Tile(
+                      label: tr(source.availableLabel),
+                      text: available == null
+                          ? tr('income.amountUnknown')
+                          : money.format(available),
+                      value: available,
+                      money: money,
+                      highlighted: true,
+                      onTap: onBalanceTap,
+                    ),
                   ),
-                ),
-                const SizedBox(width: SageSpace.sm),
-                Expanded(
-                  child: _Tile(
-                    label: tr('dashboard.freeMoney'),
-                    text: freeText,
-                    value: free,
-                    money: money,
-                    valueColor: free == null && available != null
-                        ? context.sage.danger
-                        : null,
+                  const SizedBox(width: SageSpace.sm),
+                  Expanded(
+                    child: _Tile(
+                      label: tr('dashboard.freeMoney'),
+                      text: freeText,
+                      value: free,
+                      money: money,
+                      valueColor: free == null && available != null
+                          ? context.sage.danger
+                          : null,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: SageSpace.sm),
-          SizedBox(
-            height: _tileHeight,
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: _Tile(
-                    label: tr('dashboard.paid'),
-                    text: money.format(source.paid),
-                    value: source.paid,
-                    money: money,
+            const SizedBox(height: SageSpace.sm),
+            SizedBox(
+              height: _tileHeight,
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: _Tile(
+                      label: tr('dashboard.paid'),
+                      text: money.format(source.paid),
+                      value: source.paid,
+                      money: money,
+                    ),
                   ),
-                ),
-                const SizedBox(width: SageSpace.sm),
-                Expanded(
-                  child: _Tile(
-                    label: tr('dashboard.leftToPay'),
-                    text: money.format(source.remaining),
-                    value: source.remaining,
-                    money: money,
+                  const SizedBox(width: SageSpace.sm),
+                  Expanded(
+                    child: _Tile(
+                      label: tr('dashboard.leftToPay'),
+                      text: money.format(source.remaining),
+                      value: source.remaining,
+                      money: money,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          OverdueChip(
-            money: money,
-            margin: const EdgeInsets.only(top: SageSpace.sm),
-          ),
-        ],
+            OverdueChip(
+              money: money,
+              margin: const EdgeInsets.only(top: SageSpace.sm),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -996,7 +1025,7 @@ class _DayHeader extends StatelessWidget {
     final bool isToday = header.date == today;
     // Pinned to [_headerExtent] for the scroll arithmetic.
     return Container(
-      height: _headerExtent,
+      height: _headerExtent * feedGrowth(context),
       alignment: Alignment.bottomLeft,
       padding: const EdgeInsets.fromLTRB(
         SageSpace.gutter,
@@ -1004,12 +1033,15 @@ class _DayHeader extends StatelessWidget {
         SageSpace.gutter,
         SageSpace.xs,
       ),
-      child: Text(
-        isToday
-            ? tr('feed.today')
-            : dates.dayMonth(header.date, reference: today),
-        style: text.labelMedium?.copyWith(
-          color: isToday ? sage.accentStrong : sage.inkLabel,
+      child: Semantics(
+        header: true,
+        child: Text(
+          isToday
+              ? tr('feed.today')
+              : dates.dayMonth(header.date, reference: today),
+          style: text.labelMedium?.copyWith(
+            color: isToday ? sage.accentStrong : sage.inkLabel,
+          ),
         ),
       ),
     );
@@ -1025,17 +1057,22 @@ class _CutoffLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     return Container(
-      height: _cutoffExtent,
+      height: _cutoffExtent * feedGrowth(context),
       padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
       child: Row(
         children: <Widget>[
           Expanded(child: Container(height: 1, color: sage.danger)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
-            child: Text(
-              tr('feed.cutoff'),
-              style: Theme.of(context).textTheme.labelSmall
-                  ?.copyWith(color: sage.danger),
+          Flexible(
+            flex: 6,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
+              child: Text(
+                tr('feed.cutoff'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall
+                    ?.copyWith(color: sage.danger),
+              ),
             ),
           ),
           Expanded(child: Container(height: 1, color: sage.danger)),

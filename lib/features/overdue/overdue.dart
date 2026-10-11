@@ -81,6 +81,9 @@ class OverdueChip extends ConsumerWidget {
         onTap: () => openOverduePage(context, money: money),
         borderRadius: BorderRadius.circular(SageRadius.button),
         child: Container(
+          constraints: const BoxConstraints(
+            minHeight: kMinInteractiveDimension,
+          ),
           padding: const EdgeInsets.symmetric(
             horizontal: SageSpace.md,
             vertical: SageSpace.sm,
