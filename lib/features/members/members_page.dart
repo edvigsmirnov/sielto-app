@@ -149,9 +149,14 @@ class _MembersPageState extends ConsumerState<MembersPage> {
   Widget _row(Member member, {required bool owner}) {
     final MemberLabel? label = _labels[member.userId];
     final String shown = label?.name ?? member.name ?? tr('members.noName');
+    final int? away = switch (member.lastSeen) {
+      final DateTime at when !member.me => DateTime.now().difference(at).inDays,
+      _ => null,
+    };
     final List<String> details = <String>[
       if (member.owner) tr('members.owner'),
       if (label?.role case final String role) role,
+      if (away != null && away > 30) plural('members.lastSeen', away),
     ];
     return ListTile(
       leading: const Icon(Icons.person_outline),

@@ -120,8 +120,10 @@ final Provider<Space?> currentSpaceProvider = Provider<Space?>(
 /// UTC before a Space exists. Rebuilds when the Space's day turns, so every
 /// "today" read through a watch follows it.
 final Provider<SpaceClock> spaceClockProvider = Provider<SpaceClock>((Ref ref) {
-  final Space? space = ref.watch(currentSpaceProvider);
-  final SpaceClock clock = SpaceClock(timezone: space?.timezone ?? 'UTC');
+  final String? timezone = ref.watch(
+    currentSpaceProvider.select((Space? s) => s?.timezone),
+  );
+  final SpaceClock clock = SpaceClock(timezone: timezone ?? 'UTC');
   final CalendarDate today = clock.today();
 
   final Timer midnight = Timer(

@@ -10,6 +10,7 @@ import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/analytics/analytics_page.dart';
 import 'package:sielto/features/dashboard/figure_info.dart';
+import 'package:sielto/features/dashboard/rolling_amount.dart';
 
 /// Dashboard blocks shared by the three modes. They take plain values.
 
@@ -106,20 +107,23 @@ class MainFigure extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
                 Flexible(
-                  child: Text(
-                    switch ((amount, shownDay)) {
-                      (final Decimal value, _) => money.format(value),
-                      (null, final CalendarDate day) => dates.dayMonth(
-                        day,
-                        reference: today,
-                      ),
-                      (null, null) => money.format(overspend),
-                    },
-                    textAlign: TextAlign.center,
-                    style: text.displaySmall?.copyWith(
-                      color: short ? sage.danger : sage.ink,
+                  child: switch ((amount, shownDay)) {
+                    (final Decimal value, _) => RollingAmount(
+                      value: value,
+                      money: money,
+                      style: text.displaySmall?.copyWith(color: sage.ink),
                     ),
-                  ),
+                    (null, final CalendarDate day) => Text(
+                      dates.dayMonth(day, reference: today),
+                      textAlign: TextAlign.center,
+                      style: text.displaySmall?.copyWith(color: sage.danger),
+                    ),
+                    (null, null) => Text(
+                      money.format(overspend),
+                      textAlign: TextAlign.center,
+                      style: text.displaySmall?.copyWith(color: sage.danger),
+                    ),
+                  },
                 ),
                 if (coverage != null) ...<Widget>[
                   const SizedBox(width: SageSpace.sm),

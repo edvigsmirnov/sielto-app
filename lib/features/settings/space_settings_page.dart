@@ -249,6 +249,16 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
               ),
             ),
             const Hairline(),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: Text(tr('activity.toggle')),
+              subtitle: Text(tr('activity.toggleHint')),
+              value: !ref.watch(quietSpacesProvider).contains(space.id),
+              onChanged: (bool on) => ref
+                  .read(quietSpacesProvider.notifier)
+                  .set(space.id, quiet: !on),
+            ),
+            const Hairline(),
           ],
 
           // Categories and income rules are for the open Space only.
@@ -287,17 +297,18 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             tr('space.archiveBody'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          if (owner) ...<Widget>[
-            const SizedBox(height: SageSpace.lg),
-            _DangerButton(
-              label: tr('space.delete'),
-              onTap: () => _delete(space),
-            ),
-          ] else if (shared) ...<Widget>[
+          if (shared) ...<Widget>[
             const SizedBox(height: SageSpace.lg),
             _DangerButton(
               label: tr('members.leave'),
-              onTap: () => _leave(space),
+              onTap: () => owner ? _leaveAsOwner(space) : _leave(space),
+            ),
+          ],
+          if (owner) ...<Widget>[
+            const SizedBox(height: SageSpace.sm),
+            _DangerButton(
+              label: tr('space.delete'),
+              onTap: () => _delete(space),
             ),
           ],
         ],
@@ -409,7 +420,48 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       confirmLabel: tr('members.leave'),
       isDestructive: true,
     );
-    if (!confirmed) return;
+    if (confirmed) await _leaveNow(space);
+  }
+
+  /// The creator names a successor first; alone, leaving is deleting.
+  Future<void> _leaveAsOwner(Space space) async {
+    final SyncController sync = ref.read(syncProvider.notifier);
+    final ({CloudResult result, List<Member> members}) loaded = await sync
+        .members(space.id);
+    if (!mounted) return;
+    if (loaded.result != CloudResult.done) {
+      _tellIfFailed(loaded.result);
+      return;
+    }
+    final List<Member> others = <Member>[
+      for (final Member m in loaded.members)
+        if (!m.me) m,
+    ];
+    if (others.isEmpty) {
+      await _delete(space);
+      return;
+    }
+    final Map<String, MemberLabel> labels = await sync.labels(space.id);
+    if (!mounted) return;
+    final Member? successor = await chooseDialog<Member>(
+      context,
+      title: tr('members.pickOwnerTitle'),
+      body: tr('members.pickOwnerBody'),
+      options: <(String, Member)>[
+        for (final Member m in others)
+          (labels[m.userId]?.name ?? m.name ?? tr('members.noName'), m),
+      ],
+    );
+    if (successor == null || !mounted) return;
+    if (!await confirmIdentity(context, ref)) return;
+    if (!await sync.transferOwnership(space.id, successor.userId)) {
+      if (mounted) _tellIfFailed(CloudResult.noNetwork);
+      return;
+    }
+    await _leaveNow(space);
+  }
+
+  Future<void> _leaveNow(Space space) async {
     final bool wasOpen = ref.read(currentSpaceIdProvider) == space.id;
     if (wasOpen) await ref.read(currentSpaceIdProvider.notifier).select(null);
     final bool left = await ref

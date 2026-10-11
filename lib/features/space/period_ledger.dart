@@ -191,8 +191,8 @@ PeriodLedger buildPeriodLedger({
 class SelectedPeriodController extends Notifier<String?> {
   @override
   String? build() {
-    // Resets when the Space changes.
-    ref.watch(currentSpaceProvider);
+    // Resets when another Space opens, not when this one's row changes.
+    ref.watch(currentSpaceIdProvider);
     return null;
   }
 

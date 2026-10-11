@@ -320,6 +320,7 @@ void main() {
       ],
     );
     await syncA.syncAll();
+    expect(syncA.changes.single.conflict, ConflictKind.refused);
     await syncA.syncAll();
     await syncB.syncAll();
 
@@ -329,6 +330,33 @@ void main() {
     expect((await row(a)).syncStatus, SyncStatus.rejected);
     expect((await row(a)).amount, Decimal.parse('95'));
     expect((await row(b)).amount, Decimal.parse('80'));
+
+    // Kept as a note: the shared amount returns and the note reaches B.
+    await syncA.takeServer(
+      'payments',
+      frozenId,
+      note: 'was 95',
+      on: const CalendarDate(2026, 10, 11),
+    );
+    await syncA.syncAll();
+    await syncB.syncAll();
+    expect((await row(a)).amount, Decimal.parse('80'));
+    expect((await row(a)).syncStatus, SyncStatus.synced);
+    expect((await row(b)).notes, contains('was 95'));
+
+    // A refused deletion is undone at once.
+    await a.customUpdate(
+      "UPDATE payments SET is_deleted = 1, sync_status = 'pending', "
+      'client_edited_at = ? WHERE id = ?',
+      variables: <Variable<Object>>[
+        Variable<DateTime>(DateTime.now().toUtc()),
+        Variable<String>(frozenId),
+      ],
+    );
+    await syncA.syncAll();
+    expect(syncA.changes.single.conflict, ConflictKind.refusedDeletion);
+    expect((await row(a)).isDeleted, isFalse);
+    expect((await row(a)).syncStatus, SyncStatus.synced);
   }, skip: skip);
 
   test('a Space taken off the server becomes an archive elsewhere', () async {
@@ -383,4 +411,50 @@ void main() {
     )..where(($SpacesTable t) => t.id.equals(spaceId))).getSingle();
     expect(space.manualBalance, Decimal.parse('500'));
   }, skip: skip);
+
+  group('changes by someone else', () {
+    // Device B's edits carry an author this worker does not know.
+    late SyncWorker watcher;
+    setUp(() {
+      if (skip != null) return;
+      watcher = SyncWorker(db: a, client: clientA, userId: const Uuid().v4());
+    });
+
+    test('are reported once, with what changed', () async {
+      await editOffline(b, "amount = '900'", Duration.zero);
+      await syncB.syncAll();
+      await watcher.syncAll();
+
+      final RemoteChange change = watcher.changes.single;
+      expect(change.kind, ChangeKind.edited);
+      expect(change.title, 'Rent');
+      expect(change.amount, Decimal.parse('900'));
+      expect(change.author, userId);
+      expect(change.conflict, isNull);
+
+      await watcher.syncAll();
+      expect(watcher.changes, isEmpty);
+    }, skip: skip);
+
+    test('a later edit over this one is a conflict', () async {
+      await editOffline(a, "amount = '1300'", const Duration(minutes: 10));
+      await editOffline(b, "amount = '1350'", const Duration(minutes: 5));
+      await syncB.syncAll();
+      await watcher.syncAll();
+
+      final RemoteChange change = watcher.changes.single;
+      expect(change.conflict, ConflictKind.overwritten);
+      expect(change.mine!.isBefore(change.theirs), isTrue);
+    }, skip: skip);
+
+    test('a later deletion over this edit says so', () async {
+      await editOffline(a, "amount = '1300'", const Duration(minutes: 10));
+      await editOffline(b, 'is_deleted = 1', const Duration(minutes: 5));
+      await syncB.syncAll();
+      await watcher.syncAll();
+
+      expect(watcher.changes.single.kind, ChangeKind.deleted);
+      expect(watcher.changes.single.conflict, ConflictKind.deletedOverEdit);
+    }, skip: skip);
+  });
 }

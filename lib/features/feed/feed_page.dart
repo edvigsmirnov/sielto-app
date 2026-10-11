@@ -226,6 +226,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       coverage: source.coverage,
       moneyEndsAt: source.moneyEndsAt,
       today: filter.isActive || source.byPeriod ? null : source.today,
+      emptyPeriodStarts: filter.isActive || !source.byPeriod
+          ? const <CalendarDate>[]
+          : _emptyPeriodStarts(source.records),
     );
     final List<FeedItem> items = _items;
     _measure(items, rowHeightFor(density));
@@ -504,6 +507,22 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     if (settled) _dropped = null;
   }
 
+  /// Periods in the render window with no entries, so the selector can
+  /// still scroll to them.
+  List<CalendarDate> _emptyPeriodStarts(List<FeedRecord> records) {
+    final FeedWindow window = ref.watch(feedWindowProvider);
+    return <CalendarDate>[
+      for (final BudgetPeriod p in ref.watch(incomePeriodsProvider))
+        if (window.contains(p.startDate) &&
+            !records.any(
+              (FeedRecord r) =>
+                  !r.date.isBefore(p.startDate) &&
+                  (p.endDate == null || !r.date.isAfter(p.endDate!)),
+            ))
+          p.startDate,
+    ];
+  }
+
   /// Selects the period of the top visible day.
   void _syncPeriodToScroll() {
     final List<BudgetPeriod> periods = ref.read(incomePeriodsProvider);
@@ -553,6 +572,17 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   /// Scrolls to where [period] begins.
   void _scrollToPeriod(BudgetPeriod period, {bool animate = true}) {
     if (!_scroll.hasClients) return;
+    final FeedWindow window = ref.read(feedWindowProvider);
+    if (!window.contains(period.startDate)) {
+      final FeedWindowController widen = ref.read(feedWindowProvider.notifier);
+      period.startDate.isBefore(window.from)
+          ? widen.extendBackwards()
+          : widen.extendForwards();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollToPeriod(period, animate: false);
+      });
+      return;
+    }
     final double? y = _offsetOf(
       (FeedItem i) => i is FeedHeader && !i.date.isBefore(period.startDate),
     );

@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/backup/drive.dart';
 import 'package:sielto/features/calendar/calendar_page.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/feed/feed_page.dart';
 import 'package:sielto/features/feed/feed_selection.dart';
+import 'package:sielto/features/members/members_page.dart';
 import 'package:sielto/features/shell/shell_tab.dart';
+import 'package:sielto/features/sync/activity.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
 /// Dashboard, Feed and Calendar, switched by the bottom bar.
@@ -85,6 +88,12 @@ class _MainShellState extends ConsumerState<MainShell> {
     if (_index != 0) _goTo(0);
   }
 
+  void _showDay(CalendarDate day) {
+    ref.read(selectedDateProvider.notifier).select(day);
+    ref.read(calendarViewProvider.notifier).select(CalendarView.day);
+    _goTo(_calendarTab);
+  }
+
   @override
   Widget build(BuildContext context) {
     _resetOnSpaceChange();
@@ -99,6 +108,39 @@ class _MainShellState extends ConsumerState<MainShell> {
           SnackBar(
             content: Text(tr('devices.wasUnlinked')),
             duration: const Duration(seconds: 8),
+          ),
+        );
+      }
+    });
+    ref.listen(activityProvider, (List<Activity>? _, List<Activity> batch) {
+      showActivity(context, ref, batch, onShow: _showDay);
+    });
+    ref.listen(retentionNoticeProvider, (
+      List<RetentionNotice>? _,
+      List<RetentionNotice> notices,
+    ) {
+      for (final RetentionNotice n in notices) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              tr(
+                'members.retentionNotice',
+                namedArgs: <String, String>{
+                  'name': n.name ?? tr('members.noName'),
+                  'space': n.spaceTitle,
+                },
+              ),
+            ),
+            duration: const Duration(seconds: 10),
+            persist: false,
+            action: SnackBarAction(
+              label: tr('members.title'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (BuildContext _) => MembersPage(spaceId: n.spaceId),
+                ),
+              ),
+            ),
           ),
         );
       }

@@ -214,4 +214,17 @@ void main() {
       'row:later',
     ]);
   });
+
+  test('a period with no entries still has a heading to scroll to', () {
+    final List<FeedItem> items = buildFeedItems(
+      records: <FeedRecord>[expense('rent', '2026-10-01')],
+      orderMode: FeedOrderMode.grouped,
+      emptyPeriodStarts: <CalendarDate>[d('2026-08-03')],
+    );
+    expect(keysOf(items), <String>[
+      'header:2026-08-03',
+      'header:2026-10-01',
+      'row:rent',
+    ]);
+  });
 }

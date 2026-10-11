@@ -8,6 +8,7 @@ import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -60,10 +61,51 @@ class FreezeBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final FreezeLookup lookup = ref.watch(freezeLookupProvider);
     final FreezeState state = lookup.stateOf(period);
-    if (state == FreezeState.open) return const SizedBox.shrink();
-
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
+    final DateTime? until = period.unfrozenUntil;
+    if (state == FreezeState.open &&
+        until != null &&
+        ref.watch(spaceClockProvider).nowUtc().isBefore(until)) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: SageSpace.md),
+        child: SageCard(
+          color: sage.warningTint,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(Icons.lock_open_outlined, size: 18, color: sage.warning),
+              const SizedBox(width: SageSpace.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      tr(
+                        'freeze.reopenedTitle',
+                        args: <String>[
+                          DateFormat.MMMMd(context.locale.toString())
+                              .add_Hm()
+                              .format(until.toLocal()),
+                        ],
+                      ),
+                      style: text.labelLarge?.copyWith(color: sage.warning),
+                    ),
+                    if (period.unfreezeReason case final String reason)
+                      Text(
+                        tr('freeze.reopenedReason', args: <String>[reason]),
+                        style: text.bodySmall,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (state == FreezeState.open) return const SizedBox.shrink();
+
     final bool frozen = state == FreezeState.frozen;
     final Color ink = frozen ? sage.inkSecondary : sage.warning;
 
@@ -171,14 +213,16 @@ class _UnfreezeDialogState extends State<_UnfreezeDialog> {
       ),
       title: Text(
         tr('freeze.unfreezeTitle'),
+        textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.titleMedium,
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Text(
             tr('freeze.unfreezeBody'),
+            textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: SageSpace.md),
@@ -190,21 +234,19 @@ class _UnfreezeDialogState extends State<_UnfreezeDialog> {
             decoration: InputDecoration(hintText: tr('freeze.reasonHint')),
             onChanged: (String _) => setState(() {}),
           ),
+          const SizedBox(height: SageSpace.lg),
+          ChoiceGrid(
+            choices: <(String, VoidCallback?)>[
+              (tr('common.cancel'), () => Navigator.of(context).pop()),
+              (
+                tr('freeze.unfreeze'),
+                reason.isEmpty ? null : () => Navigator.of(context).pop(reason),
+              ),
+            ],
+            primaryLast: true,
+          ),
         ],
       ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(tr('common.cancel')),
-        ),
-        TextButton(
-          // A reason is required.
-          onPressed: reason.isEmpty
-              ? null
-              : () => Navigator.of(context).pop(reason),
-          child: Text(tr('freeze.unfreeze')),
-        ),
-      ],
     );
   }
 }

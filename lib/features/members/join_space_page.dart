@@ -94,7 +94,7 @@ class _JoinSpacePageState extends ConsumerState<JoinSpacePage> {
           const SizedBox(height: SageSpace.lg),
           FilledButton(
             onPressed: _ready ? _join : null,
-            child: Text(tr(_busy ? 'devices.joining' : 'devices.join')),
+            child: Text(tr(_busy ? 'members.joining' : 'members.join')),
           ),
         ],
       ),

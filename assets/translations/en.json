@@ -98,7 +98,7 @@
     "archive": "Archive Space",
     "archiveTitle": "Archive this Space?",
     "archiveConfirm": "The Space \"{title}\" moves out of sight. Nothing is deleted, and you can bring it back any time.",
-    "archiveBody": "Archiving hides the Space without deleting anything. It can be brought back from the Spaces switcher, under Archived.",
+    "archiveBody": "Archiving hides the Space without deleting anything. You can bring it back from the Spaces switcher, under Archived.",
     "search": "Search Spaces",
     "archived": "Archived ({})",
     "unarchive": "Unarchive",
@@ -567,8 +567,11 @@
     },
     "soonTitle": "This period closes soon",
     "unfreeze": "Reopen",
-    "unfreezeBody": "You'll have 48 hours to make changes. Add a short reason; it's saved with the period.",
-    "unfreezeTitle": "Reopen this period?"
+    "unfreezeBody": "You'll have 48 hours to make changes. Add a short reason: everyone in the Space will see it.",
+    "unfreezeTitle": "Reopen this period?",
+    "reopenedTitle": "Reopened until {}",
+    "reopenedReason": "Reason: {}",
+    "addedOn": "Added {date}: "
   },
   "overdue": {
     "title": "Missed payments",
@@ -890,11 +893,50 @@
     "localName": "Member name",
     "localRole": "Role",
     "localRoleHint": "Partner, flatmate, accountant…",
-    "labelsPrivate": "Only you see these on your devices."
+    "labelsPrivate": "Only you see these on your devices.",
+    "pickOwnerTitle": "Who becomes the creator?",
+    "pickOwnerBody": "Someone has to look after the Space once you leave. Choose a member.",
+    "join": "Join",
+    "joining": "Joining…",
+    "lastSeen": {
+      "one": "Last synced {} day ago",
+      "other": "Last synced {} days ago"
+    },
+    "retentionNotice": "{name} hasn't synced for 90 days, so older history in \"{space}\" is now cleared on the usual schedule. You can remove them in Members."
   },
   "vanished": {
     "title": "The Space \"{title}\" is no longer shared",
     "body": "You were removed from it, or it was moved off the cloud or deleted. You can keep a copy on this device as your own Space, or delete it.",
     "keep": "Keep a copy"
+  },
+  "activity": {
+    "addedPayment": "{who} added an expense: {what}",
+    "addedIncome": "{who} added an income: {what}",
+    "editedPayment": "{who} changed an expense: {what}",
+    "editedIncome": "{who} changed an income: {what}",
+    "paidPayment": "{who} marked as paid: {what}",
+    "paidIncome": "{who} marked as received: {what}",
+    "deletedPayment": "{who} deleted an expense: {what}",
+    "deletedIncome": "{who} deleted an income: {what}",
+    "many": {
+      "one": "{who}: {} change",
+      "other": "{who}: {} changes"
+    },
+    "overwritten": "\"{title}\" was edited on two devices. The later edit is kept ({who}, {theirs}); yours was at {mine}.",
+    "deletedOverEdit": "Your edit to \"{title}\" is undone: it was deleted later on another device ({who}).",
+    "editOverDelete": "\"{title}\" was deleted and is back: it was edited later on another device ({who}).",
+    "show": "Show",
+    "toggle": "Changes by others",
+    "toggleHint": "A short note when someone else in the Space adds or changes an entry.",
+    "refused": "Your edit to \"{title}\" wasn't accepted: the period is already closed. The Space's creator can reopen it for 48 hours.",
+    "refusedDeletion": "\"{title}\" wasn't deleted: the period is already closed. The Space's creator can reopen it for 48 hours."
+  },
+  "refused": {
+    "tooltip": "Edit not accepted",
+    "title": "Edit not accepted",
+    "body": "This period was already closed when your edit reached the cloud, so the cloud kept the earlier version. Keep your edit as a note on the entry, or go back to the shared version.",
+    "keepNote": "Keep as a note",
+    "takeShared": "Use the shared version",
+    "noteText": "Edit that wasn't accepted: {what}"
   }
 }

@@ -6,12 +6,15 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/sync/cloud_identity.dart';
 import 'package:sielto/core/sync/device_link.dart';
 import 'package:sielto/core/sync/sync_worker.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/devices/device_name.dart';
+import 'package:sielto/features/sync/activity.dart';
 import 'package:supabase/supabase.dart';
 
 enum CloudResult { done, offlineMode, noNetwork, unlinked }
@@ -28,7 +31,18 @@ enum JoinResult {
 
 typedef SyncState = ({bool unlinked, DateTime? lastSync});
 
-typedef Member = ({String userId, String? name, bool owner, bool me});
+typedef Member = ({
+  String userId,
+  String? name,
+  bool owner,
+  bool me,
+
+  /// Latest sync from any of their devices.
+  DateTime? lastSeen,
+});
+
+/// A member of a Space this user created who has not synced for 90 days.
+typedef RetentionNotice = ({String spaceId, String spaceTitle, String? name});
 
 /// What this user calls another member; visible to no one else.
 typedef MemberLabel = ({String? name, String? role});
@@ -69,7 +83,14 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       userId: ref.watch(userIdProvider),
       deviceName: name,
     );
-    _worker = SyncWorker(db: db, client: _client, deviceName: name);
+    _worker = SyncWorker(
+      db: db,
+      client: _client,
+      deviceName: name,
+      userId: ref.watch(userIdProvider),
+      onRemote: (String spaceId) =>
+          ref.read(remoteEditProvider.notifier).mark(spaceId),
+    );
 
     final StreamSubscription<int> edits = _pendingCount(db)
         .distinct()
@@ -148,6 +169,10 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
           await ref.read(vanishedSpacesProvider.notifier).add(_worker.vanished);
         }
         await _uploadProfile();
+        if (_worker.changes.isNotEmpty) {
+          await _postActivity(List<RemoteChange>.of(_worker.changes));
+        }
+        await _checkRetention();
         state = (unlinked: false, lastSync: DateTime.now());
       } on Exception catch (e) {
         debugPrint('sync: $e');
@@ -191,6 +216,137 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     }
     _channel = null;
   }
+
+  Future<void> _postActivity(List<RemoteChange> changes) async {
+    final Map<String, String> names = await _namesOf(<String>{
+      for (final RemoteChange c in changes) c.author,
+    });
+    ref.read(activityProvider.notifier).post(<Activity>[
+      for (final RemoteChange c in changes) (change: c, who: names[c.author]),
+    ]);
+  }
+
+  /// As this user labelled each person, else by their public name.
+  Future<Map<String, String>> _namesOf(Set<String> userIds) async {
+    final String me = ref.read(userIdProvider);
+    final Map<String, String> names = <String, String>{};
+    for (final MemberLocalLabel l in await (_db.select(
+      _db.memberLocalLabels,
+    )..where(($MemberLocalLabelsTable t) => t.viewerUserId.equals(me))).get()) {
+      if (l.localName case final String name
+          when userIds.contains(l.targetUserId)) {
+        names[l.targetUserId] = name;
+      }
+    }
+    final List<String> unnamed = <String>[
+      for (final String id in userIds)
+        if (!names.containsKey(id)) id,
+    ];
+    if (unnamed.isNotEmpty) {
+      try {
+        final List<Map<String, dynamic>> profiles = await _client
+            .from('user_profiles')
+            .select('user_id, nickname')
+            .inFilter('user_id', unnamed);
+        for (final Map<String, dynamic> p in profiles) {
+          names[p['user_id'] as String] = p['nickname'] as String;
+        }
+      } on Exception catch (e) {
+        debugPrint('names: $e');
+      }
+    }
+    return names;
+  }
+
+  /// Empty when the server cannot say.
+  Future<Map<String, DateTime?>> _lastSeen(String spaceId) async {
+    final List<dynamic> rows;
+    try {
+      rows = await _client.rpc<List<dynamic>>(
+        'member_activity',
+        params: <String, String>{'p_space_id': spaceId},
+      );
+    } on PostgrestException catch (e) {
+      debugPrint('member_activity: $e');
+      return const <String, DateTime?>{};
+    }
+    return <String, DateTime?>{
+      for (final Map<String, dynamic> r in rows.cast<Map<String, dynamic>>())
+        r['user_id'] as String: switch (r['last_seen']) {
+          final String at => DateTime.parse(at),
+          _ => null,
+        },
+    };
+  }
+
+  static const Duration _retentionWait = Duration(days: 90);
+  DateTime? _retentionCheckedAt;
+
+  /// Tells the creator once when a member's 90 days run out; a member who
+  /// returns can trigger it again later. Checked at most twice a day.
+  Future<void> _checkRetention() async {
+    final DateTime now = DateTime.now();
+    final DateTime? last = _retentionCheckedAt;
+    if (last != null && now.difference(last) < const Duration(hours: 12)) {
+      return;
+    }
+    _retentionCheckedAt = now;
+    final String me = ref.read(userIdProvider);
+    final LocalSettings settings = ref.read(localSettingsProvider);
+    final Set<String> told = settings.retentionNoticed.toSet();
+    final Set<String> stillAway = <String>{};
+    final List<({String spaceId, String spaceTitle, String userId})> due =
+        <({String spaceId, String spaceTitle, String userId})>[];
+    final List<Space> owned =
+        await (_db.select(_db.spaces)..where(
+              ($SpacesTable t) =>
+                  t.storageMode.equalsValue(StorageMode.cloud) &
+                  t.ownerId.equals(me) &
+                  t.serverReceivedAt.isNotNull(),
+            ))
+            .get();
+    for (final Space space in owned) {
+      final Map<String, DateTime?> seen = await _lastSeen(space.id);
+      for (final MapEntry<String, DateTime?> m in seen.entries) {
+        final DateTime? at = m.value;
+        if (m.key == me || at == null || now.difference(at) < _retentionWait) {
+          continue;
+        }
+        final String key = '${space.id}:${m.key}';
+        stillAway.add(key);
+        if (!told.contains(key)) {
+          due.add((spaceId: space.id, spaceTitle: space.title, userId: m.key));
+        }
+      }
+    }
+    await settings.setRetentionNoticed(stillAway.toList());
+    if (due.isEmpty) return;
+    final Map<String, String> names = await _namesOf(<String>{
+      for (final ({String spaceId, String spaceTitle, String userId}) d in due)
+        d.userId,
+    });
+    ref.read(retentionNoticeProvider.notifier).post(<RetentionNotice>[
+      for (final ({String spaceId, String spaceTitle, String userId}) d in due)
+        (spaceId: d.spaceId, spaceTitle: d.spaceTitle, name: names[d.userId]),
+    ]);
+  }
+
+  /// Drops a refused edit for the server's version; [note] keeps the edit in
+  /// the entry's note. False with no network.
+  Future<bool> resolveRefused(
+    String table,
+    String id, {
+    required CalendarDate on,
+    String? note,
+  }) => _serial(() async {
+    if (await _signIn() != CloudResult.done) return false;
+    try {
+      return await _worker.takeServer(table, id, note: note, on: on);
+    } on Exception catch (e) {
+      debugPrint('refused: $e');
+      return false;
+    }
+  });
 
   /// A one-time code for a new device; null with no network.
   Future<String?> newLinkCode() => _serial(() async {
@@ -442,6 +598,7 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       final List<String> ids = <String>[
         for (final Map<String, dynamic> r in rows) r['user_id'] as String,
       ];
+      final Map<String, DateTime?> seen = await _lastSeen(spaceId);
       final List<Map<String, dynamic>> profiles = await _client
           .from('user_profiles')
           .select('user_id, nickname')
@@ -454,7 +611,13 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       final String ownerId = space['owner_id'] as String;
       final List<Member> members = <Member>[
         for (final String id in ids)
-          (userId: id, name: names[id], owner: id == ownerId, me: id == me),
+          (
+            userId: id,
+            name: names[id],
+            owner: id == ownerId,
+            me: id == me,
+            lastSeen: seen[id],
+          ),
       ]..sort((Member a, Member b) => (b.owner ? 1 : 0) - (a.owner ? 1 : 0));
       return (result: CloudResult.done, members: members);
     } on Exception {
@@ -719,3 +882,17 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
 
 final NotifierProvider<SyncController, SyncState> syncProvider =
     NotifierProvider<SyncController, SyncState>(SyncController.new);
+
+class RetentionNoticeController extends Notifier<List<RetentionNotice>> {
+  @override
+  List<RetentionNotice> build() => const <RetentionNotice>[];
+
+  void post(List<RetentionNotice> notices) => state = notices;
+}
+
+/// Members whose 90 days ran out, for the creator.
+final NotifierProvider<RetentionNoticeController, List<RetentionNotice>>
+retentionNoticeProvider =
+    NotifierProvider<RetentionNoticeController, List<RetentionNotice>>(
+      RetentionNoticeController.new,
+    );

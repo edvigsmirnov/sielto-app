@@ -39,6 +39,8 @@ class LocalSettings {
   static const String _keyDriveLastBackup = 'drive_last_backup';
   static const String _keyJoinedAccount = 'joined_account';
   static const String _keyVanished = 'vanished_spaces';
+  static const String _keyQuiet = 'quiet_spaces';
+  static const String _keyRetention = 'retention_noticed';
 
   final SharedPreferences _prefs;
 
@@ -81,6 +83,19 @@ class LocalSettings {
 
   Future<void> setVanishedSpaces(List<String> ids) =>
       _prefs.setStringList(_keyVanished, ids);
+
+  /// Spaces whose changes by others show no toast here.
+  List<String> get quietSpaces => _prefs.getStringList(_keyQuiet) ?? <String>[];
+
+  Future<void> setQuietSpaces(List<String> ids) =>
+      _prefs.setStringList(_keyQuiet, ids);
+
+  /// `space:user` pairs whose 90-day notice the creator has had.
+  List<String> get retentionNoticed =>
+      _prefs.getStringList(_keyRetention) ?? <String>[];
+
+  Future<void> setRetentionNoticed(List<String> keys) =>
+      _prefs.setStringList(_keyRetention, keys);
 
   /// Null when skipped at onboarding.
   String? get name => _prefs.getString(_keyName);

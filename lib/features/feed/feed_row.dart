@@ -7,9 +7,11 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/feed/feed_model.dart';
+import 'package:sielto/features/sync/refused_mark.dart';
 
 /// Minimum row height per density.
 double rowHeightFor(FeedDensity density) => switch (density) {
@@ -110,84 +112,88 @@ class FeedRowTile extends StatelessWidget {
         // The query removes the row, so an undo brings it back.
         return false;
       },
-      child: Ink(
-        decoration: BoxDecoration(
-          color: isSelected
-              ? sage.accentTint
-              : (isOverdue ? sage.dangerTint : Colors.transparent),
-          border: density == FeedDensity.spacious
-              ? Border(bottom: BorderSide(color: sage.hairline, width: 0.5))
-              : null,
-        ),
-        child: ConstrainedBox(
-          // A minimum: the spacious subtitle can be taller.
-          constraints: BoxConstraints(minHeight: rowHeightFor(density)),
-          child: Row(
-            children: <Widget>[
-              // The grip is outside the tappable area, so long-press does not compete with
-              // it.
-              Expanded(
-                child: InkWell(
-                  onTap: onTap,
-                  onLongPress: () {
-                    HapticFeedback.mediumImpact();
-                    onLongPress();
-                  },
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      SageSpace.gutter,
-                      density == FeedDensity.compact ? 4 : SageSpace.sm,
-                      dragHandle == null ? SageSpace.gutter : SageSpace.xs,
-                      density == FeedDensity.compact ? 4 : SageSpace.sm,
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        if (selecting)
-                          SizedBox.square(
-                            dimension: 26,
-                            child: Icon(
-                              isSelected
-                                  ? Icons.check_box
-                                  : Icons.check_box_outline_blank,
-                              size: 24,
-                              color: isSelected
-                                  ? sage.accentStrong
-                                  : sage.inkLabel,
+      // Its own Material, so the tint clips with the list.
+      child: Material(
+        type: MaterialType.transparency,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: isSelected
+                ? sage.accentTint
+                : (isOverdue ? sage.dangerTint : Colors.transparent),
+            border: density == FeedDensity.spacious
+                ? Border(bottom: BorderSide(color: sage.hairline, width: 0.5))
+                : null,
+          ),
+          child: ConstrainedBox(
+            // A minimum: the spacious subtitle can be taller.
+            constraints: BoxConstraints(minHeight: rowHeightFor(density)),
+            child: Row(
+              children: <Widget>[
+                // The grip is outside the tappable area, so long-press does not compete with
+                // it.
+                Expanded(
+                  child: InkWell(
+                    onTap: onTap,
+                    onLongPress: () {
+                      HapticFeedback.mediumImpact();
+                      onLongPress();
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        SageSpace.gutter,
+                        density == FeedDensity.compact ? 4 : SageSpace.sm,
+                        dragHandle == null ? SageSpace.gutter : SageSpace.xs,
+                        density == FeedDensity.compact ? 4 : SageSpace.sm,
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          if (selecting)
+                            SizedBox.square(
+                              dimension: 26,
+                              child: Icon(
+                                isSelected
+                                    ? Icons.check_box
+                                    : Icons.check_box_outline_blank,
+                                size: 24,
+                                color: isSelected
+                                    ? sage.accentStrong
+                                    : sage.inkLabel,
+                              ),
+                            )
+                          else
+                            _PaidCircle(
+                              record: record,
+                              onTap: isFrozen ? null : onTogglePaid,
                             ),
-                          )
-                        else
-                          _PaidCircle(
-                            record: record,
-                            onTap: isFrozen ? null : onTogglePaid,
+                          const SizedBox(width: SageSpace.md),
+                          _TypeMarker(record: record, category: category),
+                          const SizedBox(width: SageSpace.md),
+                          if (isOverdue) ...<Widget>[
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              size: 16,
+                              color: sage.danger,
+                            ),
+                            const SizedBox(width: SageSpace.xs),
+                          ],
+                          Expanded(
+                            child: _RowBody(
+                              record: record,
+                              category: category,
+                              density: density,
+                              amount: _amountLabel(record, money),
+                              amountColor: amountColor,
+                              isFrozen: isFrozen,
+                            ),
                           ),
-                        const SizedBox(width: SageSpace.md),
-                        _TypeMarker(record: record, category: category),
-                        const SizedBox(width: SageSpace.md),
-                        if (isOverdue) ...<Widget>[
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            size: 16,
-                            color: sage.danger,
-                          ),
-                          const SizedBox(width: SageSpace.xs),
                         ],
-                        Expanded(
-                          child: _RowBody(
-                            record: record,
-                            category: category,
-                            density: density,
-                            amount: _amountLabel(record, money),
-                            amountColor: amountColor,
-                            isFrozen: isFrozen,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              ?dragHandle,
-            ],
+                ?dragHandle,
+              ],
+            ),
           ),
         ),
       ),
@@ -228,7 +234,7 @@ class _RowBody extends StatelessWidget {
     final TextTheme text = Theme.of(context).textTheme;
     final String? note = record.notes?.trim().isEmpty ?? true
         ? null
-        : record.notes!.trim();
+        : shownNote(context, record.notes!.trim());
     final bool spacious = density == FeedDensity.spacious;
 
     final TextStyle titleStyle = text.bodyLarge!.copyWith(
@@ -242,6 +248,7 @@ class _RowBody extends StatelessWidget {
     );
 
     final List<Widget> marks = <Widget>[
+      if (record.refused) RefusedMark(record),
       if (isFrozen)
         Padding(
           padding: const EdgeInsets.only(left: SageSpace.sm),
@@ -262,7 +269,9 @@ class _RowBody extends StatelessWidget {
         ),
     ];
     final double marksWidth =
-        (isFrozen ? 24 : 0) + (note != null && !spacious ? 26 : 0);
+        (record.refused ? 40 : 0) +
+        (isFrozen ? 24 : 0) +
+        (note != null && !spacious ? 26 : 0);
 
     final Widget title = Text(
       record.title,

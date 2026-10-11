@@ -21,6 +21,7 @@ class FeedRecord {
     this.notes,
     this.groupRecurringId,
     this.budgetPeriodId,
+    this.refused = false,
   });
 
   factory FeedRecord.fromPayment(Payment p) => FeedRecord(
@@ -36,6 +37,7 @@ class FeedRecord {
     notes: p.notes,
     groupRecurringId: p.groupRecurringId,
     budgetPeriodId: p.budgetPeriodId,
+    refused: p.syncStatus == SyncStatus.rejected,
   );
 
   factory FeedRecord.fromIncome(Income i) => FeedRecord(
@@ -49,6 +51,7 @@ class FeedRecord {
     sortOrder: i.sortOrder,
     notes: i.notes,
     budgetPeriodId: i.budgetPeriodId,
+    refused: i.syncStatus == SyncStatus.rejected,
   );
 
   final String id;
@@ -66,6 +69,9 @@ class FeedRecord {
   /// Null until a recompute binds it.
   final String? budgetPeriodId;
 
+  /// The server refused this device's edit in a closed period.
+  final bool refused;
+
   FeedRecord withSortOrder(int order) => FeedRecord(
     id: id,
     date: date,
@@ -79,6 +85,7 @@ class FeedRecord {
     notes: notes,
     groupRecurringId: groupRecurringId,
     budgetPeriodId: budgetPeriodId,
+    refused: refused,
   );
 
   bool get isMandatory => expenseType == ExpenseType.mandatory;
@@ -153,13 +160,21 @@ List<FeedItem> buildFeedItems({
 
   /// Gets a heading even with nothing on it.
   CalendarDate? today,
+
+  /// First days of periods with no entries; each gets a heading too.
+  Iterable<CalendarDate> emptyPeriodStarts = const <CalendarDate>[],
 }) {
   final Map<String, List<FeedRecord>> byDay = <String, List<FeedRecord>>{};
   for (final FeedRecord r in records) {
     byDay.putIfAbsent(r.date.toIso(), () => <FeedRecord>[]).add(r);
   }
-  if (today != null && records.isNotEmpty) {
-    byDay.putIfAbsent(today.toIso(), () => <FeedRecord>[]);
+  if (records.isNotEmpty) {
+    for (final CalendarDate day in <CalendarDate>[
+      ?today,
+      ...emptyPeriodStarts,
+    ]) {
+      byDay.putIfAbsent(day.toIso(), () => <FeedRecord>[]);
+    }
   }
 
   final List<FeedItem> items = <FeedItem>[];

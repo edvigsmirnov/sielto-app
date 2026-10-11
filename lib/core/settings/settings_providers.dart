@@ -169,3 +169,22 @@ vanishedSpacesProvider =
     NotifierProvider<VanishedSpacesController, List<String>>(
       VanishedSpacesController.new,
     );
+
+class QuietSpacesController extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => ref.watch(localSettingsProvider).quietSpaces.toSet();
+
+  Future<void> set(String id, {required bool quiet}) async {
+    final Set<String> ids = quiet
+        ? <String>{...state, id}
+        : state.where((String s) => s != id).toSet();
+    await ref.read(localSettingsProvider).setQuietSpaces(ids.toList());
+    state = ids;
+  }
+}
+
+/// Spaces whose changes by others show no toast on this device.
+final NotifierProvider<QuietSpacesController, Set<String>> quietSpacesProvider =
+    NotifierProvider<QuietSpacesController, Set<String>>(
+      QuietSpacesController.new,
+    );

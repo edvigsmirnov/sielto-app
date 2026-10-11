@@ -1,16 +1,63 @@
+import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/synced_repository.dart';
+import 'package:sielto/domain/period/freeze.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:supabase/supabase.dart';
+
+enum ChangeKind { added, edited, paid, deleted }
+
+/// How another member's later edit met this user's own, or how the server
+/// refused it in a closed period.
+enum ConflictKind {
+  overwritten,
+  deletedOverEdit,
+  editOverDelete,
+  refused,
+  refusedDeletion,
+}
+
+/// A payment or income another member changed, as it arrived here.
+typedef RemoteChange = ({
+  String spaceId,
+  bool income,
+  ChangeKind kind,
+  String title,
+  Decimal? amount,
+  CalendarDate date,
+  String author,
+  ConflictKind? conflict,
+  DateTime? mine,
+  DateTime theirs,
+});
 
 /// Uploads the pending rows of cloud Spaces, then downloads what changed on
 /// the server. The later `client_edited_at` wins, here and on the server.
 class SyncWorker {
-  SyncWorker({required this.db, required this.client, this.deviceName});
+  SyncWorker({
+    required this.db,
+    required this.client,
+    this.deviceName,
+    this.userId,
+    this.onRemote,
+  });
 
   final AppDatabase db;
   final SupabaseClient client;
+
+  /// Changes by anyone else are collected in [changes].
+  final String? userId;
+
+  /// Fires before such a change is written.
+  final void Function(String spaceId)? onRemote;
+
+  /// What other members changed during the last [syncAll].
+  final List<RemoteChange> changes = <RemoteChange>[];
+
+  /// Edit times of the rows this run uploaded.
+  final Map<String, DateTime> _pushed = <String, DateTime>{};
 
   /// Names this device on the server if it has no name yet.
   final Future<String?>? deviceName;
@@ -54,6 +101,8 @@ class SyncWorker {
   /// False when this device has been unlinked; nothing is synced then.
   Future<bool> syncAll() async {
     if (!await touch()) return false;
+    changes.clear();
+    _pushed.clear();
     final List<Map<String, dynamic>> remote = await client
         .from('spaces')
         .select();
@@ -209,22 +258,92 @@ class SyncWorker {
         }
       }
     }
+    for (final QueryRow r in sent) {
+      if (_editedAt(r.data['client_edited_at']) case final DateTime at) {
+        _pushed[r.data['id'] as String] = at;
+      }
+    }
     await _mark(table, sent, SyncStatus.synced);
     await _mark(table, rejected, SyncStatus.rejected);
+    for (final QueryRow r in rejected) {
+      final bool deletion = r.read<bool>('is_deleted');
+      changes.add(_refusal(table, r, deletion: deletion));
+      // A deleted entry shows no row that could carry the mark.
+      if (deletion) await takeServer(table, r.data['id'] as String);
+    }
+  }
+
+  RemoteChange _refusal(String table, QueryRow r, {required bool deletion}) {
+    final bool income = table == 'incomes';
+    final String? amount = r.data['amount'] as String?;
+    return (
+      spaceId: r.data['space_id'] as String,
+      income: income,
+      kind: deletion ? ChangeKind.deleted : ChangeKind.edited,
+      title: r.data['title'] as String,
+      amount: amount == null ? null : Decimal.parse(amount),
+      date: CalendarDate.parse(
+        (income
+                ? r.data['actual_date'] ?? r.data['expected_date']
+                : r.data['due_date'])
+            as String,
+      ),
+      author: userId ?? '',
+      conflict: deletion ? ConflictKind.refusedDeletion : ConflictKind.refused,
+      mine: _editedAt(r.data['client_edited_at']),
+      theirs: _editedAt(r.data['client_edited_at']) ?? DateTime.now(),
+    );
+  }
+
+  /// Replaces a refused row with the server's version. With [note], that text
+  /// is appended to the server's note and uploaded. False when unreachable.
+  Future<bool> takeServer(
+    String table,
+    String id, {
+    String? note,
+    CalendarDate? on,
+  }) async {
+    final Map<String, dynamic>? remote = await client
+        .from(table)
+        .select()
+        .eq('id', id)
+        .maybeSingle();
+    if (remote == null) return false;
+    await db.customUpdate(
+      "UPDATE $table SET sync_status = 'synced' WHERE id = ?",
+      variables: <Variable<Object>>[Variable<String>(id)],
+    );
+    await _apply(table, <Map<String, dynamic>>[remote]);
+    if (note != null && on != null) {
+      await db.customUpdate(
+        'UPDATE $table SET notes = ?, client_edited_at = ?, '
+        "sync_status = 'pending' WHERE id = ?",
+        variables: <Variable<Object>>[
+          Variable<String>(
+            FreezeEvaluator.appendNote(remote['notes'] as String?, note, on),
+          ),
+          Variable<DateTime>(DateTime.now().toUtc()),
+          Variable<String>(id),
+        ],
+        updates: <TableInfo<Table, dynamic>>{_table(table)},
+      );
+    }
+    return true;
   }
 
   bool _isGenerated(QueryRow row) =>
-      db.typeMapping.read(
-        DriftSqlType.dateTime,
-        row.data['client_edited_at'],
-      ) ==
-      SyncedRepository.generated;
+      _editedAt(row.data['client_edited_at']) == SyncedRepository.generated;
+
+  DateTime? _editedAt(Object? raw) =>
+      db.typeMapping.read(DriftSqlType.dateTime, raw);
 
   Future<void> _pull(String spaceId) async {
     final Space space = await (db.select(
       db.spaces,
     )..where(($SpacesTable t) => t.id.equals(spaceId))).getSingle();
     final DateTime? since = space.syncedUntil?.subtract(_overlap);
+    // The first download is everything, not news.
+    final bool notice = since != null;
     DateTime? newest = space.syncedUntil;
 
     for (final String table in records) {
@@ -243,7 +362,7 @@ class SyncWorker {
             .order('server_received_at', ascending: true)
             .order('id', ascending: true)
             .range(from, from + _page - 1);
-        await _apply(table, rows);
+        await _apply(table, rows, notice: notice);
         for (final Map<String, dynamic> r in rows) {
           final DateTime received = DateTime.parse(
             r['server_received_at'] as String,
@@ -264,13 +383,14 @@ class SyncWorker {
   /// Writes [rows] unless the local row is pending with a later edit.
   Future<void> _apply(
     String table,
-    List<Map<String, dynamic>> rows,
-  ) => db.transaction(() async {
+    List<Map<String, dynamic>> rows, {
+    bool notice = false,
+  }) => db.transaction(() async {
     final TableInfo<Table, dynamic> info = _table(table);
     for (final Map<String, dynamic> remote in rows) {
       final QueryRow? local = await db
           .customSelect(
-            'SELECT sync_status, client_edited_at FROM $table WHERE id = ?',
+            'SELECT * FROM $table WHERE id = ?',
             variables: <Variable<Object>>[
               Variable<String>(remote['id'] as String),
             ],
@@ -283,6 +403,12 @@ class SyncWorker {
           remote['client_edited_at'] as String,
         );
         if (mine != null && mine.isAfter(theirs)) continue;
+      }
+      if (notice && (table == 'payments' || table == 'incomes')) {
+        if (_changeOf(table, remote, local) case final RemoteChange change) {
+          onRemote?.call(change.spaceId);
+          changes.add(change);
+        }
       }
 
       final List<GeneratedColumn<Object>> columns = <GeneratedColumn<Object>>[
@@ -309,6 +435,67 @@ class SyncWorker {
       );
     }
   });
+
+  /// Null for this user's own edits, rows the app filled in by itself and
+  /// rows already here as they are.
+  RemoteChange? _changeOf(
+    String table,
+    Map<String, dynamic> remote,
+    QueryRow? local,
+  ) {
+    final String? author = remote['last_modified_by'] as String?;
+    final DateTime theirs = DateTime.parse(
+      remote['client_edited_at'] as String,
+    );
+    if (userId == null || author == null || author == userId) return null;
+    if (theirs == SyncedRepository.generated) return null;
+    final DateTime? before = _editedAt(local?.data['client_edited_at']);
+    if (before == theirs) return null;
+
+    final bool gone = remote['is_deleted'] as bool;
+    final bool wasGone = local != null && local.read<bool>('is_deleted');
+    final bool paid = remote['is_paid'] as bool;
+    final bool wasPaid = local != null && local.read<bool>('is_paid');
+    if (gone && (local == null || wasGone)) return null;
+    final ChangeKind kind = local == null || wasGone
+        ? ChangeKind.added
+        : gone
+        ? ChangeKind.deleted
+        : paid && !wasPaid
+        ? ChangeKind.paid
+        : ChangeKind.edited;
+
+    final String id = remote['id'] as String;
+    final DateTime? mine =
+        _pushed[id] ??
+        (local?.read<String>('sync_status') == 'pending' ? before : null);
+    final bool clash = mine != null && theirs.isAfter(mine);
+    final bool income = table == 'incomes';
+    final String? amount = remote['amount'] as String?;
+    return (
+      spaceId: remote['space_id'] as String,
+      income: income,
+      kind: kind,
+      title: remote['title'] as String,
+      amount: amount == null ? null : Decimal.parse(amount),
+      date: CalendarDate.parse(
+        (income
+                ? remote['actual_date'] ?? remote['expected_date']
+                : remote['due_date'])
+            as String,
+      ),
+      author: author,
+      conflict: !clash
+          ? null
+          : gone
+          ? ConflictKind.deletedOverEdit
+          : wasGone
+          ? ConflictKind.editOverDelete
+          : ConflictKind.overwritten,
+      mine: clash ? mine : null,
+      theirs: theirs,
+    );
+  }
 
   Future<List<QueryRow>> _pending(
     String table,
