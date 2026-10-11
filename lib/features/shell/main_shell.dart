@@ -157,32 +157,39 @@ class _MainShellState extends ConsumerState<MainShell> {
         body: PageView(
           controller: _controller,
           physics: const NeverScrollableScrollPhysics(),
-          children: const <Widget>[
-            _KeepAlive(child: DashboardPage()),
-            _KeepAlive(child: FeedPage()),
-            _KeepAlive(child: CalendarPage()),
+          children: <Widget>[
+            for (final (int i, Widget page) in const <Widget>[
+              DashboardPage(),
+              FeedPage(),
+              CalendarPage(),
+            ].indexed)
+              _KeepAlive(
+                child: ExcludeFocus(excluding: i != index, child: page),
+              ),
           ],
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: index,
-          onDestinationSelected: _goTo,
-          destinations: <NavigationDestination>[
-            NavigationDestination(
-              icon: const Icon(Icons.donut_small_outlined),
-              selectedIcon: const Icon(Icons.donut_small),
-              label: tr('nav.dashboard'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.list_alt_outlined),
-              selectedIcon: const Icon(Icons.list_alt),
-              label: tr('nav.feed'),
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.calendar_month_outlined),
-              selectedIcon: const Icon(Icons.calendar_month),
-              label: tr('nav.calendar'),
-            ),
-          ],
+        bottomNavigationBar: FocusTraversalGroup(
+          child: NavigationBar(
+            selectedIndex: index,
+            onDestinationSelected: _goTo,
+            destinations: <NavigationDestination>[
+              NavigationDestination(
+                icon: const Icon(Icons.donut_small_outlined),
+                selectedIcon: const Icon(Icons.donut_small),
+                label: tr('nav.dashboard'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.list_alt_outlined),
+                selectedIcon: const Icon(Icons.list_alt),
+                label: tr('nav.feed'),
+              ),
+              NavigationDestination(
+                icon: const Icon(Icons.calendar_month_outlined),
+                selectedIcon: const Icon(Icons.calendar_month),
+                label: tr('nav.calendar'),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -24,35 +24,39 @@ class DashboardPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: AppHeader(title: space.title),
-      body: Column(
-        children: <Widget>[
-          RecoveryKeyPlate(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (BuildContext _) => const BackupPage(),
+      body: FocusTraversalGroup(
+        child: Column(
+          children: <Widget>[
+            RecoveryKeyPlate(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (BuildContext _) => const BackupPage(),
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              SageSpace.gutter,
-              0,
-              SageSpace.gutter,
-              SageSpace.sm,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                SageSpace.gutter,
+                0,
+                SageSpace.gutter,
+                SageSpace.sm,
+              ),
+              child: Semantics(
+                container: true,
+                child: ModeBadge(tr('mode.${space.budgetMode.name}.name')),
+              ),
             ),
-            child: Semantics(
-              container: true,
-              child: ModeBadge(tr('mode.${space.budgetMode.name}.name')),
+            Expanded(
+              child: FocusTraversalGroup(
+                child: switch (space.budgetMode) {
+                  BudgetMode.flow => FlowDashboardBody(space: space),
+                  BudgetMode.incomeDriven => PeriodDashboardBody(space: space),
+                  BudgetMode.budget => BudgetDashboardBody(space: space),
+                },
+              ),
             ),
-          ),
-          Expanded(
-            child: switch (space.budgetMode) {
-              BudgetMode.flow => FlowDashboardBody(space: space),
-              BudgetMode.incomeDriven => PeriodDashboardBody(space: space),
-              BudgetMode.budget => BudgetDashboardBody(space: space),
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -93,34 +93,36 @@ class CalendarPage extends ConsumerWidget {
               ),
             )
           : null,
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: <Widget>[
-            if (!atBottom) ...<Widget>[
-              controls,
-              const SizedBox(height: SageSpace.sm),
-            ],
-            // No freeze banner: the Calendar is not bound to one period.
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: SageSpace.gutter,
-                ),
-                child: _Swipe(
-                  view: view,
-                  enabled: !atBottom,
-                  child: _Body(
+      body: FocusTraversalGroup(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: <Widget>[
+              if (!atBottom) ...<Widget>[
+                controls,
+                const SizedBox(height: SageSpace.sm),
+              ],
+              // No freeze banner: the Calendar is not bound to one period.
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: SageSpace.gutter,
+                  ),
+                  child: _Swipe(
                     view: view,
-                    selected: selected,
-                    today: today,
-                    money: money,
-                    dates: dates,
+                    enabled: !atBottom,
+                    child: _Body(
+                      view: view,
+                      selected: selected,
+                      today: today,
+                      money: money,
+                      dates: dates,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

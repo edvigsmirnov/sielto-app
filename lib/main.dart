@@ -16,6 +16,7 @@ import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/core/ui/focus_ring.dart';
 import 'package:sielto/features/launch/launch_curtain.dart';
 import 'package:sielto/features/onboarding/onboarding_page.dart';
 import 'package:sielto/features/security/app_lock.dart';
@@ -255,10 +256,12 @@ class BudgetApp extends ConsumerWidget {
                     : Brightness.dark,
                 systemNavigationBarContrastEnforced: false,
               ),
-          child: LaunchCurtain(
-            child: lockable
-                ? AppLockGate(child: child ?? const SizedBox.shrink())
-                : child ?? const SizedBox.shrink(),
+          child: FocusRing(
+            child: LaunchCurtain(
+              child: lockable
+                  ? AppLockGate(child: child ?? const SizedBox.shrink())
+                  : child ?? const SizedBox.shrink(),
+            ),
           ),
         );
       },

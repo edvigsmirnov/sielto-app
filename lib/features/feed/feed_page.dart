@@ -333,81 +333,85 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               ),
               child: const Icon(Icons.add),
             ),
-      body: Column(
-        children: <Widget>[
-          if (selection.isNotEmpty)
-            Semantics(
-              container: true,
-              liveRegion: true,
-              child: _SelectionBar(
-                count: selection.length,
-                onClose: ref.read(feedSelectionProvider.notifier).clear,
+      body: FocusTraversalGroup(
+        child: Column(
+          children: <Widget>[
+            if (selection.isNotEmpty)
+              Semantics(
+                container: true,
+                liveRegion: true,
+                child: _SelectionBar(
+                  count: selection.length,
+                  onClose: ref.read(feedSelectionProvider.notifier).clear,
+                ),
               ),
-            ),
-          if (filter.isActive)
-            Semantics(
-              container: true,
-              child: FeedFilterBar(shown: _allMatches(filter), money: money),
-            ),
-          if (!ref.watch(tickHintSeenProvider) &&
-              selection.isEmpty &&
-              items.any((FeedItem i) => i is FeedRow))
-            Semantics(
-              container: true,
-              child: _TickHint(
-                onClose: ref.read(tickHintSeenProvider.notifier).dismiss,
+            if (filter.isActive)
+              Semantics(
+                container: true,
+                child: FeedFilterBar(shown: _allMatches(filter), money: money),
               ),
-            ),
-          Expanded(
-            child: items.isEmpty
-                ? EmptyState(
-                    message: tr(
-                      filter.isActive ? 'feed.filter.nothing' : 'feed.empty',
-                    ),
-                  )
-                : LayoutBuilder(
-                    builder: (BuildContext context, BoxConstraints box) =>
-                        ReorderableListView.builder(
-                          scrollController: _scroll,
-                          buildDefaultDragHandles: false,
-                          padding: EdgeInsets.only(
-                            bottom: _bottomSlack(
-                              box.maxHeight,
-                              source.byPeriod,
+            if (!ref.watch(tickHintSeenProvider) &&
+                selection.isEmpty &&
+                items.any((FeedItem i) => i is FeedRow))
+              Semantics(
+                container: true,
+                child: _TickHint(
+                  onClose: ref.read(tickHintSeenProvider.notifier).dismiss,
+                ),
+              ),
+            Expanded(
+              child: items.isEmpty
+                  ? EmptyState(
+                      message: tr(
+                        filter.isActive ? 'feed.filter.nothing' : 'feed.empty',
+                      ),
+                    )
+                  : LayoutBuilder(
+                      builder: (BuildContext context, BoxConstraints box) =>
+                          FocusTraversalGroup(
+                            child: ReorderableListView.builder(
+                              scrollController: _scroll,
+                              buildDefaultDragHandles: false,
+                              padding: EdgeInsets.only(
+                                bottom: _bottomSlack(
+                                  box.maxHeight,
+                                  source.byPeriod,
+                                ),
+                              ),
+                              itemCount: items.length,
+                              itemBuilder: (BuildContext context, int index) =>
+                                  _buildItem(
+                                    context,
+                                    items[index],
+                                    index: index,
+                                    density: density,
+                                    money: money,
+                                    dates: dates,
+                                    today: source.today,
+                                    categories:
+                                        categories.value ??
+                                        const <String, Category>{},
+                                    freeze: ref.watch(freezeLookupProvider),
+                                    beyondDeadline: source.beyondDeadline,
+                                    canReorder:
+                                        !filter.isActive && selection.isEmpty,
+                                    selection: selection,
+                                  ),
+                              onReorderStart: (int index) =>
+                                  HapticFeedback.mediumImpact(),
+                              onReorderItem: (int oldIndex, int newIndex) =>
+                                  _onReorder(
+                                    items: items,
+                                    oldIndex: oldIndex,
+                                    insertAt: newIndex,
+                                    orderMode: space.feedOrderMode,
+                                  ),
                             ),
                           ),
-                          itemCount: items.length,
-                          itemBuilder: (BuildContext context, int index) =>
-                              _buildItem(
-                                context,
-                                items[index],
-                                index: index,
-                                density: density,
-                                money: money,
-                                dates: dates,
-                                today: source.today,
-                                categories:
-                                    categories.value ??
-                                    const <String, Category>{},
-                                freeze: ref.watch(freezeLookupProvider),
-                                beyondDeadline: source.beyondDeadline,
-                                canReorder:
-                                    !filter.isActive && selection.isEmpty,
-                                selection: selection,
-                              ),
-                          onReorderStart: (int index) =>
-                              HapticFeedback.mediumImpact(),
-                          onReorderItem: (int oldIndex, int newIndex) =>
-                              _onReorder(
-                                items: items,
-                                oldIndex: oldIndex,
-                                insertAt: newIndex,
-                                orderMode: space.feedOrderMode,
-                              ),
-                        ),
-                  ),
-          ),
-        ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
