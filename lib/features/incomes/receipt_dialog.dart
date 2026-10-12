@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
 /// Asks when an income arrived, prefilled with the expected date. Null when
@@ -29,6 +30,9 @@ class _ReceiptDialogState extends State<_ReceiptDialog> {
 
   Future<void> _pick() async {
     final DateTime? picked = await showDatePicker(
+      initialEntryMode: isWide(context)
+          ? DatePickerEntryMode.calendarOnly
+          : DatePickerEntryMode.calendar,
       context: context,
       initialDate: _actual.toUtcMidnight(),
       firstDate: DateTime.utc(_actual.year - 2),

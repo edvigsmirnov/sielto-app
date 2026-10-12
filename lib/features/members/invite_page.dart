@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/features/devices/code_card.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
@@ -76,7 +77,7 @@ class _InvitePageState extends ConsumerState<InvitePage> {
     final bool expired = left.isNegative;
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('members.inviteTitle'))),
+      appBar: sageAppBar(context, title: Text(tr('members.inviteTitle'))),
       body: ListView(
         padding: const EdgeInsets.all(SageSpace.formGutter),
         children: <Widget>[

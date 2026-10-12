@@ -4,7 +4,7 @@ import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flutter/services.dart' show HapticFeedback, HardwareKeyboard;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -15,13 +15,16 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/bulk_button.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/balance_sheet.dart';
 import 'package:sielto/features/dashboard/period_selector.dart';
+import 'package:sielto/features/feed/feed_columns.dart';
 import 'package:sielto/features/feed/feed_filter.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
@@ -56,6 +59,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
   /// Last built list, for the scroll listener and the arrows.
   List<FeedItem> _items = const <FeedItem>[];
+
+  List<FeedRecord> _records = const <FeedRecord>[];
 
   /// Offset of each item in [_items], plus the total at the end.
   List<double> _starts = const <double>[0];
@@ -202,7 +207,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final AsyncValue<Map<String, Category>> categories = ref.watch(
       categoryIndexProvider,
     );
-    final FeedDensity density = ref.watch(feedDensityProvider);
+    final bool table = ShellLayout.of(context) != ShellMode.phone;
+    // The table has one row height.
+    final FeedDensity density = table
+        ? FeedDensity.compact
+        : ref.watch(feedDensityProvider);
     final String locale = context.locale.toString();
     final MoneyFormat money = MoneyFormat(
       locale: locale,
@@ -222,6 +231,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final FeedFilter filter = ref.watch(feedFilterProvider);
     final Set<String> selection = ref.watch(feedSelectionProvider);
     if (selection.isEmpty) _bulkSeen = false;
+    _records = source.records;
     _items = buildFeedItems(
       records: filter.isActive
           ? source.records.where(filter.matches).toList()
@@ -263,9 +273,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         );
       }
     }
-    final bool atBottom = ref
-        .watch(controlsAtBottomProvider)
-        .contains(ControlsScreen.feed);
+    final bool atBottom = controlsAtBottom(context, ref, ControlsScreen.feed);
     final Widget selector = PeriodSelector(
       onJump: (BudgetPeriod p) => _scrollToPeriod(p),
       swipe: !atBottom,
@@ -273,34 +281,47 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppHeader(
-        title: tr('nav.feed'),
-        trailing: <Widget>[
-          Padding(
-            padding: const EdgeInsets.only(right: SageSpace.sm),
-            child: Badge(
-              isLabelVisible: filter.isActive,
-              backgroundColor: context.sage.accentStrong,
-              smallSize: 8,
-              child: SoftIconButton(
-                size: 44,
-                icon: Icons.search,
-                tooltip: tr('feed.filter.title'),
-                onTap: () => showFeedFilter(context),
+      appBar: table
+          ? null
+          : AppHeader(
+              title: tr('nav.feed'),
+              trailing: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.only(right: SageSpace.sm),
+                  child: Badge(
+                    isLabelVisible: filter.isActive,
+                    backgroundColor: context.sage.accentStrong,
+                    smallSize: 8,
+                    child: SoftIconButton(
+                      size: 44,
+                      icon: Icons.search,
+                      tooltip: tr('feed.filter.title'),
+                      onTap: () => showFeedFilter(context),
+                    ),
+                  ),
+                ),
+              ],
+              bottom: _FeedTotals(
+                source: source,
+                money: money,
+                onBalanceTap: space.budgetMode == BudgetMode.flow
+                    ? () => showBalanceSheet(
+                        context,
+                        ref,
+                        space: space,
+                        money: money,
+                      )
+                    : null,
+                hasOverdue: !ref.watch(overduePaymentsProvider).isEmpty,
+                oneRow: table,
+                selector:
+                    source.byPeriod &&
+                        !atBottom &&
+                        ShellLayout.of(context) == ShellMode.phone
+                    ? selector
+                    : null,
               ),
             ),
-          ),
-        ],
-        bottom: _FeedTotals(
-          source: source,
-          money: money,
-          onBalanceTap: space.budgetMode == BudgetMode.flow
-              ? () => showBalanceSheet(context, ref, space: space, money: money)
-              : null,
-          hasOverdue: !ref.watch(overduePaymentsProvider).isEmpty,
-          selector: source.byPeriod && !atBottom ? selector : null,
-        ),
-      ),
       bottomNavigationBar: source.byPeriod && atBottom
           ? SafeArea(top: false, child: selector)
           : null,
@@ -320,6 +341,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 );
               },
             )
+          : table
+          ? null
           : FloatingActionButton(
               tooltip: tr('common.add'),
               backgroundColor: context.sage.accent,
@@ -334,84 +357,197 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               child: const Icon(Icons.add),
             ),
       body: FocusTraversalGroup(
-        child: Column(
-          children: <Widget>[
-            if (selection.isNotEmpty)
-              Semantics(
-                container: true,
-                liveRegion: true,
-                child: _SelectionBar(
-                  count: selection.length,
-                  onClose: ref.read(feedSelectionProvider.notifier).clear,
+        child: Readable(
+          maxWidth: ShellLayout.of(context) == ShellMode.phone
+              ? Readable.feed
+              : Readable.feedTable,
+          child: Column(
+            children: <Widget>[
+              if (table)
+                _TableToolbar(
+                  source: source,
+                  money: money,
+                  filtered: filter.isActive,
+                  onBalanceTap: space.budgetMode == BudgetMode.flow
+                      ? () => showBalanceSheet(
+                          context,
+                          ref,
+                          space: space,
+                          money: money,
+                        )
+                      : null,
+                  figures:
+                      ShellLayout.of(context) != ShellMode.columns ||
+                      ref.watch(columnsLayoutProvider).dashboardCollapsed,
+                  onSearch: () => ref
+                      .read(feedFilterOpenProvider.notifier)
+                      .set(open: !ref.read(feedFilterOpenProvider)),
+                  onAdd: () => showQuickAddMenu(
+                    context,
+                    ref,
+                    date: source.today,
+                    title: tr('feed.today'),
+                  ),
                 ),
-              ),
-            if (filter.isActive)
-              Semantics(
-                container: true,
-                child: FeedFilterBar(shown: _allMatches(filter), money: money),
-              ),
-            if (!ref.watch(tickHintSeenProvider) &&
-                selection.isEmpty &&
-                items.any((FeedItem i) => i is FeedRow))
-              Semantics(
-                container: true,
-                child: _TickHint(
-                  onClose: ref.read(tickHintSeenProvider.notifier).dismiss,
+              if (selection.isNotEmpty)
+                Semantics(
+                  container: true,
+                  liveRegion: true,
+                  child: _SelectionBar(
+                    count: selection.length,
+                    onClose: ref.read(feedSelectionProvider.notifier).clear,
+                  ),
                 ),
-              ),
-            Expanded(
-              child: items.isEmpty
-                  ? EmptyState(
-                      message: tr(
-                        filter.isActive ? 'feed.filter.nothing' : 'feed.empty',
-                      ),
-                    )
-                  : LayoutBuilder(
-                      builder: (BuildContext context, BoxConstraints box) =>
-                          FocusTraversalGroup(
-                            child: ReorderableListView.builder(
-                              scrollController: _scroll,
-                              buildDefaultDragHandles: false,
-                              padding: EdgeInsets.only(
-                                bottom: _bottomSlack(
-                                  box.maxHeight,
-                                  source.byPeriod,
+              if (table)
+                AnimatedSize(
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: ref.watch(feedFilterOpenProvider)
+                      ? FeedFilterPanel(
+                          shown: _allMatches(filter),
+                          money: money,
+                        )
+                      : const SizedBox(width: double.infinity),
+                ),
+              if (filter.isActive &&
+                  !(table && ref.watch(feedFilterOpenProvider)))
+                Semantics(
+                  container: true,
+                  child: FeedFilterBar(
+                    shown: _allMatches(filter),
+                    money: money,
+                  ),
+                ),
+              if (!table &&
+                  !ref.watch(tickHintSeenProvider) &&
+                  selection.isEmpty &&
+                  items.any((FeedItem i) => i is FeedRow))
+                Semantics(
+                  container: true,
+                  child: _TickHint(
+                    onClose: ref.read(tickHintSeenProvider.notifier).dismiss,
+                  ),
+                ),
+              Expanded(
+                child: _tableCard(
+                  table: table,
+                  header: items.isNotEmpty,
+                  child: items.isEmpty
+                      ? EmptyState(
+                          message: tr(
+                            filter.isActive
+                                ? 'feed.filter.nothing'
+                                : desktopInput
+                                ? 'feed.emptyDesktop'
+                                : 'feed.empty',
+                          ),
+                        )
+                      : LayoutBuilder(
+                          builder: (BuildContext context, BoxConstraints box) =>
+                              FocusTraversalGroup(
+                                child: ReorderableListView.builder(
+                                  scrollController: _scroll,
+                                  buildDefaultDragHandles: false,
+                                  padding: EdgeInsets.only(
+                                    bottom: _bottomSlack(
+                                      box.maxHeight,
+                                      source.byPeriod,
+                                    ),
+                                  ),
+                                  itemCount: items.length,
+                                  itemBuilder:
+                                      (
+                                        BuildContext context,
+                                        int index,
+                                      ) => _buildItem(
+                                        context,
+                                        items[index],
+                                        index: index,
+                                        density: density,
+                                        money: money,
+                                        dates: dates,
+                                        today: source.today,
+                                        categories:
+                                            categories.value ??
+                                            const <String, Category>{},
+                                        freeze: ref.watch(freezeLookupProvider),
+                                        beyondDeadline: source.beyondDeadline,
+                                        canReorder:
+                                            !filter.isActive &&
+                                            selection.isEmpty,
+                                        selection: selection,
+                                        leftAfter: table
+                                            ? source.leftAfter
+                                            : null,
+                                      ),
+                                  onReorderStart: (int index) =>
+                                      HapticFeedback.mediumImpact(),
+                                  onReorderItem: (int oldIndex, int newIndex) =>
+                                      _onReorder(
+                                        items: items,
+                                        oldIndex: oldIndex,
+                                        insertAt: newIndex,
+                                        orderMode: space.feedOrderMode,
+                                      ),
                                 ),
                               ),
-                              itemCount: items.length,
-                              itemBuilder: (BuildContext context, int index) =>
-                                  _buildItem(
-                                    context,
-                                    items[index],
-                                    index: index,
-                                    density: density,
-                                    money: money,
-                                    dates: dates,
-                                    today: source.today,
-                                    categories:
-                                        categories.value ??
-                                        const <String, Category>{},
-                                    freeze: ref.watch(freezeLookupProvider),
-                                    beyondDeadline: source.beyondDeadline,
-                                    canReorder:
-                                        !filter.isActive && selection.isEmpty,
-                                    selection: selection,
-                                  ),
-                              onReorderStart: (int index) =>
-                                  HapticFeedback.mediumImpact(),
-                              onReorderItem: (int oldIndex, int newIndex) =>
-                                  _onReorder(
-                                    items: items,
-                                    oldIndex: oldIndex,
-                                    insertAt: newIndex,
-                                    orderMode: space.feedOrderMode,
-                                  ),
-                            ),
-                          ),
-                    ),
-            ),
-          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  /// The table sits on a card with its headings and a hint line.
+  Widget _tableCard({
+    required bool table,
+    required bool header,
+    required Widget child,
+  }) {
+    if (!table) return child;
+    final SageColors sage = context.sage;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        SageSpace.md,
+        0,
+        SageSpace.md,
+        SageSpace.md,
+      ),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: sage.card,
+        borderRadius: BorderRadius.circular(SageRadius.card),
+        border: Border.all(color: sage.border),
+      ),
+      child: Column(
+        children: <Widget>[
+          if (header) const FeedTableHeader(),
+          Expanded(child: child),
+          if (desktopInput && header)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: SageSpace.md,
+                vertical: SageSpace.sm,
+              ),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: sage.hairline)),
+              ),
+              child: Text(
+                tr('feed.table.hint'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: sage.inkLabel),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -447,8 +583,10 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           ref.watch(periodLedgersProvider).value ?? const <PeriodLedger>[];
       final Map<String, bool> coverage = <String, bool>{};
       final Map<String, bool> endsAt = <String, bool>{};
+      final Map<String, Decimal> left = <String, Decimal>{};
       for (final PeriodLedger ledger in ledgers) {
         coverage.addAll(ledger.coverageByEntry);
+        left.addAll(ledger.balanceByEntry);
         final ({String entryId, bool below})? end = ledger.moneyEndsAt;
         if (end != null) endsAt[end.entryId] = end.below;
       }
@@ -475,6 +613,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         records: records,
         today: selected.today,
         coverage: coverage,
+        leftAfter: left,
         moneyEndsAt: endsAt,
         available: selected.anchorAmount,
         freeCash: selected.freeCash,
@@ -493,6 +632,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         records: records,
         today: budget.today,
         coverage: budget.coverageByEntry,
+        leftAfter: budget.balanceByEntry,
         moneyEndsAt: budget.moneyEndsAt,
         available: budget.available,
         freeCash: budget.hasFund ? budget.remaining : budget.available,
@@ -511,6 +651,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       records: records,
       today: flow.today,
       coverage: flow.coverageByEntry,
+      leftAfter: flow.balanceByEntry,
       moneyEndsAt: <String, bool>{if (end != null) end.entryId: end.below},
       available: flow.available,
       freeCash: flow.freeCash,
@@ -644,6 +785,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     required Set<String> beyondDeadline,
     required bool canReorder,
     required Set<String> selection,
+    required Map<String, Decimal>? leftAfter,
   }) {
     switch (item) {
       case FeedHeader():
@@ -652,26 +794,49 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           header: item,
           today: today,
           dates: dates,
+          band: leftAfter != null,
         );
       case FeedCutoff():
         return _CutoffLine(key: ValueKey<String>(item.key), item: item);
       case FeedRow():
         final FeedRecord record = item.record;
+        final Decimal? left = leftAfter?[record.id];
         return FeedRowTile(
           key: ValueKey<String>(item.key),
           record: record,
+          table: leftAfter == null
+              ? null
+              : FeedTableCells(
+                  date: dates.dayMonthShort(record.date),
+                  leftAfter: left == null ? null : money.format(left),
+                  short: left != null && left < Decimal.zero,
+                  layout: ref.watch(feedColumnsProvider),
+                ),
           isCovered: item.isCovered,
           density: density,
           money: money,
           category: record.categoryId == null
               ? null
               : categories[record.categoryId],
-          onTap: selection.isEmpty
-              ? () => editRecord(context, record)
-              : () =>
-                    ref.read(feedSelectionProvider.notifier).toggle(record.id),
+          // Ctrl-click selects, as a long press does.
+          onTap: () =>
+              selection.isEmpty && !HardwareKeyboard.instance.isControlPressed
+              ? editRecord(context, record)
+              : ref.read(feedSelectionProvider.notifier).toggle(record.id),
+          onSecondaryTap: () => showBulkActions(
+            context,
+            ref,
+            records: selection.contains(record.id)
+                ? <FeedRecord>[
+                    for (final FeedRecord r in _records)
+                      if (selection.contains(r.id)) r,
+                  ]
+                : <FeedRecord>[record],
+          ),
           selecting: selection.isNotEmpty,
-          isSelected: selection.contains(record.id),
+          isSelected:
+              selection.contains(record.id) ||
+              record.id == DetailHost.openOf(context),
           onTogglePaid: () => togglePaid(context, ref, record),
           onDelete: () => deleteRecord(context, ref, record),
           isFrozen: freeze.isFrozen(record.budgetPeriodId),
@@ -779,11 +944,15 @@ class _FeedSource {
     required this.mode,
     this.beyondDeadline = const <String>{},
     this.hasIncome = true,
+    this.leftAfter = const <String, Decimal>{},
   });
 
   final List<FeedRecord> records;
   final CalendarDate today;
   final Map<String, bool> coverage;
+
+  /// Left to spend after each entry.
+  final Map<String, Decimal> leftAfter;
 
   /// Row id to the side of the row where the cutoff falls.
   final Map<String, bool> moneyEndsAt;
@@ -821,8 +990,12 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
     required this.money,
     required this.selector,
     required this.hasOverdue,
+    required this.oneRow,
     this.onBalanceTap,
   });
+
+  /// The four figures side by side, above the table.
+  final bool oneRow;
 
   final _FeedSource source;
   final MoneyFormat money;
@@ -841,8 +1014,8 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => Size.fromHeight(
     (selector == null ? 8 : 48) +
-        _tileHeight * 2 +
-        20 +
+        _tileHeight * (oneRow ? 1 : 2) +
+        (oneRow ? 12 : 20) +
         (hasOverdue ? _chipHeight : 0),
   );
 
@@ -861,81 +1034,87 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
     // The bar declares its height up front, so its text grows only so far.
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          SageSpace.gutter,
-          0,
-          SageSpace.gutter,
-          SageSpace.md,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ?selector,
-            SizedBox(
-              height: _tileHeight,
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _Tile(
-                      label: tr(source.availableLabel),
-                      text: available == null
-                          ? tr('income.amountUnknown')
-                          : money.format(available),
-                      value: available,
-                      money: money,
-                      highlighted: true,
-                      onTap: onBalanceTap,
-                    ),
-                  ),
-                  const SizedBox(width: SageSpace.sm),
-                  Expanded(
-                    child: _Tile(
-                      label: tr('dashboard.freeMoney'),
-                      text: freeText,
-                      value: free,
-                      money: money,
-                      valueColor: free == null && available != null
-                          ? context.sage.danger
-                          : null,
-                    ),
-                  ),
-                ],
+      child: Readable(
+        maxWidth: ShellLayout.of(context) == ShellMode.phone
+            ? Readable.feed
+            : Readable.feedTable,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            SageSpace.gutter,
+            0,
+            SageSpace.gutter,
+            SageSpace.md,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ?selector,
+              ..._tileRows(<Widget>[
+                _Tile(
+                  label: tr(source.availableLabel),
+                  text: available == null
+                      ? tr('income.amountUnknown')
+                      : money.format(available),
+                  value: available,
+                  money: money,
+                  highlighted: true,
+                  onTap: onBalanceTap,
+                ),
+                _Tile(
+                  label: tr('dashboard.freeMoney'),
+                  text: freeText,
+                  value: free,
+                  money: money,
+                  valueColor: free == null && available != null
+                      ? context.sage.danger
+                      : null,
+                ),
+                _Tile(
+                  label: tr('dashboard.paid'),
+                  text: money.format(source.paid),
+                  value: source.paid,
+                  money: money,
+                ),
+                _Tile(
+                  label: tr('dashboard.leftToPay'),
+                  text: money.format(source.remaining),
+                  value: source.remaining,
+                  money: money,
+                ),
+              ]),
+              OverdueChip(
+                money: money,
+                margin: const EdgeInsets.only(top: SageSpace.sm),
               ),
-            ),
-            const SizedBox(height: SageSpace.sm),
-            SizedBox(
-              height: _tileHeight,
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _Tile(
-                      label: tr('dashboard.paid'),
-                      text: money.format(source.paid),
-                      value: source.paid,
-                      money: money,
-                    ),
-                  ),
-                  const SizedBox(width: SageSpace.sm),
-                  Expanded(
-                    child: _Tile(
-                      label: tr('dashboard.leftToPay'),
-                      text: money.format(source.remaining),
-                      value: source.remaining,
-                      money: money,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            OverdueChip(
-              money: money,
-              margin: const EdgeInsets.only(top: SageSpace.sm),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+extension on _FeedTotals {
+  /// Two rows of two, or one row of four.
+  List<Widget> _tileRows(List<Widget> tiles) {
+    Widget row(List<Widget> part) => SizedBox(
+      height: _FeedTotals._tileHeight,
+      child: Row(
+        children: <Widget>[
+          for (int i = 0; i < part.length; i++) ...<Widget>[
+            if (i > 0) const SizedBox(width: SageSpace.sm),
+            Expanded(child: part[i]),
+          ],
+        ],
+      ),
+    );
+    return oneRow
+        ? <Widget>[row(tiles)]
+        : <Widget>[
+            row(tiles.sublist(0, 2)),
+            const SizedBox(height: SageSpace.sm),
+            row(tiles.sublist(2)),
+          ];
   }
 }
 
@@ -1014,6 +1193,7 @@ class _DayHeader extends StatelessWidget {
     required this.header,
     required this.today,
     required this.dates,
+    this.band = false,
     super.key,
   });
 
@@ -1021,12 +1201,36 @@ class _DayHeader extends StatelessWidget {
   final CalendarDate today;
   final DateLabels dates;
 
+  /// A tinted row across the table, with the weekday.
+  final bool band;
+
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
 
     final bool isToday = header.date == today;
+    if (band) {
+      final String day = dates.weekdayAndDate(header.date, reference: today);
+      return Container(
+        height: _headerExtent * feedGrowth(context),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
+        decoration: BoxDecoration(
+          color: sage.surface,
+          border: Border(bottom: BorderSide(color: sage.hairline, width: 0.5)),
+        ),
+        child: Semantics(
+          header: true,
+          child: Text(
+            isToday ? '${tr('feed.today')} · $day' : day,
+            style: text.labelLarge?.copyWith(
+              color: isToday ? sage.accentStrong : sage.inkSecondary,
+            ),
+          ),
+        ),
+      );
+    }
     // Pinned to [_headerExtent] for the scroll arithmetic.
     return Container(
       height: _headerExtent * feedGrowth(context),
@@ -1146,7 +1350,7 @@ class _TickHint extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
               child: Text(
-                tr('feed.tickHint'),
+                tr(desktopInput ? 'feed.tickHintDesktop' : 'feed.tickHint'),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
@@ -1155,6 +1359,157 @@ class _TickHint extends StatelessWidget {
             onPressed: onClose,
             tooltip: tr('common.close'),
             icon: const Icon(Icons.close, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Above the table: the title, the period's figures, search and add.
+class _TableToolbar extends StatelessWidget {
+  const _TableToolbar({
+    required this.source,
+    required this.money,
+    required this.filtered,
+    required this.onAdd,
+    required this.onSearch,
+    required this.figures,
+    this.onBalanceTap,
+  });
+
+  /// The period's figures, where the Dashboard is out of sight.
+  final bool figures;
+
+  final VoidCallback onSearch;
+
+  final _FeedSource source;
+  final MoneyFormat money;
+  final bool filtered;
+
+  final VoidCallback onAdd;
+
+  /// Flow only: the balance opens its sheet.
+  final VoidCallback? onBalanceTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    final TextTheme text = Theme.of(context).textTheme;
+    final Decimal? available = source.available;
+    final Decimal? free = source.hasIncome ? source.freeCash : Decimal.zero;
+
+    // A small tile: the mobile figures, shrunk.
+    Widget figure(
+      String label,
+      String value, {
+      Color? color,
+      bool highlighted = false,
+      VoidCallback? onTap,
+    }) => Material(
+      color: highlighted ? sage.accentTint : sage.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(SageRadius.button),
+        side: BorderSide(color: sage.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(SageRadius.button),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: SageSpace.md,
+            vertical: 6,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                label,
+                style: text.labelSmall?.copyWith(color: sage.inkSecondary),
+              ),
+              Text(
+                value,
+                style: text.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: color ?? sage.ink,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        SageSpace.lg,
+        SageSpace.md,
+        SageSpace.md,
+        SageSpace.md,
+      ),
+      child: Column(
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Semantics(
+                header: true,
+                child: Text(tr('nav.feed'), style: text.titleMedium),
+              ),
+              const SizedBox(width: SageSpace.lg),
+              Expanded(
+                child: !figures
+                    ? const SizedBox.shrink()
+                    : Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: SageSpace.sm,
+                        runSpacing: SageSpace.xs,
+                        children: <Widget>[
+                          figure(
+                            tr(source.availableLabel),
+                            available == null
+                                ? tr('income.amountUnknown')
+                                : money.format(available),
+                            highlighted: true,
+                            onTap: onBalanceTap,
+                          ),
+                          figure(
+                            tr('dashboard.paid'),
+                            money.format(source.paid),
+                          ),
+                          figure(
+                            tr('dashboard.leftToPay'),
+                            money.format(source.remaining),
+                          ),
+                          figure(
+                            tr('dashboard.freeMoney'),
+                            free == null
+                                ? tr('feed.runsShort')
+                                : money.format(free),
+                            color: free == null || free < Decimal.zero
+                                ? sage.danger
+                                : sage.accentStrong,
+                          ),
+                        ],
+                      ),
+              ),
+              const SizedBox(width: SageSpace.md),
+              Badge(
+                isLabelVisible: filtered,
+                backgroundColor: sage.accentStrong,
+                smallSize: 8,
+                child: OutlinedButton.icon(
+                  onPressed: onSearch,
+                  icon: const Icon(Icons.search, size: 18),
+                  label: Text(tr('feed.filter.title')),
+                ),
+              ),
+              const SizedBox(width: SageSpace.sm),
+              FilledButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add, size: 18),
+                label: Text(tr('common.add')),
+              ),
+            ],
           ),
         ],
       ),

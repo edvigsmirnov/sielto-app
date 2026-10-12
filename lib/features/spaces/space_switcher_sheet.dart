@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -15,7 +17,8 @@ import 'package:sielto/features/spaces/space_avatar.dart';
 import 'package:sielto/features/spaces/space_coverage.dart';
 import 'package:sielto/features/spaces/space_form_page.dart';
 
-/// Spaces switcher sheet. No combined total: Spaces can differ in currency.
+/// Spaces switcher sheet; wide layouts show [SpacesPage] in a column instead.
+/// No combined total: Spaces can differ in currency.
 Future<void> showSpaceSwitcher(BuildContext context) =>
     showModalBottomSheet<void>(
       context: context,
@@ -24,8 +27,26 @@ Future<void> showSpaceSwitcher(BuildContext context) =>
       builder: (BuildContext _) => const _SpaceSwitcher(),
     );
 
+/// The switcher as a page, in a column or the side panel.
+class SpacesPage extends StatelessWidget {
+  const SpacesPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: context.sage.surface,
+    appBar: sageAppBar(context, title: Text(tr('settings.spaces'))),
+    body: const Padding(
+      padding: EdgeInsets.only(top: SageSpace.sm),
+      child: _SpaceSwitcher(heading: false),
+    ),
+  );
+}
+
 class _SpaceSwitcher extends ConsumerStatefulWidget {
-  const _SpaceSwitcher();
+  const _SpaceSwitcher({this.heading = true});
+
+  /// A page already names itself in its app bar.
+  final bool heading;
 
   @override
   ConsumerState<_SpaceSwitcher> createState() => _SpaceSwitcherState();
@@ -65,11 +86,13 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              tr('settings.spaces'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: SageSpace.md),
+            if (widget.heading) ...<Widget>[
+              Text(
+                tr('settings.spaces'),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: SageSpace.md),
+            ],
             TextField(
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search, size: 20),
@@ -105,7 +128,9 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
                 children: <Widget>[
                   for (final Space space in archived)
                     ListTile(
-                      contentPadding: EdgeInsets.zero,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: SageSpace.sm,
+                      ),
                       leading: SpaceAvatar(
                         spaceId: space.id,
                         title: space.title,
@@ -135,23 +160,28 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
               },
               child: Text(tr('members.joinWithCode')),
             ),
-            const SizedBox(height: SageSpace.md),
-            const Hairline(),
-            // General settings.
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(tr('settings.accountSettings')),
-              trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: () {
-                HapticFeedback.lightImpact();
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (BuildContext _) => const SettingsPage(),
-                  ),
-                );
-              },
-            ),
+            // Wide, the profile button in the top bar opens them.
+            if (!isWide(context)) ...<Widget>[
+              const SizedBox(height: SageSpace.md),
+              const Hairline(),
+              // General settings.
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: SageSpace.sm,
+                ),
+                title: Text(tr('settings.accountSettings')),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (BuildContext _) => const SettingsPage(),
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -218,7 +248,7 @@ class _SpaceRow extends StatelessWidget {
     final TextTheme text = Theme.of(context).textTheme;
 
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
       onTap: onOpen,
       leading: SpaceAvatar(
         spaceId: space.id,

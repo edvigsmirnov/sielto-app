@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/settings/space_settings_page.dart';
@@ -39,72 +41,87 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
         titleSpacing: 0,
         centerTitle: true,
         toolbarHeight: _toolbarHeight,
+        automaticallyImplyLeading: false,
         leadingWidth: kMinInteractiveDimension + SageSpace.md * 2,
-        leading: Center(
-          child: _ProfileAvatar(
-            size: _controlSize,
-            initial: ref.watch(profileInitialProvider),
-            onTap: () {
-              HapticFeedback.lightImpact();
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (BuildContext _) => const SettingsPage(),
+        // Wide, the profile sits in the sidebar.
+        leading: ShellLayout.of(context) != ShellMode.phone
+            ? null
+            : Center(
+                child: _ProfileAvatar(
+                  size: _controlSize,
+                  initial: ref.watch(profileInitialProvider),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (BuildContext _) => const SettingsPage(),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-        ),
-        // Tapping the Space name opens the switcher.
-        title: Semantics(
-          button: true,
-          child: InkWell(
-            onTap: () => showSpaceSwitcher(context),
-            borderRadius: BorderRadius.circular(SageRadius.chip),
-            child: Container(
-              constraints: const BoxConstraints(
-                minHeight: kMinInteractiveDimension,
               ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: SageSpace.sm,
-                vertical: SageSpace.xs,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Flexible(
-                    child: Text(
-                      title,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
+        // Tapping the Space name opens the switcher; wide, the sidebar does.
+        title: ShellLayout.of(context) != ShellMode.phone
+            ? Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              )
+            : Semantics(
+                button: true,
+                child: InkWell(
+                  onTap: () => showSpaceSwitcher(context),
+                  borderRadius: BorderRadius.circular(SageRadius.chip),
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minHeight: kMinInteractiveDimension,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: SageSpace.sm,
+                      vertical: SageSpace.xs,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Flexible(
+                          child: Text(
+                            title,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        const SizedBox(width: SageSpace.xs),
+                        Icon(Icons.expand_more, size: 18, color: sage.inkLabel),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: SageSpace.xs),
-                  Icon(Icons.expand_more, size: 18, color: sage.inkLabel),
-                ],
+                ),
               ),
-            ),
-          ),
-        ),
         actions: <Widget>[
           ...?trailing,
-          Padding(
-            padding: const EdgeInsets.only(right: SageSpace.md),
-            child: SoftIconButton(
-              size: _controlSize,
-              icon: Icons.settings_outlined,
-              tooltip: tr('spaceSettings.title'),
-              onTap: () {
-                HapticFeedback.lightImpact();
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (BuildContext _) => SpaceSettingsPage(
-                      space: ref.read(currentSpaceProvider)!,
+          if (ShellLayout.of(context) == ShellMode.phone)
+            Padding(
+              padding: const EdgeInsets.only(right: SageSpace.md),
+              child: SoftIconButton(
+                size: _controlSize,
+                icon: Icons.settings_outlined,
+                tooltip: tr('spaceSettings.title'),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  DetailHost.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (BuildContext _) => SpaceSettingsPage(
+                        space: ref.read(currentSpaceProvider)!,
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
         ],
         bottom: bottom,
       ),

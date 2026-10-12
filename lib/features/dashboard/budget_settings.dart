@@ -8,6 +8,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
 
@@ -16,9 +17,8 @@ Future<void> editBudgetFund(
   BuildContext context,
   WidgetRef ref, {
   required BudgetLedger ledger,
-}) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
+}) => showAdaptiveSheet<void>(
+  context,
   builder: (BuildContext _) => _FundSheet(ledger: ledger),
 );
 
@@ -98,9 +98,8 @@ Future<void> editBudgetDeadline(
   BuildContext context,
   WidgetRef ref, {
   required BudgetLedger ledger,
-}) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
+}) => showAdaptiveSheet<void>(
+  context,
   builder: (BuildContext _) => _DeadlineSheet(ledger: ledger),
 );
 
@@ -168,7 +167,7 @@ class _DeadlineSheetState extends ConsumerState<_DeadlineSheet> {
         const SizedBox(height: SageSpace.md),
         // Soft: a marker only. Hard: refuses later records.
         SwitchListTile(
-          contentPadding: EdgeInsets.zero,
+          contentPadding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
           value: _isHard,
           onChanged: _date == null
               ? null

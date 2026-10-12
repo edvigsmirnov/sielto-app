@@ -8,6 +8,7 @@ import 'package:sielto/core/holidays/countries.dart';
 import 'package:sielto/core/holidays/holiday_source.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -28,7 +29,7 @@ class HolidaysPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('holidays.title'))),
+      appBar: sageAppBar(context, title: Text(tr('holidays.title'))),
       body: ListView(
         padding: const EdgeInsets.only(bottom: SageSpace.xl),
         children: <Widget>[
@@ -495,7 +496,9 @@ class _CountryPickerState extends ConsumerState<_CountryPicker> {
               ),
               const SizedBox(height: SageSpace.sm),
               ListTile(
-                contentPadding: EdgeInsets.zero,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: SageSpace.sm,
+                ),
                 title: Text(tr('holidays.noCountry')),
                 subtitle: Text(tr('holidays.noCountryBody')),
                 onTap: () =>
@@ -506,7 +509,9 @@ class _CountryPickerState extends ConsumerState<_CountryPicker> {
                 child: ListView.builder(
                   itemCount: shown.length,
                   itemBuilder: (BuildContext context, int index) => ListTile(
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: SageSpace.sm,
+                    ),
                     dense: true,
                     title: Text(shown[index].name),
                     trailing: Text(

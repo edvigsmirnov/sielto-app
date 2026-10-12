@@ -38,7 +38,7 @@
     "welcomeBody": "No account, no email, no password. Your money stays on this device unless you decide otherwise.",
     "fieldName": "Name",
     "nameHint": "What's your name? (optional)",
-    "currencyWhy": "Taken from your device settings. If it's wrong, change it now. Later you can only change it in an empty Space.",
+    "currencyWhy": "Taken from your device settings. Each Space can use its own, and you can change it later in the Space's settings.",
     "profileTitle": "Let's get you set up",
     "profileWhy": "You can change any of this later in Settings."
   },
@@ -85,8 +85,6 @@
     "fieldMode": "Type",
     "modeIsPermanent": "You choose this once: each type works out money its own way, so it can't be changed later.",
     "fieldCurrency": "Currency",
-    "currencyFreezes": "You can change it until the first entry is added.",
-    "currencyFrozen": "This Space already has entries, so its currency stays. A new Space can use another one.",
     "fieldStorage": "Storage",
     "fieldTimezone": "Timezone",
     "fieldFeedOrder": "Order in the Feed",
@@ -102,7 +100,10 @@
     "search": "Search Spaces",
     "archived": "Archived ({})",
     "unarchive": "Unarchive",
-    "deleteConfirmCloud": "This erases everything in the Space \"{title}\" here and in the cloud, for good. Your other devices, and the members, will be asked whether to keep a copy. Type its name to confirm."
+    "deleteConfirmCloud": "This erases everything in the Space \"{title}\" here and in the cloud, for good. Your other devices, and the members, will be asked whether to keep a copy. Type its name to confirm.",
+    "currencyChangeTitle": "Change the currency to {}?",
+    "currencyChangeBody": "Amounts keep their numbers and only the currency sign changes. Nothing is converted.",
+    "currencyChange": "Change"
   },
   "spaceSettings": {
     "title": "Space settings"
@@ -128,6 +129,11 @@
     "network": "Network",
     "fullyOffline": "Fully offline",
     "fullyOfflineHint": "No feature reaches the network while this is on.",
+    "threeColumns": "Three columns",
+    "threeColumnsBody": "Dashboard, Feed and Calendar side by side when the window is wide enough",
+    "resetLayout": "Reset layout",
+    "resetLayoutBody": "Column widths, collapsed columns and the Feed table go back to how they started",
+    "layoutReset": "Layout reset",
     "controlsAtBottom": "Period controls at the bottom",
     "controlsScreen": {
       "dashboard": "Dashboard",
@@ -175,7 +181,10 @@
   },
   "feed": {
     "tickHint": "When you pay an expense or get an income, tap the circle on the left.",
+    "tickHintDesktop": "When you pay an expense or get an income, click the circle on the left. Space does the same for the selected row.",
     "empty": "Nothing here yet. Tap + to add an expense or an income.",
+    "emptyDesktop": "Nothing here yet. Click + or press Ctrl+N to add an expense or an income.",
+    "detailEmpty": "Choose an entry to see it here.",
     "today": "Today",
     "currentMoney": "Balance",
     "runsShort": "Runs short",
@@ -229,11 +238,24 @@
           "done": "Received",
           "pending": "Expected"
         }
-      }
+      },
+      "statusLabel": "Status",
+      "keys": "Esc closes · Ctrl+F opens"
     },
     "income": "Income",
     "a11y": {
       "showNote": "Show note"
+    },
+    "table": {
+      "date": "Date",
+      "title": "Title",
+      "category": "Category",
+      "note": "Note",
+      "amount": "Amount",
+      "hint": "Space marks paid · Delete removes · Right-click for more · Ctrl-click selects · drag a row to change its order within a day",
+      "kind": "Type",
+      "left": "Left after",
+      "reset": "Reset columns"
     }
   },
   "payment": {
@@ -574,7 +596,10 @@
     "unfreezeTitle": "Reopen this period?",
     "reopenedTitle": "Reopened until {}",
     "reopenedReason": "Reason: {}",
-    "addedOn": "Added {date}: "
+    "addedOn": "Added {date}: ",
+    "infoTitle": "Closed periods",
+    "infoWhat": "A period closes 15 days after it ends. From then on its amounts, dates and paid marks stay as they are, so past periods add up the same way for everyone in the Space.",
+    "infoNote": "You can still change categories and add to notes. The Space's creator can reopen a closed period for 48 hours, with a reason everyone sees."
   },
   "overdue": {
     "title": "Missed payments",
@@ -624,9 +649,17 @@
     "inRange": "in range",
     "allTypes": "Everything",
     "unit": {
+      "title": "Show",
+      "period": "Period",
       "month": "Month",
       "quarter": "Quarter",
-      "year": "Year"
+      "year": "Year",
+      "custom": "Pick dates…"
+    },
+    "dates": {
+      "title": "Show dates",
+      "from": "From",
+      "to": "To"
     },
     "records": {
       "one": "{} entry",
@@ -797,6 +830,7 @@
     "billsAdvice": "The bills alone don't fit this period. They come first, so start with them.",
     "totals": "Every expense here: what you've already paid and what's still to go.",
     "balance": "The money you said you have. Tap it whenever it changes.",
+    "balanceDesktop": "The money you said you have. Click it whenever it changes.",
     "balanceNote": "Expenses you'd already paid by then aren't subtracted again.",
     "perDay": "Your planned spending for the next 10 days, spread evenly across them.",
     "plannedFor": {
@@ -815,7 +849,7 @@
   },
   "devices": {
     "addTitle": "Add a device",
-    "addBody": "On the new device, tap \"I already use Sielto\" and enter this code.",
+    "addBody": "On the new device, choose \"I already use Sielto\" and enter this code.",
     "expiresIn": "Valid for {}",
     "waiting": "Waiting for the other device…",
     "linked": "Your new device is linked. Your cloud Spaces will appear on it in a few seconds.",
@@ -878,7 +912,7 @@
     "removeBody": "They lose access at once and will be asked whether to keep a copy.",
     "invite": "Invite someone",
     "inviteTitle": "Invite",
-    "inviteBody": "Send this code to the person you're inviting. In Sielto, they tap \"Join with a code\" and enter it.",
+    "inviteBody": "Send this code to the person you're inviting. In Sielto, they choose \"Join with a code\" and enter it.",
     "revoke": "Cancel this invite",
     "full": "No places left. To invite more people, raise the member limit in the Space settings.",
     "joinWithCode": "Join with a code",
@@ -941,5 +975,11 @@
     "keepNote": "Keep as a note",
     "takeShared": "Use the shared version",
     "noteText": "Edit that wasn't accepted: {what}"
+  },
+  "shell": {
+    "dashboardColumn": "Dashboard column",
+    "calendarColumn": "Calendar column",
+    "collapseSidebar": "Collapse",
+    "expandSidebar": "Expand"
   }
 }

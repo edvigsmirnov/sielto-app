@@ -7,12 +7,15 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/backup_page.dart';
 import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/dev/token_gallery_page.dart';
 import 'package:sielto/features/devices/devices_page.dart';
+import 'package:sielto/features/feed/feed_columns.dart';
 import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
 import 'package:sielto/features/settings/language_picker.dart';
@@ -29,7 +32,7 @@ class SettingsPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('settings.title'))),
+      appBar: sageAppBar(context, title: Text(tr('settings.title'))),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
         children: <Widget>[
@@ -75,15 +78,38 @@ class SettingsPage extends ConsumerWidget {
               ),
             ),
           ),
-          SectionLabel(tr('settings.controlsAtBottom')),
-          for (final ControlsScreen screen in ControlsScreen.values)
+          if (isWide(context))
             SwitchListTile.adaptive(
-              title: Text(tr('settings.controlsScreen.${screen.name}')),
-              value: ref.watch(controlsAtBottomProvider).contains(screen),
-              onChanged: (bool value) => ref
-                  .read(controlsAtBottomProvider.notifier)
-                  .set(screen, atBottom: value),
+              title: Text(tr('settings.threeColumns')),
+              subtitle: Text(tr('settings.threeColumnsBody')),
+              value: ref.watch(threeColumnsProvider),
+              onChanged: (bool value) =>
+                  ref.read(threeColumnsProvider.notifier).set(value: value),
             ),
+          if (isWide(context))
+            ListTile(
+              leading: const Icon(Icons.restart_alt),
+              title: Text(tr('settings.resetLayout')),
+              subtitle: Text(tr('settings.resetLayoutBody')),
+              onTap: () {
+                ref.read(columnsLayoutProvider.notifier).reset();
+                ref.read(feedColumnsProvider.notifier).reset();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(tr('settings.layoutReset'))),
+                );
+              },
+            )
+          else ...<Widget>[
+            SectionLabel(tr('settings.controlsAtBottom')),
+            for (final ControlsScreen screen in ControlsScreen.values)
+              SwitchListTile.adaptive(
+                title: Text(tr('settings.controlsScreen.${screen.name}')),
+                value: ref.watch(controlsAtBottomProvider).contains(screen),
+                onChanged: (bool value) => ref
+                    .read(controlsAtBottomProvider.notifier)
+                    .set(screen, atBottom: value),
+              ),
+          ],
           // A sheet, not a segmented control: the list of languages can grow.
           ListTile(
             leading: const Icon(Icons.translate_outlined),
@@ -98,7 +124,13 @@ class SettingsPage extends ConsumerWidget {
             leading: const Icon(Icons.dashboard_outlined),
             title: Text(tr('settings.spaces')),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => showSpaceSwitcher(context),
+            onTap: () => isWide(context)
+                ? Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (BuildContext _) => const SpacesPage(),
+                    ),
+                  )
+                : showSpaceSwitcher(context),
           ),
           ListTile(
             leading: const Icon(Icons.label_outline),

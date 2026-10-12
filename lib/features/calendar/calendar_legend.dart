@@ -3,6 +3,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
+import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/calendar/calendar_cell.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
@@ -13,13 +15,17 @@ Future<void> showCalendarLegend(
   required BudgetMode mode,
   required MoneyFormat money,
   required Decimal? loadThreshold,
-}) => showModalBottomSheet<void>(
-  context: context,
-  showDragHandle: true,
-  isScrollControlled: true,
-  builder: (BuildContext sheet) {
-    final SageColors sage = sheet.sage;
-    return SafeArea(
+}) {
+  Widget legend(BuildContext sheet) =>
+      _legend(sheet, mode: mode, money: money, loadThreshold: loadThreshold);
+  if (isWide(context)) {
+    return showPopover<void>(context, builder: legend, width: 400);
+  }
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (BuildContext sheet) => SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
           SageSpace.gutter,
@@ -27,84 +33,94 @@ Future<void> showCalendarLegend(
           SageSpace.gutter,
           SageSpace.lg,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              tr('calendar.legend.title'),
-              style: Theme.of(sheet).textTheme.titleSmall,
-            ),
-            const SizedBox(height: SageSpace.xs),
-            Text(
-              tr(
-                'calendar.legend.units',
-                namedArgs: <String, String>{'symbol': money.symbol},
-              ),
-              style: Theme.of(sheet).textTheme.bodySmall,
-            ),
-            const SizedBox(height: SageSpace.md),
-            _Entry(
-              figure: ('120', sage.danger),
-              label: tr('calendar.legend.expenses'),
-            ),
-            _Entry(
-              figure: ('120', sage.accentStrong),
-              label: tr('calendar.legend.income'),
-            ),
-            _Entry(
-              figure: ('·', sage.inkLabel),
-              label: tr('calendar.legend.noAmount'),
-            ),
-            _Entry(
-              figure: ('1', sage.accentOn),
-              isToday: true,
-              label: tr('calendar.legend.today'),
-            ),
-            _Entry(
-              figure: ('1', sage.ink),
-              isSelected: true,
-              label: tr('calendar.legend.selected'),
-            ),
-            _Entry(
-              mark: const DayMark(isNonWorking: true),
-              label: tr('calendar.legend.nonWorking'),
-            ),
-            _Entry(
-              mark: const DayMark(isNonWorking: true, isHoliday: true),
-              label: tr('calendar.legend.holiday'),
-            ),
-            _Entry(
-              mark: const DayMark(isHighLoad: true),
-              label: loadThreshold == null
-                  ? tr('calendar.legend.highLoad')
-                  : tr(
-                      'calendar.legend.highLoadOver',
-                      namedArgs: <String, String>{
-                        'amount': money.format(loadThreshold),
-                      },
-                    ),
-            ),
-            if (mode == BudgetMode.incomeDriven)
-              _Entry(
-                mark: const DayMark(isUncertainIncome: true),
-                label: tr('calendar.legend.uncertainIncome'),
-              ),
-            if (mode == BudgetMode.budget) ...<Widget>[
-              _Entry(
-                mark: const DayMark(deadline: DeadlineKind.hard),
-                label: tr('calendar.legend.hardDeadline'),
-              ),
-              _Entry(
-                mark: const DayMark(deadline: DeadlineKind.soft),
-                label: tr('calendar.legend.softDeadline'),
-              ),
-            ],
-          ],
-        ),
+        child: legend(sheet),
       ),
-    );
-  },
-);
+    ),
+  );
+}
+
+Widget _legend(
+  BuildContext sheet, {
+  required BudgetMode mode,
+  required MoneyFormat money,
+  required Decimal? loadThreshold,
+}) {
+  final SageColors sage = sheet.sage;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Text(
+        tr('calendar.legend.title'),
+        style: Theme.of(sheet).textTheme.titleSmall,
+      ),
+      const SizedBox(height: SageSpace.xs),
+      Text(
+        tr(
+          'calendar.legend.units',
+          namedArgs: <String, String>{'symbol': money.symbol},
+        ),
+        style: Theme.of(sheet).textTheme.bodySmall,
+      ),
+      const SizedBox(height: SageSpace.md),
+      _Entry(
+        figure: ('120', sage.danger),
+        label: tr('calendar.legend.expenses'),
+      ),
+      _Entry(
+        figure: ('120', sage.accentStrong),
+        label: tr('calendar.legend.income'),
+      ),
+      _Entry(
+        figure: ('·', sage.inkLabel),
+        label: tr('calendar.legend.noAmount'),
+      ),
+      _Entry(
+        figure: ('1', sage.accentOn),
+        isToday: true,
+        label: tr('calendar.legend.today'),
+      ),
+      _Entry(
+        figure: ('1', sage.ink),
+        isSelected: true,
+        label: tr('calendar.legend.selected'),
+      ),
+      _Entry(
+        mark: const DayMark(isNonWorking: true),
+        label: tr('calendar.legend.nonWorking'),
+      ),
+      _Entry(
+        mark: const DayMark(isNonWorking: true, isHoliday: true),
+        label: tr('calendar.legend.holiday'),
+      ),
+      _Entry(
+        mark: const DayMark(isHighLoad: true),
+        label: loadThreshold == null
+            ? tr('calendar.legend.highLoad')
+            : tr(
+                'calendar.legend.highLoadOver',
+                namedArgs: <String, String>{
+                  'amount': money.format(loadThreshold),
+                },
+              ),
+      ),
+      if (mode == BudgetMode.incomeDriven)
+        _Entry(
+          mark: const DayMark(isUncertainIncome: true),
+          label: tr('calendar.legend.uncertainIncome'),
+        ),
+      if (mode == BudgetMode.budget) ...<Widget>[
+        _Entry(
+          mark: const DayMark(deadline: DeadlineKind.hard),
+          label: tr('calendar.legend.hardDeadline'),
+        ),
+        _Entry(
+          mark: const DayMark(deadline: DeadlineKind.soft),
+          label: tr('calendar.legend.softDeadline'),
+        ),
+      ],
+    ],
+  );
+}
 
 class _Entry extends StatelessWidget {
   const _Entry({

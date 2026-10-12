@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -112,7 +113,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
     final ({CloudResult result, List<LinkedDevice> devices})? loaded = _loaded;
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('devices.listTitle'))),
+      appBar: sageAppBar(context, title: Text(tr('devices.listTitle'))),
       body: switch (loaded) {
         null => const Center(child: LeafLoader()),
         (result: CloudResult.done, devices: final List<LinkedDevice> devices) =>

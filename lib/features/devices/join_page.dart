@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
@@ -93,7 +94,7 @@ class _JoinPageState extends ConsumerState<JoinPage> {
     final List<String>? done = _done;
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('devices.joinTitle'))),
+      appBar: sageAppBar(context, title: Text(tr('devices.joinTitle'))),
       body: ListView(
         padding: const EdgeInsets.all(SageSpace.formGutter),
         children: <Widget>[

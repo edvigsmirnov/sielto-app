@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/security/security_page.dart';
@@ -94,7 +95,10 @@ class _MemberPageState extends ConsumerState<MemberPage> {
       },
       child: Scaffold(
         backgroundColor: context.sage.surface,
-        appBar: AppBar(title: Text(widget.member.name ?? tr('members.noName'))),
+        appBar: sageAppBar(
+          context,
+          title: Text(widget.member.name ?? tr('members.noName')),
+        ),
         body: ListView(
           padding: const EdgeInsets.all(SageSpace.formGutter),
           children: <Widget>[

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/features/members/invite_page.dart';
 import 'package:sielto/features/members/member_page.dart';
@@ -77,7 +78,7 @@ class _MembersPageState extends ConsumerState<MembersPage> {
     final ({CloudResult result, List<Member> members})? loaded = _loaded;
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('members.title'))),
+      appBar: sageAppBar(context, title: Text(tr('members.title'))),
       body: switch (loaded) {
         null => const Center(child: LeafLoader()),
         (result: CloudResult.done, members: final List<Member> members) =>

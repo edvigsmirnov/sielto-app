@@ -127,13 +127,43 @@ void main() {
     expect(quarter.to, const CalendarDate(2026, 3, 31));
   });
 
-  test('no unit exceeds a year, so the isolate arm never fires on span', () {
-    for (final RangeUnit unit in RangeUnit.values) {
-      expect(
-        range(unit, const CalendarDate(2026, 8, 14)).exceedsAYear,
-        isFalse,
-        reason: unit.name,
+  test(
+    'no fixed unit exceeds a year, so the isolate arm never fires on span',
+    () {
+      for (final RangeUnit unit in <RangeUnit>[
+        RangeUnit.month,
+        RangeUnit.quarter,
+        RangeUnit.year,
+      ]) {
+        expect(
+          range(unit, const CalendarDate(2026, 8, 14)).exceedsAYear,
+          isFalse,
+          reason: unit.name,
+        );
+      }
+    },
+  );
+
+  group('custom', () {
+    test('steps by its own length', () {
+      final AnalyticsRange r = AnalyticsRange.between(
+        RangeUnit.custom,
+        const CalendarDate(2026, 9, 14),
+        const CalendarDate(2026, 9, 23),
       );
-    }
+      expect(r.step(1).from, const CalendarDate(2026, 9, 24));
+      expect(r.step(1).to, const CalendarDate(2026, 10, 3));
+      expect(r.step(-1).from, const CalendarDate(2026, 9, 4));
+    });
+
+    test('switching to a month keeps the first day\'s month', () {
+      final AnalyticsRange r = AnalyticsRange.between(
+        RangeUnit.custom,
+        const CalendarDate(2026, 9, 14),
+        const CalendarDate(2026, 10, 3),
+      ).withUnit(RangeUnit.month);
+      expect(r.from, const CalendarDate(2026, 9, 1));
+      expect(r.to, const CalendarDate(2026, 9, 30));
+    });
   });
 }

@@ -5,6 +5,7 @@ import 'package:sielto/core/db/repositories/calendar_repository.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
 /// Twelve month cards: in, out and net. Tap opens the month.
@@ -32,13 +33,8 @@ class YearView extends StatelessWidget {
   final ValueChanged<CalendarDate> onOpenMonth;
 
   @override
-  Widget build(BuildContext context) => GridView.count(
-    crossAxisCount: 3,
-    childAspectRatio: 0.82,
-    mainAxisSpacing: SageSpace.sm,
-    crossAxisSpacing: SageSpace.sm,
-    padding: const EdgeInsets.only(bottom: SageSpace.lg),
-    children: <Widget>[
+  Widget build(BuildContext context) {
+    final List<Widget> months = <Widget>[
       for (int month = 1; month <= 12; month++)
         _MonthCard(
           month: CalendarDate(year, month, 1),
@@ -49,8 +45,35 @@ class YearView extends StatelessWidget {
           dates: dates,
           onTap: () => onOpenMonth(CalendarDate(year, month, 1)),
         ),
-    ],
-  );
+    ];
+    if (ShellLayout.of(context) == ShellMode.phone) {
+      return GridView.count(
+        crossAxisCount: 3,
+        childAspectRatio: 0.82,
+        mainAxisSpacing: SageSpace.sm,
+        crossAxisSpacing: SageSpace.sm,
+        padding: const EdgeInsets.only(bottom: SageSpace.lg),
+        children: months,
+      );
+    }
+    // Wide, cards keep one size and as many fit in a row as there is room.
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1140),
+        child: GridView(
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 200,
+            mainAxisExtent: 104,
+            mainAxisSpacing: SageSpace.sm,
+            crossAxisSpacing: SageSpace.sm,
+          ),
+          padding: const EdgeInsets.only(bottom: SageSpace.lg),
+          children: months,
+        ),
+      ),
+    );
+  }
 }
 
 class _MonthCard extends StatelessWidget {

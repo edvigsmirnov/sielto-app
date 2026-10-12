@@ -5,16 +5,6 @@ import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/value/enums.dart';
 
-/// A currency change after the Space's first record.
-class CurrencyFrozen implements Exception {
-  const CurrencyFrozen(this.spaceId);
-
-  final String spaceId;
-
-  @override
-  String toString() => 'CurrencyFrozen: $spaceId';
-}
-
 /// Shared fields sync by last write; archiving is local.
 class SpaceRepository {
   SpaceRepository({required this.db, required this.clock});
@@ -83,36 +73,11 @@ class SpaceRepository {
     return _edit(spaceId, SpacesCompanion(timezone: Value<String>(timezone)));
   }
 
-  /// True until the Space has a live payment or income.
-  Future<bool> canChangeCurrency(String spaceId) async {
-    final Payment? payment =
-        await (db.select(db.payments)
-              ..where(
-                ($PaymentsTable t) =>
-                    t.spaceId.equals(spaceId) & t.isDeleted.equals(false),
-              )
-              ..limit(1))
-            .getSingleOrNull();
-    if (payment != null) return false;
-
-    final Income? income =
-        await (db.select(db.incomes)
-              ..where(
-                ($IncomesTable t) =>
-                    t.spaceId.equals(spaceId) & t.isDeleted.equals(false),
-              )
-              ..limit(1))
-            .getSingleOrNull();
-    return income == null;
-  }
-
-  Future<int> setCurrency(String spaceId, String currencyCode) async {
-    if (!await canChangeCurrency(spaceId)) throw CurrencyFrozen(spaceId);
-    return _edit(
-      spaceId,
-      SpacesCompanion(currencyCode: Value<String>(currencyCode)),
-    );
-  }
+  /// Only the label changes: amounts are kept as they are, never converted.
+  Future<int> setCurrency(String spaceId, String currencyCode) => _edit(
+    spaceId,
+    SpacesCompanion(currencyCode: Value<String>(currencyCode)),
+  );
 
   /// Paid expenses dated on or before the snapshot time are excluded from the
   /// walk.

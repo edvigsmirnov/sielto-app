@@ -7,6 +7,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/popover.dart';
 
 /// "Set current balance". Paid expenses dated on or before the snapshot day
 /// are excluded from the walk.
@@ -15,9 +16,8 @@ Future<void> showBalanceSheet(
   WidgetRef ref, {
   required Space space,
   required MoneyFormat money,
-}) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
+}) => showAdaptiveSheet<void>(
+  context,
   builder: (BuildContext sheetContext) =>
       _BalanceSheet(space: space, money: money),
 );

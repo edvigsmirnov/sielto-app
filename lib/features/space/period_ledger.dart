@@ -87,6 +87,14 @@ class PeriodLedger {
               in cascade?.all.steps ?? const <LedgerStep>[])
             step.entry.id: step.isCovered,
         };
+
+  Map<String, Decimal> get balanceByEntry => !isJudged
+      ? const <String, Decimal>{}
+      : <String, Decimal>{
+          for (final LedgerStep step
+              in cascade?.all.steps ?? const <LedgerStep>[])
+            step.entry.id: step.balanceAfter,
+        };
 }
 
 PeriodLedger buildPeriodLedger({

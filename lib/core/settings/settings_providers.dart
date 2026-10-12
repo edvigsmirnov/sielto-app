@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/settings/local_settings.dart';
+import 'package:sielto/core/ui/layout.dart';
 
 /// Overridden at startup.
 final Provider<LocalSettings> localSettingsProvider = Provider<LocalSettings>(
@@ -133,6 +134,124 @@ final NotifierProvider<ControlsAtBottomController, Set<ControlsScreen>>
 controlsAtBottomProvider =
     NotifierProvider<ControlsAtBottomController, Set<ControlsScreen>>(
       ControlsAtBottomController.new,
+    );
+
+/// Wide windows ignore the setting: they have no bottom bar.
+bool controlsAtBottom(BuildContext context, WidgetRef ref, ControlsScreen s) =>
+    !isWide(context) && ref.watch(controlsAtBottomProvider).contains(s);
+
+class ThreeColumnsController extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(localSettingsProvider).threeColumns;
+
+  Future<void> set({required bool value}) async {
+    await ref.read(localSettingsProvider).setThreeColumns(value: value);
+    state = value;
+  }
+}
+
+final NotifierProvider<ThreeColumnsController, bool> threeColumnsProvider =
+    NotifierProvider<ThreeColumnsController, bool>(ThreeColumnsController.new);
+
+/// Dashboard and Calendar in the three-column layout: widths, and whether
+/// each is collapsed to a rail.
+@immutable
+class ColumnsLayout {
+  const ColumnsLayout({
+    this.dashboard = 400,
+    this.calendar = 480,
+    this.dashboardCollapsed = false,
+    this.calendarCollapsed = false,
+  });
+
+  factory ColumnsLayout.decode(List<String>? v) {
+    if (v == null || v.length < 4) return const ColumnsLayout();
+    return ColumnsLayout(
+      dashboard: double.tryParse(v[0]) ?? 400,
+      calendar: double.tryParse(v[1]) ?? 480,
+      dashboardCollapsed: v[2] == '1',
+      calendarCollapsed: v[3] == '1',
+    );
+  }
+
+  static const double min = 320;
+  static const double max = 720;
+
+  final double dashboard;
+  final double calendar;
+  final bool dashboardCollapsed;
+  final bool calendarCollapsed;
+
+  ColumnsLayout copyWith({
+    double? dashboard,
+    double? calendar,
+    bool? dashboardCollapsed,
+    bool? calendarCollapsed,
+  }) => ColumnsLayout(
+    dashboard: (dashboard ?? this.dashboard).clamp(min, max),
+    calendar: (calendar ?? this.calendar).clamp(min, max),
+    dashboardCollapsed: dashboardCollapsed ?? this.dashboardCollapsed,
+    calendarCollapsed: calendarCollapsed ?? this.calendarCollapsed,
+  );
+
+  List<String> encode() => <String>[
+    '$dashboard',
+    '$calendar',
+    if (dashboardCollapsed) '1' else '0',
+    if (calendarCollapsed) '1' else '0',
+  ];
+}
+
+class ColumnsLayoutController extends Notifier<ColumnsLayout> {
+  @override
+  ColumnsLayout build() =>
+      ColumnsLayout.decode(ref.watch(localSettingsProvider).columnsLayout);
+
+  /// While dragging; [save] keeps it.
+  void drag({double dashboard = 0, double calendar = 0}) =>
+      state = state.copyWith(
+        dashboard: state.dashboard + dashboard,
+        calendar: state.calendar + calendar,
+      );
+
+  Future<void> toggleDashboard() {
+    state = state.copyWith(dashboardCollapsed: !state.dashboardCollapsed);
+    return save();
+  }
+
+  Future<void> toggleCalendar() {
+    state = state.copyWith(calendarCollapsed: !state.calendarCollapsed);
+    return save();
+  }
+
+  Future<void> reset() {
+    state = const ColumnsLayout();
+    return ref.read(localSettingsProvider).setColumnsLayout(null);
+  }
+
+  Future<void> save() =>
+      ref.read(localSettingsProvider).setColumnsLayout(state.encode());
+}
+
+final NotifierProvider<ColumnsLayoutController, ColumnsLayout>
+columnsLayoutProvider =
+    NotifierProvider<ColumnsLayoutController, ColumnsLayout>(
+      ColumnsLayoutController.new,
+    );
+
+class CompactSidebarController extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(localSettingsProvider).compactSidebar;
+
+  Future<void> toggle() async {
+    state = !state;
+    await ref.read(localSettingsProvider).setCompactSidebar(value: state);
+  }
+}
+
+final NotifierProvider<CompactSidebarController, bool> compactSidebarProvider =
+    NotifierProvider<CompactSidebarController, bool>(
+      CompactSidebarController.new,
     );
 
 class TickHintSeenController extends Notifier<bool> {

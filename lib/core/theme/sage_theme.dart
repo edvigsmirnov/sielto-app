@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 
 /// Light and dark [ThemeData] from [SageColors].
 abstract final class SageTheme {
@@ -227,6 +228,9 @@ abstract final class SageTheme {
         labelTextStyle: WidgetStatePropertyAll<TextStyle?>(text.labelMedium),
       ),
       listTileTheme: ListTileThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SageRadius.button),
+        ),
         titleTextStyle: text.bodyLarge,
         subtitleTextStyle: text.bodySmall,
         contentPadding: const EdgeInsets.symmetric(
@@ -246,4 +250,52 @@ class _SnappyZoom extends ZoomPageTransitionsBuilder {
 
   @override
   Duration get reverseTransitionDuration => const Duration(milliseconds: 220);
+
+  /// Wide, a pushed page is a centred column on the canvas.
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => super.buildTransitions(
+    route,
+    context,
+    animation,
+    secondaryAnimation,
+    route.isFirst || !isWide(context) ? child : _Column(child: child),
+  );
+}
+
+class _Column extends StatelessWidget {
+  const _Column({required this.child});
+
+  final Widget child;
+
+  static const double _width = readableWidth + 2 * SageSpace.xl;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints box) =>
+          box.maxWidth <= _width
+          ? child
+          : ColoredBox(
+              color: sage.canvas,
+              child: Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: _width),
+                  decoration: BoxDecoration(
+                    border: Border.symmetric(
+                      vertical: BorderSide(color: sage.hairline),
+                    ),
+                  ),
+                  child: child,
+                ),
+              ),
+            ),
+    );
+  }
 }

@@ -38,7 +38,7 @@ String describeDay(
 
 /// A day cell's tap, long-press and spoken [label]. The menu opens at the
 /// finger, or mid-cell for a screen reader.
-class DayCellTap extends StatelessWidget {
+class DayCellTap extends StatefulWidget {
   const DayCellTap({
     required this.label,
     required this.isSelected,
@@ -57,7 +57,19 @@ class DayCellTap extends StatelessWidget {
   final Widget child;
 
   @override
+  State<DayCellTap> createState() => _DayCellTapState();
+}
+
+class _DayCellTapState extends State<DayCellTap> {
+  bool _hover = false;
+
+  @override
   Widget build(BuildContext context) {
+    final String label = widget.label;
+    final bool isSelected = widget.isSelected;
+    final VoidCallback onTap = widget.onTap;
+    final ValueChanged<Offset> onHold = widget.onHold;
+    final double radius = widget.radius;
     Offset? down;
     void hold() {
       HapticFeedback.mediumImpact();
@@ -77,8 +89,23 @@ class DayCellTap extends StatelessWidget {
         onTap: onTap,
         onTapDown: (TapDownDetails d) => down = d.globalPosition,
         onLongPress: hold,
+        onSecondaryTapUp: (TapUpDetails d) {
+          down = d.globalPosition;
+          hold();
+        },
+        onHover: (bool hover) => setState(() => _hover = hover),
         borderRadius: BorderRadius.circular(radius),
-        child: child,
+        // Over the cell's own background, which hides the ink below it.
+        child: DecoratedBox(
+          position: DecorationPosition.foreground,
+          decoration: BoxDecoration(
+            color: _hover
+                ? context.sage.ink.withValues(alpha: 0.07)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          child: widget.child,
+        ),
       ),
     );
   }

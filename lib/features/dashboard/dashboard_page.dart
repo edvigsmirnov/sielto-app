@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/backup/backup_page.dart';
 import 'package:sielto/features/dashboard/budget_dashboard.dart';
@@ -23,39 +24,45 @@ class DashboardPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppHeader(title: space.title),
+      appBar: AppHeader(
+        title: isWide(context) ? tr('nav.dashboard') : space.title,
+      ),
       body: FocusTraversalGroup(
-        child: Column(
-          children: <Widget>[
-            RecoveryKeyPlate(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (BuildContext _) => const BackupPage(),
+        child: Readable(
+          child: Column(
+            children: <Widget>[
+              RecoveryKeyPlate(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (BuildContext _) => const BackupPage(),
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                SageSpace.gutter,
-                0,
-                SageSpace.gutter,
-                SageSpace.sm,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  SageSpace.gutter,
+                  0,
+                  SageSpace.gutter,
+                  SageSpace.sm,
+                ),
+                child: Semantics(
+                  container: true,
+                  child: ModeBadge(tr('mode.${space.budgetMode.name}.name')),
+                ),
               ),
-              child: Semantics(
-                container: true,
-                child: ModeBadge(tr('mode.${space.budgetMode.name}.name')),
+              Expanded(
+                child: FocusTraversalGroup(
+                  child: switch (space.budgetMode) {
+                    BudgetMode.flow => FlowDashboardBody(space: space),
+                    BudgetMode.incomeDriven => PeriodDashboardBody(
+                      space: space,
+                    ),
+                    BudgetMode.budget => BudgetDashboardBody(space: space),
+                  },
+                ),
               ),
-            ),
-            Expanded(
-              child: FocusTraversalGroup(
-                child: switch (space.budgetMode) {
-                  BudgetMode.flow => FlowDashboardBody(space: space),
-                  BudgetMode.incomeDriven => PeriodDashboardBody(space: space),
-                  BudgetMode.budget => BudgetDashboardBody(space: space),
-                },
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

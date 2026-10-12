@@ -10,6 +10,7 @@ import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
@@ -36,8 +37,10 @@ Future<void> openIncomeForm(
   String? incomeId,
   CalendarDate? date,
   bool regular = false,
-}) => Navigator.of(context).push(
+}) => DetailHost.push(
+  context,
   MaterialPageRoute<void>(
+    settings: RouteSettings(arguments: incomeId),
     builder: (BuildContext _) =>
         IncomeFormPage(incomeId: incomeId, initialDate: date, regular: regular),
   ),
@@ -467,7 +470,8 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       isDirty: () => _pristine != null && _fingerprint != _pristine,
       child: Scaffold(
         backgroundColor: context.sage.surface,
-        appBar: AppBar(
+        appBar: sageAppBar(
+          context,
           title: Text(
             isOccurrence
                 ? tr('income.edit')
@@ -575,7 +579,9 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
               if (!isOccurrence) ...<Widget>[
                 SwitchListTile.adaptive(
                   value: _isRegular,
-                  contentPadding: EdgeInsets.zero,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: SageSpace.sm,
+                  ),
                   title: Text(tr('income.makeRegular')),
                   subtitle: Text(tr('income.makeRegularHint')),
                   onChanged: (bool value) => setState(() => _isRegular = value),
@@ -645,7 +651,9 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
               if (!_isRegular) ...<Widget>[
                 SwitchListTile.adaptive(
                   value: _isReceived,
-                  contentPadding: EdgeInsets.zero,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: SageSpace.sm,
+                  ),
                   title: Text(tr('income.markReceived')),
                   subtitle: _isReceived && _parsedAmount == null
                       ? Semantics(

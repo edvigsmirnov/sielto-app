@@ -7,6 +7,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
@@ -80,9 +81,11 @@ class _NoAnchorState extends StatelessWidget {
               onPressed: () => openIncomeForm(context, regular: true),
               child: Text(tr('income.add')),
             ),
-            TextButton(
-              onPressed: () => showAnchorHelp(context),
-              child: Text(tr('income.anchorHelpTitle')),
+            Builder(
+              builder: (BuildContext button) => TextButton(
+                onPressed: () => showAnchorHelp(button),
+                child: Text(tr('income.anchorHelpTitle')),
+              ),
             ),
           ],
         ),
@@ -106,14 +109,17 @@ class _PeriodBody extends ConsumerWidget {
     );
     final DateLabels dates = DateLabels(locale);
 
-    final bool atBottom = ref
-        .watch(controlsAtBottomProvider)
-        .contains(ControlsScreen.dashboard);
+    final bool atBottom = controlsAtBottom(
+      context,
+      ref,
+      ControlsScreen.dashboard,
+    );
 
     final Widget list = ListView(
       padding: const EdgeInsets.all(SageSpace.gutter),
       children: <Widget>[
-        if (!atBottom) ...<Widget>[
+        if (!atBottom &&
+            ShellLayout.of(context) == ShellMode.phone) ...<Widget>[
           const PeriodSelector(),
           const SizedBox(height: SageSpace.sm),
         ],

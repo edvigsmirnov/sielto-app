@@ -53,6 +53,11 @@ static void my_application_activate(GApplication* application) {
   }
 
   gtk_window_set_default_size(window, 1280, 720);
+  GdkGeometry hints = {};
+  hints.min_width = 480;
+  hints.min_height = 640;
+  gtk_window_set_geometry_hints(window, nullptr, &hints, GDK_HINT_MIN_SIZE);
+  gtk_window_maximize(window);
 
   // The taskbar icon for a bare bundle, which has no .desktop file to name
   // one. data/ sits beside the binary.

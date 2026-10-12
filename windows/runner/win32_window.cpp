@@ -150,7 +150,7 @@ bool Win32Window::Create(const std::wstring& title,
 }
 
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  return ShowWindow(window_handle_, SW_SHOWMAXIMIZED);
 }
 
 // static
@@ -204,6 +204,17 @@ Win32Window::MessageHandler(HWND hwnd,
         MoveWindow(child_content_, rect.left, rect.top, rect.right - rect.left,
                    rect.bottom - rect.top, TRUE);
       }
+      return 0;
+    }
+
+    case WM_GETMINMAXINFO: {
+      auto info = reinterpret_cast<MINMAXINFO*>(lparam);
+      double scale =
+          FlutterDesktopGetDpiForMonitor(
+              MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST)) /
+          96.0;
+      info->ptMinTrackSize.x = static_cast<LONG>(480 * scale);
+      info->ptMinTrackSize.y = static_cast<LONG>(640 * scale);
       return 0;
     }
 

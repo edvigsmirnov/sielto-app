@@ -9,6 +9,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
@@ -153,7 +154,8 @@ class OverduePage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: sage.surface,
-      appBar: AppBar(
+      appBar: sageAppBar(
+        context,
         title: Text(tr('overdue.title')),
         bottom: summary.isEmpty
             ? null

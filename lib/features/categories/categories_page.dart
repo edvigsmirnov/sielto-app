@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flutter/services.dart' show HapticFeedback, LogicalKeyboardKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -9,7 +9,9 @@ import 'package:sielto/core/db/repositories/category_repository.dart';
 import 'package:sielto/core/db/repositories/payment_repository.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/bulk_button.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_form_page.dart';
@@ -69,7 +71,8 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
               )
             : null,
         backgroundColor: context.sage.surface,
-        appBar: AppBar(
+        appBar: sageAppBar(
+          context,
           title: Text(tr('category.title')),
           actions: <Widget>[
             IconButton(
@@ -308,7 +311,7 @@ class _CategoryTile extends StatelessWidget {
 
     return Dismissible(
       key: ValueKey<String>('dismiss:${category.id}'),
-      direction: selecting
+      direction: selecting || desktopInput
           ? DismissDirection.none
           : DismissDirection.endToStart,
       background: Container(
@@ -322,57 +325,66 @@ class _CategoryTile extends StatelessWidget {
         // The query decides removal, so undo restores the row.
         return false;
       },
-      child: InkWell(
-        onTap: onEdit,
-        onLongPress: () {
-          HapticFeedback.mediumImpact();
-          onLongPress();
+      child: CallbackShortcuts(
+        bindings: <ShortcutActivator, VoidCallback>{
+          if (!selecting)
+            const SingleActivator(LogicalKeyboardKey.delete): onDelete,
         },
-        child: Ink(
-          color: isSelected ? sage.accentTint : Colors.transparent,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              SageSpace.xs,
-              SageSpace.xs,
-              SageSpace.gutter,
-              SageSpace.xs,
-            ),
-            child: Row(
-              children: <Widget>[
-                if (selecting)
-                  const SizedBox(width: 48, height: 48)
-                else
-                  DragGrip(index: index),
-                const SizedBox(width: SageSpace.xs),
-                CategoryMark(color: category.color, icon: category.icon),
-                const SizedBox(width: SageSpace.md),
-                Expanded(
-                  child: Text(
-                    category.shownTitle,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+        child: InkWell(
+          onTap: onEdit,
+          onSecondaryTap: onLongPress,
+          onLongPress: () {
+            HapticFeedback.mediumImpact();
+            onLongPress();
+          },
+          child: Ink(
+            color: isSelected ? sage.accentTint : Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                SageSpace.xs,
+                SageSpace.xs,
+                SageSpace.gutter,
+                SageSpace.xs,
+              ),
+              child: Row(
+                children: <Widget>[
+                  if (selecting)
+                    const SizedBox(width: 48, height: 48)
+                  else
+                    DragGrip(index: index),
+                  const SizedBox(width: SageSpace.xs),
+                  CategoryMark(color: category.color, icon: category.icon),
+                  const SizedBox(width: SageSpace.md),
+                  Expanded(
+                    child: Text(
+                      category.shownTitle,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: SageSpace.sm),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 3,
+                  const SizedBox(width: SageSpace.sm),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: sage.canvas,
+                      borderRadius: BorderRadius.circular(SageRadius.pill),
+                    ),
+                    child: Text(
+                      tr('expenseType.${category.expenseType.name}'),
+                      style: text.labelSmall?.copyWith(
+                        color: sage.inkSecondary,
+                      ),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: sage.canvas,
-                    borderRadius: BorderRadius.circular(SageRadius.pill),
-                  ),
-                  child: Text(
-                    tr('expenseType.${category.expenseType.name}'),
-                    style: text.labelSmall?.copyWith(color: sage.inkSecondary),
-                  ),
-                ),
-                const SizedBox(width: SageSpace.xs),
-                Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),
-              ],
+                  const SizedBox(width: SageSpace.xs),
+                  Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),
+                ],
+              ),
             ),
           ),
         ),

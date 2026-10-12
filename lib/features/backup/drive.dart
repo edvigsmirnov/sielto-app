@@ -16,6 +16,7 @@ import 'package:sielto/core/backup/drive_backups.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 
@@ -300,7 +301,7 @@ class _DriveSnapshotsPageState extends State<DriveSnapshotsPage> {
     final String locale = context.locale.toString();
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('drive.snapshotsTitle'))),
+      appBar: sageAppBar(context, title: Text(tr('drive.snapshotsTitle'))),
       body: _failed
           ? Center(child: Text(tr('drive.failed')))
           : snapshots == null || _downloading

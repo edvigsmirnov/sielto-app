@@ -31,6 +31,10 @@ class LocalSettings {
   static const String _keyHolidayConsent = 'holiday_fetch_consent';
   static const String _keyOfflineMode = 'fully_offline';
   static const String _keyControlsAtBottom = 'controls_at_bottom';
+  static const String _keyThreeColumns = 'three_columns';
+  static const String _keyFeedColumns = 'feed_columns';
+  static const String _keyColumnWidths = 'column_widths';
+  static const String _keyCompactSidebar = 'compact_sidebar';
   static const String _keyAppLock = 'app_lock_enabled';
   static const String _keyAppLockBiometric = 'app_lock_biometric';
   static const String _keyBlockScreenshots = 'block_screenshots';
@@ -214,6 +218,31 @@ class LocalSettings {
   Future<void> setDriveLastBackup(DateTime? at) => at == null
       ? _prefs.remove(_keyDriveLastBackup)
       : _prefs.setString(_keyDriveLastBackup, at.toUtc().toIso8601String());
+
+  /// The one-column sidebar shows icons only.
+  bool get compactSidebar => _prefs.getBool(_keyCompactSidebar) ?? false;
+
+  Future<void> setCompactSidebar({required bool value}) =>
+      _prefs.setBool(_keyCompactSidebar, value);
+
+  /// The three-column layout as stored: widths, then collapsed flags.
+  List<String>? get columnsLayout => _prefs.getStringList(_keyColumnWidths);
+
+  Future<void> setColumnsLayout(List<String>? values) => values == null
+      ? _prefs.remove(_keyColumnWidths)
+      : _prefs.setStringList(_keyColumnWidths, values);
+
+  /// The Feed table's column widths and hidden columns, as JSON.
+  String? get feedColumns => _prefs.getString(_keyFeedColumns);
+
+  Future<void> setFeedColumns(String json) =>
+      _prefs.setString(_keyFeedColumns, json);
+
+  /// Wide windows show Dashboard, Feed and Calendar side by side.
+  bool get threeColumns => _prefs.getBool(_keyThreeColumns) ?? true;
+
+  Future<void> setThreeColumns({required bool value}) =>
+      _prefs.setBool(_keyThreeColumns, value);
 
   /// Screens with period controls above the bottom bar.
   Set<ControlsScreen> get controlsAtBottom {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/category_colors.dart';
@@ -126,7 +127,7 @@ class _CategoryPickerPageState extends ConsumerState<_CategoryPickerPage> {
 
     return Scaffold(
       backgroundColor: sage.surface,
-      appBar: AppBar(title: Text(tr('category.pick'))),
+      appBar: sageAppBar(context, title: Text(tr('category.pick'))),
       body: SafeArea(
         child: Column(
           children: <Widget>[

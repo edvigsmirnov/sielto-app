@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
+import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -127,12 +129,27 @@ class InfoButton extends StatelessWidget {
     button: true,
     label: tr('info.explain'),
     child: InkWell(
-      onTap: () => showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        backgroundColor: context.sage.card,
-        builder: (BuildContext context) => _InfoSheet(info),
-      ),
+      onTap: () => isWide(context)
+          ? showPopover<void>(
+              context,
+              builder: (BuildContext _) => _InfoBody(info),
+            )
+          : showModalBottomSheet<void>(
+              context: context,
+              showDragHandle: true,
+              backgroundColor: context.sage.card,
+              builder: (BuildContext context) => SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    SageSpace.gutter,
+                    0,
+                    SageSpace.gutter,
+                    SageSpace.lg,
+                  ),
+                  child: _InfoBody(info),
+                ),
+              ),
+            ),
       customBorder: const CircleBorder(),
       child: Padding(
         padding: dense
@@ -144,8 +161,8 @@ class InfoButton extends StatelessWidget {
   );
 }
 
-class _InfoSheet extends StatelessWidget {
-  const _InfoSheet(this.info);
+class _InfoBody extends StatelessWidget {
+  const _InfoBody(this.info);
 
   final FigureInfo info;
 
@@ -153,60 +170,50 @@ class _InfoSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          SageSpace.gutter,
-          0,
-          SageSpace.gutter,
-          SageSpace.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(info.title, style: text.titleMedium),
-            const SizedBox(height: SageSpace.sm),
-            Text(info.what, style: text.bodyMedium),
-            if (info.sum.isNotEmpty) ...<Widget>[
-              const SizedBox(height: SageSpace.md),
-              Container(
-                padding: const EdgeInsets.all(SageSpace.md),
-                decoration: BoxDecoration(
-                  color: sage.accentTint,
-                  borderRadius: BorderRadius.circular(SageRadius.button),
-                ),
-                child: Column(
-                  children: <Widget>[
-                    for (int i = 0; i < info.sum.length; i++) ...<Widget>[
-                      if (i == info.sum.length - 1) ...<Widget>[
-                        const SizedBox(height: SageSpace.xs),
-                        const Hairline(),
-                        const SizedBox(height: SageSpace.xs),
-                      ],
-                      _SumRow(info.sum[i], result: i == info.sum.length - 1),
-                    ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text(info.title, style: text.titleMedium),
+        const SizedBox(height: SageSpace.sm),
+        Text(info.what, style: text.bodyMedium),
+        if (info.sum.isNotEmpty) ...<Widget>[
+          const SizedBox(height: SageSpace.md),
+          Container(
+            padding: const EdgeInsets.all(SageSpace.md),
+            decoration: BoxDecoration(
+              color: sage.accentTint,
+              borderRadius: BorderRadius.circular(SageRadius.button),
+            ),
+            child: Column(
+              children: <Widget>[
+                for (int i = 0; i < info.sum.length; i++) ...<Widget>[
+                  if (i == info.sum.length - 1) ...<Widget>[
+                    const SizedBox(height: SageSpace.xs),
+                    const Hairline(),
+                    const SizedBox(height: SageSpace.xs),
                   ],
-                ),
-              ),
-            ],
-            if (info.note != null) ...<Widget>[
-              const SizedBox(height: SageSpace.md),
-              Text(
-                info.note!,
-                style: text.bodySmall?.copyWith(color: sage.inkSecondary),
-              ),
-            ],
-            if (info.advice != null) ...<Widget>[
-              const SizedBox(height: SageSpace.md),
-              Text(
-                info.advice!,
-                style: text.bodySmall?.copyWith(color: sage.warning),
-              ),
-            ],
-          ],
-        ),
-      ),
+                  _SumRow(info.sum[i], result: i == info.sum.length - 1),
+                ],
+              ],
+            ),
+          ),
+        ],
+        if (info.note != null) ...<Widget>[
+          const SizedBox(height: SageSpace.md),
+          Text(
+            info.note!,
+            style: text.bodySmall?.copyWith(color: sage.inkSecondary),
+          ),
+        ],
+        if (info.advice != null) ...<Widget>[
+          const SizedBox(height: SageSpace.md),
+          Text(
+            info.advice!,
+            style: text.bodySmall?.copyWith(color: sage.warning),
+          ),
+        ],
+      ],
     );
   }
 }

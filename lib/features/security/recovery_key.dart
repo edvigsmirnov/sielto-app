@@ -7,6 +7,7 @@ import 'package:sielto/core/crypto/envelope.dart';
 import 'package:sielto/core/crypto/key_store.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/drive.dart';
@@ -159,7 +160,8 @@ class _RecoveryKeyPageState extends ConsumerState<RecoveryKeyPage> {
     final TextTheme text = Theme.of(context).textTheme;
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(
+      appBar: sageAppBar(
+        context,
         title: Text(tr(_changing ? 'recovery.changeTitle' : 'recovery.title')),
       ),
       body: ListView(

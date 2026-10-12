@@ -7,6 +7,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/analytics_repository.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/analytics/analytics_data.dart';
 import 'package:sielto/features/analytics/analytics_parts.dart';
@@ -64,7 +65,8 @@ class CategoryBreakdownPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: sage.surface,
-      appBar: AppBar(
+      appBar: sageAppBar(
+        context,
         backgroundColor: sage.surface,
         title: Text(title, overflow: TextOverflow.ellipsis),
       ),

@@ -8,6 +8,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/analytics_repository.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/analytics/analytics_data.dart';
 import 'package:sielto/features/analytics/analytics_parts.dart';
@@ -23,9 +24,19 @@ import 'package:sielto/features/space/space_ledger.dart';
 class AnalyticsPage extends ConsumerWidget {
   const AnalyticsPage({super.key});
 
-  static Future<void> open(BuildContext context) => Navigator.of(context).push(
-    MaterialPageRoute<void>(builder: (BuildContext _) => const AnalyticsPage()),
-  );
+  /// Closing goes back to the default range.
+  static Future<void> open(BuildContext context) async {
+    final ProviderContainer container = ProviderScope.containerOf(
+      context,
+      listen: false,
+    );
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext _) => const AnalyticsPage(),
+      ),
+    );
+    container.invalidate(analyticsChoiceProvider);
+  }
 
   /// The rest goes into one "other" slice.
   static const int _wedges = 5;
@@ -53,20 +64,22 @@ class AnalyticsPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(
+      appBar: sageAppBar(
+        context,
         backgroundColor: context.sage.surface,
         title: Text(tr('analytics.title')),
-        // The close button is the only exit.
+        // The close button is the only exit outside a column.
         automaticallyImplyLeading: false,
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.close),
-            tooltip: tr('common.close'),
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Navigator.of(context).pop();
-            },
-          ),
+          if (columnBack(context) == null)
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: tr('common.close'),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.of(context).pop();
+              },
+            ),
         ],
       ),
       body: SwipeBack(

@@ -14,6 +14,7 @@ import 'package:sielto/core/backup/backup_service.dart';
 import 'package:sielto/core/crypto/key_store.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -31,7 +32,7 @@ class BackupPage extends ConsumerWidget {
     final bool keySet = ref.watch(recoveryKeySetProvider);
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('backup.title'))),
+      appBar: sageAppBar(context, title: Text(tr('backup.title'))),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
         children: <Widget>[
@@ -336,7 +337,7 @@ class _RestorePageState extends State<RestorePage> {
     final BackupContents? backup = _backup;
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('backup.restore'))),
+      appBar: sageAppBar(context, title: Text(tr('backup.restore'))),
       bottomNavigationBar: FormActionBar(
         child: backup == null
             ? ListenableBuilder(

@@ -73,42 +73,7 @@ void main() {
       );
     });
 
-    test('currency is editable until the first record', () async {
-      final Space space = await makeSpace();
-      expect(await spaces.canChangeCurrency(space.id), isTrue);
-      await spaces.setCurrency(space.id, 'USD');
-      expect((await spaces.byId(space.id))!.currencyCode, 'USD');
-    });
-
-    test('a payment freezes the currency', () async {
-      final Space space = await makeSpace();
-      await payments.create(
-        spaceId: space.id,
-        title: 'Rent',
-        amount: Decimal.fromInt(1200),
-        dueDate: const CalendarDate(2026, 3, 1),
-        expenseType: ExpenseType.mandatory,
-      );
-
-      expect(await spaces.canChangeCurrency(space.id), isFalse);
-      expect(
-        () => spaces.setCurrency(space.id, 'USD'),
-        throwsA(isA<CurrencyFrozen>()),
-      );
-    });
-
-    test('an income freezes it too', () async {
-      final Space space = await makeSpace();
-      await incomes.create(
-        spaceId: space.id,
-        title: 'Salary',
-        expectedDate: const CalendarDate(2026, 3, 26),
-        amount: Decimal.fromInt(3000),
-      );
-      expect(await spaces.canChangeCurrency(space.id), isFalse);
-    });
-
-    test('a soft-deleted record does not freeze it', () async {
+    test('currency changes after records, amounts untouched', () async {
       final Space space = await makeSpace();
       final Payment p = await payments.create(
         spaceId: space.id,
@@ -117,9 +82,9 @@ void main() {
         dueDate: const CalendarDate(2026, 3, 1),
         expenseType: ExpenseType.mandatory,
       );
-      await payments.softDelete(p.id);
-
-      expect(await spaces.canChangeCurrency(space.id), isTrue);
+      await spaces.setCurrency(space.id, 'USD');
+      expect((await spaces.byId(space.id))!.currencyCode, 'USD');
+      expect((await payments.byId(p.id))!.amount, Decimal.fromInt(1200));
     });
 
     test('deleting a Space removes its rows and nothing else', () async {

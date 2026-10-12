@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -110,6 +111,282 @@ Future<void> showFeedFilter(BuildContext context) => showModalBottomSheet<void>(
   builder: (BuildContext _) => const _FilterSheet(),
 );
 
+/// Whether the wide layouts' search panel is open above the Feed.
+class FeedFilterOpenController extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set({required bool open}) => state = open;
+}
+
+final NotifierProvider<FeedFilterOpenController, bool> feedFilterOpenProvider =
+    NotifierProvider<FeedFilterOpenController, bool>(
+      FeedFilterOpenController.new,
+    );
+
+/// The wide layouts' search: a field, chip rows and what matched, above the
+/// table. Escape closes it.
+class FeedFilterPanel extends ConsumerStatefulWidget {
+  const FeedFilterPanel({required this.shown, required this.money, super.key});
+
+  final List<FeedRecord> shown;
+  final MoneyFormat money;
+
+  @override
+  ConsumerState<FeedFilterPanel> createState() => _FeedFilterPanelState();
+}
+
+class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
+  late final TextEditingController _query = TextEditingController(
+    text: ref.read(feedFilterProvider).query,
+  );
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
+  }
+
+  @override
+  void dispose() {
+    _query.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _update(FeedFilter Function(FeedFilter) change) {
+    final FeedFilterController c = ref.read(feedFilterProvider.notifier);
+    c.set(change(ref.read(feedFilterProvider)));
+  }
+
+  void _close() => ref.read(feedFilterOpenProvider.notifier).set(open: false);
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    final TextTheme text = Theme.of(context).textTheme;
+    final FeedFilter filter = ref.watch(feedFilterProvider);
+    final List<Category> categories =
+        ref.watch(spaceCategoriesProvider).value ?? const <Category>[];
+
+    Decimal spent = Decimal.zero;
+    Decimal received = Decimal.zero;
+    for (final FeedRecord r in widget.shown) {
+      final Decimal amount = r.amount ?? Decimal.zero;
+      if (r.isIncome) {
+        received += amount;
+      } else {
+        spent += amount;
+      }
+    }
+
+    Widget row(String label, List<Widget> chips) => Padding(
+      padding: const EdgeInsets.only(top: SageSpace.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SizedBox(
+            width: 96,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 7),
+              child: Text(
+                label,
+                style: text.labelMedium?.copyWith(color: sage.inkSecondary),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Wrap(
+              spacing: SageSpace.xs,
+              runSpacing: SageSpace.xs,
+              children: chips,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.escape): _close,
+      },
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(
+          SageSpace.md,
+          0,
+          SageSpace.md,
+          SageSpace.md,
+        ),
+        padding: const EdgeInsets.fromLTRB(
+          SageSpace.gutter,
+          SageSpace.md,
+          SageSpace.md,
+          SageSpace.sm,
+        ),
+        decoration: BoxDecoration(
+          color: sage.card,
+          borderRadius: BorderRadius.circular(SageRadius.card),
+          border: Border.all(color: sage.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    controller: _query,
+                    focusNode: _focus,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      hintText: tr('feed.filter.search'),
+                      isDense: true,
+                    ),
+                    onChanged: (String value) =>
+                        _update((FeedFilter f) => f.copyWith(query: value)),
+                  ),
+                ),
+                const SizedBox(width: SageSpace.sm),
+                OutlinedButton(
+                  onPressed: filter.isActive
+                      ? () {
+                          _query.clear();
+                          ref.read(feedFilterProvider.notifier).clear();
+                        }
+                      : null,
+                  child: Text(tr('common.clear')),
+                ),
+                IconButton(
+                  tooltip: tr('common.close'),
+                  onPressed: _close,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            row(tr('feed.table.kind'), <Widget>[
+              for (final FeedKind k in FeedKind.values)
+                _Chip(
+                  label: tr('feed.filter.kind.${k.name}'),
+                  selected: filter.kind == k,
+                  onTap: () => _update((FeedFilter f) => f.copyWith(kind: k)),
+                ),
+            ]),
+            if (categories.isNotEmpty)
+              row(tr('feed.table.category'), <Widget>[
+                for (final Category c in categories)
+                  _Chip(
+                    label: c.shownTitle,
+                    dot: parseCategoryColor(c.color),
+                    selected: filter.categoryIds.contains(c.id),
+                    onTap: () => _update(
+                      (FeedFilter f) => f.copyWith(
+                        categoryIds: f.categoryIds.contains(c.id)
+                            ? (Set<String>.of(f.categoryIds)..remove(c.id))
+                            : <String>{...f.categoryIds, c.id},
+                      ),
+                    ),
+                  ),
+              ]),
+            row(tr('feed.filter.statusLabel'), <Widget>[
+              for (final FeedStatus st in FeedStatus.values)
+                _Chip(
+                  label: statusLabel(st, filter.kind),
+                  selected: filter.status == st,
+                  onTap: () =>
+                      _update((FeedFilter f) => f.copyWith(status: st)),
+                ),
+            ]),
+            const SizedBox(height: SageSpace.sm),
+            const Hairline(),
+            Padding(
+              padding: const EdgeInsets.only(top: SageSpace.sm),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      <String>[
+                        plural('analytics.records', widget.shown.length),
+                        if (spent > Decimal.zero)
+                          widget.money.formatSigned(-spent),
+                        if (received > Decimal.zero)
+                          widget.money.formatSigned(received),
+                      ].join(' · '),
+                      style: text.bodySmall?.copyWith(color: sage.ink),
+                    ),
+                  ),
+                  Text(
+                    tr('feed.filter.keys'),
+                    style: text.bodySmall?.copyWith(color: sage.inkLabel),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A small pill that toggles one condition.
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.dot,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color? dot;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? sage.accent : sage.card,
+        shape: StadiumBorder(
+          side: BorderSide(color: selected ? sage.accent : sage.border),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const StadiumBorder(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                if (dot case final Color color) ...<Widget>[
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium
+                      ?.copyWith(color: selected ? sage.accentOn : sage.ink),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FilterSheet extends ConsumerStatefulWidget {
   const _FilterSheet();
 
@@ -184,40 +461,45 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                 Text(tr('category.title'), style: text.labelLarge),
                 const SizedBox(height: SageSpace.sm),
                 LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints box) => Wrap(
-                    spacing: SageSpace.sm,
-                    runSpacing: SageSpace.sm,
-                    children: <Widget>[
-                      for (final Category c in categories)
-                        SizedBox(
-                          width: (box.maxWidth - SageSpace.sm) / 2,
-                          child: FilterChip(
-                            avatar: CategoryMark(
-                              color: c.color,
-                              icon: c.icon,
-                              size: 22,
-                            ),
-                            label: SizedBox(
-                              width: double.infinity,
-                              child: Text(
-                                c.shownTitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                  builder: (BuildContext context, BoxConstraints box) {
+                    final int perRow = box.maxWidth >= 640 ? 4 : 2;
+                    return Wrap(
+                      spacing: SageSpace.sm,
+                      runSpacing: SageSpace.sm,
+                      children: <Widget>[
+                        for (final Category c in categories)
+                          SizedBox(
+                            width:
+                                (box.maxWidth - SageSpace.sm * (perRow - 1)) /
+                                perRow,
+                            child: FilterChip(
+                              avatar: CategoryMark(
+                                color: c.color,
+                                icon: c.icon,
+                                size: 22,
                               ),
-                            ),
-                            selected: filter.categoryIds.contains(c.id),
-                            onSelected: (bool on) => _update(
-                              (FeedFilter f) => f.copyWith(
-                                categoryIds: on
-                                    ? <String>{...f.categoryIds, c.id}
-                                    : (Set<String>.of(f.categoryIds)
-                                        ..remove(c.id)),
+                              label: SizedBox(
+                                width: double.infinity,
+                                child: Text(
+                                  c.shownTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              selected: filter.categoryIds.contains(c.id),
+                              onSelected: (bool on) => _update(
+                                (FeedFilter f) => f.copyWith(
+                                  categoryIds: on
+                                      ? <String>{...f.categoryIds, c.id}
+                                      : (Set<String>.of(f.categoryIds)
+                                          ..remove(c.id)),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
-                  ),
+                      ],
+                    );
+                  },
                 ),
               ],
               if (filter.isActive) ...<Widget>[

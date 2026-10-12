@@ -7,6 +7,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -187,7 +188,7 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
 
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('income.editRule'))),
+      appBar: sageAppBar(context, title: Text(tr('income.editRule'))),
       bottomNavigationBar: FormActionBar(
         child: FilledButton(
           onPressed: _isValid ? _save : null,

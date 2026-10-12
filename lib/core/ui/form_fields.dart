@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
@@ -89,6 +90,9 @@ Future<CalendarDate?> pickDate(
   // Keeps the keyboard closed after the picker.
   FocusManager.instance.primaryFocus?.unfocus();
   final DateTime? picked = await showDatePicker(
+    initialEntryMode: isWide(context)
+        ? DatePickerEntryMode.calendarOnly
+        : DatePickerEntryMode.calendar,
     context: context,
     initialDate: initial.toUtcMidnight(),
     firstDate: DateTime.utc(initial.year - 10),

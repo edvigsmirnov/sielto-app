@@ -6,6 +6,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -33,7 +34,7 @@ class IncomeRulesPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('income.regularTitle'))),
+      appBar: sageAppBar(context, title: Text(tr('income.regularTitle'))),
       body: switch (rules) {
         AsyncData<List<IncomeRecurrenceRule>>(
           value: final List<IncomeRecurrenceRule> rows,

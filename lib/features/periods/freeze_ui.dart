@@ -12,6 +12,7 @@ import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/dashboard/figure_info.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 
 /// Runs [write] and reports a freeze or deadline refusal as a message.
@@ -131,9 +132,25 @@ class FreezeBanner extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(
-                    frozen ? tr('freeze.frozenTitle') : tr('freeze.soonTitle'),
-                    style: text.labelLarge?.copyWith(color: ink),
+                  Row(
+                    children: <Widget>[
+                      Flexible(
+                        child: Text(
+                          frozen
+                              ? tr('freeze.frozenTitle')
+                              : tr('freeze.soonTitle'),
+                          style: text.labelLarge?.copyWith(color: ink),
+                        ),
+                      ),
+                      InfoButton(
+                        FigureInfo(
+                          title: tr('freeze.infoTitle'),
+                          what: tr('freeze.infoWhat'),
+                          note: tr('freeze.infoNote'),
+                        ),
+                        dense: true,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: SageSpace.xs),
                   Text(

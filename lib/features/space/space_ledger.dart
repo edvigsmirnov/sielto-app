@@ -133,6 +133,11 @@ class FlowLedger {
     for (final LedgerStep step in cascade.all.steps)
       step.entry.id: step.isCovered,
   };
+
+  Map<String, Decimal> get balanceByEntry => <String, Decimal>{
+    for (final LedgerStep step in cascade.all.steps)
+      step.entry.id: step.balanceAfter,
+  };
 }
 
 extension BalanceDay on Space {

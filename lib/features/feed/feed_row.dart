@@ -2,15 +2,18 @@ import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flutter/services.dart' show HapticFeedback, LogicalKeyboardKey;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_title.dart';
+import 'package:sielto/features/feed/feed_columns.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/sync/refused_mark.dart';
 
@@ -39,6 +42,8 @@ class FeedRowTile extends StatelessWidget {
     required this.onTogglePaid,
     required this.onDelete,
     required this.onLongPress,
+    this.onSecondaryTap,
+    this.table,
     this.isFrozen = false,
     this.isOverdue = false,
     this.isBeyondDeadline = false,
@@ -60,6 +65,12 @@ class FeedRowTile extends StatelessWidget {
   final VoidCallback onTogglePaid;
   final VoidCallback onDelete;
   final VoidCallback onLongPress;
+
+  /// Right-click; the long press when null.
+  final VoidCallback? onSecondaryTap;
+
+  /// The wide layout's table columns; null for the narrow row.
+  final FeedTableCells? table;
 
   final bool isFrozen;
 
@@ -115,7 +126,7 @@ class FeedRowTile extends StatelessWidget {
     return Dismissible(
       key: ValueKey<String>('dismiss:${record.id}'),
       // Right deletes, left toggles paid.
-      direction: isFrozen || selecting
+      direction: isFrozen || selecting || desktopInput
           ? DismissDirection.none
           : DismissDirection.horizontal,
       background: const _SwipeAction(
@@ -148,7 +159,7 @@ class FeedRowTile extends StatelessWidget {
             color: isSelected
                 ? sage.accentTint
                 : (isOverdue ? sage.dangerTint : Colors.transparent),
-            border: density == FeedDensity.spacious
+            border: density == FeedDensity.spacious || table != null
                 ? Border(bottom: BorderSide(color: sage.hairline, width: 0.5))
                 : null,
           ),
@@ -162,61 +173,85 @@ class FeedRowTile extends StatelessWidget {
                 // The grip is outside the tappable area, so long-press does not compete with
                 // it.
                 Expanded(
-                  child: InkWell(
-                    onTap: onTap,
-                    onLongPress: () {
-                      HapticFeedback.mediumImpact();
-                      onLongPress();
+                  child: CallbackShortcuts(
+                    bindings: <ShortcutActivator, VoidCallback>{
+                      if (!selecting &&
+                          !isFrozen) ...<ShortcutActivator, VoidCallback>{
+                        const SingleActivator(LogicalKeyboardKey.delete):
+                            onDelete,
+                        const SingleActivator(LogicalKeyboardKey.space):
+                            onTogglePaid,
+                      },
                     },
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        SageSpace.gutter - _leadInset,
-                        density == FeedDensity.compact ? 4 : SageSpace.sm,
-                        dragHandle == null ? SageSpace.gutter : SageSpace.xs,
-                        density == FeedDensity.compact ? 4 : SageSpace.sm,
-                      ),
-                      child: Row(
-                        children: <Widget>[
-                          if (selecting)
-                            SizedBox.square(
-                              dimension: kMinInteractiveDimension,
-                              child: Icon(
-                                isSelected
-                                    ? Icons.check_box
-                                    : Icons.check_box_outline_blank,
-                                size: 24,
-                                color: isSelected
-                                    ? sage.accentStrong
-                                    : sage.inkLabel,
+                    child: InkWell(
+                      onTap: onTap,
+                      onSecondaryTap: onSecondaryTap ?? onLongPress,
+                      onLongPress: () {
+                        HapticFeedback.mediumImpact();
+                        onLongPress();
+                      },
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          SageSpace.gutter - _leadInset,
+                          density == FeedDensity.compact ? 4 : SageSpace.sm,
+                          dragHandle == null ? SageSpace.gutter : SageSpace.xs,
+                          density == FeedDensity.compact ? 4 : SageSpace.sm,
+                        ),
+                        child: Row(
+                          children: <Widget>[
+                            if (selecting)
+                              SizedBox.square(
+                                dimension: kMinInteractiveDimension,
+                                child: Icon(
+                                  isSelected
+                                      ? Icons.check_box
+                                      : Icons.check_box_outline_blank,
+                                  size: 24,
+                                  color: isSelected
+                                      ? sage.accentStrong
+                                      : sage.inkLabel,
+                                ),
+                              )
+                            else
+                              _PaidCircle(
+                                record: record,
+                                onTap: isFrozen ? null : onTogglePaid,
                               ),
-                            )
-                          else
-                            _PaidCircle(
-                              record: record,
-                              onTap: isFrozen ? null : onTogglePaid,
+                            const SizedBox(width: SageSpace.md - _leadInset),
+                            if (table == null) ...<Widget>[
+                              _TypeMarker(record: record, category: category),
+                              const SizedBox(width: SageSpace.md),
+                            ],
+                            if (isOverdue && table == null) ...<Widget>[
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                size: 16,
+                                color: sage.danger,
+                              ),
+                              const SizedBox(width: SageSpace.xs),
+                            ],
+                            Expanded(
+                              child: switch (table) {
+                                final FeedTableCells cells => _TableCells(
+                                  record: record,
+                                  isOverdue: isOverdue,
+                                  category: category,
+                                  cells: cells,
+                                  amount: _amountLabel(record, money),
+                                  amountColor: amountColor,
+                                ),
+                                null => _RowBody(
+                                  record: record,
+                                  category: category,
+                                  density: density,
+                                  amount: _amountLabel(record, money),
+                                  amountColor: amountColor,
+                                  isFrozen: isFrozen,
+                                ),
+                              },
                             ),
-                          const SizedBox(width: SageSpace.md - _leadInset),
-                          _TypeMarker(record: record, category: category),
-                          const SizedBox(width: SageSpace.md),
-                          if (isOverdue) ...<Widget>[
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              size: 16,
-                              color: sage.danger,
-                            ),
-                            const SizedBox(width: SageSpace.xs),
                           ],
-                          Expanded(
-                            child: _RowBody(
-                              record: record,
-                              category: category,
-                              density: density,
-                              amount: _amountLabel(record, money),
-                              amountColor: amountColor,
-                              isFrozen: isFrozen,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -236,6 +271,259 @@ class FeedRowTile extends StatelessWidget {
   String _amountLabel(FeedRecord r, MoneyFormat money) {
     if (r.amount == null) return tr('income.amountUnknown');
     return r.isIncome ? '+${money.format(r.amount!)}' : money.format(r.amount!);
+  }
+}
+
+/// What a table row shows beyond the narrow row.
+class FeedTableCells {
+  const FeedTableCells({
+    required this.date,
+    required this.leftAfter,
+    required this.short,
+    required this.layout,
+  });
+
+  final String date;
+
+  /// Left to spend after this entry; null when not worked out.
+  final String? leftAfter;
+  final bool short;
+  final FeedColumnLayout layout;
+}
+
+/// Space the table keeps before and after its columns.
+abstract final class FeedColumns {
+  /// The paid circle and its gaps.
+  static const double lead =
+      SageSpace.gutter -
+      FeedRowTile._leadInset +
+      kMinInteractiveDimension +
+      SageSpace.md -
+      FeedRowTile._leadInset;
+
+  /// The drag grip.
+  static const double trail = 48;
+}
+
+/// Column headings above the table. Their edges drag to resize; a right-click
+/// hides or shows columns.
+class FeedTableHeader extends ConsumerWidget {
+  const FeedTableHeader({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final SageColors sage = context.sage;
+    final FeedColumnLayout layout = ref.watch(feedColumnsProvider);
+    final FeedColumnsController columns = ref.read(
+      feedColumnsProvider.notifier,
+    );
+    final TextStyle? style = Theme.of(context).textTheme.labelSmall
+        ?.copyWith(color: sage.inkLabel, fontWeight: FontWeight.w700);
+    Text label(String key, {bool end = false}) => Text(
+      tr('feed.table.$key').toUpperCase(),
+      style: style,
+      textAlign: end ? TextAlign.end : TextAlign.start,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+
+    Widget cell(FeedColumn c) {
+      final Widget edge = MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragUpdate: (DragUpdateDetails d) => columns.resize(
+            c,
+            layout.widthOf(c) + (c.dragsLeftEdge ? -d.delta.dx : d.delta.dx),
+          ),
+          onHorizontalDragEnd: (DragEndDetails _) => columns.save(),
+          child: const SizedBox(width: 12, height: double.infinity),
+        ),
+      );
+      return SizedBox(
+        width: layout.widthOf(c),
+        child: Stack(
+          children: <Widget>[
+            Positioned.fill(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: c.dragsLeftEdge ? 12 : 0,
+                  right: c.dragsLeftEdge ? 0 : 12,
+                ),
+                child: Align(
+                  alignment: c.endAligned
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: label(c.name, end: c.endAligned),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              bottom: 0,
+              left: c.dragsLeftEdge ? 0 : null,
+              right: c.dragsLeftEdge ? null : 0,
+              child: edge,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final List<FeedColumn> shown = layout.shown;
+    return ExcludeSemantics(
+      child: GestureDetector(
+        onSecondaryTapUp: (TapUpDetails d) =>
+            _menu(context, d.globalPosition, layout, columns),
+        child: Container(
+          height: 32,
+          padding: const EdgeInsets.only(
+            left: FeedColumns.lead,
+            right: FeedColumns.trail,
+          ),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: sage.hairline)),
+          ),
+          child: Row(
+            children: <Widget>[
+              for (final FeedColumn c in shown)
+                if (c == FeedColumn.date) cell(c),
+              Expanded(child: label('title')),
+              for (final FeedColumn c in shown)
+                if (c != FeedColumn.date) cell(c),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _menu(
+    BuildContext context,
+    Offset at,
+    FeedColumnLayout layout,
+    FeedColumnsController columns,
+  ) async {
+    final Object? picked = await showMenu<Object>(
+      context: context,
+      position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
+      items: <PopupMenuEntry<Object>>[
+        for (final FeedColumn c in FeedColumn.values)
+          CheckedPopupMenuItem<Object>(
+            value: c,
+            checked: !layout.hidden.contains(c),
+            child: Text(tr('feed.table.${c.name}')),
+          ),
+        const PopupMenuDivider(),
+        PopupMenuItem<Object>(
+          value: #reset,
+          child: Text(tr('feed.table.reset')),
+        ),
+      ],
+    );
+    if (picked is FeedColumn) await columns.toggle(picked);
+    if (picked == #reset) await columns.reset();
+  }
+}
+
+class _TableCells extends StatelessWidget {
+  const _TableCells({
+    required this.record,
+    required this.isOverdue,
+    required this.category,
+    required this.cells,
+    required this.amount,
+    required this.amountColor,
+  });
+
+  final FeedRecord record;
+  final bool isOverdue;
+  final Category? category;
+  final FeedTableCells cells;
+  final String amount;
+  final Color amountColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    final TextTheme text = Theme.of(context).textTheme;
+    final TextStyle muted = text.bodySmall!.copyWith(color: sage.inkSecondary);
+    final TextStyle figures = text.bodyMedium!.copyWith(
+      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+    );
+    final String? note = record.notes?.trim().isEmpty ?? true
+        ? null
+        : shownNote(context, record.notes!.trim());
+    final FeedColumnLayout layout = cells.layout;
+    Text line(String value, TextStyle style, {bool end = false}) => Text(
+      value,
+      style: style,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: end ? TextAlign.end : TextAlign.start,
+    );
+    Widget cell(FeedColumn c) {
+      final Widget content = switch (c) {
+        FeedColumn.date => line(cells.date, muted),
+        FeedColumn.category => line(category?.shownTitle ?? '', muted),
+        FeedColumn.kind => line(
+          tr(
+            'feed.filter.kind.${record.isIncome
+                ? 'income'
+                : record.isMandatory
+                ? 'mandatory'
+                : 'variable'}',
+          ),
+          muted,
+        ),
+        FeedColumn.note => line(note ?? '', muted),
+        FeedColumn.amount => line(
+          amount,
+          figures.copyWith(color: amountColor, fontWeight: FontWeight.w700),
+          end: true,
+        ),
+        FeedColumn.left => line(
+          cells.leftAfter ?? '',
+          figures.copyWith(
+            color: cells.short ? sage.danger : sage.inkSecondary,
+          ),
+          end: true,
+        ),
+      };
+      return SizedBox(
+        width: layout.widthOf(c),
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: c.dragsLeftEdge ? 12 : 0,
+            right: c.dragsLeftEdge ? 0 : 12,
+          ),
+          child: content,
+        ),
+      );
+    }
+
+    final List<FeedColumn> shown = layout.shown;
+    return Row(
+      children: <Widget>[
+        for (final FeedColumn c in shown)
+          if (c == FeedColumn.date) cell(c),
+        if (isOverdue) ...<Widget>[
+          Icon(Icons.warning_amber_rounded, size: 16, color: sage.danger),
+          const SizedBox(width: SageSpace.xs),
+        ],
+        Expanded(
+          child: line(
+            record.title,
+            text.bodyLarge!.copyWith(
+              fontWeight: FontWeight.w600,
+              color: record.isPaid ? sage.inkSecondary : sage.ink,
+            ),
+          ),
+        ),
+        for (final FeedColumn c in shown)
+          if (c != FeedColumn.date) cell(c),
+      ],
+    );
   }
 }
 

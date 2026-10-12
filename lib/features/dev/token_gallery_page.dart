@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 
 /// Every token and primitive, with theme and locale switches. Development
@@ -19,7 +20,8 @@ class TokenGalleryPage extends ConsumerWidget {
     final ThemeMode mode = ref.watch(themeModeProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: sageAppBar(
+        context,
         title: const Text('Sage tokens'),
         actions: <Widget>[
           TextButton(
@@ -466,7 +468,7 @@ class _LoaderPreviewState extends State<_LoaderPreview> {
         ],
       ),
       SwitchListTile.adaptive(
-        contentPadding: EdgeInsets.zero,
+        contentPadding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
         title: const Text('Slow motion x5'),
         value: timeDilation != 1,
         onChanged: (bool slow) => setState(() => timeDilation = slow ? 5 : 1),

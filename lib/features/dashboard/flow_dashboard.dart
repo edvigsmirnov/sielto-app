@@ -6,6 +6,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -128,7 +129,9 @@ class _Body extends ConsumerWidget {
                   ),
                   info: FigureInfo(
                     title: tr('dashboard.currentMoney'),
-                    what: tr('info.balance'),
+                    what: tr(
+                      desktopInput ? 'info.balanceDesktop' : 'info.balance',
+                    ),
                     note: ledger.excludedCount > 0
                         ? tr('info.balanceNote')
                         : null,

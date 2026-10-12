@@ -76,6 +76,11 @@ class BudgetLedger {
       step.entry.id: step.isCovered,
   };
 
+  Map<String, Decimal> get balanceByEntry => <String, Decimal>{
+    for (final LedgerStep step in cascade?.all.steps ?? const <LedgerStep>[])
+      step.entry.id: step.balanceAfter,
+  };
+
   Map<String, bool> get moneyEndsAt {
     final ({String entryId, bool below})? end = cascade?.moneyEndsAt;
     return <String, bool>{if (end != null) end.entryId: end.below};

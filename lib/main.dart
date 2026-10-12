@@ -16,6 +16,7 @@ import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/core/ui/action_sheet.dart';
 import 'package:sielto/core/ui/focus_ring.dart';
 import 'package:sielto/features/launch/launch_curtain.dart';
 import 'package:sielto/features/onboarding/onboarding_page.dart';
@@ -29,6 +30,7 @@ import 'package:sielto/features/sync/vanished_prompt.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  trackPointer();
   await EasyLocalization.ensureInitialized();
 
   final LocalSettings settings = await LocalSettings.load();

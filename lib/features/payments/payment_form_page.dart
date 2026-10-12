@@ -11,6 +11,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
@@ -37,8 +38,10 @@ Future<void> openPaymentForm(
   String? paymentId,
   CalendarDate? date,
   PaymentDraft? draft,
-}) => Navigator.of(context).push(
+}) => DetailHost.push(
+  context,
   MaterialPageRoute<void>(
+    settings: RouteSettings(arguments: paymentId),
     builder: (BuildContext _) =>
         PaymentFormPage(paymentId: paymentId, initialDate: date, draft: draft),
   ),
@@ -514,7 +517,8 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       isDirty: () => _pristine != null && _fingerprint != _pristine,
       child: Scaffold(
         backgroundColor: sage.surface,
-        appBar: AppBar(
+        appBar: sageAppBar(
+          context,
           title: Text(
             _existing == null ? tr('payment.add') : tr('payment.edit'),
           ),
@@ -673,7 +677,9 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                       ),
                     SwitchListTile.adaptive(
                       value: _isPaid,
-                      contentPadding: EdgeInsets.zero,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: SageSpace.sm,
+                      ),
                       title: Text(tr('payment.markPaid')),
                       onChanged: _isFrozen
                           ? null

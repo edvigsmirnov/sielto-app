@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flutter/services.dart' show HapticFeedback, LogicalKeyboardKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
@@ -10,6 +13,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -39,7 +43,11 @@ class CalendarPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final Space space = ref.space;
-    final CalendarView view = ref.watch(calendarViewProvider);
+    final bool wide = ShellLayout.of(context) != ShellMode.phone;
+    final CalendarView chosen = ref.watch(calendarViewProvider);
+    final CalendarView view = wide && chosen == CalendarView.day
+        ? CalendarView.month
+        : chosen;
     final CalendarDate selected = ref.watch(selectedDateProvider);
     final CalendarDate today = ref.watch(spaceClockProvider).today();
     final String locale = context.locale.toString();
@@ -49,31 +57,61 @@ class CalendarPage extends ConsumerWidget {
       currencyCode: space.currencyCode,
     );
 
-    final bool atBottom = ref
-        .watch(controlsAtBottomProvider)
-        .contains(ControlsScreen.calendar);
+    final bool atBottom = controlsAtBottom(
+      context,
+      ref,
+      ControlsScreen.calendar,
+    );
+    final Widget navigator = _DateNavigator(
+      view: view,
+      selected: selected,
+      today: today,
+      dates: dates,
+      money: money,
+    );
+    // Wide enough, one toolbar row: today and the month left, views right.
     final Widget controls = Padding(
       padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          _ViewSwitcher(view: view),
-          const SizedBox(height: SageSpace.sm),
-          _DateNavigator(
-            view: view,
-            selected: selected,
-            today: today,
-            dates: dates,
-            money: money,
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints box) =>
+            wide && box.maxWidth >= 860
+            ? Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: _Body.wideWidth),
+                  child: Row(
+                    children: <Widget>[
+                      OutlinedButton(
+                        onPressed: () => ref
+                            .read(selectedDateProvider.notifier)
+                            .select(today),
+                        child: Text(tr('feed.today')),
+                      ),
+                      const SizedBox(width: SageSpace.sm),
+                      SizedBox(width: 400, child: navigator),
+                      const Spacer(),
+                      SizedBox(
+                        width: 320,
+                        child: _ViewSwitcher(view: view, wide: wide),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  _ViewSwitcher(view: view, wide: wide),
+                  const SizedBox(height: SageSpace.sm),
+                  navigator,
+                ],
+              ),
       ),
     );
 
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: AppHeader(title: tr('nav.calendar')),
-      floatingActionButton: view == CalendarView.day
+      floatingActionButton: view == CalendarView.day && !wide
           // Only the Day view has a FAB; other views add through a long press.
           ? FloatingActionButton(
               tooltip: tr('payment.add'),
@@ -108,15 +146,20 @@ class CalendarPage extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(
                     horizontal: SageSpace.gutter,
                   ),
-                  child: _Swipe(
+                  child: _Keys(
                     view: view,
-                    enabled: !atBottom,
-                    child: _Body(
+                    enabled: wide,
+                    child: _Swipe(
                       view: view,
-                      selected: selected,
-                      today: today,
-                      money: money,
-                      dates: dates,
+                      enabled: !atBottom && !desktopInput,
+                      child: _Body(
+                        view: view,
+                        selected: selected,
+                        today: today,
+                        money: money,
+                        dates: dates,
+                        wide: wide,
+                      ),
                     ),
                   ),
                 ),
@@ -163,14 +206,23 @@ class _Swipe extends ConsumerWidget {
 }
 
 class _ViewSwitcher extends ConsumerWidget {
-  const _ViewSwitcher({required this.view});
+  const _ViewSwitcher({required this.view, required this.wide});
 
   final CalendarView view;
+
+  /// No Day view: the day has a pane.
+  final bool wide;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) =>
       SegmentedChoice<CalendarView>(
-        values: CalendarView.values,
+        values: wide
+            ? const <CalendarView>[
+                CalendarView.week,
+                CalendarView.month,
+                CalendarView.year,
+              ]
+            : CalendarView.values,
         selected: view,
         labelOf: (CalendarView v) => tr('calendar.view.${v.name}'),
         onChanged: (CalendarView v) =>
@@ -256,19 +308,21 @@ class _DateNavigator extends ConsumerWidget {
         SizedBox(
           width: _slot,
           child: view == CalendarView.month || view == CalendarView.week
-              ? IconButton(
-                  onPressed: () => showCalendarLegend(
-                    context,
-                    mode: ref.read(currentSpaceProvider)!.budgetMode,
-                    money: money,
-                    loadThreshold: ref
-                        .read(dayMarksProvider(view))
-                        .value
-                        ?.threshold,
+              ? Builder(
+                  builder: (BuildContext button) => IconButton(
+                    onPressed: () => showCalendarLegend(
+                      button,
+                      mode: ref.read(currentSpaceProvider)!.budgetMode,
+                      money: money,
+                      loadThreshold: ref
+                          .read(dayMarksProvider(view))
+                          .value
+                          ?.threshold,
+                    ),
+                    icon: const Icon(Icons.info_outline),
+                    color: sage.inkLabel,
+                    tooltip: tr('calendar.legend.title'),
                   ),
-                  icon: const Icon(Icons.info_outline),
-                  color: sage.inkLabel,
-                  tooltip: tr('calendar.legend.title'),
                 )
               : null,
         ),
@@ -309,6 +363,7 @@ class _Body extends ConsumerWidget {
     required this.today,
     required this.money,
     required this.dates,
+    required this.wide,
   });
 
   final CalendarView view;
@@ -316,6 +371,7 @@ class _Body extends ConsumerWidget {
   final CalendarDate today;
   final MoneyFormat money;
   final DateLabels dates;
+  final bool wide;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => _StepSlide(
@@ -354,39 +410,204 @@ class _Body extends ConsumerWidget {
 
     void openDay(CalendarDate date) {
       ref.read(selectedDateProvider.notifier).select(date);
-      ref.read(calendarViewProvider.notifier).open(CalendarView.day);
+      if (!wide) ref.read(calendarViewProvider.notifier).open(CalendarView.day);
     }
 
     void holdDay(CalendarDate date, Offset at) =>
         showDayMenu(context, ref, date: date);
 
-    if (view == CalendarView.week) {
-      return WeekView(
-        week: selected.startOfWeek,
-        selected: selected,
-        totals: totals,
-        marks: marks,
-        categories:
-            ref.watch(weekCategoryNamesProvider).value ??
-            const <CalendarDate, List<String>>{},
-        today: today,
-        money: money,
-        dates: dates,
-        onOpenDay: openDay,
-        onHoldDay: holdDay,
-      );
-    }
-
-    return MonthView(
-      month: selected,
-      selected: selected,
-      totals: totals,
-      marks: marks,
+    final Widget grid = view == CalendarView.week
+        ? WeekView(
+            week: selected.startOfWeek,
+            selected: selected,
+            totals: totals,
+            marks: marks,
+            categories:
+                ref.watch(weekCategoryNamesProvider).value ??
+                const <CalendarDate, List<String>>{},
+            today: today,
+            money: money,
+            dates: dates,
+            onOpenDay: openDay,
+            onHoldDay: holdDay,
+          )
+        : MonthView(
+            month: selected,
+            selected: selected,
+            totals: totals,
+            marks: marks,
+            today: today,
+            money: money,
+            dates: dates,
+            onOpenDay: openDay,
+            onHoldDay: holdDay,
+          );
+    if (!wide) return grid;
+    final Widget pane = _DayPane(
+      day: selected,
       today: today,
       money: money,
       dates: dates,
-      onOpenDay: openDay,
-      onHoldDay: holdDay,
+    );
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints box) =>
+          box.maxWidth >= _sideBySide
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: SizedBox(
+                      height: math.min(box.maxHeight, 620),
+                      child: grid,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: SageSpace.lg),
+                SizedBox(
+                  width: 360,
+                  height: math.min(box.maxHeight, 620),
+                  child: pane,
+                ),
+              ],
+            )
+          : Column(
+              children: <Widget>[
+                SizedBox(
+                  height: math.min(box.maxHeight * 0.55, 420),
+                  child: grid,
+                ),
+                const SizedBox(height: SageSpace.md),
+                Expanded(child: pane),
+              ],
+            ),
+    );
+  }
+
+  static const double _sideBySide = 720;
+
+  /// The grid, the gap and the day pane side by side.
+  static const double wideWidth = 760 + SageSpace.lg + 360;
+}
+
+/// The selected day beside or under the month, with an add button.
+class _DayPane extends StatelessWidget {
+  const _DayPane({
+    required this.day,
+    required this.today,
+    required this.money,
+    required this.dates,
+  });
+
+  final CalendarDate day;
+  final CalendarDate today;
+  final MoneyFormat money;
+  final DateLabels dates;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: <Widget>[
+      Row(
+        children: <Widget>[
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Text(
+                dates.weekdayAndDate(day, reference: today),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => openPaymentForm(context, date: day),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(tr('common.add')),
+          ),
+        ],
+      ),
+      const SizedBox(height: SageSpace.sm),
+      Expanded(
+        child: _DayBody(day: day, today: today, money: money),
+      ),
+    ],
+  );
+}
+
+/// Desktop keys: arrows move the day, PageUp and PageDown step the view, T
+/// goes to today, W, M and Y switch views. The wheel steps the view too.
+class _Keys extends ConsumerStatefulWidget {
+  const _Keys({required this.view, required this.enabled, required this.child});
+
+  final CalendarView view;
+  final bool enabled;
+  final Widget child;
+
+  @override
+  ConsumerState<_Keys> createState() => _KeysState();
+}
+
+class _KeysState extends ConsumerState<_Keys> {
+  final FocusNode _focus = FocusNode(debugLabel: 'calendar');
+  DateTime _lastWheel = DateTime(0);
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _step(int by) =>
+      ref.read(selectedDateProvider.notifier).step(widget.view, by);
+
+  void _move(int days) {
+    final SelectedDateController date = ref.read(selectedDateProvider.notifier);
+    date.select(ref.read(selectedDateProvider).addDays(days));
+  }
+
+  void _show(CalendarView view) =>
+      ref.read(calendarViewProvider.notifier).select(view);
+
+  // A trackpad sends a burst per swipe: one step per burst.
+  void _wheel(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent || event.scrollDelta.dy == 0) return;
+    final DateTime now = DateTime.now();
+    if (now.difference(_lastWheel) < const Duration(milliseconds: 350)) return;
+    _lastWheel = now;
+    _step(event.scrollDelta.dy > 0 ? 1 : -1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) return widget.child;
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _move(-1),
+        const SingleActivator(LogicalKeyboardKey.arrowRight): () => _move(1),
+        const SingleActivator(LogicalKeyboardKey.arrowUp): () => _move(-7),
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () => _move(7),
+        const SingleActivator(LogicalKeyboardKey.pageUp): () => _step(-1),
+        const SingleActivator(LogicalKeyboardKey.pageDown): () => _step(1),
+        const SingleActivator(LogicalKeyboardKey.keyT): () => ref
+            .read(selectedDateProvider.notifier)
+            .select(ref.read(spaceClockProvider).today()),
+        const SingleActivator(LogicalKeyboardKey.keyW): () =>
+            _show(CalendarView.week),
+        const SingleActivator(LogicalKeyboardKey.keyM): () =>
+            _show(CalendarView.month),
+        const SingleActivator(LogicalKeyboardKey.keyY): () =>
+            _show(CalendarView.year),
+      },
+      child: Focus(
+        focusNode: _focus,
+        child: Listener(
+          onPointerDown: (PointerDownEvent _) => _focus.requestFocus(),
+          onPointerSignal: _wheel,
+          child: widget.child,
+        ),
+      ),
     );
   }
 }

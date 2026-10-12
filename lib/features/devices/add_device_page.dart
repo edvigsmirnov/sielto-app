@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/features/devices/code_card.dart';
 import 'package:sielto/features/security/recovery_key.dart';
@@ -81,7 +82,7 @@ class _AddDevicePageState extends ConsumerState<AddDevicePage> {
     final Duration left = _expires.difference(DateTime.now());
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('devices.addTitle'))),
+      appBar: sageAppBar(context, title: Text(tr('devices.addTitle'))),
       body: ListView(
         padding: const EdgeInsets.all(SageSpace.formGutter),
         children: <Widget>[

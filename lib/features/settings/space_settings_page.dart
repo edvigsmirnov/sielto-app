@@ -10,6 +10,7 @@ import 'package:sielto/core/db/repositories/space_repository.dart';
 import 'package:sielto/core/format/currencies.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -37,7 +38,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   );
 
   /// Null while the check runs.
-  bool? _currencyEditable;
   bool _moving = false;
 
   /// Null until the cloud answers.
@@ -50,7 +50,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   @override
   void initState() {
     super.initState();
-    _checkCurrency();
     unawaited(_countMembers(widget.space));
   }
 
@@ -75,12 +74,23 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     super.dispose();
   }
 
-  Future<void> _checkCurrency() async {
-    final bool editable = await ref
-        .read(repositoriesProvider)
-        .spaces
-        .canChangeCurrency(widget.space.id);
-    if (mounted) setState(() => _currencyEditable = editable);
+  int _currencyTries = 0;
+
+  /// Amounts keep their numbers; only the sign changes.
+  Future<void> _changeCurrency(Space space, String? code) async {
+    if (code == null || code == space.currencyCode) return;
+    final bool sure = await confirmDialog(
+      context,
+      title: tr('space.currencyChangeTitle', args: <String>[code]),
+      body: tr('space.currencyChangeBody'),
+      confirmLabel: tr('space.currencyChange'),
+    );
+    if (!mounted) return;
+    if (!sure) {
+      setState(() => _currencyTries++);
+      return;
+    }
+    await ref.read(repositoriesProvider).spaces.setCurrency(space.id, code);
   }
 
   @override
@@ -102,7 +112,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
 
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('spaceSettings.title'))),
+      appBar: sageAppBar(context, title: Text(tr('spaceSettings.title'))),
       body: ListView(
         padding: const EdgeInsets.symmetric(
           horizontal: SageSpace.formGutter,
@@ -140,13 +150,10 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             label: tr('space.fieldMode'),
             value: _LockedPill(text: tr('mode.${space.budgetMode.name}.name')),
           ),
-          Text(
-            tr('space.modeIsPermanent'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          _Hint(tr('space.modeIsPermanent')),
           const SizedBox(height: SageSpace.lg),
 
-          LabelledField(
+          _Setting(
             label: tr('space.fieldFeedOrder'),
             child: SegmentedChoice<FeedOrderMode>(
               values: FeedOrderMode.values,
@@ -157,40 +164,31 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             ),
           ),
           const SizedBox(height: SageSpace.xs),
-          Text(
+          _Hint(
             '${tr('feedOrder.${space.feedOrderMode.name}Hint')} '
             '${tr('feedOrder.priorityHint')}',
-            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: SageSpace.lg),
 
-          if (_currencyEditable ?? false)
-            LabelledField(
-              label: tr('space.fieldCurrency'),
-              child: DropdownButtonFormField<String>(
-                initialValue: space.currencyCode,
-                items: <DropdownMenuItem<String>>[
-                  for (final String code in Currencies.offered(
-                    space.currencyCode,
-                  ))
-                    DropdownMenuItem<String>(
-                      value: code,
-                      child: Text(Currencies.label(code, locale)),
-                    ),
-                ],
-                onChanged: (String? code) async {
-                  if (code == null) return;
-                  await repo.setCurrency(space.id, code);
-                },
-              ),
-            )
-          else
-            // Frozen by the first record.
-            _FactRow(
-              label: tr('space.fieldCurrency'),
-              value: _LockedPill(text: space.currencyCode),
+          _Setting(
+            label: tr('space.fieldCurrency'),
+            child: DropdownButtonFormField<String>(
+              // A cancelled change shows the old currency again.
+              key: ValueKey<String>('${space.currencyCode}:$_currencyTries'),
+              initialValue: space.currencyCode,
+              items: <DropdownMenuItem<String>>[
+                for (final String code in Currencies.offered(
+                  space.currencyCode,
+                ))
+                  DropdownMenuItem<String>(
+                    value: code,
+                    child: Text(Currencies.label(code, locale)),
+                  ),
+              ],
+              onChanged: (String? code) => _changeCurrency(space, code),
             ),
-          const Hairline(),
+          ),
+          const SizedBox(height: SageSpace.lg),
 
           _FactRow(
             label: tr('space.fieldTimezone'),
@@ -199,10 +197,11 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
-          const Hairline(),
+          const _Rule(),
+          const SizedBox(height: SageSpace.lg),
 
           if (space.ownerId == ref.watch(userIdProvider))
-            LabelledField(
+            _Setting(
               label: tr('space.fieldStorage'),
               child: SegmentedChoice<StorageMode>(
                 values: StorageMode.values,
@@ -220,14 +219,11 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
               ),
             ),
           const SizedBox(height: SageSpace.xs),
-          Text(
-            tr('storage.${space.storageMode.name}.body'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          _Hint(tr('storage.${space.storageMode.name}.body')),
           const SizedBox(height: SageSpace.lg),
 
           if (shared && owner) ...<Widget>[
-            LabelledField(
+            _Setting(
               label: tr('members.limit'),
               child: _LimitStepper(
                 limit: space.maxMembers,
@@ -236,19 +232,20 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                 onChanged: (int? n) => _setLimit(space, n),
               ),
             ),
-            Text(
+            _Hint(
               tr(
                 _memberCount == null
                     ? 'storage.noNetwork'
                     : 'members.limitHint',
               ),
-              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: SageSpace.md),
           ],
           if (shared) ...<Widget>[
             ListTile(
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: SageSpace.sm,
+              ),
               title: Text(tr('members.title')),
               trailing: const Icon(Icons.chevron_right, size: 18),
               onTap: () => Navigator.of(context).push(
@@ -257,9 +254,11 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                 ),
               ),
             ),
-            const Hairline(),
+            const _Rule(),
             SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: SageSpace.sm,
+              ),
               title: Text(tr('activity.toggle')),
               subtitle: Text(tr('activity.toggleHint')),
               value: !ref.watch(quietSpacesProvider).contains(space.id),
@@ -267,13 +266,15 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                   .read(quietSpacesProvider.notifier)
                   .set(space.id, quiet: !on),
             ),
-            const Hairline(),
+            const _Rule(),
           ],
 
           // Categories and income rules are for the open Space only.
           if (isCurrent) ...<Widget>[
             ListTile(
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: SageSpace.sm,
+              ),
               title: Text(tr('category.title')),
               trailing: const Icon(Icons.chevron_right, size: 18),
               onTap: () => Navigator.of(context).push(
@@ -282,9 +283,11 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                 ),
               ),
             ),
-            const Hairline(),
+            const _Rule(),
             ListTile(
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: SageSpace.sm,
+              ),
               title: Text(tr('income.regularTitle')),
               trailing: const Icon(Icons.chevron_right, size: 18),
               onTap: () => Navigator.of(context).push(
@@ -293,7 +296,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                 ),
               ),
             ),
-            const Hairline(),
+            const _Rule(),
           ],
 
           const SizedBox(height: SageSpace.xl),
@@ -302,10 +305,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             child: Text(tr('space.archive')),
           ),
           const SizedBox(height: SageSpace.sm),
-          Text(
-            tr('space.archiveBody'),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          _Hint(tr('space.archiveBody')),
           if (shared) ...<Widget>[
             const SizedBox(height: SageSpace.lg),
             _DangerButton(
@@ -571,7 +571,7 @@ class _LimitStepper extends StatelessWidget {
           ],
         ),
         SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
+          contentPadding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
           title: Text(tr('members.noLimit')),
           value: unlimited,
           onChanged: enabled ? (bool on) => onChanged(on ? null : value) : null,
@@ -582,6 +582,58 @@ class _LimitStepper extends StatelessWidget {
 }
 
 /// Read-only setting: label left, value right.
+/// A setting's name above its control, sized like the rows around it.
+class _Setting extends StatelessWidget {
+  const _Setting({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Padding(
+        padding: const EdgeInsets.fromLTRB(
+          SageSpace.sm,
+          0,
+          SageSpace.sm,
+          SageSpace.sm,
+        ),
+        child: Semantics(
+          header: true,
+          child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+        ),
+      ),
+      Semantics(label: label, child: child),
+    ],
+  );
+}
+
+/// Small print under a setting, in line with the row labels.
+class _Hint extends StatelessWidget {
+  const _Hint(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
+    child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+  );
+}
+
+/// A separator as wide as the rows' hover.
+class _Rule extends StatelessWidget {
+  const _Rule();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(horizontal: SageSpace.sm),
+    child: Hairline(),
+  );
+}
+
 class _FactRow extends StatelessWidget {
   const _FactRow({required this.label, required this.value});
 
@@ -590,7 +642,10 @@ class _FactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+    padding: const EdgeInsets.symmetric(
+      horizontal: SageSpace.sm,
+      vertical: SageSpace.md,
+    ),
     child: Row(
       children: <Widget>[
         Expanded(

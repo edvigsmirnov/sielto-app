@@ -10,6 +10,7 @@ class DateLabels {
       _weekdayShort = DateFormat.E(locale),
       _monthYear = DateFormat.yMMMM(locale),
       _monthShort = DateFormat.MMM(locale),
+      _dayMonthShort = DateFormat.MMMd(locale),
       _dayOfMonth = DateFormat.d(locale),
       _short = DateFormat.yMd(locale);
 
@@ -20,6 +21,7 @@ class DateLabels {
   final DateFormat _weekdayShort;
   final DateFormat _monthYear;
   final DateFormat _monthShort;
+  final DateFormat _dayMonthShort;
   final DateFormat _dayOfMonth;
   final DateFormat _short;
 
@@ -29,6 +31,9 @@ class DateLabels {
     final DateFormat format = sameYear ? _dayMonth : _dayMonthYear;
     return format.format(date.toUtcMidnight());
   }
+
+  /// "14 August 2026".
+  String full(CalendarDate date) => _dayMonthYear.format(date.toUtcMidnight());
 
   String weekday(CalendarDate date) => _weekday.format(date.toUtcMidnight());
 
@@ -44,6 +49,10 @@ class DateLabels {
   String monthShort(CalendarDate date) =>
       _monthShort.format(date.toUtcMidnight());
 
+  /// "Aug 14".
+  String dayMonthShort(CalendarDate date) =>
+      _dayMonthShort.format(date.toUtcMidnight());
+
   /// Day number only.
   String dayOfMonth(CalendarDate date) =>
       _dayOfMonth.format(date.toUtcMidnight());
@@ -52,12 +61,19 @@ class DateLabels {
   String weekdayAndDate(CalendarDate date, {CalendarDate? reference}) =>
       '${weekday(date)}, ${dayMonth(date, reference: reference)}';
 
-  /// "12 – 18 August", sharing the common parts. intl has no interval format.
+  /// "12 – 18 August" or "August 12 – 18", sharing the common parts. intl has
+  /// no interval format.
   String range(CalendarDate from, CalendarDate to, {CalendarDate? reference}) {
     if (from == to) return dayMonth(from, reference: reference);
     final String end = dayMonth(to, reference: reference);
     if (from.year == to.year && from.month == to.month) {
-      return '${dayOfMonth(from)} – $end';
+      if (_dayMonth.pattern?.startsWith('d') ?? true) {
+        return '${dayOfMonth(from)} – $end';
+      }
+      // Month first: "August 12 – 18", the year after the last day.
+      final bool withYear = reference != null && reference.year != to.year;
+      return '${_dayMonth.format(from.toUtcMidnight())} – ${dayOfMonth(to)}'
+          '${withYear ? ', ${to.year}' : ''}';
     }
     return '${dayMonth(from, reference: reference)} – $end';
   }

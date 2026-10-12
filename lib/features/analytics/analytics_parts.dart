@@ -4,10 +4,15 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/action_sheet.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/analytics/analytics_data.dart';
 import 'package:sielto/features/analytics/analytics_range.dart';
+import 'package:sielto/features/analytics/range_dialog.dart';
+import 'package:sielto/features/space/period_ledger.dart';
 
 /// Blocks shared by the Analytics levels.
 
@@ -25,7 +30,7 @@ class RangeHeader extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
         IconButton(
-          onPressed: () => ref.read(analyticsRangeProvider.notifier).step(-1),
+          onPressed: () => stepAnalyticsRange(ref, -1),
           icon: const Icon(Icons.chevron_left),
           color: sage.accentStrong,
           tooltip: tr('calendar.previous'),
@@ -59,7 +64,7 @@ class RangeHeader extends ConsumerWidget {
           ),
         ),
         IconButton(
-          onPressed: () => ref.read(analyticsRangeProvider.notifier).step(1),
+          onPressed: () => stepAnalyticsRange(ref, 1),
           icon: const Icon(Icons.chevron_right),
           color: sage.accentStrong,
           tooltip: tr('calendar.next'),
@@ -73,28 +78,43 @@ class RangeHeader extends ConsumerWidget {
     WidgetRef ref,
     AnalyticsRange range,
   ) async {
-    final RangeUnit? picked = await showModalBottomSheet<RangeUnit>(
-      context: context,
-      showDragHandle: true,
-      builder: (BuildContext sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            for (final RangeUnit unit in RangeUnit.values)
-              ListTile(
-                title: Text(tr('analytics.unit.${unit.name}')),
-                trailing: unit == range.unit
-                    ? Icon(Icons.check, color: context.sage.accentStrong)
-                    : null,
-                onTap: () => Navigator.of(sheet).pop(unit),
+    final bool periods = ref.read(incomePeriodsProvider).isNotEmpty;
+    final RangeUnit? picked = await showActionSheet<RangeUnit>(
+      context,
+      title: tr('analytics.unit.title'),
+      groups: <List<SheetAction<RangeUnit>>>[
+        <SheetAction<RangeUnit>>[
+          for (final RangeUnit unit in RangeUnit.values)
+            if (unit != RangeUnit.period || periods)
+              SheetAction<RangeUnit>(
+                unit == range.unit ? Icons.check : _iconOf(unit),
+                tr('analytics.unit.${unit.name}'),
+                unit,
               ),
-          ],
-        ),
-      ),
+        ],
+      ],
     );
-    if (picked == null) return;
-    ref.read(analyticsRangeProvider.notifier).setUnit(picked);
+    if (picked == null || !context.mounted) return;
+    if (picked != RangeUnit.custom) {
+      setAnalyticsUnit(ref, picked);
+      return;
+    }
+    final (CalendarDate, CalendarDate)? dates = await askDateRange(
+      context,
+      from: range.from,
+      to: range.to,
+    );
+    if (dates == null) return;
+    ref
+        .read(analyticsChoiceProvider.notifier)
+        .choose(AnalyticsRange.between(RangeUnit.custom, dates.$1, dates.$2));
   }
+
+  static IconData _iconOf(RangeUnit unit) => switch (unit) {
+    RangeUnit.period => Icons.payments_outlined,
+    RangeUnit.custom => Icons.date_range_outlined,
+    _ => Icons.calendar_month_outlined,
+  };
 }
 
 /// Full span for a quarter; the month or year alone otherwise.
@@ -102,7 +122,9 @@ String rangeLabel(AnalyticsRange range, String locale) {
   final DateLabels dates = DateLabels(locale);
   return switch (range.unit) {
     RangeUnit.month => dates.monthYear(range.anchor),
-    RangeUnit.quarter => dates.range(range.from, range.to),
+    RangeUnit.quarter ||
+    RangeUnit.period ||
+    RangeUnit.custom => dates.range(range.from, range.to),
     RangeUnit.year => range.anchor.year.toString(),
   };
 }
@@ -203,6 +225,7 @@ class SwipeBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (desktopInput) return child;
     final SageColors sage = context.sage;
     return GestureDetector(
       behavior: HitTestBehavior.translucent,

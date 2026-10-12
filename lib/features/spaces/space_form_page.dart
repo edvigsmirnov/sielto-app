@@ -8,6 +8,7 @@ import 'package:sielto/core/format/currencies.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -23,8 +24,7 @@ const List<BudgetMode> offeredBudgetModes = <BudgetMode>[
   BudgetMode.budget,
 ];
 
-/// Creates a Space. The budget mode is permanent; the currency freezes at the
-/// first record.
+/// Creates a Space. The budget mode is permanent.
 class SpaceFormPage extends ConsumerStatefulWidget {
   const SpaceFormPage({
     this.isFirstSpace = false,
@@ -181,7 +181,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
 
     return Scaffold(
       backgroundColor: sage.surface,
-      appBar: AppBar(title: Text(tr('space.createTitle'))),
+      appBar: sageAppBar(context, title: Text(tr('space.createTitle'))),
       bottomNavigationBar: FormActionBar(
         child: FilledButton(
           onPressed: _canSave ? _create : null,
@@ -242,11 +242,6 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
           onChanged: (String? code) =>
               setState(() => _currency = code ?? currency),
         ),
-      ),
-      const SizedBox(height: SageSpace.xs),
-      Text(
-        tr('space.currencyFreezes'),
-        style: Theme.of(context).textTheme.bodySmall,
       ),
     ],
     const SizedBox(height: SageSpace.lg),

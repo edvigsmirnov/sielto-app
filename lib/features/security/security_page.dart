@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/security/app_lock.dart';
@@ -179,7 +180,7 @@ class SecurityPage extends ConsumerWidget {
         ref.watch(biometricAvailableProvider).value ?? false;
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: AppBar(title: Text(tr('security.title'))),
+      appBar: sageAppBar(context, title: Text(tr('security.title'))),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
         children: <Widget>[

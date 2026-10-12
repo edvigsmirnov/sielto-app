@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/action_sheet.dart';
 
-/// Rings the focused control while the keyboard drives focus. Text fields
-/// keep their own focused border.
+/// Rings the focused control after a key press, until the next click.
+/// Text fields keep their own focused border.
 class FocusRing extends StatefulWidget {
   const FocusRing({required this.child, super.key});
 
@@ -23,6 +24,7 @@ class _FocusRingState extends State<FocusRing> {
     FocusManager.instance
       ..addListener(_check)
       ..addHighlightModeListener(_onMode);
+    keyboardDriven.addListener(_check);
   }
 
   @override
@@ -30,13 +32,15 @@ class _FocusRingState extends State<FocusRing> {
     FocusManager.instance
       ..removeListener(_check)
       ..removeHighlightModeListener(_onMode);
+    keyboardDriven.removeListener(_check);
     super.dispose();
   }
 
   void _onMode(FocusHighlightMode _) => _check();
 
   Rect? _focused() {
-    if (FocusManager.instance.highlightMode != FocusHighlightMode.traditional) {
+    if (FocusManager.instance.highlightMode != FocusHighlightMode.traditional ||
+        !keyboardDriven.value) {
       return null;
     }
     final FocusNode? node = FocusManager.instance.primaryFocus;
