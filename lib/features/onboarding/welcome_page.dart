@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/features/launch/launch_curtain.dart';
 
@@ -93,6 +94,7 @@ class _WelcomePageState extends State<WelcomePage>
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints box) {
                 final Rect mark = _Wordmark.rectIn(box.biggest);
+                final bool wide = isWide(context);
                 return AnimatedBuilder(
                   animation: _intro,
                   builder: (BuildContext context, Widget? _) {
@@ -146,40 +148,51 @@ class _WelcomePageState extends State<WelcomePage>
                             ),
                           ),
                         ),
+                        // Wide, the buttons sit under the motto.
                         Positioned(
                           left: SageSpace.xl,
                           right: SageSpace.xl,
-                          bottom: SageSpace.md,
+                          top: wide ? mark.bottom + _wideButtonGap : null,
+                          bottom: wide ? null : SageSpace.md,
                           child: Opacity(
                             opacity: button,
                             child: Transform.translate(
                               offset: Offset(0, 16 * (1 - button)),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: <Widget>[
-                                  FilledButton(
-                                    key: _start,
-                                    onPressed: button > 0.5
-                                        ? () => widget.onStart(_startCentre())
-                                        : null,
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: SageBrand.leaf,
-                                      foregroundColor: SageBrand.night,
-                                    ),
-                                    child: Text(tr('welcome.start')),
+                              child: Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: _wideButtonWidth,
                                   ),
-                                  const SizedBox(height: SageSpace.xs),
-                                  TextButton(
-                                    onPressed: button > 0.5
-                                        ? widget.onJoin
-                                        : null,
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: SageBrand.leaf,
-                                    ),
-                                    child: Text(tr('welcome.haveAccount')),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: <Widget>[
+                                      FilledButton(
+                                        key: _start,
+                                        onPressed: button > 0.5
+                                            ? () =>
+                                                  widget.onStart(_startCentre())
+                                            : null,
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: SageBrand.leaf,
+                                          foregroundColor: SageBrand.night,
+                                        ),
+                                        child: Text(tr('welcome.start')),
+                                      ),
+                                      const SizedBox(height: SageSpace.xs),
+                                      TextButton(
+                                        onPressed: button > 0.5
+                                            ? widget.onJoin
+                                            : null,
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: SageBrand.leaf,
+                                        ),
+                                        child: Text(tr('welcome.haveAccount')),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
@@ -195,6 +208,9 @@ class _WelcomePageState extends State<WelcomePage>
       ),
     );
   }
+
+  static const double _wideButtonGap = 160;
+  static const double _wideButtonWidth = 400;
 
   /// 0 before [from], 1 after [to], eased.
   static double _phase(double t, double from, double to) =>

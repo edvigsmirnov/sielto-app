@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sielto/core/ui/layout.dart';
 
 /// A navigator that pages opened anywhere under it go to. [builder] places
 /// it; [root] is its first page, an empty one when null.
@@ -319,6 +320,8 @@ PreferredSizeWidget sageAppBar(
   if (back == null) {
     return AppBar(
       title: title,
+      // Desktop titles are centred.
+      centerTitle: isWide(context) ? true : null,
       actions: actions,
       backgroundColor: backgroundColor,
       automaticallyImplyLeading: automaticallyImplyLeading,

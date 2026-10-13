@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 
 /// Onboarding step frame: heading, explanation, fields, pinned primary action.
 class OnboardingScaffold extends StatelessWidget {
@@ -38,48 +39,87 @@ class OnboardingScaffold extends StatelessWidget {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(SageSpace.formGutter),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _ProgressBar(step: step, stepCount: stepCount),
-            const SizedBox(height: SageSpace.xl),
-            Semantics(
-              container: true,
-              header: true,
-              child: Text(title, style: text.titleMedium),
-            ),
-            const SizedBox(height: SageSpace.sm),
-            Semantics(
-              container: true,
-              child: Text(body, style: text.bodySmall),
-            ),
-            const SizedBox(height: SageSpace.lg),
-            Expanded(
-              child: ListView(padding: EdgeInsets.zero, children: children),
-            ),
-            const SizedBox(height: SageSpace.md),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: onPrimary,
-                child: Text(primaryLabel),
+    final bool wide = isWide(context);
+    final TextAlign align = wide ? TextAlign.center : TextAlign.start;
+    final Widget steps = Column(
+      // Wide, the card fits its content up to the window's height.
+      mainAxisSize: wide ? MainAxisSize.min : MainAxisSize.max,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _ProgressBar(step: step, stepCount: stepCount),
+        const SizedBox(height: SageSpace.xl),
+        Semantics(
+          container: true,
+          header: true,
+          child: Text(title, style: text.titleMedium, textAlign: align),
+        ),
+        const SizedBox(height: SageSpace.sm),
+        Semantics(
+          container: true,
+          child: Text(body, style: text.bodySmall, textAlign: align),
+        ),
+        const SizedBox(height: SageSpace.lg),
+        Flexible(
+          fit: wide ? FlexFit.loose : FlexFit.tight,
+          child: ListView(
+            padding: EdgeInsets.zero,
+            shrinkWrap: wide,
+            children: children,
+          ),
+        ),
+        const SizedBox(height: SageSpace.md),
+        FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
+        if (secondaryLabel != null)
+          Padding(
+            padding: const EdgeInsets.only(top: SageSpace.sm),
+            child: Center(
+              child: TextButton(
+                onPressed: onSecondary,
+                style: TextButton.styleFrom(foregroundColor: sage.inkLabel),
+                child: Text(secondaryLabel!),
               ),
             ),
-            if (secondaryLabel != null)
-              Padding(
-                padding: const EdgeInsets.only(top: SageSpace.sm),
-                child: Center(
-                  child: TextButton(
-                    onPressed: onSecondary,
-                    style: TextButton.styleFrom(foregroundColor: sage.inkLabel),
-                    child: Text(secondaryLabel!),
-                  ),
-                ),
-              ),
-          ],
+          ),
+      ],
+    );
+    if (!wide) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(SageSpace.formGutter),
+          child: steps,
+        ),
+      );
+    }
+    return SetupCard(child: steps);
+  }
+}
+
+/// Wide, setup sits in a card in the middle of the window, as tall as its
+/// content allows.
+class SetupCard extends StatelessWidget {
+  const SetupCard({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 640),
+        child: Padding(
+          padding: const EdgeInsets.all(SageSpace.lg),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: sage.card,
+              borderRadius: BorderRadius.circular(SageRadius.card),
+              border: Border.all(color: sage.border),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(SageSpace.xl),
+              child: child,
+            ),
+          ),
         ),
       ),
     );

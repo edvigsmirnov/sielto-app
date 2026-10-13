@@ -8,6 +8,9 @@ bool isWide(BuildContext context) =>
 
 const double readableWidth = 720;
 
+/// Names a route whose page lays itself out across the whole window, wide.
+const String fullWindowRoute = 'full-window';
+
 /// Mouse and keyboard: copy says "click", right-click stands in for a long press.
 bool get desktopInput => switch (defaultTargetPlatform) {
   TargetPlatform.linux ||

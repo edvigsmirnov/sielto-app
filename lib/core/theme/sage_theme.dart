@@ -274,7 +274,9 @@ class _SnappyZoom extends ZoomPageTransitionsBuilder {
     context,
     animation,
     secondaryAnimation,
-    route.isFirst || !isWide(context) ? child : _Column(child: child),
+    route.isFirst || route.settings.name == fullWindowRoute || !isWide(context)
+        ? child
+        : _Column(child: child),
   );
 }
 

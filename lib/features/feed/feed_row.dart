@@ -399,6 +399,8 @@ class FeedTableHeader extends ConsumerWidget {
     final Object? picked = await showMenu<Object>(
       context: context,
       popUpAnimationStyle: AnimationStyle.noAnimation,
+      // The position is global; a column's own navigator is offset.
+      useRootNavigator: true,
       position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
       items: <PopupMenuEntry<Object>>[
         for (final FeedColumn c in FeedColumn.values)

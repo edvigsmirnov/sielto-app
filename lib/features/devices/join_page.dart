@@ -5,7 +5,9 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
@@ -92,52 +94,90 @@ class _JoinPageState extends ConsumerState<JoinPage> {
   Widget build(BuildContext context) {
     final TextTheme text = Theme.of(context).textTheme;
     final List<String>? done = _done;
+    final bool wide = isWide(context);
+    final List<Widget> content = <Widget>[
+      if (done == null) ...<Widget>[
+        Text(
+          tr('devices.joinBody'),
+          style: text.bodyMedium,
+          textAlign: wide ? TextAlign.center : TextAlign.start,
+        ),
+        const SizedBox(height: SageSpace.lg),
+        LabelledField(
+          label: tr('devices.codeField'),
+          child: TextField(
+            controller: _code,
+            enabled: !_busy,
+            autofocus: true,
+            autocorrect: false,
+            enableSuggestions: false,
+            maxLength: 8,
+            textCapitalization: TextCapitalization.characters,
+            onSubmitted: (String _) =>
+                _code.text.trim().length == 8 ? _join() : null,
+          ),
+        ),
+        if (_problem case final String problem) ...<Widget>[
+          const SizedBox(height: SageSpace.sm),
+          Semantics(
+            liveRegion: true,
+            child: Text(problem, style: text.bodyMedium),
+          ),
+        ],
+        const SizedBox(height: SageSpace.lg),
+        FilledButton(
+          onPressed: _busy || _code.text.trim().length != 8 ? null : _join,
+          child: Text(tr(_busy ? 'devices.joining' : 'devices.join')),
+        ),
+      ] else ...<Widget>[
+        for (final String line in done) ...<Widget>[
+          Text(line, style: text.bodyLarge),
+          const SizedBox(height: SageSpace.md),
+        ],
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(tr('devices.continue')),
+        ),
+      ],
+    ];
+    if (!wide) {
+      return Scaffold(
+        backgroundColor: context.sage.surface,
+        appBar: sageAppBar(context, title: Text(tr('devices.joinTitle'))),
+        body: ListView(
+          padding: const EdgeInsets.all(SageSpace.formGutter),
+          children: content,
+        ),
+      );
+    }
+    // Wide, the same card as the onboarding steps.
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: sageAppBar(context, title: Text(tr('devices.joinTitle'))),
-      body: ListView(
-        padding: const EdgeInsets.all(SageSpace.formGutter),
-        children: <Widget>[
-          if (done == null) ...<Widget>[
-            Text(tr('devices.joinBody'), style: text.bodyMedium),
-            const SizedBox(height: SageSpace.lg),
-            LabelledField(
-              label: tr('devices.codeField'),
-              child: TextField(
-                controller: _code,
-                enabled: !_busy,
-                autofocus: true,
-                autocorrect: false,
-                enableSuggestions: false,
-                maxLength: 8,
-                textCapitalization: TextCapitalization.characters,
-                onSubmitted: (String _) =>
-                    _code.text.trim().length == 8 ? _join() : null,
-              ),
+      body: SetupCard(
+        child: ListView(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const BackButton(),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      tr('devices.joinTitle'),
+                      textAlign: TextAlign.center,
+                      style: text.titleMedium,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: kMinInteractiveDimension),
+              ],
             ),
-            if (_problem case final String problem) ...<Widget>[
-              const SizedBox(height: SageSpace.sm),
-              Semantics(
-                liveRegion: true,
-                child: Text(problem, style: text.bodyMedium),
-              ),
-            ],
-            const SizedBox(height: SageSpace.lg),
-            FilledButton(
-              onPressed: _busy || _code.text.trim().length != 8 ? null : _join,
-              child: Text(tr(_busy ? 'devices.joining' : 'devices.join')),
-            ),
-          ] else ...<Widget>[
-            for (final String line in done) ...<Widget>[
-              Text(line, style: text.bodyLarge),
-              const SizedBox(height: SageSpace.md),
-            ],
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(tr('devices.continue')),
-            ),
+            const SizedBox(height: SageSpace.md),
+            ...content,
           ],
-        ],
+        ),
       ),
     );
   }

@@ -53,8 +53,30 @@ class _FocusRingState extends State<FocusRing> {
       return null;
     }
     if (at.findAncestorWidgetOfExactType<EditableText>() != null) return null;
-    final Rect rect = node.rect;
-    return rect.isFinite ? rect : null;
+    final RenderObject? box = at.findRenderObject();
+    if (box == null || !box.attached) return null;
+    return _visible(box);
+  }
+
+  /// The control's global rect, cut by every clip above it: a control
+  /// scrolled or slid out of its column is ringed only where it shows.
+  static Rect? _visible(RenderObject box) {
+    Rect rect = MatrixUtils.transformRect(
+      box.getTransformTo(null),
+      box.paintBounds,
+    );
+    RenderObject child = box;
+    for (RenderObject? parent = child.parent; parent != null;) {
+      final Rect? clip = parent.describeApproximatePaintClip(child);
+      if (clip != null) {
+        rect = rect.intersect(
+          MatrixUtils.transformRect(child.getTransformTo(null), clip),
+        );
+      }
+      child = parent;
+      parent = parent.parent;
+    }
+    return rect.isFinite && rect.width > 0 && rect.height > 0 ? rect : null;
   }
 
   // Follows the control through scrolls and transitions, frame by frame.

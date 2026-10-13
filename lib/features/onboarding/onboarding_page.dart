@@ -8,6 +8,7 @@ import 'package:sielto/core/l10n/app_locales.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_scatter.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/backup_page.dart';
@@ -82,6 +83,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           onStart: _start,
           onJoin: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
+              settings: const RouteSettings(name: fullWindowRoute),
               builder: (BuildContext _) => const JoinPage(),
             ),
           ),

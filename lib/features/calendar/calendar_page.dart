@@ -31,7 +31,6 @@ import 'package:sielto/features/calendar/year_view.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/record_actions.dart';
-import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/shell/app_header.dart';
 import 'package:sielto/features/shell/shell_tab.dart';
@@ -115,11 +114,11 @@ class CalendarPage extends ConsumerWidget {
       floatingActionButton: view == CalendarView.day && !wide
           // Only the Day view has a FAB; other views add through a long press.
           ? FloatingActionButton(
-              tooltip: tr('payment.add'),
+              tooltip: tr('common.add'),
               backgroundColor: context.sage.accent,
               foregroundColor: context.sage.accentOn,
               shape: const CircleBorder(),
-              onPressed: () => openPaymentForm(context, date: selected),
+              onPressed: () => showDayMenu(context, ref, date: selected),
               child: const Icon(Icons.add),
             )
           : null,
@@ -494,7 +493,7 @@ class _Body extends ConsumerWidget {
 }
 
 /// The selected day beside or under the month, with an add button.
-class _DayPane extends StatelessWidget {
+class _DayPane extends ConsumerWidget {
   const _DayPane({
     required this.day,
     required this.today,
@@ -508,7 +507,7 @@ class _DayPane extends StatelessWidget {
   final DateLabels dates;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context, WidgetRef ref) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: <Widget>[
       Row(
@@ -523,7 +522,7 @@ class _DayPane extends StatelessWidget {
             ),
           ),
           TextButton.icon(
-            onPressed: () => openPaymentForm(context, date: day),
+            onPressed: () => showDayMenu(context, ref, date: day),
             icon: const Icon(Icons.add, size: 18),
             label: Text(tr('common.add')),
           ),

@@ -141,6 +141,7 @@ class _ActionRow<T> extends StatelessWidget {
 }
 
 /// Remembers where the pointer last went down, and whether a key came after.
+/// On desktop, Backspace goes back.
 void trackPointer() {
   GestureBinding.instance.pointerRouter.addGlobalRoute((PointerEvent e) {
     if (e is! PointerDownEvent) return;
@@ -148,9 +149,33 @@ void trackPointer() {
     keyboardDriven.value = false;
   });
   HardwareKeyboard.instance.addHandler((KeyEvent e) {
-    if (e is KeyDownEvent) keyboardDriven.value = true;
+    if (e is! KeyDownEvent) return false;
+    keyboardDriven.value = true;
+    if (desktopInput && e.logicalKey == LogicalKeyboardKey.backspace) {
+      _back();
+    }
     return false;
   });
+}
+
+/// The innermost navigator around the focus that has somewhere to go back
+/// to: a panel's page, a dialog, an onboarding step. Not while typing.
+Future<void> _back() async {
+  final BuildContext? at = FocusManager.instance.primaryFocus?.context;
+  if (at == null || at.findAncestorWidgetOfExactType<EditableText>() != null) {
+    return;
+  }
+  final List<NavigatorState> outward = <NavigatorState>[];
+  for (
+    NavigatorState? n = Navigator.maybeOf(at);
+    n != null;
+    n = n.context.findAncestorStateOfType<NavigatorState>()
+  ) {
+    outward.add(n);
+  }
+  for (final NavigatorState n in outward) {
+    if (n.mounted && await n.maybePop()) return;
+  }
 }
 
 Future<T?> _showMenu<T>(
@@ -168,6 +193,8 @@ Future<T?> _showMenu<T>(
   return showMenu<T>(
     context: context,
     popUpAnimationStyle: AnimationStyle.noAnimation,
+    // The position is global; a column's own navigator is offset.
+    useRootNavigator: true,
     position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
     color: sage.card,
     shape: RoundedRectangleBorder(
