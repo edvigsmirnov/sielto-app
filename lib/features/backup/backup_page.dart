@@ -17,6 +17,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/drive.dart';
 import 'package:sielto/features/security/recovery_key.dart';
@@ -202,8 +203,8 @@ Future<void> restoreBackup(BuildContext context, WidgetRef ref) async {
 /// A file, or a Drive snapshot where Drive is available. Null when cancelled.
 Future<Uint8List?> pickBackup(BuildContext context) async {
   if (!driveSupported) return pickBackupFile(context);
-  final bool? fromDrive = await showModalBottomSheet<bool>(
-    context: context,
+  final bool? fromDrive = await showAdaptiveSheet<bool>(
+    context,
     builder: (BuildContext context) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,

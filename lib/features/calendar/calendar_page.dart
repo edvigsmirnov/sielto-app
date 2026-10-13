@@ -473,18 +473,41 @@ class _Body extends ConsumerWidget {
                 ),
               ],
             )
-          : Column(
-              children: <Widget>[
-                SizedBox(
-                  height: math.min(box.maxHeight * 0.55, 420),
-                  child: grid,
-                ),
-                const SizedBox(height: SageSpace.md),
-                Expanded(child: pane),
-              ],
-            ),
+          : _stacked(context, box, grid, pane),
     );
   }
+
+  /// The grid over the day. With large text in a short window there is no
+  /// room for both, and they scroll together, the day a full screen tall.
+  static Widget _stacked(
+    BuildContext context,
+    BoxConstraints box,
+    Widget grid,
+    Widget pane,
+  ) {
+    final double gridHeight = math.max(
+      math.min(box.maxHeight * 0.55, 420),
+      MonthView.minHeight(context),
+    );
+    if (gridHeight + SageSpace.md + _paneMin <= box.maxHeight) {
+      return Column(
+        children: <Widget>[
+          SizedBox(height: gridHeight, child: grid),
+          const SizedBox(height: SageSpace.md),
+          Expanded(child: pane),
+        ],
+      );
+    }
+    return ListView(
+      children: <Widget>[
+        SizedBox(height: gridHeight, child: grid),
+        const SizedBox(height: SageSpace.md),
+        SizedBox(height: box.maxHeight, child: pane),
+      ],
+    );
+  }
+
+  static const double _paneMin = 200;
 
   static const double _sideBySide = 720;
 

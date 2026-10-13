@@ -3,7 +3,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/action_sheet.dart';
 import 'package:sielto/core/ui/layout.dart';
 
-/// A card by [anchor], or by the last click for a large anchor.
+/// A card by [anchor], or by the last click for an anchor larger than it.
 Future<T?> showPopover<T>(
   BuildContext anchor, {
   required WidgetBuilder builder,
@@ -11,7 +11,8 @@ Future<T?> showPopover<T>(
 }) {
   final RenderBox box = anchor.findRenderObject()! as RenderBox;
   final Offset? click = lastPointer;
-  final Rect at = box.size.height > 120 && click != null
+  final Rect at =
+      (box.size.height > 120 || box.size.width > width) && click != null
       ? Rect.fromCenter(center: click, width: 1, height: 1)
       : box.localToGlobal(Offset.zero) & box.size;
   return showGeneralDialog<T>(
@@ -88,10 +89,12 @@ Future<T?> showAdaptiveSheet<T>(
   BuildContext context, {
   required WidgetBuilder builder,
   double width = 400,
+  bool dragHandle = false,
 }) => isWide(context)
     ? showPopover<T>(context, builder: builder, width: width)
     : showModalBottomSheet<T>(
         context: context,
         isScrollControlled: true,
+        showDragHandle: dragHandle,
         builder: builder,
       );

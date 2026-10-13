@@ -315,9 +315,12 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
                       style: text.bodySmall?.copyWith(color: sage.ink),
                     ),
                   ),
-                  Text(
-                    tr('feed.filter.keys'),
-                    style: text.bodySmall?.copyWith(color: sage.inkLabel),
+                  Flexible(
+                    child: Text(
+                      tr('feed.filter.keys'),
+                      textAlign: TextAlign.end,
+                      style: text.bodySmall?.copyWith(color: sage.inkLabel),
+                    ),
                   ),
                 ],
               ),

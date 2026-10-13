@@ -194,7 +194,11 @@ class FeedRowTile extends StatelessWidget {
                         padding: EdgeInsets.fromLTRB(
                           SageSpace.gutter - _leadInset,
                           density == FeedDensity.compact ? 4 : SageSpace.sm,
-                          dragHandle == null ? SageSpace.gutter : SageSpace.xs,
+                          dragHandle != null
+                              ? SageSpace.xs
+                              : table != null
+                              ? FeedColumns.trail
+                              : SageSpace.gutter,
                           density == FeedDensity.compact ? 4 : SageSpace.sm,
                         ),
                         child: Row(
@@ -301,8 +305,8 @@ abstract final class FeedColumns {
       SageSpace.md -
       FeedRowTile._leadInset;
 
-  /// The drag grip.
-  static const double trail = 48;
+  /// The drag grip and its gap; rows without a grip keep the space.
+  static const double trail = SageSpace.xs + 48;
 }
 
 /// Column headings above the table. Their edges drag to resize; a right-click
@@ -362,7 +366,6 @@ class FeedTableHeader extends ConsumerWidget {
       );
     }
 
-    final List<FeedColumn> shown = layout.shown;
     return ExcludeSemantics(
       child: GestureDetector(
         onSecondaryTapUp: (TapUpDetails d) =>
@@ -376,14 +379,19 @@ class FeedTableHeader extends ConsumerWidget {
           decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: sage.hairline)),
           ),
-          child: Row(
-            children: <Widget>[
-              for (final FeedColumn c in shown)
-                if (c == FeedColumn.date) cell(c),
-              Expanded(child: label('title')),
-              for (final FeedColumn c in shown)
-                if (c != FeedColumn.date) cell(c),
-            ],
+          child: LayoutBuilder(
+            builder: (BuildContext _, BoxConstraints box) {
+              final List<FeedColumn> shown = layout.shownIn(box.maxWidth);
+              return Row(
+                children: <Widget>[
+                  for (final FeedColumn c in shown)
+                    if (c == FeedColumn.date) cell(c),
+                  Expanded(child: label('title')),
+                  for (final FeedColumn c in shown)
+                    if (c != FeedColumn.date) cell(c),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -492,34 +500,42 @@ class _TableCells extends StatelessWidget {
       );
     }
 
-    final List<FeedColumn> shown = layout.shown;
-    return Row(
-      children: <Widget>[
-        for (final FeedColumn c in shown)
-          if (c == FeedColumn.date) cell(c),
-        Expanded(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              if (isOverdue) ...<Widget>[
-                Icon(Icons.warning_amber_rounded, size: 16, color: sage.danger),
-                const SizedBox(width: SageSpace.xs),
-              ],
-              Flexible(
-                child: line(
-                  record.title,
-                  text.bodyLarge!.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: record.isPaid ? sage.inkSecondary : sage.ink,
+    return LayoutBuilder(
+      builder: (BuildContext _, BoxConstraints box) {
+        final List<FeedColumn> shown = layout.shownIn(box.maxWidth);
+        return Row(
+          children: <Widget>[
+            for (final FeedColumn c in shown)
+              if (c == FeedColumn.date) cell(c),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  if (isOverdue) ...<Widget>[
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 16,
+                      color: sage.danger,
+                    ),
+                    const SizedBox(width: SageSpace.xs),
+                  ],
+                  Flexible(
+                    child: line(
+                      record.title,
+                      text.bodyLarge!.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: record.isPaid ? sage.inkSecondary : sage.ink,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-        for (final FeedColumn c in shown)
-          if (c != FeedColumn.date) cell(c),
-      ],
+            ),
+            for (final FeedColumn c in shown)
+              if (c != FeedColumn.date) cell(c),
+          ],
+        );
+      },
     );
   }
 }

@@ -89,6 +89,19 @@ class MonthView extends StatelessWidget {
 
   static const double _cellInset = 2;
 
+  /// Tall enough for 48 dp day cells under the weekday names, at any text
+  /// size.
+  static double minHeight(BuildContext context) {
+    final TextStyle? names = Theme.of(context).textTheme.labelSmall;
+    final double line = MediaQuery.textScalerOf(context)
+        .scale((names?.fontSize ?? 11) * (names?.height ?? 1.5));
+    return line +
+        SageSpace.xs +
+        monthGridDays ~/
+            7 *
+            (kMinInteractiveDimension + _gap + 2 * _cellInset + 1);
+  }
+
   Widget _cell(CalendarDate date, _Figures figures) => _DayCell(
     date: date,
     totals: totals[date],
@@ -247,40 +260,45 @@ class _DayCell extends StatelessWidget {
         isSelected: isSelected,
         isToday: isToday,
         dimmed: isOutsideMonth,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              date.day.toString(),
-              style: text.labelMedium?.copyWith(
-                color: ink,
-                fontWeight: isSelected || isToday
-                    ? FontWeight.w700
-                    : FontWeight.w600,
-              ),
+        child: SizedBox.expand(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  date.day.toString(),
+                  style: text.labelMedium?.copyWith(
+                    color: ink,
+                    fontWeight: isSelected || isToday
+                        ? FontWeight.w700
+                        : FontWeight.w600,
+                  ),
+                ),
+                if (day != null && day.expenses > Decimal.zero)
+                  _CellFigure(
+                    text: figures.format(day.expenses),
+                    size: figures.size,
+                    color: isToday ? ink : sage.danger,
+                  ),
+                if (day != null && day.income > Decimal.zero)
+                  _CellFigure(
+                    text: figures.format(day.income),
+                    size: figures.size,
+                    color: isToday ? ink : sage.accentStrong,
+                  ),
+                // A dot for a day with only an income without amount.
+                if (day != null &&
+                    day.expenses == Decimal.zero &&
+                    day.income == Decimal.zero)
+                  _CellFigure(
+                    text: '·',
+                    size: figures.size,
+                    color: isToday ? ink : sage.inkLabel,
+                  ),
+              ],
             ),
-            if (day != null && day.expenses > Decimal.zero)
-              _CellFigure(
-                text: figures.format(day.expenses),
-                size: figures.size,
-                color: isToday ? ink : sage.danger,
-              ),
-            if (day != null && day.income > Decimal.zero)
-              _CellFigure(
-                text: figures.format(day.income),
-                size: figures.size,
-                color: isToday ? ink : sage.accentStrong,
-              ),
-            // A dot for a day with only an income without amount.
-            if (day != null &&
-                day.expenses == Decimal.zero &&
-                day.income == Decimal.zero)
-              _CellFigure(
-                text: '·',
-                size: figures.size,
-                color: isToday ? ink : sage.inkLabel,
-              ),
-          ],
+          ),
         ),
       ),
     );

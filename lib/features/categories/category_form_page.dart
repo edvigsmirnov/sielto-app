@@ -208,11 +208,10 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
             const SizedBox(height: SageSpace.lg),
             FieldLabel(tr('category.fieldColor')),
             Wrap(
-              spacing: SageSpace.sm,
-              runSpacing: SageSpace.sm,
               children: <Widget>[
-                for (final String hex in categoryPalette)
+                for (final (int i, String hex) in categoryPalette.indexed)
                   _Swatch(
+                    label: tr('category.colorN', args: <String>['${i + 1}']),
                     hex: hex,
                     selected: _color == hex,
                     onTap: () => setState(() => _color = hex),
@@ -223,17 +222,19 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
             const SizedBox(height: SageSpace.lg),
             FieldLabel(tr('category.fieldIcon')),
             Wrap(
-              spacing: SageSpace.sm,
-              runSpacing: SageSpace.sm,
+              spacing: SageSpace.xs,
+              runSpacing: SageSpace.xs,
               children: <Widget>[
                 for (final String glyph in categoryIconChoices)
                   _IconChoice(
+                    label: glyph,
                     glyph: glyph,
                     selected: _icon == glyph,
                     onTap: () => setState(() => _icon = glyph),
                   ),
                 // Custom emoji.
                 _IconChoice(
+                  label: tr('category.customIcon'),
                   glyph: '+',
                   selected: false,
                   onTap: _pickCustomIcon,
@@ -270,28 +271,40 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
 /// Colour disc showing the chosen icon.
 class _Swatch extends StatelessWidget {
   const _Swatch({
+    required this.label,
     required this.hex,
     required this.selected,
     required this.onTap,
   });
 
+  final String label;
   final String hex;
   final bool selected;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    customBorder: const CircleBorder(),
-    child: Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: parseCategoryColor(hex),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: selected ? context.sage.ink : Colors.transparent,
-          width: 2,
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: selected,
+    label: label,
+    child: InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: SizedBox.square(
+        dimension: kMinInteractiveDimension,
+        child: Center(
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: parseCategoryColor(hex),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: selected ? context.sage.ink : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
         ),
       ),
     ),
@@ -300,11 +313,13 @@ class _Swatch extends StatelessWidget {
 
 class _IconChoice extends StatelessWidget {
   const _IconChoice({
+    required this.label,
     required this.glyph,
     required this.selected,
     required this.onTap,
   });
 
+  final String label;
   final String glyph;
   final bool selected;
   final VoidCallback onTap;
@@ -312,22 +327,29 @@ class _IconChoice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    return InkWell(
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(SageRadius.button),
-      child: Container(
-        width: 44,
-        height: 44,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: sage.card,
-          borderRadius: BorderRadius.circular(SageRadius.button),
-          border: Border.all(
-            color: selected ? sage.accentStrong : sage.border,
-            width: selected ? 2 : 1,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(SageRadius.button),
+        child: Container(
+          width: kMinInteractiveDimension,
+          height: kMinInteractiveDimension,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: sage.card,
+            borderRadius: BorderRadius.circular(SageRadius.button),
+            border: Border.all(
+              color: selected ? sage.accentStrong : sage.border,
+              width: selected ? 2 : 1,
+            ),
           ),
+          child: Text(glyph, style: const TextStyle(fontSize: 18)),
         ),
-        child: Text(glyph, style: const TextStyle(fontSize: 18)),
       ),
     );
   }

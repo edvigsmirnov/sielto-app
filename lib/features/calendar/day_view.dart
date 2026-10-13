@@ -74,70 +74,79 @@ class DayView extends StatelessWidget {
       }
     }
 
-    return Column(
-      children: <Widget>[
-        if (deadline case final DeadlineKind kind) ...<Widget>[
-          _DeadlineBanner(kind: kind),
-          const SizedBox(height: SageSpace.md),
-        ],
-        if (dayOff != null) ...<Widget>[
-          _DayOffBanner(names: dayOff!),
-          const SizedBox(height: SageSpace.md),
-        ],
-        Row(
+    // One scroll: with large text the totals alone can outgrow a short pane.
+    return CustomScrollView(
+      slivers: <Widget>[
+        SliverList.list(
           children: <Widget>[
-            Expanded(
-              child: _TotalCard(
-                label: tr('calendar.dayExpenses'),
-                // Zero prints unsigned.
-                text: expenses > Decimal.zero
-                    ? money.formatSigned(-expenses)
-                    : money.format(Decimal.zero),
-                tinted: false,
-              ),
+            if (deadline case final DeadlineKind kind) ...<Widget>[
+              _DeadlineBanner(kind: kind),
+              const SizedBox(height: SageSpace.md),
+            ],
+            if (dayOff != null) ...<Widget>[
+              _DayOffBanner(names: dayOff!),
+              const SizedBox(height: SageSpace.md),
+            ],
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: _TotalCard(
+                    label: tr('calendar.dayExpenses'),
+                    // Zero prints unsigned.
+                    text: expenses > Decimal.zero
+                        ? money.formatSigned(-expenses)
+                        : money.format(Decimal.zero),
+                    tinted: false,
+                  ),
+                ),
+                const SizedBox(width: SageSpace.sm),
+                Expanded(
+                  child: _TotalCard(
+                    label: tr('calendar.dayIncome'),
+                    text: income > Decimal.zero
+                        ? money.formatSigned(income)
+                        : money.format(Decimal.zero),
+                    tinted: true,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: SageSpace.sm),
-            Expanded(
-              child: _TotalCard(
-                label: tr('calendar.dayIncome'),
-                text: income > Decimal.zero
-                    ? money.formatSigned(income)
-                    : money.format(Decimal.zero),
-                tinted: true,
-              ),
-            ),
+            const SizedBox(height: SageSpace.md),
           ],
         ),
-        const SizedBox(height: SageSpace.md),
-        Expanded(
-          child: rows.isEmpty
-              ? EmptyState(message: tr('calendar.dayEmpty'))
-              : ListView.separated(
-                  padding: const EdgeInsets.only(bottom: 96),
-                  itemCount: rows.length,
-                  separatorBuilder: (BuildContext _, int _) => const Hairline(),
-                  itemBuilder: (BuildContext context, int index) {
-                    final FeedRecord record = rows[index];
-                    return FeedRowTile(
-                      key: ValueKey<String>(record.id),
-                      record: record,
-                      // No coverage in a single day.
-                      isCovered: true,
-                      density: density,
-                      money: money,
-                      category: record.categoryId == null
-                          ? null
-                          : categories[record.categoryId],
-                      onTap: () => onEdit(record),
-                      onTogglePaid: () => onTogglePaid(record),
-                      onDelete: () => onDelete(record),
-                      onLongPress: () => onHoldRecord(record),
-                      isFrozen: isFrozen(record.budgetPeriodId),
-                      isOverdue: record.isOverdue(today),
-                    );
-                  },
-                ),
-        ),
+        if (rows.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: EmptyState(message: tr('calendar.dayEmpty')),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 96),
+            sliver: SliverList.separated(
+              itemCount: rows.length,
+              separatorBuilder: (BuildContext _, int _) => const Hairline(),
+              itemBuilder: (BuildContext context, int index) {
+                final FeedRecord record = rows[index];
+                return FeedRowTile(
+                  key: ValueKey<String>(record.id),
+                  record: record,
+                  // No coverage in a single day.
+                  isCovered: true,
+                  density: density,
+                  money: money,
+                  category: record.categoryId == null
+                      ? null
+                      : categories[record.categoryId],
+                  onTap: () => onEdit(record),
+                  onTogglePaid: () => onTogglePaid(record),
+                  onDelete: () => onDelete(record),
+                  onLongPress: () => onHoldRecord(record),
+                  isFrozen: isFrozen(record.budgetPeriodId),
+                  isOverdue: record.isOverdue(today),
+                );
+              },
+            ),
+          ),
       ],
     );
   }

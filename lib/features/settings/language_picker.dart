@@ -2,13 +2,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/l10n/app_locales.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/popover.dart';
 
 /// Language sheet. Each language is listed under its own name.
 Future<void> showLanguagePicker(BuildContext context) async {
-  final Locale? picked = await showModalBottomSheet<Locale>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
+  final Locale? picked = await showAdaptiveSheet<Locale>(
+    context,
+    dragHandle: true,
     builder: (BuildContext _) => const _LanguagePicker(),
   );
   if (picked == null || !context.mounted) return;

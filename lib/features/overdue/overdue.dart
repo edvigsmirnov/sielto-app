@@ -154,60 +154,59 @@ class OverduePage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: sage.surface,
-      appBar: sageAppBar(
-        context,
-        title: Text(tr('overdue.title')),
-        bottom: summary.isEmpty
-            ? null
-            : PreferredSize(
-                preferredSize: const Size.fromHeight(44),
-                child: _Total(summary: summary, money: money),
-              ),
-      ),
+      appBar: sageAppBar(context, title: Text(tr('overdue.title'))),
       body: summary.isEmpty
           ? EmptyState(message: tr('overdue.allSettled'))
-          : ListView.builder(
-              padding: const EdgeInsets.only(bottom: SageSpace.xl),
-              itemCount: summary.payments.length,
-              itemBuilder: (BuildContext context, int index) {
-                final Payment payment = summary.payments[index];
-                final Payment? previous = index == 0
-                    ? null
-                    : summary.payments[index - 1];
-                final FeedRecord record = FeedRecord.fromPayment(payment);
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    // One heading per day.
-                    if (previous == null || previous.dueDate != payment.dueDate)
-                      _DayHeading(
-                        label: dates.dayMonth(
-                          payment.dueDate,
-                          reference: today,
-                        ),
-                      ),
-                    FeedRowTile(
-                      key: ValueKey<String>('overdue:${payment.id}'),
-                      record: record,
-                      isCovered: true,
-                      density: density,
-                      money: money,
-                      category: record.categoryId == null
+          : Column(
+              children: <Widget>[
+                _Total(summary: summary, money: money),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(bottom: SageSpace.xl),
+                    itemCount: summary.payments.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final Payment payment = summary.payments[index];
+                      final Payment? previous = index == 0
                           ? null
-                          : categories[record.categoryId],
-                      isFrozen: freeze.isFrozen(payment.budgetPeriodId),
-                      isOverdue: true,
-                      onTap: () =>
-                          openPaymentForm(context, paymentId: payment.id),
-                      onTogglePaid: () => _settle(context, ref, record),
-                      onDelete: () => deleteRecord(context, ref, record),
-                      onLongPress: () =>
-                          showRecordMenu(context, ref, record: record),
-                    ),
-                  ],
-                );
-              },
+                          : summary.payments[index - 1];
+                      final FeedRecord record = FeedRecord.fromPayment(payment);
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          // One heading per day.
+                          if (previous == null ||
+                              previous.dueDate != payment.dueDate)
+                            _DayHeading(
+                              label: dates.dayMonth(
+                                payment.dueDate,
+                                reference: today,
+                              ),
+                            ),
+                          FeedRowTile(
+                            key: ValueKey<String>('overdue:${payment.id}'),
+                            record: record,
+                            isCovered: true,
+                            density: density,
+                            money: money,
+                            category: record.categoryId == null
+                                ? null
+                                : categories[record.categoryId],
+                            isFrozen: freeze.isFrozen(payment.budgetPeriodId),
+                            isOverdue: true,
+                            onTap: () =>
+                                openPaymentForm(context, paymentId: payment.id),
+                            onTogglePaid: () => _settle(context, ref, record),
+                            onDelete: () => deleteRecord(context, ref, record),
+                            onLongPress: () =>
+                                showRecordMenu(context, ref, record: record),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
     );
   }

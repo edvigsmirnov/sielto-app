@@ -54,7 +54,6 @@ class AnchorHelpButton extends StatelessWidget {
   Widget build(BuildContext context) => IconButton(
     icon: Icon(Icons.info_outline, size: 18, color: context.sage.inkLabel),
     tooltip: tr('income.anchorHelpTitle'),
-    visualDensity: VisualDensity.compact,
     onPressed: () => showAnchorHelp(context),
   );
 }

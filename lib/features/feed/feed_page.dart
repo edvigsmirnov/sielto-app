@@ -400,16 +400,20 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                   ),
                 ),
               if (table)
-                AnimatedSize(
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  alignment: Alignment.topCenter,
+                _Unfold(
                   child: ref.watch(feedFilterOpenProvider)
-                      ? FeedFilterPanel(
-                          shown: _allMatches(filter),
-                          money: money,
+                      // At most a third of the window, so the table keeps
+                      // room.
+                      ? ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.sizeOf(context).height / 3,
+                          ),
+                          child: SingleChildScrollView(
+                            child: FeedFilterPanel(
+                              shown: _allMatches(filter),
+                              money: money,
+                            ),
+                          ),
                         )
                       : const SizedBox(width: double.infinity),
                 ),
@@ -526,29 +530,32 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         borderRadius: BorderRadius.circular(SageRadius.card),
         border: Border.all(color: sage.border),
       ),
-      child: Column(
-        children: <Widget>[
-          if (header) const FeedTableHeader(),
-          Expanded(child: child),
-          if (desktopInput && header)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: SageSpace.md,
-                vertical: SageSpace.sm,
+      // A card too short for rows drops the hint line.
+      child: LayoutBuilder(
+        builder: (BuildContext _, BoxConstraints box) => Column(
+          children: <Widget>[
+            if (header) const FeedTableHeader(),
+            Expanded(child: child),
+            if (desktopInput && header && box.maxHeight > 200)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: SageSpace.md,
+                  vertical: SageSpace.sm,
+                ),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: sage.hairline)),
+                ),
+                child: Text(
+                  tr('feed.table.hint'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: sage.inkLabel),
+                ),
               ),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: sage.hairline)),
-              ),
-              child: Text(
-                tr('feed.table.hint'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: sage.inkLabel),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1435,74 +1442,105 @@ class _TableToolbar extends StatelessWidget {
       ),
     );
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        SageSpace.lg,
-        SageSpace.md,
-        SageSpace.md,
-        SageSpace.md,
-      ),
-      child: Column(
+    // A tight column puts Add under the search.
+    final Widget side = Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: SageSpace.sm,
+        runSpacing: SageSpace.xs,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: !figures
-                    ? const SizedBox.shrink()
-                    : Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: SageSpace.sm,
-                        runSpacing: SageSpace.xs,
-                        children: <Widget>[
-                          figure(
-                            tr(source.availableLabel),
-                            available == null
-                                ? tr('income.amountUnknown')
-                                : money.format(available),
-                            highlighted: true,
-                            onTap: onBalanceTap,
-                          ),
-                          figure(
-                            tr('dashboard.paid'),
-                            money.format(source.paid),
-                          ),
-                          figure(
-                            tr('dashboard.leftToPay'),
-                            money.format(source.remaining),
-                          ),
-                          figure(
-                            tr('dashboard.freeMoney'),
-                            free == null
-                                ? tr('feed.runsShort')
-                                : money.format(free),
-                            color: free == null || free < Decimal.zero
-                                ? sage.danger
-                                : sage.accentStrong,
-                          ),
-                        ],
-                      ),
-              ),
-              const SizedBox(width: SageSpace.md),
-              Badge(
-                isLabelVisible: filtered,
-                backgroundColor: sage.accentStrong,
-                smallSize: 8,
-                child: OutlinedButton.icon(
-                  onPressed: onSearch,
-                  icon: const Icon(Icons.search, size: 18),
-                  label: Text(tr('feed.filter.title')),
-                ),
-              ),
-              const SizedBox(width: SageSpace.sm),
-              FilledButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(tr('common.add')),
-              ),
-            ],
+          Badge(
+            isLabelVisible: filtered,
+            backgroundColor: sage.accentStrong,
+            smallSize: 8,
+            child: OutlinedButton.icon(
+              onPressed: onSearch,
+              icon: const Icon(Icons.search, size: 18),
+              label: Text(tr('feed.filter.title')),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(tr('common.add')),
           ),
         ],
       ),
     );
+
+    return Padding(
+      padding: const EdgeInsets.all(SageSpace.md),
+      // An invisible copy of the buttons on the left keeps the figures in the
+      // middle, under the title.
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Flexible(
+            flex: 2,
+            child: ExcludeFocus(
+              child: ExcludeSemantics(
+                child: IgnorePointer(child: Opacity(opacity: 0, child: side)),
+              ),
+            ),
+          ),
+          const SizedBox(width: SageSpace.md),
+          Expanded(
+            flex: 3,
+            child: !figures
+                ? const SizedBox.shrink()
+                : Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: SageSpace.sm,
+                    runSpacing: SageSpace.xs,
+                    children: <Widget>[
+                      figure(
+                        tr(source.availableLabel),
+                        available == null
+                            ? tr('income.amountUnknown')
+                            : money.format(available),
+                        highlighted: true,
+                        onTap: onBalanceTap,
+                      ),
+                      figure(tr('dashboard.paid'), money.format(source.paid)),
+                      figure(
+                        tr('dashboard.leftToPay'),
+                        money.format(source.remaining),
+                      ),
+                      figure(
+                        tr('dashboard.freeMoney'),
+                        free == null
+                            ? tr('feed.runsShort')
+                            : money.format(free),
+                        color: free == null || free < Decimal.zero
+                            ? sage.danger
+                            : sage.accentStrong,
+                      ),
+                    ],
+                  ),
+          ),
+          const SizedBox(width: SageSpace.md),
+          Flexible(flex: 2, child: side),
+        ],
+      ),
+    );
   }
+}
+
+/// Grows and shrinks with its child; at once under reduced motion, where a
+/// zero-length AnimatedSize re-lays itself out during layout and throws.
+class _Unfold extends StatelessWidget {
+  const _Unfold({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => MediaQuery.disableAnimationsOf(context)
+      ? child
+      : AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: child,
+        );
 }

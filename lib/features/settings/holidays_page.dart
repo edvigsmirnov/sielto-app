@@ -11,6 +11,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/periods/holiday_service.dart';
@@ -99,10 +100,9 @@ class HolidaysPage extends ConsumerWidget {
 
   Future<void> _pickCountry(BuildContext context, WidgetRef ref) async {
     final String? previous = ref.read(defaultCountryProvider);
-    final _CountryResult? picked = await showModalBottomSheet<_CountryResult>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
+    final _CountryResult? picked = await showAdaptiveSheet<_CountryResult>(
+      context,
+      dragHandle: true,
       builder: (BuildContext _) => const _CountryPicker(),
     );
     if (picked == null) return;
@@ -278,35 +278,33 @@ class _RegionTile extends ConsumerWidget {
       subtitle: Text(tr('holidays.region')),
       trailing: const Icon(Icons.chevron_right),
       onTap: () async {
-        final _CountryResult? picked =
-            await showModalBottomSheet<_CountryResult>(
-              context: context,
-              isScrollControlled: true,
-              showDragHandle: true,
-              builder: (BuildContext sheet) => SafeArea(
-                child: SizedBox(
-                  height: MediaQuery.sizeOf(sheet).height * 0.6,
-                  child: ListView(
-                    children: <Widget>[
-                      ListTile(
-                        title: Text(tr('holidays.wholeCountry')),
-                        selected: region == null,
-                        onTap: () =>
-                            Navigator.of(sheet).pop(const _CountryResult(null)),
-                      ),
-                      const Hairline(),
-                      for (final HolidayCountry r in regions)
-                        ListTile(
-                          title: Text(r.name),
-                          selected: r.code == region,
-                          onTap: () =>
-                              Navigator.of(sheet).pop(_CountryResult(r.code)),
-                        ),
-                    ],
+        final _CountryResult? picked = await showAdaptiveSheet<_CountryResult>(
+          context,
+          dragHandle: true,
+          builder: (BuildContext sheet) => SafeArea(
+            child: SizedBox(
+              height: MediaQuery.sizeOf(sheet).height * 0.6,
+              child: ListView(
+                children: <Widget>[
+                  ListTile(
+                    title: Text(tr('holidays.wholeCountry')),
+                    selected: region == null,
+                    onTap: () =>
+                        Navigator.of(sheet).pop(const _CountryResult(null)),
                   ),
-                ),
+                  const Hairline(),
+                  for (final HolidayCountry r in regions)
+                    ListTile(
+                      title: Text(r.name),
+                      selected: r.code == region,
+                      onTap: () =>
+                          Navigator.of(sheet).pop(_CountryResult(r.code)),
+                    ),
+                ],
               ),
-            );
+            ),
+          ),
+        );
         if (picked == null) return;
         await ref.read(holidayRegionProvider.notifier).set(picked.code);
       },

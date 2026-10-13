@@ -12,6 +12,7 @@ import 'package:sielto/core/ui/bulk_button.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/layout.dart';
+import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_form_page.dart';
@@ -133,8 +134,8 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
   }
 
   Future<void> _bulkActions(List<Category> chosen) async {
-    final bool? move = await showModalBottomSheet<bool>(
-      context: context,
+    final bool? move = await showAdaptiveSheet<bool>(
+      context,
       builder: (BuildContext sheet) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,

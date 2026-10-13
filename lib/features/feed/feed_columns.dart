@@ -70,6 +70,32 @@ class FeedColumnLayout {
       if (!hidden.contains(c)) c,
   ];
 
+  /// The title keeps at least this much when columns are dropped.
+  static const double titleMin = 160;
+
+  /// What is left out first when the table is too narrow; never the amount.
+  static const List<FeedColumn> _dropOrder = <FeedColumn>[
+    FeedColumn.note,
+    FeedColumn.category,
+    FeedColumn.kind,
+    FeedColumn.left,
+    FeedColumn.date,
+  ];
+
+  /// The columns shown in [width], dropping in [_dropOrder] what does not
+  /// fit beside the title.
+  List<FeedColumn> shownIn(double width) {
+    final List<FeedColumn> fit = shown;
+    double need() =>
+        titleMin +
+        fit.fold<double>(0, (double sum, FeedColumn c) => sum + widthOf(c));
+    for (final FeedColumn c in _dropOrder) {
+      if (need() <= width) break;
+      fit.remove(c);
+    }
+    return fit;
+  }
+
   FeedColumnLayout withWidth(FeedColumn c, double width) => FeedColumnLayout(
     widths: <FeedColumn, double>{
       ...widths,

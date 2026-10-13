@@ -402,6 +402,8 @@
     "deleted": "Deleted \"{title}\"",
     "fieldIcon": "Icon",
     "iconHint": "Any emoji",
+    "colorN": "Colour {}",
+    "customIcon": "Your own emoji",
     "pick": "Choose a category",
     "search": "Search categories",
     "titleTaken": "A category with this name already exists.",

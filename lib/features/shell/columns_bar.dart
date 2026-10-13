@@ -46,7 +46,8 @@ class ColumnsBar extends ConsumerWidget {
     return Material(
       color: sage.canvas,
       child: Container(
-        height: height,
+        // Grows with large text.
+        constraints: const BoxConstraints(minHeight: height),
         padding: const EdgeInsets.symmetric(horizontal: SageSpace.md),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: sage.hairline)),

@@ -252,7 +252,10 @@ class _SpaceRow extends StatelessWidget {
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 4),
-        child: Row(
+        child: Wrap(
+          spacing: SageSpace.sm,
+          runSpacing: SageSpace.xs,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: <Widget>[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -265,7 +268,6 @@ class _SpaceRow extends StatelessWidget {
                 style: text.labelSmall?.copyWith(color: sage.accentStrong),
               ),
             ),
-            const SizedBox(width: SageSpace.sm),
             // Cloud or device.
             Icon(
               space.storageMode == StorageMode.cloud
