@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Visible shell tab. Kept-alive tabs listen to it to close what they had open.
 class ShellTabController extends Notifier<int> {
   static const int dashboard = 0;
+  static const int calendar = 2;
 
   @override
   int build() => dashboard;

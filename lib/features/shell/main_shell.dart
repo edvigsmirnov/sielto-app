@@ -348,6 +348,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       // Keeps a focus inside the shell, so its shortcuts hear the keys.
       child: Focus(
         autofocus: true,
+        skipTraversal: true,
         child: PopScope(
           canPop: index == 0 && !selecting,
           onPopInvokedWithResult: (bool didPop, Object? _) {

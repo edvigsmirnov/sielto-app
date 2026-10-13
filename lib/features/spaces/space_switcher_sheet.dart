@@ -150,14 +150,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
               onTap: _createSpace,
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (BuildContext _) => const JoinSpacePage(),
-                  ),
-                );
-              },
+              onPressed: () => _push(const JoinSpacePage()),
               child: Text(tr('members.joinWithCode')),
             ),
             // Wide, the profile button in the top bar opens them.
@@ -206,21 +199,16 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
 
   void _openSettings(Space space) {
     HapticFeedback.lightImpact();
-    Navigator.of(context).pop();
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext _) => SpaceSettingsPage(space: space),
-      ),
-    );
+    _push(SpaceSettingsPage(space: space));
   }
 
-  void _createSpace() {
-    Navigator.of(context).pop();
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext _) => const SpaceFormPage(),
-      ),
-    );
+  void _createSpace() => _push(const SpaceFormPage());
+
+  // The sheet closes first; the page stays below, for the back button.
+  void _push(Widget page) {
+    final NavigatorState navigator = Navigator.of(context);
+    if (widget.heading) navigator.pop();
+    navigator.push(MaterialPageRoute<void>(builder: (BuildContext _) => page));
   }
 }
 

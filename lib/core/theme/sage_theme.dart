@@ -110,6 +110,8 @@ abstract final class SageTheme {
       scaffoldBackgroundColor: c.surface,
       canvasColor: c.canvas,
       dividerColor: c.hairline,
+      // FocusRing is the one focus indicator.
+      focusColor: Colors.transparent,
       textTheme: text,
       extensions: <ThemeExtension<dynamic>>[c],
       pageTransitionsTheme: const PageTransitionsTheme(
@@ -152,7 +154,7 @@ abstract final class SageTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(SageRadius.button),
           ),
-        ),
+        ).copyWith(overlayColor: _noFocusWash),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -163,13 +165,16 @@ abstract final class SageTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(SageRadius.button),
           ),
-        ),
+        ).copyWith(overlayColor: _noFocusWash),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: c.accentStrong,
           textStyle: text.labelLarge,
-        ),
+        ).copyWith(overlayColor: _noFocusWash),
+      ),
+      iconButtonTheme: const IconButtonThemeData(
+        style: ButtonStyle(overlayColor: _noFocusWash),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -299,3 +304,11 @@ class _Column extends StatelessWidget {
     );
   }
 }
+
+// FocusRing is the one focus indicator; hover and press keep their wash.
+const WidgetStateProperty<Color?> _noFocusWash =
+    WidgetStateProperty<Color?>.fromMap(<WidgetStatesConstraint, Color?>{
+      WidgetState.pressed: null,
+      WidgetState.hovered: null,
+      WidgetState.focused: Colors.transparent,
+    });

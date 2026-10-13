@@ -34,6 +34,7 @@ import 'package:sielto/features/feed/record_actions.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/shell/app_header.dart';
+import 'package:sielto/features/shell/shell_tab.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// Day, Week, Month and Year over one [selectedDateProvider].
@@ -550,8 +551,22 @@ class _Keys extends ConsumerStatefulWidget {
 }
 
 class _KeysState extends ConsumerState<_Keys> {
-  final FocusNode _focus = FocusNode(debugLabel: 'calendar');
+  final FocusNode _focus = FocusNode(
+    debugLabel: 'calendar',
+    skipTraversal: true,
+  );
   DateTime _lastWheel = DateTime(0);
+
+  @override
+  void initState() {
+    super.initState();
+    if (ref.read(shellTabProvider) == ShellTabController.calendar) _claim();
+  }
+
+  // Opening the Calendar from the sidebar leaves focus there.
+  void _claim() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted && widget.enabled) _focus.requestFocus();
+  });
 
   @override
   void dispose() {
@@ -582,6 +597,9 @@ class _KeysState extends ConsumerState<_Keys> {
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
+    ref.listen(shellTabProvider, (int? _, int tab) {
+      if (tab == ShellTabController.calendar) _claim();
+    });
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _move(-1),

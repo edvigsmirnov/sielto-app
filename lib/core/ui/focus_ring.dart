@@ -45,7 +45,13 @@ class _FocusRingState extends State<FocusRing> {
     }
     final FocusNode? node = FocusManager.instance.primaryFocus;
     final BuildContext? at = node?.context;
-    if (node == null || node is FocusScopeNode || at == null) return null;
+    // A node Tab skips is a key listener, not a control.
+    if (node == null ||
+        node is FocusScopeNode ||
+        node.skipTraversal ||
+        at == null) {
+      return null;
+    }
     if (at.findAncestorWidgetOfExactType<EditableText>() != null) return null;
     final Rect rect = node.rect;
     return rect.isFinite ? rect : null;
