@@ -281,11 +281,11 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
     return Scaffold(
       backgroundColor: context.sage.surface,
-      appBar: table
-          ? null
-          : AppHeader(
-              title: tr('nav.feed'),
-              trailing: <Widget>[
+      appBar: AppHeader(
+        title: tr('nav.feed'),
+        trailing: table
+            ? null
+            : <Widget>[
                 Padding(
                   padding: const EdgeInsets.only(right: SageSpace.sm),
                   child: Badge(
@@ -301,7 +301,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                   ),
                 ),
               ],
-              bottom: _FeedTotals(
+        bottom: table
+            ? null
+            : _FeedTotals(
                 source: source,
                 money: money,
                 onBalanceTap: space.budgetMode == BudgetMode.flow
@@ -313,7 +315,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                       )
                     : null,
                 hasOverdue: !ref.watch(overduePaymentsProvider).isEmpty,
-                oneRow: table,
                 selector:
                     source.byPeriod &&
                         !atBottom &&
@@ -321,7 +322,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                     ? selector
                     : null,
               ),
-            ),
+      ),
       bottomNavigationBar: source.byPeriod && atBottom
           ? SafeArea(top: false, child: selector)
           : null,
@@ -990,12 +991,8 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
     required this.money,
     required this.selector,
     required this.hasOverdue,
-    required this.oneRow,
     this.onBalanceTap,
   });
-
-  /// The four figures side by side, above the table.
-  final bool oneRow;
 
   final _FeedSource source;
   final MoneyFormat money;
@@ -1014,8 +1011,8 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => Size.fromHeight(
     (selector == null ? 8 : 48) +
-        _tileHeight * (oneRow ? 1 : 2) +
-        (oneRow ? 12 : 20) +
+        _tileHeight * 2 +
+        20 +
         (hasOverdue ? _chipHeight : 0),
   );
 
@@ -1108,13 +1105,11 @@ extension on _FeedTotals {
         ],
       ),
     );
-    return oneRow
-        ? <Widget>[row(tiles)]
-        : <Widget>[
-            row(tiles.sublist(0, 2)),
-            const SizedBox(height: SageSpace.sm),
-            row(tiles.sublist(2)),
-          ];
+    return <Widget>[
+      row(tiles.sublist(0, 2)),
+      const SizedBox(height: SageSpace.sm),
+      row(tiles.sublist(2)),
+    ];
   }
 }
 
@@ -1451,11 +1446,6 @@ class _TableToolbar extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Semantics(
-                header: true,
-                child: Text(tr('nav.feed'), style: text.titleMedium),
-              ),
-              const SizedBox(width: SageSpace.lg),
               Expanded(
                 child: !figures
                     ? const SizedBox.shrink()

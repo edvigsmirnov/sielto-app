@@ -319,10 +319,10 @@ class FeedTableHeader extends ConsumerWidget {
     );
     final TextStyle? style = Theme.of(context).textTheme.labelSmall
         ?.copyWith(color: sage.inkLabel, fontWeight: FontWeight.w700);
-    Text label(String key, {bool end = false}) => Text(
+    Text label(String key) => Text(
       tr('feed.table.$key').toUpperCase(),
       style: style,
-      textAlign: end ? TextAlign.end : TextAlign.start,
+      textAlign: TextAlign.center,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
@@ -346,16 +346,8 @@ class FeedTableHeader extends ConsumerWidget {
           children: <Widget>[
             Positioned.fill(
               child: Padding(
-                padding: EdgeInsets.only(
-                  left: c.dragsLeftEdge ? 12 : 0,
-                  right: c.dragsLeftEdge ? 0 : 12,
-                ),
-                child: Align(
-                  alignment: c.endAligned
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: label(c.name, end: c.endAligned),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Center(child: label(c.name)),
               ),
             ),
             Positioned(
@@ -406,6 +398,7 @@ class FeedTableHeader extends ConsumerWidget {
   ) async {
     final Object? picked = await showMenu<Object>(
       context: context,
+      popUpAnimationStyle: AnimationStyle.noAnimation,
       position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
       items: <PopupMenuEntry<Object>>[
         for (final FeedColumn c in FeedColumn.values)
@@ -455,12 +448,12 @@ class _TableCells extends StatelessWidget {
         ? null
         : shownNote(context, record.notes!.trim());
     final FeedColumnLayout layout = cells.layout;
-    Text line(String value, TextStyle style, {bool end = false}) => Text(
+    Text line(String value, TextStyle style) => Text(
       value,
       style: style,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      textAlign: end ? TextAlign.end : TextAlign.start,
+      textAlign: TextAlign.center,
     );
     Widget cell(FeedColumn c) {
       final Widget content = switch (c) {
@@ -480,23 +473,18 @@ class _TableCells extends StatelessWidget {
         FeedColumn.amount => line(
           amount,
           figures.copyWith(color: amountColor, fontWeight: FontWeight.w700),
-          end: true,
         ),
         FeedColumn.left => line(
           cells.leftAfter ?? '',
           figures.copyWith(
             color: cells.short ? sage.danger : sage.inkSecondary,
           ),
-          end: true,
         ),
       };
       return SizedBox(
         width: layout.widthOf(c),
         child: Padding(
-          padding: EdgeInsets.only(
-            left: c.dragsLeftEdge ? 12 : 0,
-            right: c.dragsLeftEdge ? 0 : 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: content,
         ),
       );
@@ -507,17 +495,24 @@ class _TableCells extends StatelessWidget {
       children: <Widget>[
         for (final FeedColumn c in shown)
           if (c == FeedColumn.date) cell(c),
-        if (isOverdue) ...<Widget>[
-          Icon(Icons.warning_amber_rounded, size: 16, color: sage.danger),
-          const SizedBox(width: SageSpace.xs),
-        ],
         Expanded(
-          child: line(
-            record.title,
-            text.bodyLarge!.copyWith(
-              fontWeight: FontWeight.w600,
-              color: record.isPaid ? sage.inkSecondary : sage.ink,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              if (isOverdue) ...<Widget>[
+                Icon(Icons.warning_amber_rounded, size: 16, color: sage.danger),
+                const SizedBox(width: SageSpace.xs),
+              ],
+              Flexible(
+                child: line(
+                  record.title,
+                  text.bodyLarge!.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: record.isPaid ? sage.inkSecondary : sage.ink,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         for (final FeedColumn c in shown)

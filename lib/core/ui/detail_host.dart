@@ -81,13 +81,15 @@ class _DetailHostState extends State<DetailHost> {
   );
 }
 
-/// A panel of [width] beside [child] that slides in while [open].
+/// A panel of [width] beside [child] that slides in while [open], on the
+/// right, or the left when [start].
 class SidePanel extends StatelessWidget {
   const SidePanel({
     required this.child,
     required this.panel,
     required this.open,
     required this.width,
+    this.start = false,
     super.key,
   });
 
@@ -95,33 +97,41 @@ class SidePanel extends StatelessWidget {
   final Widget panel;
   final bool open;
   final double width;
+  final bool start;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: <Widget>[
-      Expanded(child: child),
-      AnimatedContainer(
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        width: open ? width + 1 : 0,
-        decoration: BoxDecoration(
-          border: Border(
-            left: BorderSide(color: Theme.of(context).dividerColor),
-          ),
-        ),
-        child: ClipRect(
-          child: OverflowBox(
-            alignment: Alignment.centerLeft,
-            minWidth: width,
-            maxWidth: width,
-            child: ExcludeFocus(excluding: !open, child: panel),
-          ),
+  Widget build(BuildContext context) {
+    final Widget box = AnimatedContainer(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 150),
+      curve: Curves.easeOutCubic,
+      width: open ? width + 1 : 0,
+      decoration: BoxDecoration(
+        border: Border(
+          left: start
+              ? BorderSide.none
+              : BorderSide(color: Theme.of(context).dividerColor),
+          right: start
+              ? BorderSide(color: Theme.of(context).dividerColor)
+              : BorderSide.none,
         ),
       ),
-    ],
-  );
+      child: ClipRect(
+        child: OverflowBox(
+          alignment: start ? Alignment.centerRight : Alignment.centerLeft,
+          minWidth: width,
+          maxWidth: width,
+          child: ExcludeFocus(excluding: !open, child: panel),
+        ),
+      ),
+    );
+    return Row(
+      children: start
+          ? <Widget>[box, Expanded(child: child)]
+          : <Widget>[Expanded(child: child), box],
+    );
+  }
 }
 
 class _Scope extends InheritedNotifier<ValueNotifier<Object?>> {
@@ -171,6 +181,29 @@ class ColumnRoutes extends NavigatorObserver with ChangeNotifier {
     if (previousRoute != null && !previousRoute.isFirst) {
       _remember(previousRoute);
     }
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _other?._close(_titleOf(route)),
+    );
+  }
+
+  ColumnRoutes? _other;
+
+  /// Pairs two columns: a screen is open in one of them at a time, the
+  /// latest.
+  set other(ColumnRoutes value) {
+    _other = value;
+    value._other = this;
+  }
+
+  void _close(String? title) {
+    final List<Route<dynamic>> open = stack
+        .where((Route<dynamic> r) => r.isActive)
+        .toList();
+    final int at = open.indexWhere(
+      (Route<dynamic> r) => !r.isFirst && _titleOf(r) == title,
+    );
+    if (title == null || at <= 0) return;
+    navigator?.popUntil((Route<dynamic> r) => r == open[at - 1]);
   }
 
   @override

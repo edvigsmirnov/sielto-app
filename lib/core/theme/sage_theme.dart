@@ -117,8 +117,8 @@ abstract final class SageTheme {
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: <TargetPlatform, PageTransitionsBuilder>{
           TargetPlatform.android: _SnappyZoom(),
-          TargetPlatform.linux: _SnappyZoom(),
-          TargetPlatform.windows: _SnappyZoom(),
+          TargetPlatform.linux: _SnappyZoom(desktop: true),
+          TargetPlatform.windows: _SnappyZoom(desktop: true),
         },
       ),
       dividerTheme: DividerThemeData(color: c.hairline, thickness: 1, space: 1),
@@ -246,15 +246,20 @@ abstract final class SageTheme {
   }
 }
 
-/// The zoom transition, shortened to 260/220 ms. It animates snapshots.
+/// The zoom transition, shortened to 260/220 ms, 150/120 on desktop. It
+/// animates snapshots.
 class _SnappyZoom extends ZoomPageTransitionsBuilder {
-  const _SnappyZoom();
+  const _SnappyZoom({this.desktop = false});
+
+  final bool desktop;
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 260);
+  Duration get transitionDuration =>
+      Duration(milliseconds: desktop ? 150 : 260);
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 220);
+  Duration get reverseTransitionDuration =>
+      Duration(milliseconds: desktop ? 120 : 220);
 
   /// Wide, a pushed page is a centred column on the canvas.
   @override

@@ -167,6 +167,7 @@ Future<T?> _showMenu<T>(
   ];
   return showMenu<T>(
     context: context,
+    popUpAnimationStyle: AnimationStyle.noAnimation,
     position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
     color: sage.card,
     shape: RoundedRectangleBorder(

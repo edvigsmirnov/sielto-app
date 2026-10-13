@@ -52,16 +52,37 @@ class _MainShellState extends ConsumerState<MainShell> {
   /// One panel in both wide layouts, so what is open in it survives a switch.
   final GlobalKey _host = GlobalKey();
 
-  void _openInPanel(Widget page) => DetailHost.push(
-    _inside.currentContext ?? context,
-    MaterialPageRoute<void>(builder: (BuildContext _) => page),
+  void _openInPanel(Widget page) {
+    if (_closed(_calendarRoutes, page)) return;
+    DetailHost.push(_inside.currentContext ?? context, _route(page));
+  }
+
+  static MaterialPageRoute<void> _route(Widget page) => MaterialPageRoute<void>(
+    settings: RouteSettings(name: '${page.runtimeType}'),
+    builder: (BuildContext _) => page,
   );
+
+  /// A second click on the button that opened a page closes it.
+  bool _closed(ColumnRoutes routes, Widget page) {
+    final List<Route<dynamic>> open = routes.stack
+        .where((Route<dynamic> r) => r.isActive)
+        .toList();
+    if (open.length < 2 || open[1].settings.name != '${page.runtimeType}') {
+      return false;
+    }
+    routes.navigator?.popUntil((Route<dynamic> r) => r.isFirst);
+    return true;
+  }
 
   final ColumnRoutes _dashboardRoutes = ColumnRoutes();
 
   /// The Dashboard column's navigator: Analytics and Spaces open in it.
   final GlobalKey<NavigatorState> _dashboard = GlobalKey<NavigatorState>();
   final ColumnRoutes _calendarRoutes = ColumnRoutes();
+
+  /// One column: the Space list slides in on the left, under its button.
+  final GlobalKey _spacesInside = GlobalKey();
+  final ColumnRoutes _spacesRoutes = ColumnRoutes();
 
   /// Dashboard and Calendar keep navigators of their own: Analytics opens in
   /// the first, entries in the second.
@@ -114,13 +135,12 @@ class _MainShellState extends ConsumerState<MainShell> {
         ColumnsBar(
           onOpen: _openInPanel,
           onSpaces: () {
+            if (_closed(_dashboardRoutes, const SpacesPage())) return;
             if (ref.read(columnsLayoutProvider).dashboardCollapsed) {
               ref.read(columnsLayoutProvider.notifier).toggleDashboard();
             }
             _dashboard.currentState?.pushAndRemoveUntil(
-              MaterialPageRoute<void>(
-                builder: (BuildContext _) => const SpacesPage(),
-              ),
+              _route(const SpacesPage()),
               (Route<dynamic> r) => r.isFirst,
             );
           },
@@ -236,8 +256,6 @@ class _MainShellState extends ConsumerState<MainShell> {
     });
   }
 
-  static const int _calendarTab = 2;
-
   /// Back leaves Calendar zoom first, then returns to the Dashboard.
   void _back() {
     final FeedSelectionController selection = ref.read(
@@ -247,7 +265,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       selection.clear();
       return;
     }
-    if (_index == _calendarTab &&
+    if (_index == ShellTabController.calendar &&
         ref.read(calendarViewProvider.notifier).back()) {
       return;
     }
@@ -257,7 +275,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   void _showDay(CalendarDate day) {
     ref.read(selectedDateProvider.notifier).select(day);
     ref.read(calendarViewProvider.notifier).select(CalendarView.day);
-    _goTo(_calendarTab);
+    _goTo(ShellTabController.calendar);
   }
 
   @override
@@ -321,6 +339,12 @@ class _MainShellState extends ConsumerState<MainShell> {
         ? ShellMode.columns
         : ShellMode.sidebar;
     _keepPage(index);
+    _calendarRoutes.other = mode == ShellMode.columns
+        ? _dashboardRoutes
+        : _spacesRoutes;
+    final String here = tr(
+      'nav.${const <String>['dashboard', 'feed', 'calendar'][index]}',
+    );
     final Widget pages = PageView(
       key: _pages,
       controller: _controller,
@@ -364,7 +388,13 @@ class _MainShellState extends ConsumerState<MainShell> {
                   children: <Widget>[
                     ColumnsBar(
                       onOpen: _openInPanel,
-                      onSpaces: () => _openInPanel(const SpacesPage()),
+                      onSpaces: () {
+                        if (_closed(_spacesRoutes, const SpacesPage())) return;
+                        DetailHost.push(
+                          _spacesInside.currentContext ?? context,
+                          _route(const SpacesPage()),
+                        );
+                      },
                       toggles: false,
                     ),
                     Expanded(
@@ -377,26 +407,46 @@ class _MainShellState extends ConsumerState<MainShell> {
                           ),
                           Expanded(
                             child: DetailHost(
-                              key: _host,
-                              root: const CalendarPage(),
-                              observers: <NavigatorObserver>[_calendarRoutes],
+                              root: const SizedBox.shrink(),
+                              observers: <NavigatorObserver>[_spacesRoutes],
                               builder:
                                   (
                                     BuildContext _,
                                     Widget navigator, {
                                     required bool open,
                                   }) => SidePanel(
-                                    key: _inside,
+                                    key: _spacesInside,
+                                    start: true,
                                     panel: ColumnHome(
-                                      label: tr(
-                                        'nav.${const <String>['dashboard', 'feed', 'calendar'][index]}',
-                                      ),
-                                      routes: _calendarRoutes,
+                                      label: here,
+                                      routes: _spacesRoutes,
                                       child: navigator,
                                     ),
                                     open: open,
                                     width: 440,
-                                    child: pages,
+                                    child: DetailHost(
+                                      key: _host,
+                                      root: const CalendarPage(),
+                                      observers: <NavigatorObserver>[
+                                        _calendarRoutes,
+                                      ],
+                                      builder:
+                                          (
+                                            BuildContext _,
+                                            Widget navigator, {
+                                            required bool open,
+                                          }) => SidePanel(
+                                            key: _inside,
+                                            panel: ColumnHome(
+                                              label: here,
+                                              routes: _calendarRoutes,
+                                              child: navigator,
+                                            ),
+                                            open: open,
+                                            width: 440,
+                                            child: pages,
+                                          ),
+                                    ),
                                   ),
                             ),
                           ),
