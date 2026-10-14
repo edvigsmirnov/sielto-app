@@ -8,6 +8,7 @@ import 'package:sielto/core/format/currencies.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/core/ui/choice_field.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -230,17 +231,13 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
       const SizedBox(height: SageSpace.lg),
       LabelledField(
         label: tr('space.fieldCurrency'),
-        child: DropdownButtonFormField<String>(
-          initialValue: currency,
-          items: <DropdownMenuItem<String>>[
-            for (final String code in Currencies.offered(currency))
-              DropdownMenuItem<String>(
-                value: code,
-                child: Text(Currencies.label(code, locale)),
-              ),
-          ],
-          onChanged: (String? code) =>
-              setState(() => _currency = code ?? currency),
+        child: ChoiceField<String>(
+          value: currency,
+          options: Currencies.offered(currency),
+          labelOf: (String code) =>
+              Currencies.label(code, context.locale.toString()),
+          title: tr('space.fieldCurrency'),
+          onChanged: (String code) => setState(() => _currency = code),
         ),
       ),
     ],

@@ -207,7 +207,8 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
 
             const SizedBox(height: SageSpace.lg),
             FieldLabel(tr('category.fieldColor')),
-            Wrap(
+            _EvenWrap(
+              runSpacing: 0,
               children: <Widget>[
                 for (final (int i, String hex) in categoryPalette.indexed)
                   _Swatch(
@@ -221,8 +222,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
 
             const SizedBox(height: SageSpace.lg),
             FieldLabel(tr('category.fieldIcon')),
-            Wrap(
-              spacing: SageSpace.xs,
+            _EvenWrap(
               runSpacing: SageSpace.xs,
               children: <Widget>[
                 for (final String glyph in categoryIconChoices)
@@ -399,5 +399,27 @@ class _CustomIconDialogState extends State<_CustomIconDialog> {
         child: Text(tr('common.save')),
       ),
     ],
+  );
+}
+
+/// 48 dp items spread so the rows run from edge to edge.
+class _EvenWrap extends StatelessWidget {
+  const _EvenWrap({required this.children, required this.runSpacing});
+
+  final List<Widget> children;
+  final double runSpacing;
+
+  static const double _gap = SageSpace.xs;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (BuildContext context, BoxConstraints box) {
+      const double size = kMinInteractiveDimension;
+      final int perRow = ((box.maxWidth + _gap) / (size + _gap)).floor();
+      final double spacing = perRow < 2
+          ? _gap
+          : (box.maxWidth - perRow * size) / (perRow - 1);
+      return Wrap(spacing: spacing, runSpacing: runSpacing, children: children);
+    },
   );
 }

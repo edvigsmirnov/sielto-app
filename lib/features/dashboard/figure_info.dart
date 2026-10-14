@@ -174,7 +174,7 @@ class _InfoBody extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text(info.title, style: text.titleMedium),
+        Text(info.title, textAlign: TextAlign.center, style: text.titleMedium),
         const SizedBox(height: SageSpace.sm),
         Text(info.what, style: text.bodyMedium),
         if (info.sum.isNotEmpty) ...<Widget>[

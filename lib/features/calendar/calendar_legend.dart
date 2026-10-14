@@ -25,6 +25,7 @@ Future<void> showCalendarLegend(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
+    useSafeArea: true,
     builder: (BuildContext sheet) => SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
@@ -49,9 +50,13 @@ Widget _legend(
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: <Widget>[
-      Text(
-        tr('calendar.legend.title'),
-        style: Theme.of(sheet).textTheme.titleSmall,
+      SizedBox(
+        width: double.infinity,
+        child: Text(
+          tr('calendar.legend.title'),
+          textAlign: TextAlign.center,
+          style: Theme.of(sheet).textTheme.titleMedium,
+        ),
       ),
       const SizedBox(height: SageSpace.xs),
       Text(

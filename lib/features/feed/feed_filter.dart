@@ -107,6 +107,7 @@ final NotifierProvider<FeedFilterController, FeedFilter> feedFilterProvider =
 Future<void> showFeedFilter(BuildContext context) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
+  useSafeArea: true,
   showDragHandle: true,
   builder: (BuildContext _) => const _FilterSheet(),
 );

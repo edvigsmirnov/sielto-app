@@ -29,6 +29,12 @@ abstract final class Currencies {
     'ILS',
   ];
 
+  /// Symbols intl lacks or spells out.
+  static const Map<String, String> symbols = <String, String>{
+    'GEL': '₾',
+    'AMD': '֏',
+  };
+
   /// EUR when intl has no data for the locale.
   static String forLocale(String locale) {
     try {
@@ -43,6 +49,7 @@ abstract final class Currencies {
 
   /// "EUR €".
   static String label(String code, String locale) {
+    if (symbols[code] case final String symbol) return '$code $symbol';
     try {
       final String symbol = NumberFormat.simpleCurrency(
         locale: locale,

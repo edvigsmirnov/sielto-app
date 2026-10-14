@@ -241,26 +241,29 @@ class SwipeBack extends StatelessWidget {
           Expanded(child: child),
           SafeArea(
             top: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: SageSpace.sm),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Icon(
-                    Icons.swipe_right_outlined,
-                    size: 16,
-                    color: sage.inkLabel,
-                  ),
-                  const SizedBox(width: SageSpace.xs),
-                  Flexible(
-                    child: Text(
-                      tr('analytics.swipeBack'),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: sage.inkLabel),
+            // Screen readers have their own back gesture.
+            child: ExcludeSemantics(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: SageSpace.sm),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Icon(
+                      Icons.swipe_right_outlined,
+                      size: 16,
+                      color: sage.inkLabel,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: SageSpace.xs),
+                    Flexible(
+                      child: Text(
+                        tr('analytics.swipeBack'),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: sage.inkLabel),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

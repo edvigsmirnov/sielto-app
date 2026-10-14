@@ -37,9 +37,13 @@ class _LanguagePicker extends StatelessWidget {
                 SageSpace.gutter,
                 SageSpace.sm,
               ),
-              child: Text(
-                tr('settings.language'),
-                style: Theme.of(context).textTheme.titleSmall,
+              child: SizedBox(
+                width: double.infinity,
+                child: Text(
+                  tr('settings.language'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
             ),
             // Scrolls inside the sheet.

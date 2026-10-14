@@ -72,17 +72,7 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
               )
             : null,
         backgroundColor: context.sage.surface,
-        appBar: sageAppBar(
-          context,
-          title: Text(tr('category.title')),
-          actions: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: tr('category.add'),
-              onPressed: () => openCategoryForm(context),
-            ),
-          ],
-        ),
+        appBar: sageAppBar(context, title: Text(tr('category.title'))),
         body: Column(
           children: <Widget>[
             Expanded(
@@ -117,16 +107,18 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
                           _reorder(ref, categories, oldIndex, newIndex),
                     ),
             ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(SageSpace.gutter),
-                child: DashedButton(
-                  label: '+ ${tr('category.add')}',
-                  onTap: () => openCategoryForm(context),
+            // The actions button takes its place while selecting.
+            if (!selecting)
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(SageSpace.gutter),
+                  child: DashedButton(
+                    label: '+ ${tr('category.add')}',
+                    onTap: () => openCategoryForm(context),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -146,7 +138,8 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
                   'feed.bulk.selected',
                   namedArgs: <String, String>{'count': '${chosen.length}'},
                 ),
-                style: Theme.of(sheet).textTheme.titleSmall,
+                textAlign: TextAlign.center,
+                style: Theme.of(sheet).textTheme.titleMedium,
               ),
             ),
             ListTile(
@@ -350,7 +343,15 @@ class _CategoryTile extends StatelessWidget {
               child: Row(
                 children: <Widget>[
                   if (selecting)
-                    const SizedBox(width: 48, height: 48)
+                    SizedBox.square(
+                      dimension: kMinInteractiveDimension,
+                      child: Icon(
+                        isSelected
+                            ? Icons.check_box
+                            : Icons.check_box_outline_blank,
+                        color: isSelected ? sage.accentStrong : sage.inkLabel,
+                      ),
+                    )
                   else
                     DragGrip(index: index),
                   const SizedBox(width: SageSpace.xs),

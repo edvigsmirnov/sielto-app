@@ -10,6 +10,7 @@ import 'package:sielto/core/db/repositories/space_repository.dart';
 import 'package:sielto/core/format/currencies.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/choice_field.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -74,8 +75,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     super.dispose();
   }
 
-  int _currencyTries = 0;
-
   /// Amounts keep their numbers; only the sign changes.
   Future<void> _changeCurrency(Space space, String? code) async {
     if (code == null || code == space.currencyCode) return;
@@ -85,11 +84,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       body: tr('space.currencyChangeBody'),
       confirmLabel: tr('space.currencyChange'),
     );
-    if (!mounted) return;
-    if (!sure) {
-      setState(() => _currencyTries++);
-      return;
-    }
+    if (!mounted || !sure) return;
     await ref.read(repositoriesProvider).spaces.setCurrency(space.id, code);
   }
 
@@ -105,7 +100,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
         widget.space;
     final bool isCurrent = ref.watch(currentSpaceProvider)?.id == space.id;
     final SpaceRepository repo = ref.watch(repositoriesProvider).spaces;
-    final String locale = context.locale.toString();
     final bool owner = space.ownerId == ref.watch(userIdProvider);
     final bool shared =
         space.storageMode == StorageMode.cloud && !space.isArchived;
@@ -172,20 +166,13 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
 
           _Setting(
             label: tr('space.fieldCurrency'),
-            child: DropdownButtonFormField<String>(
-              // A cancelled change shows the old currency again.
-              key: ValueKey<String>('${space.currencyCode}:$_currencyTries'),
-              initialValue: space.currencyCode,
-              items: <DropdownMenuItem<String>>[
-                for (final String code in Currencies.offered(
-                  space.currencyCode,
-                ))
-                  DropdownMenuItem<String>(
-                    value: code,
-                    child: Text(Currencies.label(code, locale)),
-                  ),
-              ],
-              onChanged: (String? code) => _changeCurrency(space, code),
+            child: ChoiceField<String>(
+              value: space.currencyCode,
+              options: Currencies.offered(space.currencyCode),
+              labelOf: (String code) =>
+                  Currencies.label(code, context.locale.toString()),
+              title: tr('space.fieldCurrency'),
+              onChanged: (String code) => _changeCurrency(space, code),
             ),
           ),
           const SizedBox(height: SageSpace.lg),
@@ -243,9 +230,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           ],
           if (shared) ...<Widget>[
             ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: SageSpace.sm,
-              ),
+              contentPadding: EdgeInsets.zero,
               title: Text(tr('members.title')),
               trailing: const Icon(Icons.chevron_right, size: 18),
               onTap: () => Navigator.of(context).push(
@@ -256,9 +241,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             ),
             const _Rule(),
             SwitchListTile.adaptive(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: SageSpace.sm,
-              ),
+              contentPadding: EdgeInsets.zero,
               title: Text(tr('activity.toggle')),
               subtitle: Text(tr('activity.toggleHint')),
               value: !ref.watch(quietSpacesProvider).contains(space.id),
@@ -272,9 +255,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           // Categories and income rules are for the open Space only.
           if (isCurrent) ...<Widget>[
             ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: SageSpace.sm,
-              ),
+              contentPadding: EdgeInsets.zero,
               title: Text(tr('category.title')),
               trailing: const Icon(Icons.chevron_right, size: 18),
               onTap: () => Navigator.of(context).push(
@@ -285,9 +266,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             ),
             const _Rule(),
             ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: SageSpace.sm,
-              ),
+              contentPadding: EdgeInsets.zero,
               title: Text(tr('income.regularTitle')),
               trailing: const Icon(Icons.chevron_right, size: 18),
               onTap: () => Navigator.of(context).push(
@@ -571,7 +550,7 @@ class _LimitStepper extends StatelessWidget {
           ],
         ),
         SwitchListTile.adaptive(
-          contentPadding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
+          contentPadding: EdgeInsets.zero,
           title: Text(tr('members.noLimit')),
           value: unlimited,
           onChanged: enabled ? (bool on) => onChanged(on ? null : value) : null,
@@ -590,24 +569,8 @@ class _Setting extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: <Widget>[
-      Padding(
-        padding: const EdgeInsets.fromLTRB(
-          SageSpace.sm,
-          0,
-          SageSpace.sm,
-          SageSpace.sm,
-        ),
-        child: Semantics(
-          header: true,
-          child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
-        ),
-      ),
-      Semantics(label: label, child: child),
-    ],
-  );
+  Widget build(BuildContext context) =>
+      LabelledField(label: label, child: child);
 }
 
 /// Small print under a setting, in line with the row labels.
@@ -617,10 +580,8 @@ class _Hint extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
-    child: Text(text, style: Theme.of(context).textTheme.bodySmall),
-  );
+  Widget build(BuildContext context) =>
+      Text(text, style: Theme.of(context).textTheme.bodySmall);
 }
 
 /// A separator as wide as the rows' hover.
@@ -628,10 +589,7 @@ class _Rule extends StatelessWidget {
   const _Rule();
 
   @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(horizontal: SageSpace.sm),
-    child: Hairline(),
-  );
+  Widget build(BuildContext context) => const Hairline();
 }
 
 class _FactRow extends StatelessWidget {
@@ -642,10 +600,7 @@ class _FactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(
-      horizontal: SageSpace.sm,
-      vertical: SageSpace.md,
-    ),
+    padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
     child: Row(
       children: <Widget>[
         Expanded(
@@ -700,25 +655,12 @@ class _DangerButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(SageRadius.button),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: sage.dangerTint,
-          borderRadius: BorderRadius.circular(SageRadius.button),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodyLarge
-              ?.copyWith(color: sage.danger),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => FilledButton(
+    onPressed: onTap,
+    style: FilledButton.styleFrom(
+      backgroundColor: context.sage.dangerTint,
+      foregroundColor: context.sage.danger,
+    ),
+    child: Text(label),
+  );
 }

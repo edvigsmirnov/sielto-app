@@ -13,7 +13,12 @@ Future<T?> showPopover<T>(
   final Offset? click = lastPointer;
   final Rect at =
       (box.size.height > 120 || box.size.width > width) && click != null
-      ? Rect.fromCenter(center: click, width: 1, height: 1)
+      // Clicked controls are at least this tall; the card clears them.
+      ? Rect.fromCenter(
+          center: click,
+          width: 1,
+          height: kMinInteractiveDimension,
+        )
       : box.localToGlobal(Offset.zero) & box.size;
   return showGeneralDialog<T>(
     context: anchor,
@@ -95,6 +100,7 @@ Future<T?> showAdaptiveSheet<T>(
     : showModalBottomSheet<T>(
         context: context,
         isScrollControlled: true,
+        useSafeArea: true,
         showDragHandle: dragHandle,
         builder: builder,
       );

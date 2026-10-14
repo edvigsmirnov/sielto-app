@@ -51,6 +51,7 @@ Future<T?> showActionSheet<T>(
         context: context,
         showDragHandle: true,
         isScrollControlled: true,
+        useSafeArea: true,
         backgroundColor: context.sage.card,
         builder: (BuildContext sheet) {
           final List<List<SheetAction<T>>> shown = <List<SheetAction<T>>>[

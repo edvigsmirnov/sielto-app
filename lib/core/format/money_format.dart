@@ -1,23 +1,32 @@
 import 'package:decimal/decimal.dart';
 import 'package:intl/intl.dart';
+import 'package:sielto/core/format/currencies.dart';
 
 /// The only [Decimal]-to-double conversion: rounded first, display only.
 class MoneyFormat {
   MoneyFormat({required this.locale, required this.currencyCode})
-    : _format = NumberFormat.simpleCurrency(
-        locale: locale,
-        name: currencyCode,
-        decimalDigits: _decimalDigits,
-      ),
-      _whole = NumberFormat.simpleCurrency(
-        locale: locale,
-        name: currencyCode,
-        decimalDigits: 0,
-      ),
+    : _format = _currency(locale, currencyCode, _decimalDigits),
+      _whole = _currency(locale, currencyCode, 0),
       _bare = NumberFormat.decimalPattern(locale)..maximumFractionDigits = 0,
       _compact = NumberFormat.compact(locale: locale);
 
   static const int _decimalDigits = 2;
+
+  static NumberFormat _currency(String locale, String code, int digits) {
+    final String? symbol = Currencies.symbols[code];
+    return symbol == null
+        ? NumberFormat.simpleCurrency(
+            locale: locale,
+            name: code,
+            decimalDigits: digits,
+          )
+        : NumberFormat.currency(
+            locale: locale,
+            name: code,
+            symbol: symbol,
+            decimalDigits: digits,
+          );
+  }
 
   final String locale;
   final String currencyCode;

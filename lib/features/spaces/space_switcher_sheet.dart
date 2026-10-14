@@ -23,6 +23,7 @@ Future<void> showSpaceSwitcher(BuildContext context) =>
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       showDragHandle: true,
       builder: (BuildContext _) => const _SpaceSwitcher(),
     );
@@ -87,9 +88,13 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             if (widget.heading) ...<Widget>[
-              Text(
-                tr('settings.spaces'),
-                style: Theme.of(context).textTheme.titleMedium,
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  tr('settings.spaces'),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               const SizedBox(height: SageSpace.md),
             ],
@@ -128,9 +133,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
                 children: <Widget>[
                   for (final Space space in archived)
                     ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: SageSpace.sm,
-                      ),
+                      contentPadding: EdgeInsets.zero,
                       leading: SpaceAvatar(
                         spaceId: space.id,
                         title: space.title,
@@ -149,9 +152,11 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
               label: '+ ${tr('space.createTitle')}',
               onTap: _createSpace,
             ),
-            TextButton(
-              onPressed: () => _push(const JoinSpacePage()),
-              child: Text(tr('members.joinWithCode')),
+            Center(
+              child: TextButton(
+                onPressed: () => _push(const JoinSpacePage()),
+                child: Text(tr('members.joinWithCode')),
+              ),
             ),
             // Wide, the profile button in the top bar opens them.
             if (!isWide(context)) ...<Widget>[
@@ -159,9 +164,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
               const Hairline(),
               // General settings.
               ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: SageSpace.sm,
-                ),
+                contentPadding: EdgeInsets.zero,
                 title: Text(tr('settings.accountSettings')),
                 trailing: const Icon(Icons.chevron_right, size: 20),
                 onTap: () {
@@ -236,7 +239,7 @@ class _SpaceRow extends StatelessWidget {
     final TextTheme text = Theme.of(context).textTheme;
 
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
+      contentPadding: EdgeInsets.zero,
       onTap: onOpen,
       leading: SpaceAvatar(
         spaceId: space.id,
