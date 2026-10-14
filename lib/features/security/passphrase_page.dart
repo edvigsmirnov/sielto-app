@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 
 /// Linux without a keyring: the database password, set once and asked at
@@ -48,6 +50,12 @@ class _PassphrasePageState extends State<PassphrasePage> {
     super.dispose();
   }
 
+  Future<void> _continue({required bool newPassword}) => _run(
+    () => _forgot
+        ? widget.onRecover(_recoveryKey.text, _next.first.text)
+        : widget.onSubmit(newPassword ? _next.first.text : _password.text),
+  );
+
   Future<void> _run(Future<bool> Function() action) async {
     setState(() {
       _busy = true;
@@ -81,113 +89,123 @@ class _PassphrasePageState extends State<PassphrasePage> {
     return Scaffold(
       backgroundColor: context.sage.surface,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: ListenableBuilder(
-              listenable: _next.listenable,
-              builder: (BuildContext context, Widget? _) => ListView(
-                shrinkWrap: true,
-                padding: const EdgeInsets.all(SageSpace.xl),
-                children: <Widget>[
-                  Icon(
-                    Icons.lock_outline,
-                    size: 44,
-                    color: context.sage.inkSecondary,
+        // Wide, the same card as onboarding.
+        child: _Frame(
+          child: ListenableBuilder(
+            listenable: _next.listenable,
+            builder: (BuildContext context, Widget? _) => ListView(
+              shrinkWrap: true,
+              padding: isWide(context)
+                  ? EdgeInsets.zero
+                  : const EdgeInsets.all(SageSpace.xl),
+              children: <Widget>[
+                Icon(
+                  Icons.lock_outline,
+                  size: 44,
+                  color: context.sage.inkSecondary,
+                ),
+                const SizedBox(height: SageSpace.md),
+                Text(
+                  tr(
+                    widget.firstRun
+                        ? 'passphrase.setTitle'
+                        : _forgot
+                        ? 'passphrase.forgotTitle'
+                        : 'passphrase.enterTitle',
                   ),
-                  const SizedBox(height: SageSpace.md),
-                  Text(
-                    tr(
-                      widget.firstRun
-                          ? 'passphrase.setTitle'
-                          : _forgot
-                          ? 'passphrase.forgotTitle'
-                          : 'passphrase.enterTitle',
-                    ),
-                    style: text.titleLarge,
-                    textAlign: TextAlign.center,
+                  style: text.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: SageSpace.sm),
+                Text(
+                  tr(
+                    _forgot && !widget.canRecover
+                        ? 'passphrase.noRecovery'
+                        : 'passphrase.why',
                   ),
-                  const SizedBox(height: SageSpace.sm),
-                  Text(
-                    tr(
-                      _forgot && !widget.canRecover
-                          ? 'passphrase.noRecovery'
-                          : 'passphrase.why',
+                  style: text.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: SageSpace.lg),
+                if (_forgot && widget.canRecover) ...<Widget>[
+                  LabelledField(
+                    label: tr('recovery.title'),
+                    child: SecretField(
+                      controller: _recoveryKey,
+                      autofocus: true,
+                      errorText: _wrong ? tr('recovery.wrongKey') : null,
                     ),
-                    style: text.bodySmall,
-                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: SageSpace.lg),
-                  if (_forgot && widget.canRecover) ...<Widget>[
-                    LabelledField(
-                      label: tr('recovery.title'),
-                      child: SecretField(
-                        controller: _recoveryKey,
-                        autofocus: true,
-                        errorText: _wrong ? tr('recovery.wrongKey') : null,
-                      ),
-                    ),
-                    const SizedBox(height: SageSpace.lg),
-                  ],
-                  if (newPassword && (!_forgot || widget.canRecover))
-                    NewRecoveryKeyFields(draft: _next)
-                  else if (!_forgot)
-                    SecretField(
-                      controller: _password,
-                      autofocus: true,
-                      errorText: _wrong ? tr('passphrase.wrong') : null,
-                      onSubmitted: (_) =>
-                          _run(() => widget.onSubmit(_password.text)),
-                    ),
-                  const SizedBox(height: SageSpace.xl),
-                  if (!_forgot || widget.canRecover)
-                    FilledButton(
-                      onPressed: _busy || (newPassword && !_next.valid)
-                          ? null
-                          : () => _run(
-                              () => _forgot
-                                  ? widget.onRecover(
-                                      _recoveryKey.text,
-                                      _next.first.text,
-                                    )
-                                  : widget.onSubmit(
-                                      newPassword
-                                          ? _next.first.text
-                                          : _password.text,
-                                    ),
-                            ),
-                      child: Text(
-                        tr(_busy ? 'recovery.working' : 'common.continue'),
-                      ),
-                    ),
-                  if (!widget.firstRun) ...<Widget>[
-                    const SizedBox(height: SageSpace.sm),
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => setState(() {
-                              _forgot = !_forgot;
-                              _wrong = false;
-                            }),
-                      child: Text(
-                        tr(_forgot ? 'common.cancel' : 'passphrase.forgot'),
-                      ),
-                    ),
-                  ],
-                  if (_forgot)
-                    TextButton(
-                      onPressed: _busy ? null : _startOver,
-                      style: TextButton.styleFrom(
-                        foregroundColor: context.sage.danger,
-                      ),
-                      child: Text(tr('decryption.startOver')),
-                    ),
                 ],
-              ),
+                if (newPassword && (!_forgot || widget.canRecover))
+                  NewRecoveryKeyFields(
+                    draft: _next,
+                    onDone: _busy
+                        ? null
+                        : () => _continue(newPassword: newPassword),
+                  )
+                else if (!_forgot)
+                  SecretField(
+                    controller: _password,
+                    autofocus: true,
+                    errorText: _wrong ? tr('passphrase.wrong') : null,
+                    onSubmitted: (_) =>
+                        _run(() => widget.onSubmit(_password.text)),
+                  ),
+                const SizedBox(height: SageSpace.xl),
+                if (!_forgot || widget.canRecover)
+                  FilledButton(
+                    onPressed: _busy || (newPassword && !_next.valid)
+                        ? null
+                        : () => _continue(newPassword: newPassword),
+                    child: Text(
+                      tr(_busy ? 'recovery.working' : 'common.continue'),
+                    ),
+                  ),
+                if (!widget.firstRun) ...<Widget>[
+                  const SizedBox(height: SageSpace.sm),
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() {
+                            _forgot = !_forgot;
+                            _wrong = false;
+                          }),
+                    child: Text(
+                      tr(_forgot ? 'common.cancel' : 'passphrase.forgot'),
+                    ),
+                  ),
+                ],
+                if (_forgot)
+                  TextButton(
+                    onPressed: _busy ? null : _startOver,
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.sage.danger,
+                    ),
+                    child: Text(tr('decryption.startOver')),
+                  ),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class _Frame extends StatelessWidget {
+  const _Frame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => isWide(context)
+      ? SetupCard(child: child)
+      : Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: child,
+          ),
+        );
 }

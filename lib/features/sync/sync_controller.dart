@@ -896,3 +896,12 @@ retentionNoticeProvider =
     NotifierProvider<RetentionNoticeController, List<RetentionNotice>>(
       RetentionNoticeController.new,
     );
+
+/// True once this device has registered with the cloud.
+final StreamProvider<bool> usesCloudProvider = StreamProvider<bool>((Ref ref) {
+  final AppDatabase db = ref.watch(databaseProvider);
+  return (db.select(db.cloudIdentity)
+        ..where(($CloudIdentityTable t) => t.registered.equals(true)))
+      .watch()
+      .map((List<CloudIdentityData> rows) => rows.isNotEmpty);
+});

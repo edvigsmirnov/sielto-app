@@ -8,10 +8,12 @@ import 'package:sielto/core/l10n/app_locales.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
+import 'package:sielto/core/ui/choice_field.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_scatter.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/backup_page.dart';
+import 'package:sielto/features/backup/drive.dart';
 import 'package:sielto/features/devices/join_page.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/onboarding/welcome_page.dart';
@@ -152,6 +154,7 @@ class _ProfileStep extends ConsumerStatefulWidget {
 class _ProfileStepState extends ConsumerState<_ProfileStep> {
   final TextEditingController _name = TextEditingController();
   String? _currency;
+  bool _restoreOpen = false;
 
   @override
   void dispose() {
@@ -182,7 +185,13 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
       primaryLabel: tr('common.next'),
       onPrimary: () => _save(currency),
       secondaryLabel: tr('backup.restoreInstead'),
-      onSecondary: () => restoreBackup(context, ref),
+      // Wide, the sources slide open in the card; a second click closes them.
+      onSecondary: isWide(context) && driveSupported
+          ? () => setState(() => _restoreOpen = !_restoreOpen)
+          : () => restoreBackup(context, ref, inSetup: true),
+      footer: isWide(context) && driveSupported
+          ? RestoreOptions(open: _restoreOpen, inSetup: true)
+          : null,
       children: <Widget>[
         LabelledField(
           label: tr('onboarding.fieldName'),
@@ -195,17 +204,13 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
         const SizedBox(height: SageSpace.lg),
         LabelledField(
           label: tr('space.fieldCurrency'),
-          child: DropdownButtonFormField<String>(
-            initialValue: currency,
-            items: <DropdownMenuItem<String>>[
-              for (final String code in Currencies.offered(currency))
-                DropdownMenuItem<String>(
-                  value: code,
-                  child: Text(Currencies.label(code, locale)),
-                ),
-            ],
-            onChanged: (String? code) =>
-                setState(() => _currency = code ?? currency),
+          child: ChoiceField<String>(
+            value: currency,
+            options: Currencies.offered(currency),
+            labelOf: (String code) =>
+                Currencies.label(code, context.locale.toString()),
+            title: tr('space.fieldCurrency'),
+            onChanged: (String code) => setState(() => _currency = code),
           ),
         ),
         const SizedBox(height: SageSpace.xs),
@@ -237,7 +242,7 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
               ),
               child: Text(
                 AppLocales.resolve(context.locale).name,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(context).textTheme.bodyLarge,
               ),
             ),
           ),
@@ -294,7 +299,9 @@ class _RecoveryKeyStepState extends ConsumerState<_RecoveryKeyStep> {
       onPrimary: _busy || !_draft.valid ? null : _save,
       secondaryLabel: tr('recovery.later'),
       onSecondary: _busy ? null : widget.onContinue,
-      children: <Widget>[NewRecoveryKeyFields(draft: _draft)],
+      children: <Widget>[
+        NewRecoveryKeyFields(draft: _draft, onDone: _busy ? null : _save),
+      ],
     ),
   );
 }

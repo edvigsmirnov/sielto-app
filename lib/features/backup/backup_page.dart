@@ -17,9 +17,11 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/drive.dart';
+import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 
 const MethodChannel _window = MethodChannel('sielto/window');
@@ -63,12 +65,7 @@ class BackupPage extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _export(context, ref),
           ),
-          ListTile(
-            leading: const Icon(Icons.settings_backup_restore_outlined),
-            title: Text(tr('backup.restore')),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => restoreBackup(context, ref),
-          ),
+          const _RestoreRow(),
         ],
       ),
     );
@@ -166,13 +163,20 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
 }
 
 /// Picks a backup and walks through the restore.
-Future<void> restoreBackup(BuildContext context, WidgetRef ref) async {
-  final Uint8List? bytes = await pickBackup(context);
+/// [fromDrive] skips asking where the backup is.
+Future<void> restoreBackup(
+  BuildContext context,
+  WidgetRef ref, {
+  bool? fromDrive,
+  bool inSetup = false,
+}) async {
+  final Uint8List? bytes = await pickBackup(context, fromDrive: fromDrive);
   if (bytes == null || !context.mounted) return;
   final BackupService service = ref.read(repositoriesProvider).backup;
   await Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (BuildContext _) => RestorePage(
+        inSetup: inSetup,
         bytes: bytes,
         conflictsOf: service.conflicts,
         onRestore:
@@ -201,9 +205,9 @@ Future<void> restoreBackup(BuildContext context, WidgetRef ref) async {
 }
 
 /// A file, or a Drive snapshot where Drive is available. Null when cancelled.
-Future<Uint8List?> pickBackup(BuildContext context) async {
+Future<Uint8List?> pickBackup(BuildContext context, {bool? fromDrive}) async {
   if (!driveSupported) return pickBackupFile(context);
-  final bool? fromDrive = await showAdaptiveSheet<bool>(
+  fromDrive ??= await showAdaptiveSheet<bool>(
     context,
     builder: (BuildContext context) => SafeArea(
       child: Column(
@@ -266,8 +270,12 @@ class RestorePage extends StatefulWidget {
     required this.bytes,
     required this.conflictsOf,
     required this.onRestore,
+    this.inSetup = false,
     super.key,
   });
+
+  /// Opened from onboarding: wide, the setup card.
+  final bool inSetup;
 
   final Uint8List bytes;
   final Future<Set<String>> Function(BackupContents backup) conflictsOf;
@@ -336,89 +344,119 @@ class _RestorePageState extends State<RestorePage> {
   Widget build(BuildContext context) {
     final TextTheme text = Theme.of(context).textTheme;
     final BackupContents? backup = _backup;
+    final Widget action = backup == null
+        ? ListenableBuilder(
+            listenable: _key,
+            builder: (BuildContext context, Widget? _) => FilledButton(
+              onPressed: _busy || _key.text.isEmpty ? null : _open,
+              child: Text(tr(_busy ? 'recovery.working' : 'common.continue')),
+            ),
+          )
+        : FilledButton(
+            onPressed: _busy ? null : () => _restore(backup),
+            child: Text(
+              tr(_busy ? 'recovery.working' : 'backup.restoreAction'),
+            ),
+          );
+    final List<Widget> content = <Widget>[
+      if (backup == null) ...<Widget>[
+        Text(tr('backup.keyWhy'), style: text.bodyMedium),
+        const SizedBox(height: SageSpace.lg),
+        LabelledField(
+          label: tr('recovery.title'),
+          child: SecretField(
+            controller: _key,
+            autofocus: true,
+            errorText: _problem == null
+                ? null
+                : tr('backup.problem.${_problem!.name}'),
+            onSubmitted: (_) => _open(),
+          ),
+        ),
+      ] else ...<Widget>[
+        Text(
+          tr(
+            'backup.madeOn',
+            args: <String>[
+              DateFormat.yMMMd(context.locale.toString())
+                  .add_Hm()
+                  .format(backup.createdAt.toLocal()),
+            ],
+          ),
+          style: text.bodySmall,
+        ),
+        const SizedBox(height: SageSpace.md),
+        for (final ({String id, String title}) space in backup.spaces)
+          Padding(
+            padding: const EdgeInsets.only(bottom: SageSpace.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(space.title, style: text.titleSmall),
+                const SizedBox(height: 2),
+                Text(
+                  tr(
+                    _conflicts.contains(space.id)
+                        ? 'backup.alreadyHere'
+                        : 'backup.willAdd',
+                  ),
+                  style: text.bodySmall,
+                ),
+                if (_conflicts.contains(space.id)) ...<Widget>[
+                  const SizedBox(height: SageSpace.sm),
+                  SegmentedChoice<RestoreChoice>(
+                    values: RestoreChoice.values,
+                    selected: _choices[space.id]!,
+                    labelOf: (RestoreChoice c) => tr('backup.choice.${c.name}'),
+                    onChanged: (RestoreChoice c) =>
+                        setState(() => _choices[space.id] = c),
+                  ),
+                ],
+              ],
+            ),
+          ),
+      ],
+    ];
+    if (widget.inSetup && isWide(context)) {
+      return Scaffold(
+        backgroundColor: context.sage.surface,
+        body: SetupCard(
+          child: ListView(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  const BackButton(),
+                  Expanded(
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        tr('backup.restore'),
+                        textAlign: TextAlign.center,
+                        style: text.titleMedium,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: kMinInteractiveDimension),
+                ],
+              ),
+              const SizedBox(height: SageSpace.md),
+              ...content,
+              const SizedBox(height: SageSpace.lg),
+              action,
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('backup.restore'))),
-      bottomNavigationBar: FormActionBar(
-        child: backup == null
-            ? ListenableBuilder(
-                listenable: _key,
-                builder: (BuildContext context, Widget? _) => FilledButton(
-                  onPressed: _busy || _key.text.isEmpty ? null : _open,
-                  child: Text(
-                    tr(_busy ? 'recovery.working' : 'common.continue'),
-                  ),
-                ),
-              )
-            : FilledButton(
-                onPressed: _busy ? null : () => _restore(backup),
-                child: Text(
-                  tr(_busy ? 'recovery.working' : 'backup.restoreAction'),
-                ),
-              ),
-      ),
+      bottomNavigationBar: FormActionBar(child: action),
       body: ListView(
         padding: const EdgeInsets.all(SageSpace.formGutter),
-        children: <Widget>[
-          if (backup == null) ...<Widget>[
-            Text(tr('backup.keyWhy'), style: text.bodyMedium),
-            const SizedBox(height: SageSpace.lg),
-            LabelledField(
-              label: tr('recovery.title'),
-              child: SecretField(
-                controller: _key,
-                autofocus: true,
-                errorText: _problem == null
-                    ? null
-                    : tr('backup.problem.${_problem!.name}'),
-                onSubmitted: (_) => _open(),
-              ),
-            ),
-          ] else ...<Widget>[
-            Text(
-              tr(
-                'backup.madeOn',
-                args: <String>[
-                  DateFormat.yMMMd(context.locale.toString())
-                      .add_Hm()
-                      .format(backup.createdAt.toLocal()),
-                ],
-              ),
-              style: text.bodySmall,
-            ),
-            const SizedBox(height: SageSpace.md),
-            for (final ({String id, String title}) space in backup.spaces)
-              Padding(
-                padding: const EdgeInsets.only(bottom: SageSpace.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Text(space.title, style: text.titleSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      tr(
-                        _conflicts.contains(space.id)
-                            ? 'backup.alreadyHere'
-                            : 'backup.willAdd',
-                      ),
-                      style: text.bodySmall,
-                    ),
-                    if (_conflicts.contains(space.id)) ...<Widget>[
-                      const SizedBox(height: SageSpace.sm),
-                      SegmentedChoice<RestoreChoice>(
-                        values: RestoreChoice.values,
-                        selected: _choices[space.id]!,
-                        labelOf: (RestoreChoice c) =>
-                            tr('backup.choice.${c.name}'),
-                        onChanged: (RestoreChoice c) =>
-                            setState(() => _choices[space.id] = c),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-          ],
-        ],
+        children: content,
       ),
     );
   }
@@ -499,4 +537,124 @@ class _DriveSection extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Wide, the row opens the two sources under itself; a second click closes
+/// them.
+class _RestoreRow extends ConsumerStatefulWidget {
+  const _RestoreRow();
+
+  @override
+  ConsumerState<_RestoreRow> createState() => _RestoreRowState();
+}
+
+class _RestoreRowState extends ConsumerState<_RestoreRow> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool inline = isWide(context) && driveSupported;
+    return Column(
+      children: <Widget>[
+        ListTile(
+          leading: const Icon(Icons.settings_backup_restore_outlined),
+          title: Text(tr('backup.restore')),
+          trailing: Icon(
+            inline && _open ? Icons.expand_less : Icons.chevron_right,
+          ),
+          onTap: inline
+              ? () => setState(() => _open = !_open)
+              : () => restoreBackup(context, ref),
+        ),
+        if (inline) RestoreOptions(open: _open, indent: true),
+      ],
+    );
+  }
+}
+
+/// The two places a backup can come from, sliding open under their button.
+class RestoreOptions extends ConsumerWidget {
+  const RestoreOptions({
+    required this.open,
+    this.indent = false,
+    this.inSetup = false,
+    super.key,
+  });
+
+  final bool open;
+  final bool inSetup;
+
+  /// As list rows in line with a row's title; otherwise two buttons.
+  final bool indent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => AnimatedSize(
+    duration: MediaQuery.disableAnimationsOf(context)
+        ? const Duration(milliseconds: 1)
+        : const Duration(milliseconds: 150),
+    alignment: Alignment.topCenter,
+    child: !open
+        ? const SizedBox(width: double.infinity)
+        : indent
+        ? Padding(
+            padding: const EdgeInsets.only(left: SageSpace.xl),
+            child: Column(
+              children: <Widget>[
+                ListTile(
+                  leading: const Icon(Icons.folder_open_outlined),
+                  title: Text(tr('backup.fromFile')),
+                  onTap: () => restoreBackup(
+                    context,
+                    ref,
+                    fromDrive: false,
+                    inSetup: inSetup,
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.cloud_download_outlined),
+                  title: Text(tr('drive.fromDrive')),
+                  onTap: () => restoreBackup(
+                    context,
+                    ref,
+                    fromDrive: true,
+                    inSetup: inSetup,
+                  ),
+                ),
+              ],
+            ),
+          )
+        // Two equal buttons, under a centred one.
+        : Padding(
+            padding: const EdgeInsets.only(top: SageSpace.sm),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.folder_open_outlined),
+                    label: Text(tr('backup.fromFile')),
+                    onPressed: () => restoreBackup(
+                      context,
+                      ref,
+                      fromDrive: false,
+                      inSetup: inSetup,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: SageSpace.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.cloud_download_outlined),
+                    label: Text(tr('drive.fromDrive')),
+                    onPressed: () => restoreBackup(
+                      context,
+                      ref,
+                      fromDrive: true,
+                      inSetup: inSetup,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+  );
 }

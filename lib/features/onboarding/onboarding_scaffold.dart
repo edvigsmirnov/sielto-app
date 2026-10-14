@@ -14,6 +14,7 @@ class OnboardingScaffold extends StatelessWidget {
     this.children = const <Widget>[],
     this.secondaryLabel,
     this.onSecondary,
+    this.footer,
     super.key,
   });
 
@@ -33,6 +34,9 @@ class OnboardingScaffold extends StatelessWidget {
   /// "Skip", where the step is optional.
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
+
+  /// Under the secondary action, such as choices it opens.
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +84,7 @@ class OnboardingScaffold extends StatelessWidget {
               ),
             ),
           ),
+        ?footer,
       ],
     );
     if (!wide) {

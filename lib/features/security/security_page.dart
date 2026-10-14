@@ -231,18 +231,19 @@ class SecurityPage extends ConsumerWidget {
               title: Text(tr('security.blockScreenshots')),
               subtitle: Text(tr('security.noScreenshotBlockOnDesktop')),
             ),
-          ListTile(
-            leading: Icon(
-              Icons.delete_forever_outlined,
-              color: context.sage.danger,
+          if (ref.watch(usesCloudProvider).value ?? false)
+            ListTile(
+              leading: Icon(
+                Icons.delete_forever_outlined,
+                color: context.sage.danger,
+              ),
+              title: Text(
+                tr('security.deleteCloud'),
+                style: TextStyle(color: context.sage.danger),
+              ),
+              subtitle: Text(tr('security.deleteCloudHint')),
+              onTap: () => _deleteCloud(context, ref),
             ),
-            title: Text(
-              tr('security.deleteCloud'),
-              style: TextStyle(color: context.sage.danger),
-            ),
-            subtitle: Text(tr('security.deleteCloudHint')),
-            onTap: () => _deleteCloud(context, ref),
-          ),
         ],
       ),
     );

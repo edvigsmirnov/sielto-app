@@ -55,9 +55,12 @@ class NewRecoveryKey {
 }
 
 class NewRecoveryKeyFields extends StatelessWidget {
-  const NewRecoveryKeyFields({required this.draft, super.key});
+  const NewRecoveryKeyFields({required this.draft, this.onDone, super.key});
 
   final NewRecoveryKey draft;
+
+  /// Enter in the second field, once both match.
+  final VoidCallback? onDone;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -85,6 +88,9 @@ class NewRecoveryKeyFields extends StatelessWidget {
               errorText: repeat.isNotEmpty && repeat != first
                   ? tr('recovery.mismatch')
                   : null,
+              onSubmitted: (_) {
+                if (draft.valid) onDone?.call();
+              },
             ),
           ),
         ],
@@ -189,7 +195,7 @@ class _RecoveryKeyPageState extends ConsumerState<RecoveryKeyPage> {
               child: SecretField(controller: _next.first, autofocus: true),
             )
           else
-            NewRecoveryKeyFields(draft: _next),
+            NewRecoveryKeyFields(draft: _next, onDone: _busy ? null : _save),
           if (_changing) ...<Widget>[
             const SizedBox(height: SageSpace.md),
             Text(tr('recovery.oldBackups'), style: text.bodySmall),
