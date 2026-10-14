@@ -8,7 +8,7 @@ class DateLabels {
       _dayMonthYear = DateFormat.yMMMMd(locale),
       _weekday = DateFormat.EEEE(locale),
       _weekdayShort = DateFormat.E(locale),
-      _monthYear = DateFormat.yMMMM(locale),
+      _monthYear = DateFormat('LLLL y', locale),
       _monthShort = DateFormat.MMM(locale),
       _dayMonthShort = DateFormat.MMMd(locale),
       _dayOfMonth = DateFormat.d(locale),
@@ -43,7 +43,7 @@ class DateLabels {
 
   /// "August 2026".
   String monthYear(CalendarDate date) =>
-      _monthYear.format(date.toUtcMidnight());
+      _capital(_monthYear.format(date.toUtcMidnight()));
 
   /// "Aug".
   String monthShort(CalendarDate date) =>
@@ -58,8 +58,19 @@ class DateLabels {
       _dayOfMonth.format(date.toUtcMidnight());
 
   /// "Thursday, 24 July".
+  /// "Thu, August 14".
+  String weekdayShortAndDate(CalendarDate date, {CalendarDate? reference}) =>
+      _capital(
+        '${weekdayShort(date)}, ${dayMonth(date, reference: reference)}',
+      );
+
   String weekdayAndDate(CalendarDate date, {CalendarDate? reference}) =>
-      '${weekday(date)}, ${dayMonth(date, reference: reference)}';
+      _capital('${weekday(date)}, ${dayMonth(date, reference: reference)}');
+
+  /// Russian names months and weekdays in lower case; a label starts with a
+  /// capital.
+  static String _capital(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   /// "12 – 18 August" or "August 12 – 18", sharing the common parts. intl has
   /// no interval format.

@@ -40,6 +40,9 @@ class MonthView extends StatelessWidget {
 
   static const double _gap = 3;
 
+  /// Narrower cells show one figure a day: income less spending.
+  static const double _netBelow = 72;
+
   @override
   Widget build(BuildContext context) {
     final CalendarDate first = rangeOf(CalendarView.month, month).from;
@@ -53,6 +56,7 @@ class MonthView extends StatelessWidget {
           ],
           money: money,
           width: constraints.maxWidth / 7 - _gap - 2 * _cellInset,
+          net: constraints.maxWidth / 7 < _netBelow,
         );
         return Column(
           children: <Widget>[
@@ -130,6 +134,7 @@ class _Figures {
     required this.money,
     required this.size,
     required this.shortened,
+    required this.net,
   });
 
   factory _Figures.fit(
@@ -137,6 +142,7 @@ class _Figures {
     required List<DayTotals> days,
     required MoneyFormat money,
     required double width,
+    required bool net,
   }) {
     final TextPainter painter = TextPainter(
       textDirection: Directionality.of(context),
@@ -147,10 +153,16 @@ class _Figures {
       double widest = 0;
       final Set<Decimal> shortened = <Decimal>{};
       for (final DayTotals d in days) {
-        for (final Decimal a in <Decimal>[d.expenses, d.income]) {
+        for (final Decimal a
+            in net
+                ? <Decimal>[(d.income - d.expenses).abs()]
+                : <Decimal>[d.expenses, d.income]) {
           if (a <= Decimal.zero) continue;
           painter
-            ..text = TextSpan(text: money.bare(a), style: _style(_maxSize))
+            ..text = TextSpan(
+              text: '−${money.bare(a)}',
+              style: _style(_maxSize),
+            )
             ..layout();
           if (painter.width * _minSize / _maxSize > width) {
             shortened.add(a);
@@ -162,7 +174,7 @@ class _Figures {
       final double size = widest <= width
           ? _maxSize
           : (_maxSize * width / widest).clamp(_minSize, _maxSize);
-      return _Figures(money: money, size: size, shortened: shortened);
+      return _Figures(money: money, size: size, shortened: shortened, net: net);
     } finally {
       painter.dispose();
     }
@@ -172,9 +184,15 @@ class _Figures {
   final double size;
   final Set<Decimal> shortened;
 
-  String format(Decimal amount) => shortened.contains(amount)
-      ? money.bareCompact(amount)
-      : money.bare(amount);
+  /// One figure a day, the balance of the day.
+  final bool net;
+
+  /// Colour tells spending from income; [sign] does where colour is lost.
+  String format(Decimal amount, {bool? sign}) =>
+      (sign == null ? '' : (sign ? '+' : '−')) +
+      (shortened.contains(amount)
+          ? money.bareCompact(amount)
+          : money.bare(amount));
 
   static const double _maxSize = 10;
   static const double _minSize = 8;
@@ -241,6 +259,25 @@ class _DayCell extends StatelessWidget {
   final VoidCallback onTap;
   final ValueChanged<Offset> onHold;
 
+  Widget _netFigure(DayTotals day, SageColors sage, Color ink) {
+    final Decimal net = day.income - day.expenses;
+    final bool gain = net > Decimal.zero;
+    return _CellFigure(
+      text: figures.format(
+        net.abs(),
+        sign: isToday && net != Decimal.zero ? gain : null,
+      ),
+      size: figures.size,
+      color: isToday
+          ? ink
+          : net == Decimal.zero
+          ? sage.inkLabel
+          : gain
+          ? sage.accentStrong
+          : sage.danger,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
@@ -275,15 +312,23 @@ class _DayCell extends StatelessWidget {
                         : FontWeight.w600,
                   ),
                 ),
-                if (day != null && day.expenses > Decimal.zero)
+                if (figures.net && day != null && !day.isEmptyMoney)
+                  _netFigure(day, sage, ink)
+                else if (day != null && day.expenses > Decimal.zero)
                   _CellFigure(
-                    text: figures.format(day.expenses),
+                    text: figures.format(
+                      day.expenses,
+                      sign: isToday ? false : null,
+                    ),
                     size: figures.size,
                     color: isToday ? ink : sage.danger,
                   ),
-                if (day != null && day.income > Decimal.zero)
+                if (!figures.net && day != null && day.income > Decimal.zero)
                   _CellFigure(
-                    text: figures.format(day.income),
+                    text: figures.format(
+                      day.income,
+                      sign: isToday ? true : null,
+                    ),
                     size: figures.size,
                     color: isToday ? ink : sage.accentStrong,
                   ),
@@ -303,6 +348,10 @@ class _DayCell extends StatelessWidget {
       ),
     );
   }
+}
+
+extension on DayTotals {
+  bool get isEmptyMoney => expenses == Decimal.zero && income == Decimal.zero;
 }
 
 /// Small tabular figure.

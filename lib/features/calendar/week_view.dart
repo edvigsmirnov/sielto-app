@@ -133,8 +133,7 @@ class _WeekRow extends StatelessWidget {
                 spacing: SageSpace.sm,
                 children: <Widget>[
                   Text(
-                    '${dates.weekdayShort(date)}, '
-                    '${dates.dayMonth(date, reference: today)}',
+                    dates.weekdayShortAndDate(date, reference: today),
                     style: text.bodyLarge?.copyWith(
                       color: ink,
                       fontWeight: isSelected || isToday

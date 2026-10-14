@@ -81,6 +81,36 @@ void main() {
     }
   });
 
+  testWidgets('a narrow month shows one figure a day, the balance', (
+    WidgetTester tester,
+  ) async {
+    tester.view
+      ..physicalSize = const Size(400, 800)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pumpMonth(
+      tester,
+      totals: <CalendarDate, DayTotals>{
+        const CalendarDate(2026, 8, 12): DayTotals.empty
+            .add(
+              Decimal.parse('75'),
+              isIncome: false,
+              isPaid: false,
+              amountKnown: true,
+            )
+            .add(
+              Decimal.parse('110'),
+              isIncome: true,
+              isPaid: false,
+              amountKnown: true,
+            ),
+      },
+    );
+
+    expect(find.text('35'), findsOneWidget);
+    expect(find.text('75'), findsNothing);
+  });
+
   testWidgets('figures are unsigned and share one size', (
     WidgetTester tester,
   ) async {

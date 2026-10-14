@@ -8,7 +8,8 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// Twelve month cards: in, out and net. Tap opens the month.
+/// Twelve month cards: in, out, and net when there are both. Tap opens the
+/// month.
 class YearView extends StatelessWidget {
   const YearView({
     required this.year,
@@ -101,6 +102,8 @@ class _MonthCard extends StatelessWidget {
     final TextTheme text = Theme.of(context).textTheme;
     final DayTotals? sums = totals;
     final bool empty = sums == null || sums.isEmpty;
+    final bool both =
+        !empty && sums.income > Decimal.zero && sums.expenses > Decimal.zero;
 
     return Semantics(
       label: <String>[
@@ -152,20 +155,24 @@ class _MonthCard extends StatelessWidget {
                     _Line(
                       text: '↑${money.short(sums.income)}',
                       color: sage.accentStrong,
+                      emphasised: !both,
                     ),
                   if (sums.expenses > Decimal.zero)
                     _Line(
                       text: '↓${money.short(sums.expenses)}',
                       color: sage.danger,
+                      emphasised: !both,
                     ),
-                  const SizedBox(height: 2),
-                  _Line(
-                    text: money.shortSigned(sums.net),
-                    color: sums.net < Decimal.zero
-                        ? sage.danger
-                        : sage.accentStrong,
-                    emphasised: true,
-                  ),
+                  if (both) ...<Widget>[
+                    const SizedBox(height: 2),
+                    _Line(
+                      text: money.shortSigned(sums.net),
+                      color: sums.net < Decimal.zero
+                          ? sage.danger
+                          : sage.accentStrong,
+                      emphasised: true,
+                    ),
+                  ],
                 ],
               ],
             ),

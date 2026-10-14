@@ -28,6 +28,7 @@ import 'package:sielto/features/calendar/month_view.dart';
 import 'package:sielto/features/calendar/week_categories.dart';
 import 'package:sielto/features/calendar/week_view.dart';
 import 'package:sielto/features/calendar/year_view.dart';
+import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/record_actions.dart';
@@ -422,9 +423,16 @@ class _Body extends ConsumerWidget {
             selected: selected,
             totals: totals,
             marks: marks,
-            categories:
-                ref.watch(weekCategoryNamesProvider).value ??
-                const <CalendarDate, List<String>>{},
+            categories: <CalendarDate, List<String>>{
+              for (final MapEntry<CalendarDate, List<String>> day
+                  in (ref.watch(weekCategoryNamesProvider).value ??
+                          const <CalendarDate, List<String>>{})
+                      .entries)
+                day.key: <String>[
+                  for (final String id in day.value)
+                    ?ref.watch(categoryIndexProvider).value?[id]?.shownTitle,
+                ],
+            },
             today: today,
             money: money,
             dates: dates,

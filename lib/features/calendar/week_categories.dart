@@ -5,11 +5,10 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/calendar/week_view.dart';
-import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
-/// Category names per day for the Week view, largest spend first, at most
-/// [WeekView.maxCategoryNames]. Uncategorised payments are skipped.
+/// Category ids per day for the Week view, largest spend first, at most
+/// [WeekView.maxCategoryNames]. Ids, so names follow the language.
 final StreamProvider<Map<CalendarDate, List<String>>>
 weekCategoryNamesProvider = StreamProvider<Map<CalendarDate, List<String>>>((
   Ref ref,
@@ -44,7 +43,7 @@ Map<CalendarDate, List<String>> _namesByDay(
   for (final Payment p in payments) {
     final String? id = p.categoryId;
     if (id == null) continue;
-    final String? title = categories[id]?.shownTitle;
+    final String? title = categories.containsKey(id) ? id : null;
     if (title == null) continue;
     final Map<String, Decimal> day = spend.putIfAbsent(
       p.dueDate,
