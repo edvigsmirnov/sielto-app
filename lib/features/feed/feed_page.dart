@@ -82,8 +82,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   /// Top item before older rows were added above, to keep the view in place.
   FeedItem? _keptTop;
 
-  /// Whether the list has been scrolled to the selected period.
-  bool _placed = false;
+  /// The Space the list was last placed in: its period, or today.
+  String? _placedIn;
 
   /// The [feedGrowth] behind the current offsets.
   double? _grow;
@@ -239,7 +239,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       orderMode: space.feedOrderMode,
       coverage: source.coverage,
       moneyEndsAt: source.moneyEndsAt,
-      today: filter.isActive || source.byPeriod ? null : source.today,
+      today: filter.isActive ? null : source.today,
       emptyPeriodStarts: filter.isActive || !source.byPeriod
           ? const <CalendarDate>[]
           : _emptyPeriodStarts(source.records),
@@ -264,13 +264,22 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         if (mounted) _extendOnEdge();
       });
     }
-    if (!_placed && items.isNotEmpty) {
-      _placed = true;
+    if (_placedIn != space.id && items.isNotEmpty) {
+      _placedIn = space.id;
       final BudgetPeriod? selected = ref.read(selectedPeriodProvider);
       if (source.byPeriod && selected != null) {
         WidgetsBinding.instance.addPostFrameCallback(
           (_) => _scrollToPeriod(selected, animate: false),
         );
+      } else if (!filter.isActive) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final double? y = _offsetOf(
+            (FeedItem i) => i is FeedHeader && !i.date.isBefore(source.today),
+          );
+          if (y != null && mounted && _scroll.hasClients) {
+            _scroll.jumpTo(y.clamp(0, _scroll.position.maxScrollExtent));
+          }
+        });
       }
     }
     final bool atBottom = controlsAtBottom(context, ref, ControlsScreen.feed);
@@ -445,9 +454,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                           message: tr(
                             filter.isActive
                                 ? 'feed.filter.nothing'
-                                : desktopInput
-                                ? 'feed.emptyDesktop'
-                                : 'feed.empty',
+                                : '${desktopInput ? 'feed.emptyDesktop' : 'feed.empty'}'
+                                      '${space.budgetMode == BudgetMode.budget ? 'Budget' : ''}',
                           ),
                         )
                       : LayoutBuilder(
@@ -576,6 +584,14 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final List<Payment>? payments = ref.watch(spacePaymentsProvider).value;
     final List<Income>? incomes = ref.watch(spaceIncomesProvider).value;
     if (payments == null || incomes == null) return null;
+    // Right after a Space switch the lists still hold the previous Space.
+    if (payments.firstOrNull?.spaceId case final String id
+        when id != space.id) {
+      return null;
+    }
+    if (incomes.firstOrNull?.spaceId case final String id when id != space.id) {
+      return null;
+    }
 
     final FeedWindow window = ref.watch(feedWindowProvider);
     final List<FeedRecord> records = <FeedRecord>[
@@ -803,6 +819,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           today: today,
           dates: dates,
           band: leftAfter != null,
+          empty: index + 1 >= _items.length || _items[index + 1] is FeedHeader,
         );
       case FeedCutoff():
         return _CutoffLine(key: ValueKey<String>(item.key), item: item);
@@ -1196,10 +1213,14 @@ class _DayHeader extends StatelessWidget {
     required this.today,
     required this.dates,
     this.band = false,
+    this.empty = false,
     super.key,
   });
 
   final FeedHeader header;
+
+  /// Nothing under it: a period's first day.
+  final bool empty;
   final CalendarDate today;
   final DateLabels dates;
 
@@ -1212,8 +1233,10 @@ class _DayHeader extends StatelessWidget {
     final TextTheme text = Theme.of(context).textTheme;
 
     final bool isToday = header.date == today;
+    final String note = empty && !isToday ? ' · ${tr('feed.periodEmpty')}' : '';
     if (band) {
-      final String day = dates.weekdayAndDate(header.date, reference: today);
+      final String day =
+          dates.weekdayAndDate(header.date, reference: today) + note;
       return Container(
         height: _headerExtent * feedGrowth(context),
         alignment: Alignment.centerLeft,
@@ -1226,6 +1249,8 @@ class _DayHeader extends StatelessWidget {
           header: true,
           child: Text(
             isToday ? '${tr('feed.today')} · $day' : day,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: text.labelLarge?.copyWith(
               color: isToday ? sage.accentStrong : sage.inkSecondary,
             ),
@@ -1248,7 +1273,9 @@ class _DayHeader extends StatelessWidget {
         child: Text(
           isToday
               ? tr('feed.today')
-              : dates.dayMonth(header.date, reference: today),
+              : dates.dayMonth(header.date, reference: today) + note,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: text.labelMedium?.copyWith(
             color: isToday ? sage.accentStrong : sage.inkLabel,
           ),
@@ -1269,24 +1296,27 @@ class _CutoffLine extends StatelessWidget {
     return Container(
       height: _cutoffExtent * feedGrowth(context),
       padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
-      child: Row(
-        children: <Widget>[
-          Expanded(child: Container(height: 1, color: sage.danger)),
-          Flexible(
-            flex: 6,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
-              child: Text(
-                tr('feed.cutoff'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall
-                    ?.copyWith(color: sage.danger),
+      // Equal lines either side, whatever the label's length.
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints box) => Row(
+          children: <Widget>[
+            Expanded(child: Container(height: 1, color: sage.danger)),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: box.maxWidth * 0.8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
+                child: Text(
+                  tr('feed.cutoff'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: sage.danger),
+                ),
               ),
             ),
-          ),
-          Expanded(child: Container(height: 1, color: sage.danger)),
-        ],
+            Expanded(child: Container(height: 1, color: sage.danger)),
+          ],
+        ),
       ),
     );
   }

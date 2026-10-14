@@ -122,6 +122,14 @@ class FeedRowTile extends StatelessWidget {
 
   Widget _row(BuildContext context, Color amountColor) {
     final SageColors sage = context.sage;
+    // A note under the row: the controls stay level with the title.
+    final bool tall =
+        density == FeedDensity.spacious &&
+        table == null &&
+        (record.notes?.trim().isNotEmpty ?? false);
+    final CrossAxisAlignment align = tall
+        ? CrossAxisAlignment.start
+        : CrossAxisAlignment.center;
 
     return Dismissible(
       key: ValueKey<String>('dismiss:${record.id}'),
@@ -169,6 +177,7 @@ class FeedRowTile extends StatelessWidget {
               minHeight: rowHeightFor(context, density),
             ),
             child: Row(
+              crossAxisAlignment: align,
               children: <Widget>[
                 // The grip is outside the tappable area, so long-press does not compete with
                 // it.
@@ -202,6 +211,7 @@ class FeedRowTile extends StatelessWidget {
                           density == FeedDensity.compact ? 4 : SageSpace.sm,
                         ),
                         child: Row(
+                          crossAxisAlignment: align,
                           children: <Widget>[
                             if (selecting)
                               SizedBox.square(
@@ -223,7 +233,16 @@ class FeedRowTile extends StatelessWidget {
                               ),
                             const SizedBox(width: SageSpace.md - _leadInset),
                             if (table == null) ...<Widget>[
-                              _TypeMarker(record: record, category: category),
+                              // Level with the circle in a tall row too.
+                              SizedBox(
+                                height: kMinInteractiveDimension,
+                                child: Center(
+                                  child: _TypeMarker(
+                                    record: record,
+                                    category: category,
+                                  ),
+                                ),
+                              ),
                               const SizedBox(width: SageSpace.md),
                             ],
                             if (isOverdue && table == null) ...<Widget>[
@@ -260,7 +279,13 @@ class FeedRowTile extends StatelessWidget {
                     ),
                   ),
                 ),
-                ?dragHandle,
+                if (dragHandle case final Widget grip)
+                  tall
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: SageSpace.sm),
+                          child: grip,
+                        )
+                      : grip,
               ],
             ),
           ),
@@ -617,7 +642,8 @@ class _RowBody extends StatelessWidget {
     final Widget title = ExcludeSemantics(
       child: Text(
         record.title,
-        maxLines: 1,
+        // Spacious rows grow; the others keep the Feed's fixed heights.
+        maxLines: spacious ? 2 : 1,
         overflow: TextOverflow.ellipsis,
         style: titleStyle,
       ),
@@ -676,11 +702,29 @@ class _RowBody extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            // The amount sits on the row's middle, level with the circle and
+            // the grip.
             if (oneLine)
               Row(
                 children: <Widget>[
-                  Expanded(child: title),
-                  ...marks,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            Expanded(child: title),
+                            ...marks,
+                          ],
+                        ),
+                        if (meta != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: meta,
+                          ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(width: SageSpace.sm),
                   amountText,
                 ],
@@ -692,10 +736,25 @@ class _RowBody extends StatelessWidget {
                   ...marks,
                 ],
               ),
-              Align(alignment: Alignment.centerRight, child: amountText),
+              if (meta == null)
+                Align(alignment: Alignment.centerRight, child: amountText)
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(child: meta),
+                      const SizedBox(width: SageSpace.sm),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: constraints.maxWidth * 0.7,
+                        ),
+                        child: amountText,
+                      ),
+                    ],
+                  ),
+                ),
             ],
-            if (meta != null)
-              Padding(padding: const EdgeInsets.only(top: 2), child: meta),
             if (spacious && note != null)
               Semantics(
                 label: tr('feed.a11y.showNote'),
@@ -932,20 +991,24 @@ class _SwipeAction extends StatelessWidget {
     final SageColors sage = context.sage;
     final Color tint = isDestructive ? sage.dangerTint : sage.accentTint;
     final Color ink = isDestructive ? sage.danger : sage.accentStrong;
-    return Container(
-      color: tint,
-      alignment: alignment,
-      padding: const EdgeInsets.symmetric(horizontal: SageSpace.lg),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 20, color: ink),
-          const SizedBox(width: SageSpace.sm),
-          Text(
-            tr(labelKey),
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(color: ink),
-          ),
-        ],
+    // Feedback only: the row's circle and menu are the actions.
+    return ExcludeSemantics(
+      child: Container(
+        color: tint,
+        alignment: alignment,
+        padding: const EdgeInsets.symmetric(horizontal: SageSpace.lg),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(icon, size: 20, color: ink),
+            const SizedBox(width: SageSpace.sm),
+            Text(
+              tr(labelKey),
+              style: Theme.of(context).textTheme.labelLarge
+                  ?.copyWith(color: ink),
+            ),
+          ],
+        ),
       ),
     );
   }

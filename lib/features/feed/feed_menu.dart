@@ -30,11 +30,13 @@ List<SheetAction<_QuickAdd>> _quickAdd(WidgetRef ref) =>
             : tr('income.add'),
         _QuickAdd.income,
       ),
-      SheetAction<_QuickAdd>(
-        Icons.event_busy_outlined,
-        tr('holidays.markDay'),
-        _QuickAdd.nonWorkingDay,
-      ),
+      // A day off only moves when regular income is expected.
+      if (ref.read(currentSpaceProvider)!.budgetMode == BudgetMode.incomeDriven)
+        SheetAction<_QuickAdd>(
+          Icons.event_busy_outlined,
+          tr('holidays.markDay'),
+          _QuickAdd.nonWorkingDay,
+        ),
     ];
 
 /// The + button and a Calendar day's long press share these actions.
