@@ -481,7 +481,7 @@ class _Body extends ConsumerWidget {
                 ),
               ],
             )
-          : _stacked(context, box, grid, pane),
+          : _stacked(context, box, grid, pane, week: view == CalendarView.week),
     );
   }
 
@@ -491,10 +491,16 @@ class _Body extends ConsumerWidget {
     BuildContext context,
     BoxConstraints box,
     Widget grid,
-    Widget pane,
-  ) {
+    Widget pane, {
+    required bool week,
+  }) {
     final double gridHeight = math.max(
-      math.min(box.maxHeight * 0.55, 420),
+      week
+          ? math.min(
+              WeekView.naturalHeight(context),
+              box.maxHeight - SageSpace.md - _paneMin,
+            )
+          : math.min(box.maxHeight * 0.55, 420),
       MonthView.minHeight(context),
     );
     if (gridHeight + SageSpace.md + _paneMin <= box.maxHeight) {

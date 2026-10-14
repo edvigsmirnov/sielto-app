@@ -163,6 +163,8 @@ final Provider<AsyncValue<BudgetPeriod?>> continuousPeriodProvider =
 
 final Provider<AsyncValue<BudgetLedger>>
 budgetLedgerProvider = Provider<AsyncValue<BudgetLedger>>((Ref ref) {
+  // Fills regular income dates.
+  ref.watch(periodRefreshProvider);
   final AsyncValue<List<Payment>> payments = ref.watch(spacePaymentsProvider);
   final AsyncValue<List<Income>> incomes = ref.watch(spaceIncomesProvider);
   final AsyncValue<BudgetPeriod?> period = ref.watch(continuousPeriodProvider);

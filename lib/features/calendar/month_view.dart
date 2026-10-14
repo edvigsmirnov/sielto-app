@@ -4,6 +4,7 @@ import 'package:sielto/core/db/repositories/calendar_repository.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_cell.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
@@ -144,6 +145,7 @@ class _Figures {
     required double width,
     required bool net,
   }) {
+    final double maxSize = desktopInput ? _maxDesktop : _maxSize;
     final TextPainter painter = TextPainter(
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
@@ -159,12 +161,9 @@ class _Figures {
                 : <Decimal>[d.expenses, d.income]) {
           if (a <= Decimal.zero) continue;
           painter
-            ..text = TextSpan(
-              text: '−${money.bare(a)}',
-              style: _style(_maxSize),
-            )
+            ..text = TextSpan(text: '−${money.bare(a)}', style: _style(maxSize))
             ..layout();
-          if (painter.width * _minSize / _maxSize > width) {
+          if (painter.width * _minSize / maxSize > width) {
             shortened.add(a);
           } else if (painter.width > widest) {
             widest = painter.width;
@@ -172,8 +171,8 @@ class _Figures {
         }
       }
       final double size = widest <= width
-          ? _maxSize
-          : (_maxSize * width / widest).clamp(_minSize, _maxSize);
+          ? maxSize
+          : (maxSize * width / widest).clamp(_minSize, maxSize);
       return _Figures(money: money, size: size, shortened: shortened, net: net);
     } finally {
       painter.dispose();
@@ -195,6 +194,7 @@ class _Figures {
           : money.bare(amount));
 
   static const double _maxSize = 10;
+  static const double _maxDesktop = 13;
   static const double _minSize = 8;
 
   static TextStyle _style(double size) => TextStyle(
@@ -306,6 +306,7 @@ class _DayCell extends StatelessWidget {
                 Text(
                   date.day.toString(),
                   style: text.labelMedium?.copyWith(
+                    fontSize: desktopInput ? 15 : null,
                     color: ink,
                     fontWeight: isSelected || isToday
                         ? FontWeight.w700

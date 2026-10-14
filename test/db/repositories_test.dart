@@ -15,6 +15,8 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
 /// Invariants enforced by the repositories.
+const CalendarDate today = CalendarDate(2026, 6, 15);
+
 void main() {
   late AppDatabase db;
   late SpaceClock clock;
@@ -626,7 +628,11 @@ void main() {
       final IncomeRecurrenceRule only = await addRule(space, anchor: true);
 
       expect(
-        () => rules.deleteRule(only.id, mode: BudgetMode.incomeDriven),
+        () => rules.deleteRule(
+          only.id,
+          mode: BudgetMode.incomeDriven,
+          today: today,
+        ),
         throwsA(isA<LastAnchorRequired>()),
       );
     });
@@ -636,7 +642,11 @@ void main() {
       final IncomeRecurrenceRule first = await addRule(space, anchor: true);
       await addRule(space, anchor: true, title: 'Partner salary');
 
-      await rules.deleteRule(first.id, mode: BudgetMode.incomeDriven);
+      await rules.deleteRule(
+        first.id,
+        mode: BudgetMode.incomeDriven,
+        today: today,
+      );
       expect(await rules.anchorsInSpace(space.id), hasLength(1));
     });
 
@@ -649,14 +659,42 @@ void main() {
         title: 'Bonus',
       );
 
-      await rules.deleteRule(extra.id, mode: BudgetMode.incomeDriven);
+      await rules.deleteRule(
+        extra.id,
+        mode: BudgetMode.incomeDriven,
+        today: today,
+      );
       expect(await rules.inSpace(space.id), hasLength(1));
+    });
+
+    test('a deleted rule takes its unreceived dates from today', () async {
+      final Space space = await makeSpace(mode: BudgetMode.flow);
+      final IncomeRecurrenceRule rule = await addRule(space, anchor: false);
+      Future<Income> date(CalendarDate on, {bool paid = false}) =>
+          incomes.create(
+            spaceId: space.id,
+            title: 'Salary',
+            expectedDate: on,
+            amount: Decimal.fromInt(100),
+            recurrenceRuleId: rule.id,
+            isPaid: paid,
+          );
+      final Income past = await date(today.addDays(-3));
+      final Income received = await date(today.addDays(1), paid: true);
+      await date(today);
+      await date(today.addDays(30));
+
+      await rules.deleteRule(rule.id, mode: BudgetMode.flow, today: today);
+      expect(
+        (await incomes.inSpace(space.id)).map((Income i) => i.id),
+        unorderedEquals(<String>[past.id, received.id]),
+      );
     });
 
     test('Flow ignores the anchor rule entirely', () async {
       final Space space = await makeSpace(mode: BudgetMode.flow);
       final IncomeRecurrenceRule rule = await addRule(space, anchor: true);
-      await rules.deleteRule(rule.id, mode: BudgetMode.flow);
+      await rules.deleteRule(rule.id, mode: BudgetMode.flow, today: today);
       expect(await rules.inSpace(space.id), isEmpty);
     });
   });

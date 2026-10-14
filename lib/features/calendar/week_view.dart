@@ -43,6 +43,17 @@ class WeekView extends StatelessWidget {
 
   static const int maxCategoryNames = 3;
 
+  /// Seven rows with category names, unscrolled.
+  static double naturalHeight(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+    double line(TextStyle? style) =>
+        scaler.scale((style?.fontSize ?? 14) * (style?.height ?? 1.5));
+    final double row =
+        2 * SageSpace.md + line(text.bodyLarge) + 2 + line(text.bodySmall);
+    return 7 * row + 6 * SageSpace.sm + SageSpace.lg;
+  }
+
   @override
   Widget build(BuildContext context) => ListView.separated(
     padding: const EdgeInsets.only(bottom: SageSpace.lg),

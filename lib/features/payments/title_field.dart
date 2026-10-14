@@ -11,12 +11,14 @@ class TitleField extends ConsumerStatefulWidget {
     required this.controller,
     required this.spaceId,
     this.enabled = true,
+    this.autofocus = false,
     super.key,
   });
 
   final TextEditingController controller;
   final String spaceId;
   final bool enabled;
+  final bool autofocus;
 
   static const int minimumPrefix = 2;
 
@@ -76,6 +78,7 @@ class _TitleFieldState extends ConsumerState<TitleField> {
             controller: field,
             focusNode: focus,
             enabled: widget.enabled,
+            autofocus: widget.autofocus,
             textCapitalization: TextCapitalization.sentences,
             textInputAction: TextInputAction.next,
             onSubmitted: (String _) => onSubmitted(),

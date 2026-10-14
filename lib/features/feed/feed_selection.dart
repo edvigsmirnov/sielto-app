@@ -225,10 +225,16 @@ Future<bool> _delete(
   showUndoSnackbar(
     context,
     message: <String>[
-      tr(
-        'feed.bulk.deleted',
-        namedArgs: <String, String>{'count': '${deleted.length}'},
-      ),
+      if (deleted.length == 1)
+        tr(
+          'feed.deleted',
+          namedArgs: <String, String>{'title': deleted.single.title},
+        )
+      else
+        tr(
+          'feed.bulk.deleted',
+          namedArgs: <String, String>{'count': '${deleted.length}'},
+        ),
       if (skipped > 0)
         tr(
           'feed.bulk.skipped',

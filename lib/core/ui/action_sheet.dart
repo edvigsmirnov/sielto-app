@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -148,6 +150,20 @@ void trackPointer() {
     if (e is! PointerDownEvent) return;
     _lastPointer = e.position;
     keyboardDriven.value = false;
+    // Closing a menu with a right-click opens the next one there.
+    if (_menusOpen > 0 && e.buttons == kSecondaryMouseButton) {
+      _replay = e;
+      // The barrier closes a menu on a primary click only.
+      final NavigatorState? menu = _menuNavigator;
+      scheduleMicrotask(() {
+        // Only the menu itself, if it is still on top.
+        bool popped = false;
+        menu?.popUntil((Route<dynamic> r) {
+          if (popped || r is! PopupRoute) return true;
+          return !(popped = true);
+        });
+      });
+    }
   });
   HardwareKeyboard.instance.addHandler((KeyEvent e) {
     if (e is! KeyDownEvent) return false;
@@ -179,7 +195,54 @@ Future<void> _back() async {
   }
 }
 
+int _menusOpen = 0;
+NavigatorState? _menuNavigator;
+PointerDownEvent? _replay;
+
+/// Sends the right-click that closed a menu again, once the menu is gone.
+void _maybeReplay() {
+  final PointerDownEvent? down = _replay;
+  if (down == null || _menusOpen > 0) return;
+  _replay = null;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    const int pointer = 1 << 30;
+    GestureBinding.instance
+      ..handlePointerEvent(
+        PointerDownEvent(
+          pointer: pointer,
+          kind: down.kind,
+          device: down.device,
+          position: down.position,
+          buttons: kSecondaryMouseButton,
+        ),
+      )
+      ..handlePointerEvent(
+        PointerUpEvent(
+          pointer: pointer,
+          kind: down.kind,
+          device: down.device,
+          position: down.position,
+        ),
+      );
+  });
+}
+
 Future<T?> _showMenu<T>(
+  BuildContext context, {
+  required String title,
+  required List<List<SheetAction<T>>> groups,
+}) async {
+  _menusOpen++;
+  _menuNavigator = Navigator.of(context, rootNavigator: true);
+  try {
+    return await _openMenu(context, title: title, groups: groups);
+  } finally {
+    if (--_menusOpen == 0) _menuNavigator = null;
+    _maybeReplay();
+  }
+}
+
+Future<T?> _openMenu<T>(
   BuildContext context, {
   required String title,
   required List<List<SheetAction<T>>> groups,

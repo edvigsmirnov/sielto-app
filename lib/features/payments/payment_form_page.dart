@@ -14,6 +14,7 @@ import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_entry.dart';
@@ -578,7 +579,11 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                     ],
                     LabelledField(
                       label: tr('payment.fieldTitle'),
-                      child: TitleField(controller: _title, spaceId: space.id),
+                      child: TitleField(
+                        controller: _title,
+                        spaceId: space.id,
+                        autofocus: desktopInput && _existing == null,
+                      ),
                     ),
                     const SizedBox(height: SageSpace.lg),
                     LabelledField(
@@ -587,6 +592,9 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                         controller: _amount,
                         symbol: money.symbol,
                         enabled: !_isFrozen,
+                        onSubmitted: (String _) {
+                          if (desktopInput && _isValid) _save();
+                        },
                       ),
                     ),
                     const SizedBox(height: SageSpace.lg),

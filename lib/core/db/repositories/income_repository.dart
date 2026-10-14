@@ -201,9 +201,33 @@ class IncomeRuleRepository
   }
 
   /// Throws [LastAnchorRequired] on deleting the last anchor.
-  Future<int> deleteRule(String ruleId, {required BudgetMode mode}) async {
+  /// Its unreceived dates from [today] on go with it; received money and
+  /// past dates stay.
+  Future<int> deleteRule(
+    String ruleId, {
+    required BudgetMode mode,
+    required CalendarDate today,
+  }) async {
     await _refuseIfLastAnchor(ruleId, mode);
-    return softDelete(ruleId);
+    return db.transaction(() async {
+      final ({String author, DateTime editedAt}) s = stamp();
+      await (db.update(db.incomes)..where(
+            ($IncomesTable t) =>
+                t.recurrenceRuleId.equals(ruleId) &
+                t.isPaid.equals(false) &
+                t.isDeleted.equals(false) &
+                t.expectedDate.isBiggerOrEqualValue(today.toIso()),
+          ))
+          .write(
+            IncomesCompanion(
+              isDeleted: const Value<bool>(true),
+              syncStatus: const Value<SyncStatus>(SyncStatus.pending),
+              clientEditedAt: Value<DateTime>(s.editedAt),
+              lastModifiedBy: Value<String>(s.author),
+            ),
+          );
+      return softDelete(ruleId);
+    });
   }
 
   Future<void> _refuseIfLastAnchor(String ruleId, BudgetMode mode) async {

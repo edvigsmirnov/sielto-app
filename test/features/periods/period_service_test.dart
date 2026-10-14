@@ -298,6 +298,30 @@ void main() {
         isNotEmpty,
       );
     });
+
+    test('a Flow Space gets the dates from today, with no periods', () async {
+      final Space flow = await repos.spaces.create(
+        title: 'Freelance',
+        spaceType: SpaceType.personal,
+        budgetMode: BudgetMode.flow,
+        ownerId: 'tester',
+        timezone: 'UTC',
+        currencyCode: 'EUR',
+      );
+      await repos.incomeRules.create(
+        spaceId: flow.id,
+        title: 'Salary',
+        scheduleType: ScheduleType.fixedDate,
+        fixedDay: 15,
+        amount: m('3200'),
+      );
+      await service.refresh(flow, today);
+
+      final List<Income> rows = await repos.incomes.inSpace(flow.id);
+      expect(rows.first.expectedDate, d('2026-03-16'));
+      expect(rows.every((Income i) => !i.expectedDate.isBefore(today)), isTrue);
+      expect(await repos.periods.incomeDrivenIn(flow.id), isEmpty);
+    });
   });
 
   group('regenerate', () {

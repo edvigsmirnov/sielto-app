@@ -25,10 +25,16 @@ double feedGrowth(BuildContext context) =>
 double rowHeightFor(BuildContext context, FeedDensity density) =>
     feedGrowth(context) *
     switch (density) {
-      FeedDensity.compact => 48,
+      FeedDensity.compact => 56,
       FeedDensity.standard => 72,
       FeedDensity.spacious => 100,
     };
+
+/// Under a table or spacious row, on top of [rowHeightFor].
+const double rowBorder = 0.5;
+
+bool hasRowBorder(FeedDensity density, {required bool table}) =>
+    table || density == FeedDensity.spacious;
 
 /// Frozen rows keep only tap and long-press.
 class FeedRowTile extends StatelessWidget {
@@ -103,7 +109,7 @@ class FeedRowTile extends StatelessWidget {
   Widget _spoken(BuildContext context, Widget row) => Semantics(
     label: <String>[
       record.title,
-      _amountLabel(record, money),
+      feedAmountLabel(record, money),
       if (record.isIncome)
         tr(record.isPaid ? 'income.received' : 'income.expected')
       else
@@ -122,6 +128,7 @@ class FeedRowTile extends StatelessWidget {
 
   Widget _row(BuildContext context, Color amountColor) {
     final SageColors sage = context.sage;
+    final bool bordered = hasRowBorder(density, table: table != null);
     // A note under the row: the controls stay level with the title.
     final bool tall =
         density == FeedDensity.spacious &&
@@ -167,12 +174,15 @@ class FeedRowTile extends StatelessWidget {
             color: isSelected
                 ? sage.accentTint
                 : (isOverdue ? sage.dangerTint : Colors.transparent),
-            border: density == FeedDensity.spacious || table != null
-                ? Border(bottom: BorderSide(color: sage.hairline, width: 0.5))
+            border: bordered
+                ? Border(
+                    bottom: BorderSide(color: sage.hairline, width: rowBorder),
+                  )
                 : null,
           ),
           child: ConstrainedBox(
-            // A minimum: the spacious subtitle can be taller.
+            // A minimum: the spacious subtitle can be taller. Ink adds the
+            // border below it (rowBorder).
             constraints: BoxConstraints(
               minHeight: rowHeightFor(context, density),
             ),
@@ -260,14 +270,14 @@ class FeedRowTile extends StatelessWidget {
                                   isOverdue: isOverdue,
                                   category: category,
                                   cells: cells,
-                                  amount: _amountLabel(record, money),
+                                  amount: feedAmountLabel(record, money),
                                   amountColor: amountColor,
                                 ),
                                 null => _RowBody(
                                   record: record,
                                   category: category,
                                   density: density,
-                                  amount: _amountLabel(record, money),
+                                  amount: feedAmountLabel(record, money),
                                   amountColor: amountColor,
                                   isFrozen: isFrozen,
                                 ),
@@ -296,11 +306,66 @@ class FeedRowTile extends StatelessWidget {
 
   /// The 48 dp circle box reaches this far past the 26 dp circle.
   static const double _leadInset = (kMinInteractiveDimension - 26) / 2;
+}
 
-  String _amountLabel(FeedRecord r, MoneyFormat money) {
-    if (r.amount == null) return tr('income.amountUnknown');
-    return r.isIncome ? '+${money.format(r.amount!)}' : money.format(r.amount!);
-  }
+String feedAmountLabel(FeedRecord r, MoneyFormat money) {
+  if (r.amount == null) return tr('income.amountUnknown');
+  return r.isIncome ? '+${money.format(r.amount!)}' : money.format(r.amount!);
+}
+
+/// A table cell's text and style, colour aside.
+(String, TextStyle) tableCellText(
+  BuildContext context,
+  FeedColumn c, {
+  required FeedRecord record,
+  required Category? category,
+  required String date,
+  required String? leftAfter,
+  required String amount,
+}) {
+  final TextTheme text = Theme.of(context).textTheme;
+  final TextStyle muted = text.bodySmall!;
+  final TextStyle figures = text.bodyMedium!.copyWith(
+    fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+  );
+  return switch (c) {
+    FeedColumn.date => (date, muted),
+    FeedColumn.category => (category?.shownTitle ?? '', muted),
+    FeedColumn.kind => (
+      tr(
+        'feed.filter.kind.${record.isIncome
+            ? 'income'
+            : record.isMandatory
+            ? 'mandatory'
+            : 'variable'}',
+      ),
+      muted,
+    ),
+    FeedColumn.note => (
+      record.notes?.trim().isEmpty ?? true
+          ? ''
+          : shownNote(context, record.notes!.trim()),
+      muted,
+    ),
+    FeedColumn.amount => (
+      amount,
+      figures.copyWith(fontWeight: FontWeight.w700),
+    ),
+    FeedColumn.left => (leftAfter ?? '', figures),
+  };
+}
+
+/// One line of [value] laid out in [style], at the reader's text size.
+double textWidth(BuildContext context, String value, TextStyle style) {
+  final TextPainter painter = TextPainter(
+    text: TextSpan(text: value, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  final double width = painter.width;
+  painter.dispose();
+  return width;
 }
 
 /// What a table row shows beyond the narrow row.
@@ -337,7 +402,11 @@ abstract final class FeedColumns {
 /// Column headings above the table. Their edges drag to resize; a right-click
 /// hides or shows columns.
 class FeedTableHeader extends ConsumerWidget {
-  const FeedTableHeader({super.key});
+  const FeedTableHeader({this.fitWidth, super.key});
+
+  /// Width that fits a column's widest entry; a double-click on its edge
+  /// sets it.
+  final double Function(FeedColumn c)? fitWidth;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -356,18 +425,19 @@ class FeedTableHeader extends ConsumerWidget {
       overflow: TextOverflow.ellipsis,
     );
 
-    Widget cell(FeedColumn c) {
-      final Widget edge = MouseRegion(
-        cursor: SystemMouseCursors.resizeColumn,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragUpdate: (DragUpdateDetails d) => columns.resize(
-            c,
-            layout.widthOf(c) + (c.dragsLeftEdge ? -d.delta.dx : d.delta.dx),
-          ),
-          onHorizontalDragEnd: (DragEndDetails _) => columns.save(),
-          child: const SizedBox(width: 12, height: double.infinity),
-        ),
+    Widget cell(FeedColumn c, double room) {
+      final Widget edge = _ColumnEdge(
+        onLeft: c.dragsLeftEdge,
+        onDrag: (double dx) =>
+            columns.resize(c, layout.widthOf(c) + (c.dragsLeftEdge ? -dx : dx)),
+        onDragEnd: columns.save,
+        onFit: switch (fitWidth) {
+          final double Function(FeedColumn) fit => () {
+            columns.resize(c, math.min(fit(c), layout.roomFor(c, room)));
+            columns.save();
+          },
+          null => null,
+        },
       );
       return SizedBox(
         width: layout.widthOf(c),
@@ -410,10 +480,10 @@ class FeedTableHeader extends ConsumerWidget {
               return Row(
                 children: <Widget>[
                   for (final FeedColumn c in shown)
-                    if (c == FeedColumn.date) cell(c),
+                    if (c == FeedColumn.date) cell(c, box.maxWidth),
                   Expanded(child: label('title')),
                   for (final FeedColumn c in shown)
-                    if (c != FeedColumn.date) cell(c),
+                    if (c != FeedColumn.date) cell(c, box.maxWidth),
                 ],
               );
             },
@@ -454,6 +524,59 @@ class FeedTableHeader extends ConsumerWidget {
   }
 }
 
+/// A heading's draggable edge: a short line, stronger under the pointer.
+class _ColumnEdge extends StatefulWidget {
+  const _ColumnEdge({
+    required this.onLeft,
+    required this.onDrag,
+    required this.onDragEnd,
+    required this.onFit,
+  });
+
+  final bool onLeft;
+  final ValueChanged<double> onDrag;
+  final VoidCallback onDragEnd;
+  final VoidCallback? onFit;
+
+  @override
+  State<_ColumnEdge> createState() => _ColumnEdgeState();
+}
+
+class _ColumnEdgeState extends State<_ColumnEdge> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragUpdate: (DragUpdateDetails d) =>
+            widget.onDrag(d.delta.dx),
+        onHorizontalDragEnd: (DragEndDetails _) => widget.onDragEnd(),
+        onDoubleTap: widget.onFit,
+        child: SizedBox(
+          width: 12,
+          height: double.infinity,
+          child: Align(
+            alignment: widget.onLeft
+                ? Alignment.centerLeft
+                : Alignment.centerRight,
+            child: Container(
+              width: _hovered ? 2 : 1,
+              height: _hovered ? 20 : 14,
+              color: _hovered ? sage.accentStrong : sage.border,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TableCells extends StatelessWidget {
   const _TableCells({
     required this.record,
@@ -475,47 +598,43 @@ class _TableCells extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
-    final TextStyle muted = text.bodySmall!.copyWith(color: sage.inkSecondary);
-    final TextStyle figures = text.bodyMedium!.copyWith(
-      fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
-    );
-    final String? note = record.notes?.trim().isEmpty ?? true
-        ? null
-        : shownNote(context, record.notes!.trim());
     final FeedColumnLayout layout = cells.layout;
-    Text line(String value, TextStyle style) => Text(
-      value,
-      style: style,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.center,
-    );
     Widget cell(FeedColumn c) {
-      final Widget content = switch (c) {
-        FeedColumn.date => line(cells.date, muted),
-        FeedColumn.category => line(category?.shownTitle ?? '', muted),
-        FeedColumn.kind => line(
-          tr(
-            'feed.filter.kind.${record.isIncome
-                ? 'income'
-                : record.isMandatory
-                ? 'mandatory'
-                : 'variable'}',
-          ),
-          muted,
-        ),
-        FeedColumn.note => line(note ?? '', muted),
-        FeedColumn.amount => line(
-          amount,
-          figures.copyWith(color: amountColor, fontWeight: FontWeight.w700),
-        ),
-        FeedColumn.left => line(
-          cells.leftAfter ?? '',
-          figures.copyWith(
-            color: cells.short ? sage.danger : sage.inkSecondary,
-          ),
-        ),
+      final (String value, TextStyle style) = tableCellText(
+        context,
+        c,
+        record: record,
+        category: category,
+        date: cells.date,
+        leftAfter: cells.leftAfter,
+        amount: amount,
+      );
+      final Color color = switch (c) {
+        FeedColumn.amount => amountColor,
+        FeedColumn.left when cells.short => sage.danger,
+        _ => sage.inkSecondary,
       };
+      Widget content = Text(
+        value,
+        style: style.copyWith(color: color),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+      );
+      // A cut note shows in full on hover.
+      if (c == FeedColumn.note && value.isNotEmpty) {
+        final Widget line = content;
+        content = LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints box) =>
+              textWidth(context, value, style) > box.maxWidth
+              ? Tooltip(
+                  message: value,
+                  constraints: const BoxConstraints(maxWidth: 360),
+                  child: line,
+                )
+              : line,
+        );
+      }
       return SizedBox(
         width: layout.widthOf(c),
         child: Padding(
@@ -545,12 +664,15 @@ class _TableCells extends StatelessWidget {
                     const SizedBox(width: SageSpace.xs),
                   ],
                   Flexible(
-                    child: line(
+                    child: Text(
                       record.title,
-                      text.bodyLarge!.copyWith(
+                      style: text.bodyLarge!.copyWith(
                         fontWeight: FontWeight.w600,
                         color: record.isPaid ? sage.inkSecondary : sage.ink,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ],

@@ -25,4 +25,19 @@ void main() {
     expect(FeedColumnLayout.decode('{"widths": 3'), const FeedColumnLayout());
     expect(FeedColumnLayout.decode('[1]'), const FeedColumnLayout());
   });
+
+  test('a column fits only the room beside the others', () {
+    const FeedColumnLayout layout = FeedColumnLayout();
+    const double width = 1000;
+    final double room = layout.roomFor(FeedColumn.note, width);
+    final FeedColumnLayout wider = layout.withWidth(FeedColumn.note, room);
+    expect(wider.shownIn(width), layout.shownIn(width));
+    expect(
+      layout
+          .withWidth(FeedColumn.note, room + 1)
+          .shownIn(width)
+          .contains(FeedColumn.note),
+      isFalse,
+    );
+  });
 }

@@ -171,21 +171,21 @@ class DateField extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(SageRadius.input),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: sage.card,
-          borderRadius: BorderRadius.circular(SageRadius.input),
-          border: Border.all(color: warn ? sage.warning : sage.border),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          suffixIcon: Icon(
+            Icons.calendar_today_outlined,
+            size: 18,
+            color: sage.inkLabel,
+          ),
+          enabledBorder: warn
+              ? OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(SageRadius.input),
+                  borderSide: BorderSide(color: sage.warning),
+                )
+              : null,
         ),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
-            ),
-            Icon(Icons.calendar_today_outlined, size: 18, color: sage.inkLabel),
-          ],
-        ),
+        child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
       ),
     );
   }

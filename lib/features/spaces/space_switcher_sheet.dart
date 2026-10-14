@@ -275,6 +275,8 @@ class _SpaceRow extends StatelessWidget {
             Icon(
               space.storageMode == StorageMode.cloud
                   ? Icons.cloud_outlined
+                  : desktopInput
+                  ? Icons.computer_outlined
                   : Icons.smartphone,
               size: 14,
               color: sage.inkLabel,

@@ -175,6 +175,7 @@ Future<void> restoreBackup(
   final BackupService service = ref.read(repositoriesProvider).backup;
   await Navigator.of(context).push(
     MaterialPageRoute<void>(
+      settings: inSetup ? const RouteSettings(name: fullWindowRoute) : null,
       builder: (BuildContext _) => RestorePage(
         inSetup: inSetup,
         bytes: bytes,

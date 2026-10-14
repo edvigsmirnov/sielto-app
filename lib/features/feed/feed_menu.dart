@@ -8,6 +8,7 @@ import 'package:sielto/core/ui/action_sheet.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/feed/feed_model.dart';
+import 'package:sielto/features/feed/feed_selection.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
@@ -117,21 +118,12 @@ Future<void> runRecordAction(
   ),
 };
 
-/// Long-press menu on a row outside the Feed.
+/// Long-press menu on a row outside the Feed: the Feed row's actions.
 Future<void> showRecordMenu(
   BuildContext context,
   WidgetRef ref, {
   required FeedRecord record,
-}) async {
-  final Object? choice = await showActionSheet<Object>(
-    context,
-    title: record.title,
-    groups: <List<SheetAction<Object>>>[recordActions(record)],
-  );
-  if (choice is RecordAction && context.mounted) {
-    await runRecordAction(context, ref, record, choice);
-  }
-}
+}) => showBulkActions(context, ref, records: <FeedRecord>[record]);
 
 /// Empty form on the neighbouring day.
 Future<void> _addOn(

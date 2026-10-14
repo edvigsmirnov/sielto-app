@@ -97,7 +97,11 @@ class IncomeRulesPage extends ConsumerWidget {
       await ref
           .read(repositoriesProvider)
           .incomeRules
-          .deleteRule(rule.id, mode: space.budgetMode);
+          .deleteRule(
+            rule.id,
+            mode: space.budgetMode,
+            today: ref.read(spaceClockProvider).today(),
+          );
       ref.invalidate(periodRefreshProvider);
     } on LastAnchorRequired {
       if (context.mounted) _sayAnchorRequired(context);

@@ -210,10 +210,15 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
     if (!mounted) return;
     showUndoSnackbar(
       context,
-      message: tr(
-        'feed.bulk.deleted',
-        namedArgs: <String, String>{'count': '${sources.length}'},
-      ),
+      message: sources.length == 1
+          ? tr(
+              'category.deleted',
+              namedArgs: <String, String>{'title': sources.single.shownTitle},
+            )
+          : tr(
+              'feed.bulk.deleted',
+              namedArgs: <String, String>{'count': '${sources.length}'},
+            ),
       onUndo: () async {
         for (final Category c in sources) {
           await repos.categories.restore(c.id);

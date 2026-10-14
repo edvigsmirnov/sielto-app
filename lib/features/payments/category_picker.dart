@@ -40,35 +40,26 @@ class CategoryPickerField extends ConsumerWidget {
         if (choice != null) onChanged(choice.category);
       },
       borderRadius: BorderRadius.circular(SageRadius.input),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: sage.card,
-          borderRadius: BorderRadius.circular(SageRadius.input),
-          border: Border.all(color: sage.border),
-        ),
-        child: Row(
-          children: <Widget>[
-            if (selected == null)
-              Icon(Icons.label_outline, size: 20, color: sage.inkLabel)
-            else
-              CategoryMark(
-                color: selected.color,
-                icon: selected.icon,
-                size: 26,
-              ),
-            const SizedBox(width: SageSpace.md),
-            Expanded(
-              child: Text(
-                selected?.shownTitle ?? tr('category.none'),
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: selected == null ? sage.inkLabel : sage.ink,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          prefixIcon: selected == null
+              ? Icon(Icons.label_outline, size: 20, color: sage.inkLabel)
+              : Center(
+                  widthFactor: 1,
+                  child: CategoryMark(
+                    color: selected.color,
+                    icon: selected.icon,
+                    size: 26,
+                  ),
                 ),
-              ),
-            ),
-            Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),
-          ],
+          suffixIcon: Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),
+        ),
+        child: Text(
+          selected?.shownTitle ?? tr('category.none'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodyLarge
+              ?.copyWith(color: selected == null ? sage.inkLabel : sage.ink),
         ),
       ),
     );

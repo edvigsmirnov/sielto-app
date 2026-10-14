@@ -65,13 +65,24 @@ class PeriodService {
     CalendarDate today, {
     CalendarDate? until,
   }) async {
-    if (space.budgetMode != BudgetMode.incomeDriven) {
-      return const PeriodRefresh();
-    }
-
     final List<IncomeRecurrenceRule> rules = await repos.incomeRules.inSpace(
       space.id,
     );
+    // No periods: regular incomes only get their dates.
+    if (space.budgetMode != BudgetMode.incomeDriven) {
+      if (rules.isEmpty) return const PeriodRefresh();
+      return PeriodRefresh(
+        incomesMaterialised: await repos.db.transaction(
+          () => _materialiseIncomes(
+            space: space,
+            rules: rules,
+            from: today,
+            horizonEnd: null,
+          ),
+        ),
+      );
+    }
+
     final List<AnchorSchedule> anchors = <AnchorSchedule>[
       for (final IncomeRecurrenceRule rule in rules)
         if (rule.isAnchor)
@@ -498,7 +509,6 @@ class PeriodService {
   /// Resets unreceived, unfrozen occurrences to the schedule. Returns the
   /// number of rows changed.
   Future<int> regenerate(Space space, String ruleId, CalendarDate today) async {
-    if (space.budgetMode != BudgetMode.incomeDriven) return 0;
     final IncomeRecurrenceRule? rule = await repos.incomeRules.byId(ruleId);
     final IncomeSchedule? schedule = rule == null ? null : scheduleOf(rule);
     if (rule == null || schedule == null) return 0;

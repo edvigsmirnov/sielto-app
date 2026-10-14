@@ -10,6 +10,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/schedule_editor.dart';
@@ -213,6 +214,9 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
                 controller: _amount,
                 symbol: money.symbol,
                 hintText: tr('income.amountOptional'),
+                onSubmitted: (String _) {
+                  if (desktopInput && _isValid) _save();
+                },
               ),
             ),
             const SizedBox(height: SageSpace.xs),

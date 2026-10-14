@@ -234,6 +234,8 @@ LedgerRun previewRun({
 
 final Provider<AsyncValue<FlowLedger>> flowLedgerProvider =
     Provider<AsyncValue<FlowLedger>>((Ref ref) {
+      // Fills regular income dates.
+      ref.watch(periodRefreshProvider);
       final Space? space = ref.watch(currentSpaceProvider);
       if (space == null) return const AsyncValue<FlowLedger>.loading();
 

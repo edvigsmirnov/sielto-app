@@ -96,6 +96,15 @@ class FeedColumnLayout {
     return fit;
   }
 
+  /// The widest [c] can be in [width] without dropping a shown column.
+  double roomFor(FeedColumn c, double width) =>
+      width -
+      titleMin -
+      shownIn(width).fold<double>(
+        0,
+        (double sum, FeedColumn o) => o == c ? sum : sum + widthOf(o),
+      );
+
   FeedColumnLayout withWidth(FeedColumn c, double width) => FeedColumnLayout(
     widths: <FeedColumn, double>{
       ...widths,

@@ -62,22 +62,24 @@ class SettingsPage extends ConsumerWidget {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: SageSpace.gutter,
-              vertical: SageSpace.sm,
-            ),
-            child: LabelledField(
-              label: tr('settings.feedDensity'),
-              child: SegmentedChoice<FeedDensity>(
-                values: FeedDensity.values,
-                selected: density,
-                labelOf: (FeedDensity value) => tr('density.${value.name}'),
-                onChanged: (FeedDensity value) =>
-                    ref.read(feedDensityProvider.notifier).set(value),
+          // Wide, the Feed is a table with one row height.
+          if (!isWide(context))
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: SageSpace.gutter,
+                vertical: SageSpace.sm,
+              ),
+              child: LabelledField(
+                label: tr('settings.feedDensity'),
+                child: SegmentedChoice<FeedDensity>(
+                  values: FeedDensity.values,
+                  selected: density,
+                  labelOf: (FeedDensity value) => tr('density.${value.name}'),
+                  onChanged: (FeedDensity value) =>
+                      ref.read(feedDensityProvider.notifier).set(value),
+                ),
               ),
             ),
-          ),
           if (isWide(context))
             SwitchListTile.adaptive(
               title: Text(tr('settings.threeColumns')),

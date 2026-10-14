@@ -246,7 +246,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     );
     final List<FeedItem> items = _items;
     final double grow = feedGrowth(context);
-    _measure(items, rowHeightFor(context, density), grow);
+    _measure(
+      items,
+      rowHeightFor(context, density) +
+          (hasRowBorder(density, table: table) ? rowBorder : 0),
+      grow,
+    );
     // Every extent scales by the same factor, so the same day stays on top.
     if (_grow case final double was when was != grow && _scroll.hasClients) {
       final double offset = _scroll.position.pixels * grow / was;
@@ -277,7 +282,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             (FeedItem i) => i is FeedHeader && !i.date.isBefore(source.today),
           );
           if (y != null && mounted && _scroll.hasClients) {
-            _scroll.jumpTo(y.clamp(0, _scroll.position.maxScrollExtent));
+            // maxScrollExtent is an estimate until every row is laid out.
+            _scroll.jumpTo(y);
           }
         });
       }
@@ -449,6 +455,13 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 child: _tableCard(
                   table: table,
                   header: items.isNotEmpty,
+                  fitWidth: (FeedColumn c) => _fitWidth(
+                    c,
+                    categories: categories.value ?? const <String, Category>{},
+                    leftAfter: source.leftAfter,
+                    money: money,
+                    dates: dates,
+                  ),
                   child: items.isEmpty
                       ? EmptyState(
                           message: tr(
@@ -518,9 +531,42 @@ class _FeedPageState extends ConsumerState<FeedPage> {
   }
 
   /// The table sits on a card with its headings and a hint line.
+  /// The widest entry of [c] among the loaded rows, or its heading.
+  double _fitWidth(
+    FeedColumn c, {
+    required Map<String, Category> categories,
+    required Map<String, Decimal>? leftAfter,
+    required MoneyFormat money,
+    required DateLabels dates,
+  }) {
+    final TextStyle heading = Theme.of(context).textTheme.labelSmall!
+        .copyWith(fontWeight: FontWeight.w700);
+    double widest = textWidth(
+      context,
+      tr('feed.table.${c.name}').toUpperCase(),
+      heading,
+    );
+    for (final FeedRecord r in _records) {
+      final Decimal? left = leftAfter?[r.id];
+      final (String value, TextStyle style) = tableCellText(
+        context,
+        c,
+        record: r,
+        category: r.categoryId == null ? null : categories[r.categoryId],
+        date: dates.dayMonthShort(r.date),
+        leftAfter: left == null ? null : money.format(left),
+        amount: feedAmountLabel(r, money),
+      );
+      widest = math.max(widest, textWidth(context, value, style));
+    }
+    // The cell's padding, and a pixel against rounding.
+    return widest + 24 + 1;
+  }
+
   Widget _tableCard({
     required bool table,
     required bool header,
+    required double Function(FeedColumn c) fitWidth,
     required Widget child,
   }) {
     if (!table) return child;
@@ -542,7 +588,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       child: LayoutBuilder(
         builder: (BuildContext _, BoxConstraints box) => Column(
           children: <Widget>[
-            if (header) const FeedTableHeader(),
+            if (header) FeedTableHeader(fitWidth: fitWidth),
             Expanded(child: child),
             if (desktopInput && header && box.maxHeight > 200)
               Container(
@@ -781,10 +827,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       (FeedItem i) => i is FeedHeader && !i.date.isBefore(period.startDate),
     );
     if (y == null) return;
-    final double target = y.clamp(
-      _scroll.position.minScrollExtent,
-      _scroll.position.maxScrollExtent,
-    );
+    final double target = math.max(y, _scroll.position.minScrollExtent);
     if (!animate || MediaQuery.disableAnimationsOf(context)) {
       _scroll.jumpTo(target);
       return;

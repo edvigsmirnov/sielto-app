@@ -13,6 +13,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
@@ -585,6 +586,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                 label: tr('income.fieldTitle'),
                 child: TextField(
                   controller: _title,
+                  autofocus: desktopInput && _existing == null,
                   textCapitalization: TextCapitalization.sentences,
                 ),
               ),
@@ -596,6 +598,9 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                   symbol: money.symbol,
                   enabled: !_isFrozen,
                   hintText: tr('income.amountOptional'),
+                  onSubmitted: (String _) {
+                    if (desktopInput && _isValid) _save();
+                  },
                 ),
               ),
               const SizedBox(height: SageSpace.lg),
