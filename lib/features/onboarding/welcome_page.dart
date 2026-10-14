@@ -80,6 +80,7 @@ class _WelcomePageState extends State<WelcomePage>
       // Without `systemNavigationBarContrastEnforced: false`, three-button
       // navigation draws a light scrim.
       value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
         systemNavigationBarColor: SageBrand.night,
         systemNavigationBarIconBrightness: Brightness.light,
         systemNavigationBarContrastEnforced: false,

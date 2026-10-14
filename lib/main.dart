@@ -252,7 +252,8 @@ class BudgetApp extends ConsumerWidget {
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
               .copyWith(
-                systemNavigationBarColor: Colors.transparent,
+                statusBarColor: Colors.transparent,
+                systemNavigationBarColor: context.sage.surface,
                 systemNavigationBarIconBrightness: dark
                     ? Brightness.light
                     : Brightness.dark,

@@ -169,6 +169,7 @@ class _LaunchCurtainState extends ConsumerState<LaunchCurtain> {
         else
           AnnotatedRegion<SystemUiOverlayStyle>(
             value: SystemUiOverlayStyle.light.copyWith(
+              statusBarColor: Colors.transparent,
               systemNavigationBarColor: SageBrand.night,
               systemNavigationBarIconBrightness: Brightness.light,
               systemNavigationBarContrastEnforced: false,
