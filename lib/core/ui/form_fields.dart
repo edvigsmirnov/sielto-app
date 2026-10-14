@@ -82,11 +82,17 @@ class FormSheet extends StatelessWidget {
   }
 }
 
+/// Weeks in the date picker start on Monday, as in the Calendar.
+Locale? pickerLocale(BuildContext context) =>
+    context.locale.languageCode == 'en' ? const Locale('en', 'GB') : null;
+
 /// The one span every record date picker offers. Null when dismissed.
+/// [last] caps the choice, as a fixed deadline does.
 Future<CalendarDate?> pickDate(
   BuildContext context,
-  CalendarDate initial,
-) async {
+  CalendarDate initial, {
+  CalendarDate? last,
+}) async {
   // Keeps the keyboard closed after the picker.
   FocusManager.instance.primaryFocus?.unfocus();
   final DateTime? picked = await showDatePicker(
@@ -94,9 +100,11 @@ Future<CalendarDate?> pickDate(
         ? DatePickerEntryMode.calendarOnly
         : DatePickerEntryMode.calendar,
     context: context,
-    initialDate: initial.toUtcMidnight(),
+    locale: pickerLocale(context),
+    initialDate: (last != null && initial.isAfter(last) ? last : initial)
+        .toUtcMidnight(),
     firstDate: DateTime.utc(initial.year - 10),
-    lastDate: DateTime.utc(initial.year + 15),
+    lastDate: last?.toUtcMidnight() ?? DateTime.utc(initial.year + 15),
   );
   return picked == null ? null : CalendarDate.fromDateTime(picked);
 }

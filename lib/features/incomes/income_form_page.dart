@@ -28,6 +28,7 @@ import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/periods/holiday_service.dart';
 import 'package:sielto/features/periods/period_choice.dart';
 import 'package:sielto/features/periods/period_service.dart';
+import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
@@ -143,7 +144,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       if (row != null) {
         _existing = row;
         _title.text = row.title;
-        _amount.text = row.amount?.toString() ?? '';
+        _amount.text = moneyText(row.amount);
         _notes.text = row.notes ?? '';
         _date = row.expectedDate;
         _isReceived = row.isPaid;
@@ -207,9 +208,14 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       } else if (existing != null) {
         await _saveExisting(existing, repos, date, notes);
       } else if (_isRegular) {
+        final _PastAnswer? past = space.budgetMode == BudgetMode.incomeDriven
+            ? await _askPastDates()
+            : const _PastAnswer.skip();
+        // Dismissed: nothing is saved and the form stays.
+        if (past == null || !mounted) return;
         final IncomeRecurrenceRule rule = await _createRule(space, repos);
-        if (space.budgetMode == BudgetMode.incomeDriven && mounted) {
-          await _offerPastDates(space, repos, rule.id);
+        if (past.from != null) {
+          await _backfill(space, rule, past);
         }
       } else {
         await repos.incomes.create(
@@ -262,44 +268,32 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   }
 
   /// A schedule already under way asks whether its latest date arrived, and
-  /// how far back to add earlier ones.
-  Future<void> _offerPastDates(
-    Space space,
-    Repositories repos,
-    String ruleId,
-  ) async {
-    final IncomeRecurrenceRule? rule = await repos.incomeRules.byId(ruleId);
-    final ResolvedCalendar resolved = await ref.read(
-      resolvedCalendarProvider.future,
-    );
-    final PeriodService service = PeriodService(
-      repos: repos,
-      calendar: resolved.calendar,
-      missingHolidayYears: resolved.missingYears,
-    );
+  /// how far back to add earlier ones. Null when either question is
+  /// dismissed.
+  Future<_PastAnswer?> _askPastDates() async {
+    final PeriodService service = await _periodService();
     final CalendarDate today = ref.read(spaceClockProvider).today();
-    final CalendarDate? last = rule == null
-        ? null
-        : service.lastDateOf(rule, today);
-    if (rule == null || last == null || !mounted) return;
+    final CalendarDate last = service.lastDateOf(_schedule.schedule, today);
+    if (!mounted) return null;
 
     final String date = DateLabels(context.locale.toString())
         .dayMonth(last, reference: today);
-    final bool? received = await chooseDialog<bool?>(
+    final _Past? past = await chooseDialog<_Past>(
       context,
       title: tr(
         'income.pastTitle',
-        namedArgs: <String, String>{'title': rule.title, 'date': date},
+        namedArgs: <String, String>{'title': _title.text, 'date': date},
       ),
-      options: <(String, bool?)>[
-        if (rule.amount != null) (tr('income.pastReceived'), true),
-        (tr('income.pastExpected'), false),
-        (tr('income.pastSkip'), null),
+      options: <(String, _Past)>[
+        if (_parsedAmount != null) (tr('income.pastReceived'), _Past.received),
+        (tr('income.pastExpected'), _Past.expected),
+        (tr('income.pastSkip'), _Past.skip),
       ],
     );
-    if (received == null || !mounted) return;
+    if (past == null || !mounted) return null;
+    if (past == _Past.skip) return const _PastAnswer.skip();
 
-    final int? months = await chooseDialog<int>(
+    int? months = await chooseDialog<int>(
       context,
       title: tr('income.pastEarlierTitle'),
       body: tr('income.pastEarlierBody'),
@@ -307,16 +301,50 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         (tr('income.pastEarlierNone'), 0),
         for (final int n in const <int>[3, 6, 12])
           (plural('income.pastEarlierMonths', n), n),
+        (tr('income.pastEarlierOther'), -1),
       ],
     );
-    if (months == null) return;
+    if (months == -1 && mounted) {
+      months = int.tryParse(
+        await textDialog(
+              context,
+              title: tr('income.pastEarlierAsk'),
+              keyboardType: TextInputType.number,
+            ) ??
+            '',
+      );
+    }
+    if (months == null || months < 0) return null;
     final CalendarDate start = last.addMonths(-months);
+    return _PastAnswer(
+      from: months == 0 ? last : CalendarDate(start.year, start.month, 1),
+      received: past == _Past.received,
+    );
+  }
+
+  Future<PeriodService> _periodService() async {
+    final ResolvedCalendar resolved = await ref.read(
+      resolvedCalendarProvider.future,
+    );
+    return PeriodService(
+      repos: ref.read(repositoriesProvider),
+      calendar: resolved.calendar,
+      missingHolidayYears: resolved.missingYears,
+    );
+  }
+
+  Future<void> _backfill(
+    Space space,
+    IncomeRecurrenceRule rule,
+    _PastAnswer past,
+  ) async {
+    final PeriodService service = await _periodService();
     await service.backfill(
       space,
       rule,
-      from: months == 0 ? last : CalendarDate(start.year, start.month, 1),
-      today: today,
-      currentReceived: received,
+      from: past.from!,
+      today: ref.read(spaceClockProvider).today(),
+      currentReceived: past.received,
     );
   }
 
@@ -435,10 +463,20 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     await openIncomeRuleForm(context, rule: rule);
   }
 
+  /// A fixed Budget deadline, which no record may pass.
+  CalendarDate? get _hardDeadline {
+    final BudgetLedger? budget = ref.read(budgetLedgerProvider).value;
+    return budget != null && budget.deadlineIsHard ? budget.deadline : null;
+  }
+
   Future<void> _pickDate({required bool actual}) async {
     final CalendarDate current =
         (actual ? _actualDate : _date) ?? ref.read(spaceClockProvider).today();
-    final CalendarDate? picked = await pickDate(context, current);
+    final CalendarDate? picked = await pickDate(
+      context,
+      current,
+      last: _hardDeadline,
+    );
     if (picked == null) return;
     setState(() {
       if (actual) {
@@ -579,9 +617,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
               if (!isOccurrence) ...<Widget>[
                 SwitchListTile.adaptive(
                   value: _isRegular,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: SageSpace.sm,
-                  ),
+                  contentPadding: EdgeInsets.zero,
                   title: Text(tr('income.makeRegular')),
                   subtitle: Text(tr('income.makeRegularHint')),
                   onChanged: (bool value) => setState(() => _isRegular = value),
@@ -651,9 +687,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
               if (!_isRegular) ...<Widget>[
                 SwitchListTile.adaptive(
                   value: _isReceived,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: SageSpace.sm,
-                  ),
+                  contentPadding: EdgeInsets.zero,
                   title: Text(tr('income.markReceived')),
                   subtitle: _isReceived && _parsedAmount == null
                       ? Semantics(
@@ -794,4 +828,16 @@ class _LandsIn extends ConsumerWidget {
       ),
     );
   }
+}
+
+enum _Past { received, expected, skip }
+
+/// [from] is null when the past dates are skipped.
+class _PastAnswer {
+  const _PastAnswer({required this.from, required this.received});
+
+  const _PastAnswer.skip() : from = null, received = false;
+
+  final CalendarDate? from;
+  final bool received;
 }

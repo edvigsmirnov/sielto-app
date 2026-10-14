@@ -9,3 +9,10 @@ Decimal? parseMoney(String input) {
   if (cleaned.isEmpty) return null;
   return Decimal.tryParse(cleaned);
 }
+
+/// An amount for an input field: `2.50`, `40`.
+String moneyText(Decimal? amount) => amount == null
+    ? ''
+    : amount.isInteger
+    ? amount.toString()
+    : amount.toStringAsFixed(2);

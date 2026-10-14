@@ -132,6 +132,25 @@ void main() {
         d('2026-02-22'),
       );
     });
+
+    test('a weekend weekday stays put; a holiday on it still moves', () {
+      const WeekdayRuleSchedule saturday = WeekdayRuleSchedule(
+        WeekdayOrdinal.first,
+        Weekday.saturday,
+      );
+      // October 2026: the first Saturday is the 3rd.
+      expect(
+        saturday.resolveFor(2026, 10, calendar: weekends).anchorDate,
+        d('2026-10-03'),
+      );
+      final IncomeWindow holiday = saturday.resolveFor(
+        2026,
+        10,
+        calendar: WorkingDayCalendar(holidays: <CalendarDate>{d('2026-10-03')}),
+      );
+      expect(holiday.windowStart, d('2026-10-02'));
+      expect(holiday.windowEnd, d('2026-10-05'));
+    });
   });
 
   group('DateRangeSchedule', () {

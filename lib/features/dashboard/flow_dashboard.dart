@@ -269,8 +269,6 @@ class _FigureTile extends StatelessWidget {
           if (caption != null)
             Text(
               caption!,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: text.labelSmall?.copyWith(color: context.sage.inkLabel),
             ),

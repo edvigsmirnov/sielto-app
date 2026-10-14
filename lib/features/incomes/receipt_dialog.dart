@@ -34,6 +34,7 @@ class _ReceiptDialogState extends State<_ReceiptDialog> {
           ? DatePickerEntryMode.calendarOnly
           : DatePickerEntryMode.calendar,
       context: context,
+      locale: pickerLocale(context),
       initialDate: _actual.toUtcMidnight(),
       firstDate: DateTime.utc(_actual.year - 2),
       lastDate: DateTime.utc(_actual.year + 2),

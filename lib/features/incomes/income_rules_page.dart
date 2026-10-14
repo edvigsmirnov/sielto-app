@@ -12,6 +12,7 @@ import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/anchor_help.dart';
+import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/incomes/income_rule_form_page.dart';
 import 'package:sielto/features/periods/schedule_mapping.dart';
 import 'package:sielto/features/space/space_ledger.dart';
@@ -35,6 +36,14 @@ class IncomeRulesPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('income.regularTitle'))),
+      floatingActionButton: FloatingActionButton(
+        tooltip: tr('common.add'),
+        backgroundColor: context.sage.accent,
+        foregroundColor: context.sage.accentOn,
+        shape: const CircleBorder(),
+        onPressed: () => openIncomeForm(context, regular: true),
+        child: const Icon(Icons.add),
+      ),
       body: switch (rules) {
         AsyncData<List<IncomeRecurrenceRule>>(
           value: final List<IncomeRecurrenceRule> rows,

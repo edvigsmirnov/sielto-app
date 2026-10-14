@@ -186,7 +186,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       if (row != null) {
         _existing = row;
         _title.text = row.title;
-        _amount.text = row.amount.toString();
+        _amount.text = moneyText(row.amount);
         _notes.text = row.notes ?? '';
         _date = row.dueDate;
         _type = row.expenseType;
@@ -212,7 +212,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       }
     } else if (draft != null) {
       _title.text = draft.title;
-      _amount.text = draft.amount.toString();
+      _amount.text = moneyText(draft.amount);
       _notes.text = draft.notes ?? '';
       _date = draft.date;
       _type = draft.expenseType;
@@ -257,8 +257,18 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
 
   Future<void> _pickDate() async {
     final CalendarDate current = _date ?? ref.read(spaceClockProvider).today();
-    final CalendarDate? picked = await pickDate(context, current);
+    final CalendarDate? picked = await pickDate(
+      context,
+      current,
+      last: _hardDeadline,
+    );
     if (picked != null) setState(() => _date = picked);
+  }
+
+  /// A fixed Budget deadline, which no record may pass.
+  CalendarDate? get _hardDeadline {
+    final BudgetLedger? budget = ref.read(budgetLedgerProvider).value;
+    return budget != null && budget.deadlineIsHard ? budget.deadline : null;
   }
 
   Future<void> _save() async {
@@ -546,6 +556,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                   amount: _parsedAmount,
                   date: _date,
                   replacingId: _existing?.id,
+                  paid: _existing?.isPaid ?? false,
                   isRecurring: _isRecurring && _existing == null,
                   occurrences: _occurrences,
                   interval: _interval,
@@ -677,9 +688,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                       ),
                     SwitchListTile.adaptive(
                       value: _isPaid,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: SageSpace.sm,
-                      ),
+                      contentPadding: EdgeInsets.zero,
                       title: Text(tr('payment.markPaid')),
                       onChanged: _isFrozen
                           ? null
@@ -711,6 +720,7 @@ class _LivePreview extends ConsumerWidget {
     required this.amount,
     required this.date,
     required this.replacingId,
+    required this.paid,
     required this.isRecurring,
     required this.occurrences,
     required this.interval,
@@ -721,6 +731,7 @@ class _LivePreview extends ConsumerWidget {
   final Decimal? amount;
   final CalendarDate? date;
   final String? replacingId;
+  final bool paid;
   final bool isRecurring;
   final int? occurrences;
   final RecurrenceInterval interval;
@@ -815,6 +826,9 @@ class _LivePreview extends ConsumerWidget {
       if (flow == null) return const SizedBox.shrink();
       available = flow.available;
       existing = flow.entries;
+      // Paid by the balance day, it is already in the balance.
+      final CalendarDate? setOn = ref.watch(currentSpaceProvider)?.balanceSetOn;
+      if (paid && setOn != null) counts = (CalendarDate d) => d.isAfter(setOn);
     }
     // No preview when the salary has no amount.
     if (available == null) return const SizedBox.shrink();

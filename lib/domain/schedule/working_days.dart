@@ -10,6 +10,8 @@ class WorkingDayCalendar {
     this.weekendDays = defaultWeekend,
   }) : _nonWorking = <CalendarDate>{...holidays, ...customNonWorkingDays};
 
+  const WorkingDayCalendar._(this._nonWorking, this.weekendDays);
+
   /// Saturday and Sunday, in [DateTime.weekday] numbering.
   static const Set<int> defaultWeekend = <int>{
     DateTime.saturday,
@@ -20,6 +22,10 @@ class WorkingDayCalendar {
 
   final Set<CalendarDate> _nonWorking;
   final Set<int> weekendDays;
+
+  /// The same days off, with [weekday] (as in [DateTime.weekday]) worked.
+  WorkingDayCalendar working(int weekday) =>
+      WorkingDayCalendar._(_nonWorking, <int>{...weekendDays}..remove(weekday));
 
   bool isWorkingDay(CalendarDate date) =>
       !weekendDays.contains(date.weekday) && !_nonWorking.contains(date);

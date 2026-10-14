@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/choice_field.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -62,6 +63,16 @@ class ScheduleDraft {
       type == ScheduleType.boundaryDays ? boundaryAnchor : null;
   int? get boundaryCountOrNull =>
       type == ScheduleType.boundaryDays ? boundaryCount : null;
+
+  IncomeSchedule get schedule => switch (type) {
+    ScheduleType.fixedDate => FixedDateSchedule(fixedDay),
+    ScheduleType.weekdayRule => WeekdayRuleSchedule(ordinal, weekday),
+    ScheduleType.dateRange => DateRangeSchedule(rangeStart, rangeEnd),
+    ScheduleType.boundaryDays => BoundaryDaysSchedule(
+      boundaryAnchor,
+      boundaryCount,
+    ),
+  };
 
   /// A range must not end before it starts.
   bool get isValid => type != ScheduleType.dateRange || rangeEnd >= rangeStart;
@@ -141,7 +152,7 @@ class ScheduleEditor extends StatelessWidget {
         const SizedBox(height: SageSpace.md),
         _fieldsFor(context),
         const SizedBox(height: SageSpace.md),
-        const UncertaintyNote(),
+        UncertaintyNote(weekday: draft.type == ScheduleType.weekdayRule),
       ],
     );
   }
@@ -188,21 +199,17 @@ class _TypeChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? sage.accentTint : sage.card,
+          color: selected ? sage.accent : sage.card,
           borderRadius: BorderRadius.circular(SageRadius.button),
-          border: Border.all(
-            color: selected ? sage.accentStrong : sage.border,
-            width: selected ? 2 : 1,
-          ),
+          border: Border.all(color: selected ? sage.accent : sage.border),
         ),
         child: Text(
           tr('schedule.${type.name}.name'),
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: selected ? sage.accentStrong : sage.inkSecondary,
-          ),
+          style: Theme.of(context).textTheme.labelLarge
+              ?.copyWith(color: selected ? sage.accentOn : sage.inkSecondary),
         ),
       ),
     );
@@ -211,7 +218,10 @@ class _TypeChip extends StatelessWidget {
 
 /// How a date on a weekend or holiday resolves.
 class UncertaintyNote extends StatelessWidget {
-  const UncertaintyNote({super.key});
+  const UncertaintyNote({this.weekday = false, super.key});
+
+  /// The chosen weekday counts as worked; only days off move it.
+  final bool weekday;
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +234,7 @@ class UncertaintyNote extends StatelessWidget {
         borderRadius: BorderRadius.circular(SageRadius.button),
       ),
       child: Text(
-        tr('schedule.uncertaintyNote'),
+        tr(weekday ? 'schedule.weekdayNote' : 'schedule.uncertaintyNote'),
         style: Theme.of(context).textTheme.bodySmall
             ?.copyWith(color: sage.inkSecondary),
       ),
@@ -246,6 +256,7 @@ class _FixedDateFields extends StatelessWidget {
       LabelledField(
         label: tr('schedule.dayOfMonth'),
         child: _DayPicker(
+          title: tr('schedule.dayOfMonth'),
           value: draft.fixedDay,
           onChanged: (int day) => onChanged(draft.copyWith(fixedDay: day)),
         ),
@@ -276,16 +287,12 @@ class _WeekdayFields extends StatelessWidget {
       Expanded(
         child: LabelledField(
           label: tr('schedule.ordinal'),
-          child: DropdownButtonFormField<WeekdayOrdinal>(
-            initialValue: draft.ordinal,
-            items: <DropdownMenuItem<WeekdayOrdinal>>[
-              for (final WeekdayOrdinal o in WeekdayOrdinal.values)
-                DropdownMenuItem<WeekdayOrdinal>(
-                  value: o,
-                  child: Text(tr('ordinal.${o.name}')),
-                ),
-            ],
-            onChanged: (WeekdayOrdinal? o) =>
+          child: ChoiceField<WeekdayOrdinal>(
+            value: draft.ordinal,
+            options: WeekdayOrdinal.values,
+            labelOf: (WeekdayOrdinal o) => tr('ordinal.${o.name}'),
+            title: tr('schedule.ordinal'),
+            onChanged: (WeekdayOrdinal o) =>
                 onChanged(draft.copyWith(ordinal: o)),
           ),
         ),
@@ -294,16 +301,12 @@ class _WeekdayFields extends StatelessWidget {
       Expanded(
         child: LabelledField(
           label: tr('schedule.weekday'),
-          child: DropdownButtonFormField<Weekday>(
-            initialValue: draft.weekday,
-            items: <DropdownMenuItem<Weekday>>[
-              for (final Weekday w in Weekday.values)
-                DropdownMenuItem<Weekday>(
-                  value: w,
-                  child: Text(tr('weekday.${w.name}')),
-                ),
-            ],
-            onChanged: (Weekday? w) => onChanged(draft.copyWith(weekday: w)),
+          child: ChoiceField<Weekday>(
+            value: draft.weekday,
+            options: Weekday.values,
+            labelOf: (Weekday w) => tr('weekday.${w.name}'),
+            title: tr('schedule.weekday'),
+            onChanged: (Weekday w) => onChanged(draft.copyWith(weekday: w)),
           ),
         ),
       ),
@@ -328,6 +331,7 @@ class _RangeFields extends StatelessWidget {
             child: LabelledField(
               label: tr('schedule.rangeStart'),
               child: _DayPicker(
+                title: tr('schedule.rangeStart'),
                 value: draft.rangeStart,
                 onChanged: (int day) =>
                     onChanged(draft.copyWith(rangeStart: day)),
@@ -339,6 +343,7 @@ class _RangeFields extends StatelessWidget {
             child: LabelledField(
               label: tr('schedule.rangeEnd'),
               child: _DayPicker(
+                title: tr('schedule.rangeEnd'),
                 value: draft.rangeEnd,
                 onChanged: (int day) =>
                     onChanged(draft.copyWith(rangeEnd: day)),
@@ -401,19 +406,24 @@ class _BoundaryFields extends StatelessWidget {
 
 /// Day of the month, 1 to 31.
 class _DayPicker extends StatelessWidget {
-  const _DayPicker({required this.value, required this.onChanged});
+  const _DayPicker({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
 
+  final String title;
   final int value;
   final ValueChanged<int> onChanged;
 
   @override
-  Widget build(BuildContext context) => DropdownButtonFormField<int>(
-    initialValue: value,
-    items: <DropdownMenuItem<int>>[
-      for (int day = 1; day <= 31; day++)
-        DropdownMenuItem<int>(value: day, child: Text('$day')),
-    ],
-    onChanged: (int? day) => day == null ? null : onChanged(day),
+  Widget build(BuildContext context) => ChoiceField<int>(
+    value: value,
+    options: <int>[for (int day = 1; day <= 31; day++) day],
+    labelOf: (int day) => '$day',
+    title: title,
+    columns: 7,
+    onChanged: onChanged,
   );
 }
 

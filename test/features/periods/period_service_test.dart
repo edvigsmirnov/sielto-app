@@ -10,6 +10,7 @@ import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/periods/period_service.dart';
+import 'package:sielto/features/periods/schedule_mapping.dart';
 
 CalendarDate d(String iso) => CalendarDate.parse(iso);
 Decimal m(String v) => Decimal.parse(v);
@@ -656,7 +657,7 @@ void main() {
   group('backfill', () {
     test('adds past dates as received and their periods, closed', () async {
       final IncomeRecurrenceRule rule = await anchorOn(5);
-      expect(service.lastDateOf(rule, today), d('2026-03-05'));
+      expect(service.lastDateOf(scheduleOf(rule)!, today), d('2026-03-05'));
 
       await service.backfill(
         space,

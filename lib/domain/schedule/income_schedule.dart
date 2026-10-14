@@ -47,7 +47,7 @@ class FixedDateSchedule extends IncomeSchedule {
 }
 
 /// "The last Friday", "the second Wednesday". No fifth: not every month has
-/// one.
+/// one. The chosen weekday is a working day even at a weekend.
 class WeekdayRuleSchedule extends IncomeSchedule {
   const WeekdayRuleSchedule(this.ordinal, this.weekday);
 
@@ -56,6 +56,14 @@ class WeekdayRuleSchedule extends IncomeSchedule {
 
   /// 1 = Monday, as in [DateTime.weekday].
   int get _targetWeekday => weekday.index + 1;
+
+  @override
+  IncomeWindow resolveFor(
+    int year,
+    int month, {
+    required WorkingDayCalendar calendar,
+  }) =>
+      super.resolveFor(year, month, calendar: calendar.working(_targetWeekday));
 
   @override
   ({CalendarDate start, CalendarDate? end}) baseRangeFor(int year, int month) {

@@ -40,7 +40,7 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
     text: widget.rule.title,
   );
   late final TextEditingController _amount = TextEditingController(
-    text: widget.rule.amount?.toString() ?? '',
+    text: moneyText(widget.rule.amount),
   );
 
   late ScheduleDraft _schedule = _draftOf(widget.rule);

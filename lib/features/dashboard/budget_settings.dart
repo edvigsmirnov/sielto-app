@@ -33,7 +33,7 @@ class _FundSheet extends ConsumerStatefulWidget {
 
 class _FundSheetState extends ConsumerState<_FundSheet> {
   late final TextEditingController _amount = TextEditingController(
-    text: widget.ledger.target?.toString() ?? '',
+    text: moneyText(widget.ledger.target),
   );
 
   @override
@@ -167,7 +167,7 @@ class _DeadlineSheetState extends ConsumerState<_DeadlineSheet> {
         const SizedBox(height: SageSpace.md),
         // Soft: a marker only. Hard: refuses later records.
         SwitchListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: SageSpace.sm),
+          contentPadding: EdgeInsets.zero,
           value: _isHard,
           onChanged: _date == null
               ? null

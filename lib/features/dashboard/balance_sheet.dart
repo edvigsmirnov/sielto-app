@@ -34,7 +34,7 @@ class _BalanceSheet extends ConsumerStatefulWidget {
 
 class _BalanceSheetState extends ConsumerState<_BalanceSheet> {
   late final TextEditingController _amount = TextEditingController(
-    text: widget.space.manualBalance?.toString() ?? '',
+    text: moneyText(widget.space.manualBalance),
   );
 
   @override

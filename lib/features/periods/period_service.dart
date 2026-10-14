@@ -376,10 +376,8 @@ class PeriodService {
     return written;
   }
 
-  /// The latest scheduled date of [rule] on or before [today], or null.
-  CalendarDate? lastDateOf(IncomeRecurrenceRule rule, CalendarDate today) {
-    final IncomeSchedule? schedule = scheduleOf(rule);
-    if (schedule == null) return null;
+  /// The latest date of [schedule] on or before [today].
+  CalendarDate lastDateOf(IncomeSchedule schedule, CalendarDate today) {
     final CalendarDate here = schedule
         .resolveFor(today.year, today.month, calendar: calendar)
         .anchorDate;
