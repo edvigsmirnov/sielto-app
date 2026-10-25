@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/backup/backup_page.dart';
@@ -32,11 +33,7 @@ class DashboardPage extends ConsumerWidget {
           child: Column(
             children: <Widget>[
               RecoveryKeyPlate(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (BuildContext _) => const BackupPage(),
-                  ),
-                ),
+                onTap: () => pushPage<void>(context, const BackupPage()),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(

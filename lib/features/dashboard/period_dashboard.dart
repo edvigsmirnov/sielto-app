@@ -8,6 +8,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
@@ -177,11 +178,7 @@ class _PeriodBody extends ConsumerWidget {
         ),
         const SizedBox(height: SageSpace.md),
         SageCard(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (BuildContext _) => const IncomeRulesPage(),
-            ),
-          ),
+          onTap: () => pushPage<void>(context, const IncomeRulesPage()),
           child: Row(
             children: <Widget>[
               Icon(Icons.repeat, size: 20, color: context.sage.inkLabel),

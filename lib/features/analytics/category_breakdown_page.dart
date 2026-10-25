@@ -30,11 +30,9 @@ class CategoryBreakdownPage extends ConsumerWidget {
     BuildContext context, {
     required String categoryKey,
     required String title,
-  }) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (BuildContext _) =>
-          CategoryBreakdownPage(categoryKey: categoryKey, title: title),
-    ),
+  }) => pushPage<void>(
+    context,
+    CategoryBreakdownPage(categoryKey: categoryKey, title: title),
   );
 
   @override

@@ -52,23 +52,18 @@ class _MembersPageState extends ConsumerState<MembersPage> {
 
   Future<void> _invite() async {
     if (!await ensurePublicName(context, ref) || !mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext _) => InvitePage(spaceId: widget.spaceId),
-      ),
-    );
+    await pushPage<void>(context, InvitePage(spaceId: widget.spaceId));
     if (mounted) await _load();
   }
 
   Future<void> _open(Member member, {required bool canManage}) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext _) => MemberPage(
-          spaceId: widget.spaceId,
-          member: member,
-          label: _labels[member.userId],
-          canManage: canManage,
-        ),
+    await pushPage<void>(
+      context,
+      MemberPage(
+        spaceId: widget.spaceId,
+        member: member,
+        label: _labels[member.userId],
+        canManage: canManage,
       ),
     );
     if (mounted) await _load();

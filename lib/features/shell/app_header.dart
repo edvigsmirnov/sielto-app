@@ -53,11 +53,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                   initial: ref.watch(profileInitialProvider),
                   onTap: () {
                     HapticFeedback.lightImpact();
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (BuildContext _) => const SettingsPage(),
-                      ),
-                    );
+                    pushPage<void>(context, const SettingsPage());
                   },
                 ),
               ),

@@ -43,11 +43,10 @@ class BackupPage extends ConsumerWidget {
           const EdgeInsets.symmetric(vertical: SageSpace.md),
         ),
         children: <Widget>[
-          ListTile(
-            leading: const Icon(Icons.key_outlined),
-            title: Text(tr('recovery.title')),
-            subtitle: Text(tr(keySet ? 'recovery.isSet' : 'recovery.notSet')),
-            trailing: const Icon(Icons.chevron_right),
+          LinkTile(
+            icon: Icons.key_outlined,
+            title: tr('recovery.title'),
+            subtitle: tr(keySet ? 'recovery.isSet' : 'recovery.notSet'),
             onTap: () => _openRecoveryKeyPage(context),
           ),
           if (!keySet)
@@ -63,10 +62,9 @@ class BackupPage extends ConsumerWidget {
             ),
           if (driveSupported) const _DriveSection(),
           SectionLabel(tr('backup.manual')),
-          ListTile(
-            leading: const Icon(Icons.ios_share_outlined),
-            title: Text(tr('backup.export')),
-            trailing: const Icon(Icons.chevron_right),
+          LinkTile(
+            icon: Icons.ios_share_outlined,
+            title: tr('backup.export'),
             onTap: () => _export(context, ref),
           ),
           const _RestoreRow(),

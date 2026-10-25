@@ -131,11 +131,7 @@ class OverdueChip extends ConsumerWidget {
 Future<void> openOverduePage(
   BuildContext context, {
   required MoneyFormat money,
-}) => Navigator.of(context).push(
-  MaterialPageRoute<void>(
-    builder: (BuildContext _) => OverduePage(money: money),
-  ),
-);
+}) => pushPage<void>(context, OverduePage(money: money));
 
 /// Every missed payment, oldest first, as Feed rows.
 class OverduePage extends ConsumerWidget {

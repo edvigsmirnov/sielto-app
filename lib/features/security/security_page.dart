@@ -211,10 +211,9 @@ class SecurityPage extends ConsumerWidget {
                   ref.read(biometricUnlockProvider.notifier).set(value: value),
             ),
           if (enabled)
-            ListTile(
-              leading: const Icon(Icons.pin_outlined),
-              title: Text(tr('security.changePin')),
-              trailing: const Icon(Icons.chevron_right),
+            LinkTile(
+              icon: Icons.pin_outlined,
+              title: tr('security.changePin'),
               onTap: () => _changePin(context, ref),
             ),
           SectionLabel(tr('security.privacy')),

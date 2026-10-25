@@ -40,13 +40,10 @@ class SettingsPage extends ConsumerWidget {
           const EdgeInsets.symmetric(vertical: SageSpace.md),
         ),
         children: <Widget>[
-          ListTile(
-            leading: const Icon(Icons.person_outline),
-            title: Text(tr('settings.name')),
-            subtitle: Text(
-              ref.watch(nameProvider) ?? tr('settings.nameNotSet'),
-            ),
-            trailing: const Icon(Icons.chevron_right),
+          LinkTile(
+            icon: Icons.person_outline,
+            title: tr('settings.name'),
+            subtitle: ref.watch(nameProvider) ?? tr('settings.nameNotSet'),
             onTap: () => _editName(context, ref),
           ),
           SectionLabel(tr('settings.display')),
@@ -118,76 +115,45 @@ class SettingsPage extends ConsumerWidget {
               ),
           ],
           // A sheet, not a segmented control: the list of languages can grow.
-          ListTile(
-            leading: const Icon(Icons.translate_outlined),
-            title: Text(tr('settings.language')),
-            subtitle: Text(AppLocales.resolve(context.locale).name),
-            trailing: const Icon(Icons.chevron_right),
+          LinkTile(
+            icon: Icons.translate_outlined,
+            title: tr('settings.language'),
+            subtitle: AppLocales.resolve(context.locale).name,
             onTap: () => showLanguagePicker(context),
           ),
           const SizedBox(height: SageSpace.md),
           SectionLabel(tr('settings.data')),
-          ListTile(
-            leading: const Icon(Icons.dashboard_outlined),
-            title: Text(tr('settings.spaces')),
-            trailing: const Icon(Icons.chevron_right),
+          LinkTile(
+            icon: Icons.dashboard_outlined,
+            title: tr('settings.spaces'),
             onTap: () => isWide(context)
-                ? Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (BuildContext _) => const SpacesPage(),
-                    ),
-                  )
+                ? pushPage<void>(context, const SpacesPage())
                 : showSpaceSwitcher(context),
           ),
-          ListTile(
-            leading: const Icon(Icons.label_outline),
-            title: Text(tr('category.title')),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (BuildContext _) => const CategoriesPage(),
-              ),
-            ),
+          LinkTile(
+            icon: Icons.label_outline,
+            title: tr('category.title'),
+            onTap: () => pushPage<void>(context, const CategoriesPage()),
           ),
-          ListTile(
-            leading: const Icon(Icons.event_busy_outlined),
-            title: Text(tr('holidays.title')),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (BuildContext _) => const HolidaysPage(),
-              ),
-            ),
+          LinkTile(
+            icon: Icons.event_busy_outlined,
+            title: tr('holidays.title'),
+            onTap: () => pushPage<void>(context, const HolidaysPage()),
           ),
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: Text(tr('security.title')),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (BuildContext _) => const SecurityPage(),
-              ),
-            ),
+          LinkTile(
+            icon: Icons.lock_outline,
+            title: tr('security.title'),
+            onTap: () => pushPage<void>(context, const SecurityPage()),
           ),
-          ListTile(
-            leading: const Icon(Icons.backup_outlined),
-            title: Text(tr('backup.title')),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (BuildContext _) => const BackupPage(),
-              ),
-            ),
+          LinkTile(
+            icon: Icons.backup_outlined,
+            title: tr('backup.title'),
+            onTap: () => pushPage<void>(context, const BackupPage()),
           ),
-          ListTile(
-            leading: const Icon(Icons.devices_outlined),
-            title: Text(tr('devices.listTitle')),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (BuildContext _) => const DevicesPage(),
-              ),
-            ),
+          LinkTile(
+            icon: Icons.devices_outlined,
+            title: tr('devices.listTitle'),
+            onTap: () => pushPage<void>(context, const DevicesPage()),
           ),
           const SizedBox(height: SageSpace.md),
           SectionLabel(tr('settings.network')),
@@ -201,15 +167,10 @@ class SettingsPage extends ConsumerWidget {
           ),
           // Debug builds, or a release built with --dart-define=SIELTO_DEV=true.
           if (kDebugMode || const bool.fromEnvironment('SIELTO_DEV'))
-            ListTile(
-              leading: const Icon(Icons.science_outlined),
-              title: const Text('Developer'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (BuildContext _) => const TokenGalleryPage(),
-                ),
-              ),
+            LinkTile(
+              icon: Icons.science_outlined,
+              title: 'Developer',
+              onTap: () => pushPage<void>(context, const TokenGalleryPage()),
             ),
         ],
       ),

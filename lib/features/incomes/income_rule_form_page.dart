@@ -20,11 +20,7 @@ import 'package:sielto/features/incomes/schedule_editor.dart';
 Future<void> openIncomeRuleForm(
   BuildContext context, {
   required IncomeRecurrenceRule rule,
-}) => Navigator.of(context).push(
-  MaterialPageRoute<void>(
-    builder: (BuildContext _) => IncomeRuleFormPage(rule: rule),
-  ),
-);
+}) => pushPage<void>(context, IncomeRuleFormPage(rule: rule));
 
 class IncomeRuleFormPage extends ConsumerStatefulWidget {
   const IncomeRuleFormPage({required this.rule, super.key});

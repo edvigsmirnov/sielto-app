@@ -239,11 +239,8 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
               contentPadding: EdgeInsets.zero,
               title: Text(tr('members.title')),
               trailing: const Icon(Icons.chevron_right, size: 18),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (BuildContext _) => MembersPage(spaceId: space.id),
-                ),
-              ),
+              onTap: () =>
+                  pushPage<void>(context, MembersPage(spaceId: space.id)),
             ),
             const _Rule(),
             SwitchListTile.adaptive(
@@ -264,22 +261,14 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
               contentPadding: EdgeInsets.zero,
               title: Text(tr('category.title')),
               trailing: const Icon(Icons.chevron_right, size: 18),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (BuildContext _) => const CategoriesPage(),
-                ),
-              ),
+              onTap: () => pushPage<void>(context, const CategoriesPage()),
             ),
             const _Rule(),
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(tr('income.regularTitle')),
               trailing: const Icon(Icons.chevron_right, size: 18),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (BuildContext _) => const IncomeRulesPage(),
-                ),
-              ),
+              onTap: () => pushPage<void>(context, const IncomeRulesPage()),
             ),
             const _Rule(),
           ],

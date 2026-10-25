@@ -19,11 +19,7 @@ import 'package:sielto/features/payments/category_picker.dart';
 
 /// Add or edit a category.
 Future<void> openCategoryForm(BuildContext context, {Category? category}) =>
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext _) => CategoryFormPage(category: category),
-      ),
-    );
+    pushPage<void>(context, CategoryFormPage(category: category));
 
 class CategoryFormPage extends ConsumerStatefulWidget {
   const CategoryFormPage({this.category, super.key});

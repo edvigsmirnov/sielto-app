@@ -98,11 +98,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
   }
 
   Future<void> _add() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext _) => const AddDevicePage(),
-      ),
-    );
+    await pushPage<void>(context, const AddDevicePage());
     if (mounted) await _load();
   }
 

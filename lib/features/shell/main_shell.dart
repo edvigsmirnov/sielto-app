@@ -348,11 +348,8 @@ class _MainShellState extends ConsumerState<MainShell> {
             persist: false,
             action: SnackBarAction(
               label: tr('members.title'),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (BuildContext _) => MembersPage(spaceId: n.spaceId),
-                ),
-              ),
+              onPressed: () =>
+                  pushPage<void>(context, MembersPage(spaceId: n.spaceId)),
             ),
           ),
         );

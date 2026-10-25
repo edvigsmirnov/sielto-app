@@ -31,11 +31,7 @@ class AnalyticsPage extends ConsumerWidget {
       context,
       listen: false,
     );
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext _) => const AnalyticsPage(),
-      ),
-    );
+    await pushPage<void>(context, const AnalyticsPage());
     container.invalidate(analyticsChoiceProvider);
   }
 

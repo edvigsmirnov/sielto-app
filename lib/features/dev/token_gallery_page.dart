@@ -476,11 +476,9 @@ class _LoaderPreviewState extends State<_LoaderPreview> {
       Align(
         alignment: Alignment.centerLeft,
         child: OutlinedButton(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (BuildContext _) =>
-                  const Scaffold(body: Center(child: LeafLoader())),
-            ),
+          onPressed: () => pushPage<void>(
+            context,
+            const Scaffold(body: Center(child: LeafLoader())),
           ),
           child: const Text('Full screen'),
         ),

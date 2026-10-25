@@ -68,6 +68,31 @@ class SheetTitle extends StatelessWidget {
   );
 }
 
+/// A row that opens something: icon, title, an optional line, a chevron.
+class LinkTile extends StatelessWidget {
+  const LinkTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    leading: Icon(icon),
+    title: Text(title),
+    subtitle: subtitle == null ? null : Text(subtitle!),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: onTap,
+  );
+}
+
 /// Uppercase label above a form field.
 class FieldLabel extends StatelessWidget {
   const FieldLabel(this.text, {super.key});

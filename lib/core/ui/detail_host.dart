@@ -314,6 +314,10 @@ String? _textOf(Widget? w) => switch (w) {
   _ => null,
 };
 
+/// Opens [page] on top.
+Future<T?> pushPage<T>(BuildContext context, Widget page) =>
+    Navigator.of(context).push(MaterialPageRoute<T>(builder: (_) => page));
+
 /// The app bar for pushed pages. In a column the back button gets its own
 /// row and the title sits centred under it.
 PreferredSizeWidget sageAppBar(

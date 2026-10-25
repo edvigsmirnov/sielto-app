@@ -184,11 +184,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
                 onTap: () {
                   HapticFeedback.lightImpact();
                   Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (BuildContext _) => const SettingsPage(),
-                    ),
-                  );
+                  pushPage<void>(context, const SettingsPage());
                 },
               ),
             ],

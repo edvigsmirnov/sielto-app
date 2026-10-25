@@ -40,13 +40,10 @@ class HolidaysPage extends ConsumerWidget {
         ),
         children: <Widget>[
           SectionLabel(tr('holidays.country')),
-          ListTile(
-            leading: const Icon(Icons.public),
-            title: Text(
-              _countryLabel(ref, country, context.locale.languageCode),
-            ),
-            subtitle: Text(tr('holidays.countryHint')),
-            trailing: const Icon(Icons.chevron_right),
+          LinkTile(
+            icon: Icons.public,
+            title: _countryLabel(ref, country, context.locale.languageCode),
+            subtitle: tr('holidays.countryHint'),
             onTap: () => _pickCountry(context, ref),
           ),
           if (country != null) _RegionTile(country: country),

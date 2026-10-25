@@ -168,11 +168,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
           primaryLabel: tr('space.create'),
           onPrimary: _canSave ? _create : null,
           secondaryLabel: tr('members.joinWithCode'),
-          onSecondary: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (BuildContext _) => const JoinSpacePage(),
-            ),
-          ),
+          onSecondary: () => pushPage<void>(context, const JoinSpacePage()),
           // Currency was asked in the previous step.
           children: _fields(locale, currency, showCurrency: false),
         ),
