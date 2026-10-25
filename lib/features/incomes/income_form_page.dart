@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
@@ -305,11 +307,14 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
               context,
               title: tr('income.pastEarlierAsk'),
               keyboardType: TextInputType.number,
+              maxLength: 3,
             ) ??
             '',
       );
     }
     if (months == null || months < 0) return null;
+    // Ten years back at most.
+    months = min(months, 120);
     final CalendarDate start = last.addMonths(-months);
     return _PastAnswer(
       from: months == 0 ? last : CalendarDate(start.year, start.month, 1),
