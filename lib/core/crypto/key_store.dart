@@ -139,12 +139,18 @@ class DatabaseKeyManager {
 
   Future<String?> storedRecoveryKey() => _keyStore.readRecoveryKey();
 
-  /// Creates the key on first run.
-  Future<DatabaseKey> resolve() async {
+  /// Creates the key when [firstRun]; without it, missing key material means
+  /// the database is locked.
+  Future<DatabaseKey> resolve({bool firstRun = true}) async {
     final bool hasEnvelope = envelopeAFile.existsSync();
     final Uint8List? wrappingKey = await _keyStore.read();
 
-    if (!hasEnvelope && wrappingKey == null) return _createFirstRun();
+    if (!hasEnvelope && wrappingKey == null) {
+      if (!firstRun) {
+        throw const DatabaseKeyUnavailable(DatabaseKeyFailure.envelopeMissing);
+      }
+      return _createFirstRun();
+    }
 
     if (wrappingKey == null) {
       throw const DatabaseKeyUnavailable(DatabaseKeyFailure.wrappingKeyMissing);

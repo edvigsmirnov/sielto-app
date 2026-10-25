@@ -14,6 +14,12 @@ void main() {
     );
   });
 
+  test('the wait never falls back below an hour', () {
+    for (int n = 12; n < 200; n++) {
+      expect(lockoutFor(n).inSeconds, 3600, reason: '$n failures');
+    }
+  });
+
   test('a wrong PIN counts, a lockout refuses, the right PIN resets', () async {
     const PinStore store = PinStore();
     final DateTime t0 = DateTime.utc(2026, 9, 30, 12);

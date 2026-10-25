@@ -12,7 +12,7 @@ Duration lockoutFor(int failures) {
   const List<int> steps = <int>[5, 15, 30, 60];
   final int i = failures - 3;
   return Duration(
-    seconds: i < steps.length ? steps[i] : min(60 << (i - 3), 3600),
+    seconds: i < steps.length ? steps[i] : min(60 << min(i - 3, 6), 3600),
   );
 }
 

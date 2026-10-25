@@ -62,7 +62,9 @@ Future<Startup> openDatabase({Directory? directory, String? passphrase}) async {
 
   final DatabaseKey key;
   try {
-    key = await manager.resolve();
+    key = await manager.resolve(
+      firstRun: !File(p.join(dir.path, databaseFileName)).existsSync(),
+    );
   } on DatabaseKeyUnavailable catch (e) {
     return StartupLocked(e.reason, manager);
   }

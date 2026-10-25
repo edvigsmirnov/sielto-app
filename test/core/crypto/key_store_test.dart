@@ -200,4 +200,18 @@ void main() {
     expect(await withPassword('new pass').recover('correct horse'), key);
     expect(await withPassword('new pass').resolve(), key);
   });
+
+  test('without key material an existing database is locked, not reset', () {
+    expect(
+      manager().resolve(firstRun: false),
+      throwsA(
+        isA<DatabaseKeyUnavailable>().having(
+          (DatabaseKeyUnavailable e) => e.reason,
+          'reason',
+          DatabaseKeyFailure.envelopeMissing,
+        ),
+      ),
+    );
+    expect(manager().envelopeAFile.existsSync(), isFalse);
+  });
 }
