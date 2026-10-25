@@ -1,5 +1,5 @@
 begin;
-select plan(5);
+select plan(6);
 
 select lives_ok(
   $$ select '123456789012345.12345678'::public.money $$,
@@ -23,6 +23,13 @@ select throws_ok(
   $$ update public.user_profiles set nickname = repeat('a', 41)
      where user_id = '00000000-0000-4000-a000-0000000000a1' $$,
   '23514', null, 'and cannot be grown later'
+);
+
+select throws_ok(
+  $$ insert into public.budget_periods (id, space_id, period_type, start_date, created_at, client_edited_at)
+     values ('00000000-0000-4000-a000-0000000000b1', '00000000-0000-4000-a000-0000000000b2',
+       'continuous', '12000-01-01', now(), now()) $$,
+  '23514', null, 'a date past 2199 is refused'
 );
 
 select * from finish();
