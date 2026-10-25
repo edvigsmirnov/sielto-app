@@ -98,9 +98,7 @@ class SettingsPage extends ConsumerWidget {
               onTap: () {
                 ref.read(columnsLayoutProvider.notifier).reset();
                 ref.read(feedColumnsProvider.notifier).reset();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(tr('settings.layoutReset'))),
-                );
+                ScaffoldMessenger.of(context).say(tr('settings.layoutReset'));
               },
             )
           else ...<Widget>[

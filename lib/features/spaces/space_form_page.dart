@@ -227,12 +227,8 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
       const SizedBox(height: SageSpace.lg),
       LabelledField(
         label: tr('space.fieldCurrency'),
-        child: ChoiceField<String>(
+        child: CurrencyField(
           value: currency,
-          options: Currencies.offered(currency),
-          labelOf: (String code) =>
-              Currencies.label(code, context.locale.toString()),
-          title: tr('space.fieldCurrency'),
           onChanged: (String code) => setState(() => _currency = code),
         ),
       ),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
@@ -142,7 +143,7 @@ class _CodeCardState extends State<CodeCard> {
   Future<void> _copy() async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     await Clipboard.setData(ClipboardData(text: widget.code));
-    messenger.showSnackBar(SnackBar(content: Text(tr('devices.copied'))));
+    messenger.say(tr('devices.copied'));
   }
 
   @override

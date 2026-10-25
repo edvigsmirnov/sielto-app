@@ -270,15 +270,11 @@ Future<void> _deleteCloud(BuildContext context, WidgetRef ref) async {
       .read(syncProvider.notifier)
       .deleteCloudData();
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        tr(
-          result == CloudResult.done
-              ? 'security.deleteCloudDone'
-              : 'storage.${result.name}',
-        ),
-      ),
+  ScaffoldMessenger.of(context).say(
+    tr(
+      result == CloudResult.done
+          ? 'security.deleteCloudDone'
+          : 'storage.${result.name}',
     ),
   );
 }

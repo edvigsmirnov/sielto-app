@@ -1,4 +1,6 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:sielto/core/format/currencies.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -193,4 +195,25 @@ class _GridCell extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The currency choice, the reader's currency names first.
+class CurrencyField extends StatelessWidget {
+  const CurrencyField({
+    required this.value,
+    required this.onChanged,
+    super.key,
+  });
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => ChoiceField<String>(
+    value: value,
+    options: Currencies.offered(value),
+    labelOf: (String code) => Currencies.label(code, context.locale.toString()),
+    title: tr('space.fieldCurrency'),
+    onChanged: onChanged,
+  );
 }

@@ -173,18 +173,9 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
         moved += await repos.payments.moveCategory(c.id, target.category?.id);
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              tr(
-                'category.moved',
-                namedArgs: <String, String>{'count': '$moved'},
-              ),
-            ),
-          ),
-        );
+      ScaffoldMessenger.of(context).say(
+        tr('category.moved', namedArgs: <String, String>{'count': '$moved'}),
+      );
     }
     if (sources.isEmpty || !mounted) return;
 

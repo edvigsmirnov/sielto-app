@@ -117,18 +117,9 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
       choice.category?.id,
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            tr(
-              'category.moved',
-              namedArgs: <String, String>{'count': '$moved'},
-            ),
-          ),
-        ),
-      );
+    ScaffoldMessenger.of(
+      context,
+    ).say(tr('category.moved', namedArgs: <String, String>{'count': '$moved'}));
     if (moved == 0) return;
 
     final bool delete = await confirmDialog(

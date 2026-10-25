@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/space_repository.dart';
-import 'package:sielto/core/format/currencies.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/choice_field.dart';
@@ -172,12 +171,8 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
 
           _Setting(
             label: tr('space.fieldCurrency'),
-            child: ChoiceField<String>(
+            child: CurrencyField(
               value: space.currencyCode,
-              options: Currencies.offered(space.currencyCode),
-              labelOf: (String code) =>
-                  Currencies.label(code, context.locale.toString()),
-              title: tr('space.fieldCurrency'),
               onChanged: (String code) => _changeCurrency(space, code),
             ),
           ),

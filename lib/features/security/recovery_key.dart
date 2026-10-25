@@ -155,11 +155,8 @@ class _RecoveryKeyPageState extends ConsumerState<RecoveryKeyPage> {
       unawaited(ref.read(driveProvider.notifier).backUp(interactive: false));
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(tr(_changing ? 'recovery.changed' : 'recovery.saved')),
-      ),
-    );
+    ScaffoldMessenger.of(context)
+        .say(tr(_changing ? 'recovery.changed' : 'recovery.saved'));
     Navigator.of(context).pop();
   }
 

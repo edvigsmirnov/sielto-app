@@ -143,17 +143,11 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
       final int changed = await _regenerateOccurrences();
       ref.invalidate(periodRefreshProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              changed == 0
-                  ? tr('income.regenerateNothing')
-                  : plural('income.regenerated', changed),
-            ),
-          ),
-        );
+      ScaffoldMessenger.of(context).say(
+        changed == 0
+            ? tr('income.regenerateNothing')
+            : plural('income.regenerated', changed),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }

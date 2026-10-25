@@ -130,18 +130,9 @@ Future<List<FeedRecord>> _each(
 
 void _saySkipped(BuildContext context, int skipped) {
   if (skipped == 0 || !context.mounted) return;
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        content: Text(
-          tr(
-            'feed.bulk.skipped',
-            namedArgs: <String, String>{'count': '$skipped'},
-          ),
-        ),
-      ),
-    );
+  ScaffoldMessenger.of(context).say(
+    tr('feed.bulk.skipped', namedArgs: <String, String>{'count': '$skipped'}),
+  );
 }
 
 /// An income without an amount is left alone: a receipt needs one.

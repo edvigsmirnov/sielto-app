@@ -451,9 +451,8 @@ class _DriveSection extends ConsumerWidget {
         .read(driveProvider.notifier)
         .backUp(interactive: true);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr(done ? 'drive.done' : 'drive.failed'))),
-      );
+      ScaffoldMessenger.of(context)
+          .say(tr(done ? 'drive.done' : 'drive.failed'));
     }
   }
 
