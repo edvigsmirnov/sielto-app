@@ -5,8 +5,9 @@ import 'package:timezone/timezone.dart' as tz;
 /// "Today" in a Space's timezone. Never call `DateTime.now()` directly.
 /// The wall clock is injectable for tests.
 class SpaceClock {
+  /// An unknown [timezone], perhaps from a newer device, reads as UTC.
   SpaceClock({required String timezone, DateTime Function()? now})
-    : _location = tz.getLocation(timezone),
+    : _location = isKnownTimezone(timezone) ? tz.getLocation(timezone) : tz.UTC,
       _now = now ?? DateTime.now;
 
   /// Loads the IANA database. Call once at startup.

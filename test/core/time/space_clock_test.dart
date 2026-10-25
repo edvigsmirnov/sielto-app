@@ -74,4 +74,13 @@ void main() {
     expect(SpaceClock.isKnownTimezone('Europe/Berlin'), isTrue);
     expect(SpaceClock.isKnownTimezone('Mars/Olympus'), isFalse);
   });
+
+  test('an unknown timezone reads as UTC instead of failing', () {
+    final SpaceClock clock = SpaceClock(
+      timezone: 'Mars/Olympus',
+      now: () => DateTime.utc(2026, 3, 1, 23, 30),
+    );
+    expect(clock.timezone, 'Etc/UTC');
+    expect(clock.today(), CalendarDate(2026, 3, 1));
+  });
 }
