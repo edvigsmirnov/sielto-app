@@ -120,20 +120,17 @@ class IncomeRuleRepository
     required String title,
     required IncomeSchedule schedule,
     Decimal? amount,
-  }) {
-    final ({String author, DateTime editedAt}) s = stamp();
-    return (db.update(
-      db.incomeRecurrenceRules,
-    )..where(($IncomeRecurrenceRulesTable t) => t.id.equals(ruleId))).write(
-      _scheduleColumns(schedule).copyWith(
-        title: Value<String>(title.trim()),
-        amount: Value<Decimal?>(amount),
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
-      ),
-    );
-  }
+  }) =>
+      (db.update(
+        db.incomeRecurrenceRules,
+      )..where(($IncomeRecurrenceRulesTable t) => t.id.equals(ruleId))).write(
+        stamped(
+          _scheduleColumns(schedule).copyWith(
+            title: Value<String>(title.trim()),
+            amount: Value<Decimal?>(amount),
+          ),
+        ),
+      );
 
   /// The first regular income of an income_driven Space becomes the anchor.
   Future<IncomeRecurrenceRule> createFirstAsAnchor({
@@ -160,16 +157,10 @@ class IncomeRuleRepository
   /// Applies to occurrences materialised from now on. See
   /// [IncomeRepository.updateFutureAmounts].
   Future<int> setAmount(String ruleId, Decimal? amount) {
-    final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.incomeRecurrenceRules,
     )..where(($IncomeRecurrenceRulesTable t) => t.id.equals(ruleId))).write(
-      IncomeRecurrenceRulesCompanion(
-        amount: Value<Decimal?>(amount),
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
-      ),
+      stamped(IncomeRecurrenceRulesCompanion(amount: Value<Decimal?>(amount))),
     );
   }
 
@@ -180,16 +171,10 @@ class IncomeRuleRepository
     required BudgetMode mode,
   }) async {
     if (!isAnchor) await _refuseIfLastAnchor(ruleId, mode);
-    final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.incomeRecurrenceRules,
     )..where(($IncomeRecurrenceRulesTable t) => t.id.equals(ruleId))).write(
-      IncomeRecurrenceRulesCompanion(
-        isAnchor: Value<bool>(isAnchor),
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
-      ),
+      stamped(IncomeRecurrenceRulesCompanion(isAnchor: Value<bool>(isAnchor))),
     );
   }
 
@@ -350,22 +335,20 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
       }
     }
 
-    final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.incomes,
     )..where(($IncomesTable t) => t.id.equals(id))).write(
-      IncomesCompanion(
-        title: title.present
-            ? Value<String>(title.value.trim())
-            : const Value<String>.absent(),
-        amount: amount,
-        expectedDate: expectedDate,
-        actualDate: actualDate,
-        notes: notes,
-        isPaid: isPaid,
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
+      stamped(
+        IncomesCompanion(
+          title: title.present
+              ? Value<String>(title.value.trim())
+              : const Value<String>.absent(),
+          amount: amount,
+          expectedDate: expectedDate,
+          actualDate: actualDate,
+          notes: notes,
+          isPaid: isPaid,
+        ),
       ),
     );
   }
@@ -376,16 +359,10 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
   )..where(($IncomesTable t) => t.recurrenceRuleId.equals(ruleId))).get();
 
   Future<int> setPeriod(String id, String? periodId) {
-    final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.incomes,
     )..where(($IncomesTable t) => t.id.equals(id))).write(
-      IncomesCompanion(
-        budgetPeriodId: Value<String?>(periodId),
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
-      ),
+      stamped(IncomesCompanion(budgetPeriodId: Value<String?>(periodId))),
     );
   }
 
@@ -408,31 +385,13 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
         if (await _freeze.stateOf(row.budgetPeriodId) != FreezeState.frozen)
           row.id,
     ];
-    final ({String author, DateTime editedAt}) s = stamp();
-    return (db.update(
-      db.incomes,
-    )..where(($IncomesTable t) => t.id.isIn(ids))).write(
-      IncomesCompanion(
-        amount: Value<Decimal?>(amount),
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
-      ),
-    );
+    return (db.update(db.incomes)..where(($IncomesTable t) => t.id.isIn(ids)))
+        .write(stamped(IncomesCompanion(amount: Value<Decimal?>(amount))));
   }
 
   Future<int> setSortOrder(String id, int sortOrder) {
-    final ({String author, DateTime editedAt}) s = stamp();
-    return (db.update(
-      db.incomes,
-    )..where(($IncomesTable t) => t.id.equals(id))).write(
-      IncomesCompanion(
-        sortOrder: Value<int>(sortOrder),
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
-      ),
-    );
+    return (db.update(db.incomes)..where(($IncomesTable t) => t.id.equals(id)))
+        .write(stamped(IncomesCompanion(sortOrder: Value<int>(sortOrder))));
   }
 
   /// An amount is required when the row has none.

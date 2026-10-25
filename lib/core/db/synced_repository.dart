@@ -52,20 +52,28 @@ abstract class SyncedRepository<T extends Table, D extends DataClass> {
   ({DateTime editedAt, String author}) stamp() =>
       (editedAt: clock.nowUtc(), author: userId);
 
+  /// [values] marked as this user's pending edit, made now.
+  Insertable<D> stamped(Insertable<D> values) {
+    final ({String author, DateTime editedAt}) s = stamp();
+    return RawValuesInsertable<D>(<String, Expression<Object>>{
+      ...values.toColumns(true),
+      'sync_status': const Constant<String>('pending'),
+      'client_edited_at': Variable<DateTime>(s.editedAt),
+      'last_modified_by': Variable<String>(s.author),
+    });
+  }
+
   /// Soft delete; the row stays so the deletion syncs.
   Future<int> softDelete(String id) => _setDeleted(id, deleted: true);
 
   Future<int> restore(String id) => _setDeleted(id, deleted: false);
 
-  Future<int> _setDeleted(String id, {required bool deleted}) {
-    final ({String author, DateTime editedAt}) s = stamp();
-    return (db.update(table)..where((T _) => _id.equals(id))).write(
-      RawValuesInsertable<D>(<String, Expression<Object>>{
-        'is_deleted': Constant<bool>(deleted),
-        'sync_status': const Constant<String>('pending'),
-        'client_edited_at': Variable<DateTime>(s.editedAt),
-        'last_modified_by': Variable<String>(s.author),
-      }),
-    );
-  }
+  Future<int> _setDeleted(String id, {required bool deleted}) =>
+      (db.update(table)..where((T _) => _id.equals(id))).write(
+        stamped(
+          RawValuesInsertable<D>(<String, Expression<Object>>{
+            'is_deleted': Constant<bool>(deleted),
+          }),
+        ),
+      );
 }

@@ -145,24 +145,22 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
       }
     }
 
-    final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.payments,
     )..where(($PaymentsTable t) => t.id.equals(id))).write(
-      PaymentsCompanion(
-        title: title.present
-            ? Value<String>(title.value.trim())
-            : const Value<String>.absent(),
-        amount: amount,
-        dueDate: dueDate,
-        expenseType: expenseType,
-        categoryId: categoryId,
-        notes: notes,
-        isPaid: isPaid,
-        sortOrder: sortOrder,
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
+      stamped(
+        PaymentsCompanion(
+          title: title.present
+              ? Value<String>(title.value.trim())
+              : const Value<String>.absent(),
+          amount: amount,
+          dueDate: dueDate,
+          expenseType: expenseType,
+          categoryId: categoryId,
+          notes: notes,
+          isPaid: isPaid,
+          sortOrder: sortOrder,
+        ),
       ),
     );
   }
@@ -170,18 +168,12 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
   /// Every live payment of [fromCategoryId], frozen periods included: the
   /// category stays editable there.
   Future<int> moveCategory(String fromCategoryId, String? toCategoryId) {
-    final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(db.payments)..where(
           ($PaymentsTable t) =>
               t.categoryId.equals(fromCategoryId) & t.isDeleted.equals(false),
         ))
         .write(
-          PaymentsCompanion(
-            categoryId: Value<String?>(toCategoryId),
-            syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-            lastModifiedBy: Value<String?>(s.author),
-            clientEditedAt: Value<DateTime>(s.editedAt),
-          ),
+          stamped(PaymentsCompanion(categoryId: Value<String?>(toCategoryId))),
         );
   }
 
@@ -301,17 +293,8 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
       unpaidOnly: false,
       skipFrozen: true,
     );
-    final ({String author, DateTime editedAt}) s = stamp();
-    return (db.update(
-      db.payments,
-    )..where(($PaymentsTable t) => t.id.isIn(ids))).write(
-      PaymentsCompanion(
-        isDeleted: const Value<bool>(true),
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
-      ),
-    );
+    return (db.update(db.payments)..where(($PaymentsTable t) => t.id.isIn(ids)))
+        .write(stamped(PaymentsCompanion(isDeleted: const Value<bool>(true))));
   }
 
   Future<int> _writeSeries(
@@ -330,21 +313,19 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
       unpaidOnly: true,
       skipFrozen: amount.present || expenseType.present,
     );
-    final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.payments,
     )..where(($PaymentsTable t) => t.id.isIn(ids))).write(
-      PaymentsCompanion(
-        title: title.present
-            ? Value<String>(title.value.trim())
-            : const Value<String>.absent(),
-        amount: amount,
-        expenseType: expenseType,
-        categoryId: categoryId,
-        notes: notes,
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
+      stamped(
+        PaymentsCompanion(
+          title: title.present
+              ? Value<String>(title.value.trim())
+              : const Value<String>.absent(),
+          amount: amount,
+          expenseType: expenseType,
+          categoryId: categoryId,
+          notes: notes,
+        ),
       ),
     );
   }
@@ -392,18 +373,16 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     String? periodId, {
     PeriodAssignment? assignment,
   }) {
-    final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.payments,
     )..where(($PaymentsTable t) => t.id.equals(id))).write(
-      PaymentsCompanion(
-        budgetPeriodId: Value<String?>(periodId),
-        periodAssignment: assignment == null
-            ? const Value<PeriodAssignment>.absent()
-            : Value<PeriodAssignment>(assignment),
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
+      stamped(
+        PaymentsCompanion(
+          budgetPeriodId: Value<String?>(periodId),
+          periodAssignment: assignment == null
+              ? const Value<PeriodAssignment>.absent()
+              : Value<PeriodAssignment>(assignment),
+        ),
       ),
     );
   }

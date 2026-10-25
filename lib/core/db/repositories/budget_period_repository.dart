@@ -165,16 +165,9 @@ class BudgetPeriodRepository
   );
 
   Future<int> _write(String periodId, BudgetPeriodsCompanion values) {
-    final ({String author, DateTime editedAt}) s = stamp();
-    return (db.update(
-      db.budgetPeriods,
-    )..where(($BudgetPeriodsTable t) => t.id.equals(periodId))).write(
-      values.copyWith(
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
-      ),
-    );
+    return (db.update(db.budgetPeriods)
+          ..where(($BudgetPeriodsTable t) => t.id.equals(periodId)))
+        .write(stamped(values));
   }
 
   Future<int> unfreeze(String periodId, DateTime until, String reason) =>

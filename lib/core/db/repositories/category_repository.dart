@@ -146,16 +146,14 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
     if (row != null) {
       await _refuseIfTaken(row.spaceId, title, except: categoryId);
     }
-    final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.categories,
     )..where(($CategoriesTable t) => t.id.equals(categoryId))).write(
-      CategoriesCompanion(
-        title: Value<String>(title.trim()),
-        starterKey: const Value<String?>(null),
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
+      stamped(
+        CategoriesCompanion(
+          title: Value<String>(title.trim()),
+          starterKey: const Value<String?>(null),
+        ),
       ),
     );
   }
@@ -168,18 +166,16 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
     Value<ExpenseType> expenseType = const Value<ExpenseType>.absent(),
     Value<int> sortOrder = const Value<int>.absent(),
   }) {
-    final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.categories,
     )..where(($CategoriesTable t) => t.id.equals(categoryId))).write(
-      CategoriesCompanion(
-        color: color,
-        icon: icon,
-        expenseType: expenseType,
-        sortOrder: sortOrder,
-        syncStatus: const Value<SyncStatus>(SyncStatus.pending),
-        lastModifiedBy: Value<String?>(s.author),
-        clientEditedAt: Value<DateTime>(s.editedAt),
+      stamped(
+        CategoriesCompanion(
+          color: color,
+          icon: icon,
+          expenseType: expenseType,
+          sortOrder: sortOrder,
+        ),
       ),
     );
   }
