@@ -20,6 +20,8 @@ String codeProblem(JoinResult result, {required String wrongCode}) =>
       JoinResult.unlinked => 'storage.${result.name}',
       JoinResult.tooManyAttempts => 'devices.tooManyAttempts',
       JoinResult.spaceFull => 'members.joinFull',
+      JoinResult.refused => 'devices.refusedHere',
+      JoinResult.notAnswered => 'devices.notAnswered',
       _ => wrongCode,
     });
 

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
 import 'package:supabase/supabase.dart';
 
-/// Hands the Recovery Key to a newly linked device; the server sees only
+/// Hands the Recovery Key to a device the owner allowed; the server sees only
 /// ciphertext. Layout: sender public key (32) | nonce (12) | ciphertext | MAC.
 abstract final class DeviceLink {
   static final X25519 _exchange = X25519();
@@ -65,60 +65,84 @@ abstract final class DeviceLink {
     info: utf8.encode('sielto recovery key handover'),
   );
 
-  /// On the device that made the code: waits for the new device to claim it,
-  /// then seals [recoveryKey] to it. False when nobody claimed it in time.
-  static Future<bool> handOver(
-    SupabaseClient client,
-    String? recoveryKey, {
+  /// On the device that made the code: the claim, once one comes; null when
+  /// nobody claims it in time.
+  static Future<LinkClaim?> waitForClaim(
+    SupabaseClient client, {
     Duration timeout = const Duration(minutes: 5),
     bool Function()? keepGoing,
   }) async {
     final DateTime until = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(until) && (keepGoing?.call() ?? true)) {
-      final Map<String, dynamic>? claimed = await client
+      final Map<String, dynamic>? row = await client
           .from('device_link_codes')
-          .select('id, ephemeral_pubkey')
-          .not('linked_auth_uid', 'is', null)
-          .isFilter('encrypted_payload', null)
+          .select('id, ephemeral_pubkey, claimant_name')
+          .eq('status', 'claimed')
           .eq('owner_auth_uid', client.auth.currentUser!.id)
           .maybeSingle();
-      if (claimed != null) {
-        if (recoveryKey == null) return true;
-        await client
-            .from('device_link_codes')
-            .update(<String, String>{
-              'encrypted_payload': await seal(
-                recoveryKey,
-                claimed['ephemeral_pubkey'] as String,
-              ),
-            })
-            .eq('id', claimed['id'] as String);
-        return true;
+      if (row != null) {
+        return (
+          id: row['id'] as String,
+          publicKey: row['ephemeral_pubkey'] as String,
+          name: row['claimant_name'] as String?,
+        );
       }
       await Future<void>.delayed(_poll);
     }
-    return false;
+    return null;
   }
 
-  /// On the new device: null when the other device did not answer in time.
-  static Future<String?> receive(
+  /// Allows or refuses [claim]; allowing seals [recoveryKey] to it. False when
+  /// the answer came too late.
+  static Future<bool> answer(
+    SupabaseClient client,
+    LinkClaim claim, {
+    required bool allow,
+    String? recoveryKey,
+  }) async => await client.rpc<bool>(
+    'answer_device_link',
+    params: <String, Object?>{
+      'p_link': claim.id,
+      'p_allow': allow,
+      'p_payload': allow && recoveryKey != null
+          ? await seal(recoveryKey, claim.publicKey)
+          : null,
+    },
+  );
+
+  /// On the new device: the owner's answer; null when none comes in time.
+  static Future<LinkAnswer?> awaitAnswer(
     SupabaseClient client,
     SimpleKeyPair keyPair, {
-    Duration timeout = const Duration(seconds: 30),
+    Duration timeout = const Duration(minutes: 5),
+    bool Function()? keepGoing,
   }) async {
     final DateTime until = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(until)) {
-      final Map<String, dynamic>? row = await client
-          .from('device_link_codes')
-          .select('encrypted_payload')
-          .eq('linked_auth_uid', client.auth.currentUser!.id)
-          .not('encrypted_payload', 'is', null)
-          .maybeSingle();
-      if (row != null) {
-        return open(row['encrypted_payload'] as String, keyPair);
+    while (DateTime.now().isBefore(until) && (keepGoing?.call() ?? true)) {
+      final List<dynamic> rows = await client.rpc<List<dynamic>>(
+        'device_link_claim',
+      );
+      final Map<String, dynamic>? row =
+          rows.firstOrNull as Map<String, dynamic>?;
+      switch (row?['status']) {
+        case 'allowed':
+          final String? sealed = row!['encrypted_payload'] as String?;
+          return (
+            allowed: true,
+            userId: row['user_id'] as String,
+            recoveryKey: sealed == null ? null : await open(sealed, keyPair),
+          );
+        case 'refused':
+          return (allowed: false, userId: null, recoveryKey: null);
       }
       await Future<void>.delayed(_poll);
     }
     return null;
   }
 }
+
+/// A claimed code, as the owner's device sees it.
+typedef LinkClaim = ({String id, String publicKey, String? name});
+
+/// The owner's answer, as the new device sees it.
+typedef LinkAnswer = ({bool allowed, String? userId, String? recoveryKey});

@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(18);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-a000-00000000000a'),
@@ -26,26 +26,39 @@ select matches((select code from pg_temp.codes where name = 'first'),
 
 select pg_temp.act_as('00000000-0000-4000-a000-00000000000b');
 select is(link_device_by_code(lower((select code from pg_temp.codes where name = 'first')),
-  'dddddddd-dddd-4ddd-8ddd-00000000000b', 'pubkey-b'),
-  '11111111-1111-4111-8111-111111111111'::uuid,
-  'the new device joins the code owner, whatever the case typed');
+  'dddddddd-dddd-4ddd-8ddd-00000000000b', 'pubkey-b', 'Pixel 7'), true,
+  'the new device claims the code, whatever the case typed');
+select is((select count(*)::int from user_devices
+  where auth_uid = '00000000-0000-4000-a000-00000000000b'), 0,
+  'but joins nothing before the owner allows it');
+select is((select row(status, user_id)::text from device_link_claim()), '(claimed,)',
+  'and does not learn the account yet');
+select is((select count(*)::int from device_link_codes), 0,
+  'nor can it read the code row');
+select is(link_device_by_code((select code from pg_temp.codes where name = 'first'),
+  'dddddddd-dddd-4ddd-8ddd-0000000000bb', 'pubkey'), null,
+  'a claimed code cannot be claimed again');
+
+reset role;
+delete from private.link_attempts;
+set local role authenticated;
+select pg_temp.act_as('00000000-0000-4000-a000-00000000000a');
+select is((select ephemeral_pubkey || ' ' || claimant_name from device_link_codes),
+  'pubkey-b Pixel 7', 'the owner sees the new device and its public key');
+select throws_ok($$ update device_link_codes set encrypted_payload = 'sealed' $$,
+  '42501', null, 'the owner cannot write the row directly');
+select is(answer_device_link((select id from device_link_codes), true, 'sealed'), true,
+  'the owner allows it with the sealed key');
 select is((select user_id from user_devices
   where auth_uid = '00000000-0000-4000-a000-00000000000b'),
-  '11111111-1111-4111-8111-111111111111'::uuid, 'and is mapped to that user');
-select throws_ok($$ select link_device_by_code('ANYCODE2',
-  'dddddddd-dddd-4ddd-8ddd-0000000000bb', 'pubkey') $$, 'P0001',
-  'session_registered_to_another_user', 'a linked device cannot link again');
-
-select pg_temp.act_as('00000000-0000-4000-a000-00000000000a');
-select is((select ephemeral_pubkey from device_link_codes), 'pubkey-b',
-  'the owner sees the new device''s public key');
-update device_link_codes set encrypted_payload = 'sealed';
-select throws_ok($$ update device_link_codes set user_id = gen_random_uuid() $$,
-  '42501', null, 'the owner seals the key and changes nothing else');
+  '11111111-1111-4111-8111-111111111111'::uuid, 'and the device joins that user');
+select is(answer_device_link((select id from device_link_codes), false), false,
+  'an answer is given once');
 
 select pg_temp.act_as('00000000-0000-4000-a000-00000000000b');
-select is((select encrypted_payload from device_link_codes), 'sealed',
-  'the new device reads the sealed key');
+select is((select row(status, user_id, encrypted_payload)::text from device_link_claim()),
+  '(allowed,11111111-1111-4111-8111-111111111111,sealed)',
+  'the new device then reads the account and the sealed key');
 
 select pg_temp.act_as('00000000-0000-4000-a000-00000000000c');
 select is(link_device_by_code((select code from pg_temp.codes where name = 'first'),
@@ -65,12 +78,23 @@ select pg_temp.act_as('00000000-0000-4000-a000-00000000000a');
 insert into pg_temp.codes values ('second', create_device_link_code());
 reset role;
 update device_link_codes set expires_at = now() - interval '1 second'
-  where linked_auth_uid is null;
+  where status = 'open';
 set local role authenticated;
 select pg_temp.act_as('00000000-0000-4000-a000-00000000000c');
 select is(link_device_by_code((select code from pg_temp.codes where name = 'second'),
   'dddddddd-dddd-4ddd-8ddd-00000000000c', 'pubkey-c'), null,
   'an expired code is refused');
+
+select pg_temp.act_as('00000000-0000-4000-a000-00000000000a');
+insert into pg_temp.codes values ('third', create_device_link_code());
+select pg_temp.act_as('00000000-0000-4000-a000-00000000000c');
+select link_device_by_code((select code from pg_temp.codes where name = 'third'),
+  'dddddddd-dddd-4ddd-8ddd-00000000000c', 'pubkey-c');
+select pg_temp.act_as('00000000-0000-4000-a000-00000000000a');
+select answer_device_link((select id from device_link_codes where status = 'claimed'), false);
+select pg_temp.act_as('00000000-0000-4000-a000-00000000000c');
+select is((select row(status, user_id)::text from device_link_claim()), '(refused,)',
+  'a refused device learns only that');
 
 select * from finish();
 rollback;

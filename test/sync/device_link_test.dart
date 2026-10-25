@@ -88,15 +88,27 @@ void main() {
 
     final String code = await clientA.rpc<String>('create_device_link_code');
     final SimpleKeyPair pair = await DeviceLink.newKeyPair();
-    expect(await identityB.link('WRONG234', 'x'), isNull);
+    expect(await identityB.claim('WRONG234', 'x'), isFalse);
     expect(
-      await identityB.link(code, await DeviceLink.publicKeyOf(pair)),
-      userId,
+      await identityB.claim(code, await DeviceLink.publicKeyOf(pair)),
+      isTrue,
     );
 
-    final Future<bool> handed = DeviceLink.handOver(clientA, 'RK-1234');
-    expect(await DeviceLink.receive(clientB, pair), 'RK-1234');
-    expect(await handed, isTrue);
+    final LinkClaim? claim = await DeviceLink.waitForClaim(clientA);
+    expect(claim?.name, 'Tablet');
+    expect(
+      await DeviceLink.answer(
+        clientA,
+        claim!,
+        allow: true,
+        recoveryKey: 'RK-1234',
+      ),
+      isTrue,
+    );
+    final LinkAnswer? answer = await DeviceLink.awaitAnswer(clientB, pair);
+    expect(answer?.userId, userId);
+    expect(answer?.recoveryKey, 'RK-1234');
+    await identityB.joined();
 
     await SyncWorker(db: b, client: clientB).syncAll();
     final Space space = await (b.select(

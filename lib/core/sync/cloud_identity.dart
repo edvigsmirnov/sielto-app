@@ -93,29 +93,29 @@ class CloudIdentity {
     return CloudAccess.ready;
   }
 
-  /// Joins the account that made [code]. Returns its user id, or null for a
-  /// wrong or spent code; the session is kept for another try.
-  Future<String?> link(String code, String ephemeralPublicKey) async {
+  /// Claims [code] for this device; false for a wrong or spent code. The
+  /// session is kept for another try.
+  Future<bool> claim(String code, String ephemeralPublicKey) async {
     final CloudIdentityData row = await _row();
     if (client.auth.currentSession == null) {
       await _store((await client.auth.signInAnonymously()).session);
     }
-    final String? linked = await client.rpc<String?>(
-      'link_device_by_code',
-      params: <String, String?>{
-        'p_code': code.trim(),
-        'p_device_id': row.deviceId,
-        'p_ephemeral_pubkey': ephemeralPublicKey,
-        'p_display_name': await deviceName,
-      },
-    );
-    if (linked != null) {
-      await db
-          .update(db.cloudIdentity)
-          .write(const CloudIdentityCompanion(registered: Value<bool>(true)));
-    }
-    return linked;
+    return await client.rpc<bool?>(
+          'link_device_by_code',
+          params: <String, String?>{
+            'p_code': code.trim(),
+            'p_device_id': row.deviceId,
+            'p_ephemeral_pubkey': ephemeralPublicKey,
+            'p_display_name': await deviceName,
+          },
+        ) ??
+        false;
   }
+
+  /// The owner allowed the claim: this device belongs to the account now.
+  Future<void> joined() => db
+      .update(db.cloudIdentity)
+      .write(const CloudIdentityCompanion(registered: Value<bool>(true)));
 
   /// This device's id on the server.
   Future<String> deviceId() async => (await _row()).deviceId;

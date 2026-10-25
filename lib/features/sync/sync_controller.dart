@@ -14,6 +14,7 @@ import 'package:sielto/core/sync/sync_worker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/devices/device_name.dart';
+import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/sync/activity.dart';
 import 'package:supabase/supabase.dart';
 
@@ -22,6 +23,8 @@ enum CloudResult { done, offlineMode, noNetwork, unlinked }
 enum JoinResult {
   joined,
   wrongCode,
+  refused,
+  notAnswered,
   tooManyAttempts,
   spaceFull,
   offlineMode,
@@ -358,56 +361,69 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     }
   });
 
-  /// Waits for the code to be claimed and seals the Recovery Key to the new
-  /// device. False when the code went unclaimed or the network dropped.
-  Future<bool> handOver(
-    String? recoveryKey, {
-    required bool Function() keepGoing,
-  }) async {
+  /// Waits for someone to claim this device's code; null when nobody does in
+  /// time or the network dropped.
+  Future<LinkClaim?> waitForClaim({required bool Function() keepGoing}) async {
     try {
-      return await DeviceLink.handOver(
+      return await DeviceLink.waitForClaim(_client, keepGoing: keepGoing);
+    } on Exception {
+      return null;
+    }
+  }
+
+  /// Allowing adds the claiming device to the account and seals the Recovery
+  /// Key to it. False when the answer came too late or the network dropped.
+  Future<bool> answerClaim(LinkClaim claim, {required bool allow}) async {
+    try {
+      return await DeviceLink.answer(
         _client,
-        recoveryKey,
-        keepGoing: keepGoing,
+        claim,
+        allow: allow,
+        recoveryKey: await ref.read(keyManagerProvider).storedRecoveryKey(),
       );
     } on Exception {
       return false;
     }
   }
 
-  /// Joins the account behind [code]. The Recovery Key is null when the
-  /// other device does not send it in time.
+  /// Claims [code] and waits for the other device to allow it. The Recovery
+  /// Key is null when that device has none.
   Future<({JoinResult result, String? userId, String? recoveryKey})> join(
-    String code,
-  ) async {
-    if (ref.read(offlineModeProvider)) {
-      return (result: JoinResult.offlineMode, userId: null, recoveryKey: null);
-    }
+    String code, {
+    required bool Function() keepGoing,
+    VoidCallback? onClaimed,
+  }) async {
+    ({JoinResult result, String? userId, String? recoveryKey}) failed(
+      JoinResult result,
+    ) => (result: result, userId: null, recoveryKey: null);
+    if (ref.read(offlineModeProvider)) return failed(JoinResult.offlineMode);
     try {
       final SimpleKeyPair pair = await DeviceLink.newKeyPair();
-      final String? userId = await _identity.link(
-        code,
-        await DeviceLink.publicKeyOf(pair),
-      );
-      if (userId == null) {
-        return (result: JoinResult.wrongCode, userId: null, recoveryKey: null);
+      if (!await _identity.claim(code, await DeviceLink.publicKeyOf(pair))) {
+        return failed(JoinResult.wrongCode);
       }
+      onClaimed?.call();
+      final LinkAnswer? answer = await DeviceLink.awaitAnswer(
+        _client,
+        pair,
+        keepGoing: keepGoing,
+      );
+      if (answer == null) return failed(JoinResult.notAnswered);
+      if (!answer.allowed) return failed(JoinResult.refused);
+      await _identity.joined();
       return (
         result: JoinResult.joined,
-        userId: userId,
-        recoveryKey: await DeviceLink.receive(_client, pair),
+        userId: answer.userId,
+        recoveryKey: answer.recoveryKey,
       );
     } on PostgrestException catch (e) {
-      if (e.message == 'too_many_attempts') {
-        return (
-          result: JoinResult.tooManyAttempts,
-          userId: null,
-          recoveryKey: null,
-        );
-      }
-      return (result: JoinResult.noNetwork, userId: null, recoveryKey: null);
+      return failed(
+        e.message == 'too_many_attempts'
+            ? JoinResult.tooManyAttempts
+            : JoinResult.noNetwork,
+      );
     } on Exception {
-      return (result: JoinResult.noNetwork, userId: null, recoveryKey: null);
+      return failed(JoinResult.noNetwork);
     }
   }
 

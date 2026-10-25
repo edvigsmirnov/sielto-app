@@ -888,7 +888,7 @@
     "joining": "Linking…",
     "wrongCode": "That code didn't work. Check it, or make a new one on the other device.",
     "tooManyAttempts": "Too many tries for now. Wait a minute, then try again.",
-    "keyLater": "Your other device didn't send the Recovery Key in time. Enter it in Settings › Backup to turn on backups here.",
+    "keyLater": "Your other device has no Recovery Key yet. Once it has one, enter it in Settings › Backup to turn on backups here.",
     "noSpaces": "No cloud Spaces yet. Create one here, or move one to the cloud on your other device.",
     "continue": "Continue",
     "listTitle": "Your devices",
@@ -910,7 +910,15 @@
     "unlinkOthersTitle": "Unlink all other devices?",
     "unlinkOthersBody": "For a lost or sold device. Your cloud Spaces disappear from them the next time they're online.",
     "tryAgain": "Try again",
-    "wasUnlinked": "This device was unlinked, so your cloud Spaces were removed from it."
+    "wasUnlinked": "This device was unlinked, so your cloud Spaces were removed from it.",
+    "askTitle": "“{name}” wants to join your account",
+    "askBody": "It gets every cloud Space and your Recovery Key. Allow it only if it's the device you're setting up now.",
+    "allow": "Allow",
+    "refuse": "Refuse",
+    "refusedThere": "The device wasn't added. Make a new code to try again.",
+    "waitingApproval": "Now allow this device on the one that showed the code.",
+    "refusedHere": "Your other device refused. Ask for a new code there to try again.",
+    "notAnswered": "Your other device didn’t answer in time. Ask for a new code there."
   },
   "members": {
     "title": "Members",

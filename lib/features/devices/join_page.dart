@@ -21,6 +21,7 @@ class JoinPage extends ConsumerStatefulWidget {
 
 class _JoinPageState extends ConsumerState<JoinPage> {
   bool _busy = false;
+  bool _waiting = false;
   String? _problem;
   List<String>? _done;
 
@@ -30,8 +31,17 @@ class _JoinPageState extends ConsumerState<JoinPage> {
       _problem = null;
     });
     final ({JoinResult result, String? userId, String? recoveryKey}) joined =
-        await ref.read(syncProvider.notifier).join(code);
+        await ref
+            .read(syncProvider.notifier)
+            .join(
+              code,
+              keepGoing: () => mounted,
+              onClaimed: () {
+                if (mounted) setState(() => _waiting = true);
+              },
+            );
     if (!mounted) return;
+    setState(() => _waiting = false);
     final String? userId = joined.userId;
     if (joined.result != JoinResult.joined || userId == null) {
       setState(() {
@@ -87,7 +97,7 @@ class _JoinPageState extends ConsumerState<JoinPage> {
             action: tr('devices.join'),
             busyAction: tr('devices.joining'),
             busy: _busy,
-            problem: _problem,
+            problem: _waiting ? tr('devices.waitingApproval') : _problem,
             onSubmit: _join,
           )
         else ...<Widget>[
