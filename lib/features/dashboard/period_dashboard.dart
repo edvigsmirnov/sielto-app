@@ -2,13 +2,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
-import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/figure_info.dart';
@@ -36,12 +36,9 @@ class PeriodDashboardBody extends ConsumerWidget {
 
     if (!hasAnchor) return const _NoAnchorState();
 
-    final AsyncValue<PeriodLedger> ledger = ref.watch(periodLedgerProvider);
-    return ledger.when(
-      loading: () => const Center(child: LeafLoader()),
-      error: (Object e, StackTrace _) =>
-          EmptyState(message: tr('common.loadFailed')),
-      data: (PeriodLedger data) => _PeriodBody(space: space, ledger: data),
+    return AsyncBody<PeriodLedger>(
+      ref.watch(periodLedgerProvider),
+      builder: (PeriodLedger data) => _PeriodBody(space: space, ledger: data),
     );
   }
 }
@@ -102,12 +99,8 @@ class _PeriodBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final String locale = context.locale.toString();
-    final MoneyFormat money = MoneyFormat(
-      locale: locale,
-      currencyCode: space.currencyCode,
-    );
-    final DateLabels dates = DateLabels(locale);
+    final MoneyFormat money = context.moneyIn(space.currencyCode);
+    final DateLabels dates = context.dates;
 
     final bool atBottom = controlsAtBottom(
       context,
@@ -175,21 +168,12 @@ class _PeriodBody extends ConsumerWidget {
           money: money,
           margin: const EdgeInsets.only(bottom: SageSpace.md),
         ),
-        TotalsCard(
-          planned: ledger.totalPlanned,
-          paid: ledger.totalPaid,
-          remaining: ledger.totalRemaining,
-          money: money,
-        ),
+        TotalsCard(ledger: ledger, money: money),
         const SizedBox(height: SageSpace.md),
         NearestIncomeCard(
           income: ledger.nearestIncome,
           today: ledger.today,
           money: money,
-          onTap: ledger.nearestIncome == null
-              ? null
-              : () =>
-                    openIncomeForm(context, incomeId: ledger.nearestIncome!.id),
         ),
         const SizedBox(height: SageSpace.md),
         SageCard(

@@ -3,18 +3,17 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
-import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/dashboard/balance_sheet.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
 import 'package:sielto/features/dashboard/figure_info.dart';
 import 'package:sielto/features/dashboard/projection_chart.dart';
-import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
@@ -26,12 +25,9 @@ class FlowDashboardBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<FlowLedger> ledger = ref.watch(flowLedgerProvider);
-    return ledger.when(
-      loading: () => const Center(child: LeafLoader()),
-      error: (Object e, StackTrace _) =>
-          EmptyState(message: tr('common.loadFailed')),
-      data: (FlowLedger data) => _Body(space: space, ledger: data),
+    return AsyncBody<FlowLedger>(
+      ref.watch(flowLedgerProvider),
+      builder: (FlowLedger data) => _Body(space: space, ledger: data),
     );
   }
 }
@@ -44,12 +40,8 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final String locale = context.locale.toString();
-    final MoneyFormat money = MoneyFormat(
-      locale: locale,
-      currencyCode: space.currencyCode,
-    );
-    final DateLabels dates = DateLabels(locale);
+    final MoneyFormat money = context.moneyIn(space.currencyCode);
+    final DateLabels dates = context.dates;
     final DailyProjection projection = projectDays(
       available: ledger.available,
       entries: ledger.entries,
@@ -177,18 +169,9 @@ class _Body extends ConsumerWidget {
           income: ledger.nearestIncome,
           today: ledger.today,
           money: money,
-          onTap: ledger.nearestIncome == null
-              ? null
-              : () =>
-                    openIncomeForm(context, incomeId: ledger.nearestIncome!.id),
         ),
         const SizedBox(height: SageSpace.md),
-        TotalsCard(
-          planned: ledger.totalPlanned,
-          paid: ledger.totalPaid,
-          remaining: ledger.totalRemaining,
-          money: money,
-        ),
+        TotalsCard(ledger: ledger, money: money),
         const AnalyticsLink(),
       ],
     );

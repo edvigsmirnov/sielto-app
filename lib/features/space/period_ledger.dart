@@ -1,6 +1,5 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/ledger/ledger_entry.dart';
@@ -11,16 +10,15 @@ import 'package:sielto/features/space/space_ledger.dart';
 
 /// One income cycle, walked from its anchor income. `is_paid` changes no
 /// figure.
-@immutable
-class PeriodLedger {
+class PeriodLedger extends SpaceLedger {
   const PeriodLedger({
     required this.period,
     required this.anchorAmount,
-    required this.cascade,
-    required this.entries,
-    required this.today,
-    required this.totalPlanned,
-    required this.totalPaid,
+    required super.cascade,
+    required super.entries,
+    required super.today,
+    required super.totalPlanned,
+    required super.totalPaid,
     required this.nearestIncome,
     required this.unknownIncomeCount,
     required this.hasIncome,
@@ -31,16 +29,6 @@ class PeriodLedger {
 
   /// Null when the anchor income has no amount.
   final Decimal? anchorAmount;
-
-  /// Null when [anchorAmount] is.
-  final LedgerCascade? cascade;
-
-  final List<LedgerEntry> entries;
-  final CalendarDate today;
-
-  /// Every payment in the period, paid or not.
-  final Decimal totalPlanned;
-  final Decimal totalPaid;
 
   /// Next income not yet arrived, from today or the period start, in any later
   /// period.
@@ -53,48 +41,14 @@ class PeriodLedger {
 
   final bool hasUnpaidExpense;
 
+  @override
+  Decimal? get available => anchorAmount;
+
   bool get isComputable => cascade != null;
 
-  /// Without income and without anything owed, the cycle is not judged: no
-  /// coverage dot, cutoff or end date.
+  /// A cycle without income and without anything owed is not judged.
+  @override
   bool get isJudged => hasIncome || hasUnpaidExpense;
-
-  Decimal get totalRemaining => totalPlanned - totalPaid;
-
-  Coverage? get coverage => isJudged ? cascade?.coverage : null;
-
-  /// Null when not covered or the anchor amount is unknown. An unjudged cycle
-  /// reports the plain remainder.
-  Decimal? get freeCash =>
-      isJudged ? cascade?.all.freeCash : cascade?.all.finalBalance;
-
-  /// After mandatory payments only.
-  Decimal? get baseRemainder =>
-      isJudged ? cascade?.mandatory.freeCash : cascade?.mandatory.finalBalance;
-
-  Coverage? get baseCoverage => isJudged ? cascade?.mandatory.coverage : null;
-
-  /// Last day the money reaches, when short of the period end.
-  CalendarDate? get lastCoveredDay => isJudged ? cascade?.lastCoveredDay : null;
-
-  ({String entryId, bool below})? get moneyEndsAt =>
-      isJudged ? cascade?.moneyEndsAt : null;
-
-  Map<String, bool> get coverageByEntry => !isJudged
-      ? const <String, bool>{}
-      : <String, bool>{
-          for (final LedgerStep step
-              in cascade?.all.steps ?? const <LedgerStep>[])
-            step.entry.id: step.isCovered,
-        };
-
-  Map<String, Decimal> get balanceByEntry => !isJudged
-      ? const <String, Decimal>{}
-      : <String, Decimal>{
-          for (final LedgerStep step
-              in cascade?.all.steps ?? const <LedgerStep>[])
-            step.entry.id: step.balanceAfter,
-        };
 }
 
 PeriodLedger buildPeriodLedger({

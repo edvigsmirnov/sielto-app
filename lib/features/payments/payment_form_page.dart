@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/freeze_guard.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
@@ -536,11 +537,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       });
     }
     final SageColors sage = context.sage;
-    final String locale = context.locale.toString();
-    final MoneyFormat money = MoneyFormat(
-      locale: locale,
-      currencyCode: space.currencyCode,
-    );
+    final MoneyFormat money = context.moneyIn(space.currencyCode);
 
     if (!_loaded) {
       return const Scaffold(body: Center(child: LeafLoader()));
@@ -626,7 +623,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                     LabelledField(
                       label: tr('payment.fieldDate'),
                       child: DateField(
-                        label: DateLabels(locale).dayMonth(_date!),
+                        label: context.dates.dayMonth(_date!),
                         onTap: _isFrozen ? null : _pickDate,
                         warn: _dateLooksOdd,
                       ),
@@ -808,7 +805,7 @@ class _LivePreview extends ConsumerWidget {
     final CalendarDate? end = target?.endDate;
     if (target == null || end == null) return null;
 
-    final DateLabels dates = DateLabels(context.locale.toString());
+    final DateLabels dates = context.dates;
     return '${dates.dayMonth(target.startDate)} – ${dates.dayMonth(end)}';
   }
 
@@ -817,40 +814,34 @@ class _LivePreview extends ConsumerWidget {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
 
-    final Decimal? available;
-    final List<LedgerEntry> existing;
     // A cycle only holds the repeats that fall inside it.
     bool Function(CalendarDate d) counts = (CalendarDate _) => true;
-    String label = tr('dashboard.freeMoney');
-    // A Budget Space without a fund only counts what it spends.
-    bool spentOnly = false;
     final BudgetMode? mode = ref.watch(currentSpaceProvider)?.budgetMode;
-    if (mode == BudgetMode.incomeDriven) {
+    final SpaceLedger? ledger = switch (mode) {
       // The cycle of the draft's date, not the one on screen.
-      final PeriodLedger? period = _ledgerForDraft(ref);
-      if (period == null) return const SizedBox.shrink();
-      available = period.anchorAmount;
-      existing = period.entries;
-      final CalendarDate start = period.period.startDate;
-      final CalendarDate? end = period.period.endDate;
+      BudgetMode.incomeDriven => _ledgerForDraft(ref),
+      BudgetMode.budget => ref.watch(budgetLedgerProvider).value,
+      _ => ref.watch(flowLedgerProvider).value,
+    };
+    if (ledger == null) return const SizedBox.shrink();
+    if (ledger is PeriodLedger) {
+      final CalendarDate start = ledger.period.startDate;
+      final CalendarDate? end = ledger.period.endDate;
       counts = (CalendarDate d) =>
           d == date || (!d.isBefore(start) && (end == null || !d.isAfter(end)));
-    } else if (mode == BudgetMode.budget) {
-      final BudgetLedger? budget = ref.watch(budgetLedgerProvider).value;
-      if (budget == null) return const SizedBox.shrink();
-      spentOnly = !budget.hasFund;
-      label = tr(spentOnly ? 'budget.spent' : 'budget.remaining');
-      available = budget.available;
-      existing = budget.entries;
-    } else {
-      final FlowLedger? flow = ref.watch(flowLedgerProvider).value;
-      if (flow == null) return const SizedBox.shrink();
-      available = flow.available;
-      existing = flow.entries;
-      // Paid by the balance day, it is already in the balance.
-      final CalendarDate? setOn = ref.watch(currentSpaceProvider)?.balanceSetOn;
-      if (paid && setOn != null) counts = (CalendarDate d) => d.isAfter(setOn);
     }
+    // Paid by the balance day, it is already in the balance.
+    final CalendarDate? setOn = ref.watch(currentSpaceProvider)?.balanceSetOn;
+    if (ledger is FlowLedger && paid && setOn != null) {
+      counts = (CalendarDate d) => d.isAfter(setOn);
+    }
+    // A Budget Space without a fund only counts what it spends.
+    final bool spentOnly = ledger is BudgetLedger && !ledger.hasFund;
+    final String label = ledger is BudgetLedger
+        ? tr(spentOnly ? 'budget.spent' : 'budget.remaining')
+        : tr('dashboard.freeMoney');
+    final Decimal? available = ledger.available;
+    final List<LedgerEntry> existing = ledger.entries;
     // No preview when the salary has no amount.
     if (available == null) return const SizedBox.shrink();
 

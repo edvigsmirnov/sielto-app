@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/payment_repository.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
@@ -216,12 +217,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final FeedDensity density = table
         ? FeedDensity.compact
         : ref.watch(feedDensityProvider);
-    final String locale = context.locale.toString();
-    final MoneyFormat money = MoneyFormat(
-      locale: locale,
-      currencyCode: space.currencyCode,
-    );
-    final DateLabels dates = DateLabels(locale);
+    final MoneyFormat money = context.moneyIn(space.currencyCode);
+    final DateLabels dates = context.dates;
 
     final _FeedSource? source = _source(space);
     if (source == null) {
@@ -714,40 +711,26 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       );
     }
 
-    if (space.budgetMode == BudgetMode.budget) {
-      final BudgetLedger? budget = ref.watch(budgetLedgerProvider).value;
-      if (budget == null) return null;
-      return _FeedSource(
-        records: records,
-        today: budget.today,
-        coverage: budget.coverageByEntry,
-        leftAfter: budget.balanceByEntry,
-        moneyEndsAt: budget.moneyEndsAt,
-        available: budget.available,
-        freeCash: budget.hasFund ? budget.remaining : budget.available,
-        paid: budget.totalPaid,
-        remaining: budget.totalRemaining,
-        byPeriod: false,
-        mode: space.budgetMode,
-        beyondDeadline: budget.beyondDeadline,
-      );
-    }
-
-    final FlowLedger? flow = ref.watch(flowLedgerProvider).value;
-    if (flow == null) return null;
-    final ({String entryId, bool below})? end = flow.cascade.moneyEndsAt;
+    final SpaceLedger? ledger = space.budgetMode == BudgetMode.budget
+        ? ref.watch(budgetLedgerProvider).value
+        : ref.watch(flowLedgerProvider).value;
+    if (ledger == null) return null;
+    final BudgetLedger? budget = ledger is BudgetLedger ? ledger : null;
+    final ({String entryId, bool below})? end = ledger.moneyEndsAt;
     return _FeedSource(
       records: records,
-      today: flow.today,
-      coverage: flow.coverageByEntry,
-      leftAfter: flow.balanceByEntry,
+      today: ledger.today,
+      coverage: ledger.coverageByEntry,
+      leftAfter: ledger.balanceByEntry,
       moneyEndsAt: <String, bool>{if (end != null) end.entryId: end.below},
-      available: flow.available,
-      freeCash: flow.freeCash,
-      paid: flow.totalPaid,
-      remaining: flow.totalRemaining,
+      available: ledger.available,
+      // Without a fund the Budget figure is what was spent.
+      freeCash: budget?.hasFund ?? true ? ledger.freeCash : ledger.available,
+      paid: ledger.totalPaid,
+      remaining: ledger.totalRemaining,
       byPeriod: false,
       mode: space.budgetMode,
+      beyondDeadline: budget?.beyondDeadline ?? const <String>{},
     );
   }
 

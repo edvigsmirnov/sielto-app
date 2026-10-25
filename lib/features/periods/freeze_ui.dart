@@ -5,7 +5,7 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/deadline_guard.dart';
 import 'package:sielto/core/db/freeze_guard.dart';
-import 'package:sielto/core/format/date_format.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
@@ -37,9 +37,7 @@ bool sayRefusal(BuildContext context, Exception error) {
     PeriodFrozen() => tr('freeze.refused'),
     BeyondHardDeadline(:final CalendarDate deadline) => tr(
       'budget.refusedBeyondDeadline',
-      namedArgs: <String, String>{
-        'date': DateLabels(context.locale.toString()).dayMonth(deadline),
-      },
+      namedArgs: <String, String>{'date': context.dates.dayMonth(deadline)},
     ),
     _ => null,
   };

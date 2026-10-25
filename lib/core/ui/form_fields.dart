@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
@@ -232,7 +233,7 @@ final RegExp _addedStamp = RegExp(r'\[added (\d{4}-\d{2}-\d{2})\]: ');
 /// A note as the reader sees it: the stored date stamps of appended text in
 /// the reader's language.
 String shownNote(BuildContext context, String note) {
-  final DateLabels dates = DateLabels(context.locale.toString());
+  final DateLabels dates = context.dates;
   return note.replaceAllMapped(
     _addedStamp,
     (Match m) => tr(

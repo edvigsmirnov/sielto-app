@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
-import 'package:sielto/core/format/date_format.dart';
-import 'package:sielto/core/format/money_format.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/features/feed/feed_model.dart';
@@ -38,7 +37,6 @@ class RefusedMark extends ConsumerWidget {
       ],
     );
     if (choice == null || !context.mounted) return;
-    final String locale = context.locale.toString();
     final Space? space = ref.read(currentSpaceProvider);
     final String note = tr(
       'refused.noteText',
@@ -46,11 +44,8 @@ class RefusedMark extends ConsumerWidget {
         'what': <String>[
           record.title,
           if ((record.amount, space) case (final amount?, final Space s))
-            MoneyFormat(
-              locale: locale,
-              currencyCode: s.currencyCode,
-            ).format(amount),
-          DateLabels(locale).dayMonth(record.date),
+            context.moneyIn(s.currencyCode).format(amount),
+          context.dates.dayMonth(record.date),
         ].join(', '),
       },
     );

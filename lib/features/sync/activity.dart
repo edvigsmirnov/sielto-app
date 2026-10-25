@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
-import 'package:sielto/core/format/date_format.dart';
-import 'package:sielto/core/format/money_format.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/sync/sync_worker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -114,8 +113,8 @@ void showActivity(
   final String what = <String>[
     c.title,
     if ((c.amount, space) case (final amount?, final Space s))
-      MoneyFormat(locale: locale, currencyCode: s.currencyCode).format(amount),
-    DateLabels(locale).dayMonth(c.date),
+      context.moneyIn(s.currencyCode).format(amount),
+    context.dates.dayMonth(c.date),
   ].join(', ');
   toast(
     tr(

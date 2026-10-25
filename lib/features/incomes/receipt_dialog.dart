@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
@@ -36,7 +37,7 @@ class _ReceiptDialogState extends State<_ReceiptDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final DateLabels dates = DateLabels(context.locale.toString());
+    final DateLabels dates = context.dates;
 
     return SageDialog(
       title: tr('income.markReceived'),

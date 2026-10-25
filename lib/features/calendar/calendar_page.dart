@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/calendar_repository.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
@@ -51,12 +52,8 @@ class CalendarPage extends ConsumerWidget {
         : chosen;
     final CalendarDate selected = ref.watch(selectedDateProvider);
     final CalendarDate today = ref.watch(spaceClockProvider).today();
-    final String locale = context.locale.toString();
-    final DateLabels dates = DateLabels(locale);
-    final MoneyFormat money = MoneyFormat(
-      locale: locale,
-      currencyCode: space.currencyCode,
-    );
+    final DateLabels dates = context.dates;
+    final MoneyFormat money = context.moneyIn(space.currencyCode);
 
     final bool atBottom = controlsAtBottom(
       context,

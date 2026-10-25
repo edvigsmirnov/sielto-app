@@ -4,6 +4,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -35,7 +36,7 @@ class PeriodSelector extends ConsumerWidget {
         ? periods[index + 1]
         : null;
 
-    final DateLabels dates = DateLabels(context.locale.toString());
+    final DateLabels dates = context.dates;
     final CalendarDate today = ref.watch(todayProvider);
 
     // Near the last period, request more.

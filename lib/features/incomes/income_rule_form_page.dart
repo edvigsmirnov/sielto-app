@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
@@ -182,10 +183,7 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
   @override
   Widget build(BuildContext context) {
     final Space space = ref.space;
-    final MoneyFormat money = MoneyFormat(
-      locale: context.locale.toString(),
-      currencyCode: space.currencyCode,
-    );
+    final MoneyFormat money = context.moneyIn(space.currencyCode);
 
     return Scaffold(
       backgroundColor: context.sage.surface,

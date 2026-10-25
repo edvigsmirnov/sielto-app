@@ -11,6 +11,8 @@ import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/analytics/analytics_page.dart';
 import 'package:sielto/features/dashboard/figure_info.dart';
 import 'package:sielto/features/dashboard/rolling_amount.dart';
+import 'package:sielto/features/incomes/income_form_page.dart';
+import 'package:sielto/features/space/space_ledger.dart';
 
 /// Dashboard blocks shared by the three modes. They take plain values.
 
@@ -312,47 +314,44 @@ class _RemainderBar extends StatelessWidget {
 
 /// Planned, paid, still to pay.
 class TotalsCard extends StatelessWidget {
-  const TotalsCard({
-    required this.planned,
-    required this.paid,
-    required this.remaining,
-    required this.money,
-    super.key,
-  });
+  const TotalsCard({required this.ledger, required this.money, super.key});
 
-  final Decimal planned;
-  final Decimal paid;
-  final Decimal remaining;
+  final SpaceLedger ledger;
   final MoneyFormat money;
 
   @override
-  Widget build(BuildContext context) => SageCard(
-    child: Column(
-      children: <Widget>[
-        StatRow(
-          label: tr('dashboard.planned'),
-          value: money.format(planned),
-          labelTrailing: InfoButton(
-            dense: true,
-            FigureInfo(
-              title: tr('dashboard.planned'),
-              what: tr('info.totals'),
-              sum: <SumLine>[
-                SumLine('', money.format(planned), tr('info.planned')),
-                SumLine('−', money.format(paid), tr('info.paid')),
-                SumLine('=', money.format(remaining), tr('info.toPay')),
-              ],
+  Widget build(BuildContext context) {
+    final Decimal planned = ledger.totalPlanned;
+    final Decimal paid = ledger.totalPaid;
+    final Decimal remaining = ledger.totalRemaining;
+    return SageCard(
+      child: Column(
+        children: <Widget>[
+          StatRow(
+            label: tr('dashboard.planned'),
+            value: money.format(planned),
+            labelTrailing: InfoButton(
+              dense: true,
+              FigureInfo(
+                title: tr('dashboard.planned'),
+                what: tr('info.totals'),
+                sum: <SumLine>[
+                  SumLine('', money.format(planned), tr('info.planned')),
+                  SumLine('−', money.format(paid), tr('info.paid')),
+                  SumLine('=', money.format(remaining), tr('info.toPay')),
+                ],
+              ),
             ),
           ),
-        ),
-        StatRow(label: tr('dashboard.paid'), value: money.format(paid)),
-        StatRow(
-          label: tr('dashboard.leftToPay'),
-          value: money.format(remaining),
-        ),
-      ],
-    ),
-  );
+          StatRow(label: tr('dashboard.paid'), value: money.format(paid)),
+          StatRow(
+            label: tr('dashboard.leftToPay'),
+            value: money.format(remaining),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// "In 5 days — Salary: 2 400 €", on the accent tint.
@@ -361,15 +360,12 @@ class NearestIncomeCard extends StatelessWidget {
     required this.income,
     required this.today,
     required this.money,
-    this.onTap,
     super.key,
   });
 
   final Income? income;
   final CalendarDate today;
   final MoneyFormat money;
-
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -392,7 +388,7 @@ class NearestIncomeCard extends StatelessWidget {
 
     return SageCard(
       color: sage.accentTint,
-      onTap: onTap,
+      onTap: () => openIncomeForm(context, incomeId: row.id),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

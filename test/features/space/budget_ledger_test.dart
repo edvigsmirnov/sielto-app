@@ -85,7 +85,7 @@ void main() {
       expect(ledger.hasFund, isFalse);
       expect(ledger.cascade, isNull);
       expect(ledger.coverage, isNull);
-      expect(ledger.moneyEndsAt, isEmpty);
+      expect(ledger.moneyEndsAt, isNull);
       expect(ledger.totalPaid, m('600'));
     });
 

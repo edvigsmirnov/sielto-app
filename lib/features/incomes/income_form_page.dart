@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/freeze_guard.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
@@ -277,8 +278,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     final CalendarDate last = service.lastDateOf(_schedule.schedule, today);
     if (!mounted) return null;
 
-    final String date = DateLabels(context.locale.toString())
-        .dayMonth(last, reference: today);
+    final String date = context.dates.dayMonth(last, reference: today);
     final _Past? past = await choiceDialog<_Past>(
       context,
       title: tr(
@@ -515,12 +515,8 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
         if (rows != null && !rows.any((Income r) => r.id == id)) _close();
       });
     }
-    final String locale = context.locale.toString();
-    final MoneyFormat money = MoneyFormat(
-      locale: locale,
-      currencyCode: space.currencyCode,
-    );
-    final DateLabels dates = DateLabels(locale);
+    final MoneyFormat money = context.moneyIn(space.currencyCode);
+    final DateLabels dates = context.dates;
 
     if (!_loaded) {
       return const Scaffold(body: Center(child: LeafLoader()));
@@ -782,7 +778,7 @@ class _LandsIn extends ConsumerWidget {
 
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
-    final DateLabels dates = DateLabels(context.locale.toString());
+    final DateLabels dates = context.dates;
 
     final PeriodLedger ledger = buildPeriodLedger(
       period: period,

@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
@@ -68,10 +69,7 @@ class _FundSheetState extends ConsumerState<_FundSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final MoneyFormat money = MoneyFormat(
-      locale: context.locale.toString(),
-      currencyCode: ref.space.currencyCode,
-    );
+    final MoneyFormat money = context.moneyIn(ref.space.currencyCode);
 
     return FormSheet(
       title: tr('budget.fundSheetTitle'),
@@ -135,7 +133,7 @@ class _DeadlineSheetState extends ConsumerState<_DeadlineSheet> {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
-    final DateLabels dates = DateLabels(context.locale.toString());
+    final DateLabels dates = context.dates;
 
     return FormSheet(
       title: tr('budget.deadlineSheetTitle'),

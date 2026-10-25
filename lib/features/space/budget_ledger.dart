@@ -1,6 +1,5 @@
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/ledger/available_money.dart';
@@ -12,18 +11,17 @@ import 'package:sielto/features/space/space_ledger.dart';
 
 /// Budget Space figures. The walk starts from the fund: target plus top-ups.
 /// Without a fund there is no walk.
-@immutable
-class BudgetLedger {
+class BudgetLedger extends SpaceLedger {
   const BudgetLedger({
     required this.period,
     required this.target,
     required this.contributions,
-    required this.cascade,
-    required this.entries,
+    required super.cascade,
+    required super.entries,
     required this.beyondDeadline,
-    required this.today,
-    required this.totalPlanned,
-    required this.totalPaid,
+    required super.today,
+    required super.totalPlanned,
+    required super.totalPaid,
   });
 
   /// The continuous period, which holds the fund and the deadline.
@@ -35,20 +33,8 @@ class BudgetLedger {
   /// Top-ups so far.
   final Decimal contributions;
 
-  /// Null without a fund.
-  final LedgerCascade? cascade;
-
-  /// Expenses within the deadline.
-  final List<LedgerEntry> entries;
-
   /// Ids of records after the hard deadline. Dimmed and excluded.
   final Set<String> beyondDeadline;
-
-  final CalendarDate today;
-
-  /// Expenses within the deadline, paid or not.
-  final Decimal totalPlanned;
-  final Decimal totalPaid;
 
   CalendarDate? get deadline => period.deadlineDate;
 
@@ -56,35 +42,15 @@ class BudgetLedger {
 
   bool get hasFund => target != null;
 
+  @override
   Decimal get available => (target ?? Decimal.zero) + contributions;
 
-  Decimal get totalRemaining => totalPlanned - totalPaid;
-
-  /// Null when the plan does not fit or there is no fund.
-  Decimal? get remaining => cascade?.all.freeCash;
-
-  Coverage? get coverage => cascade?.coverage;
-
-  CalendarDate? get lastCoveredDay => cascade?.lastCoveredDay;
+  /// Null without a fund or when the plan does not fit.
+  Decimal? get remaining => freeCash;
 
   /// Null without a deadline; negative once passed.
   int? get daysToDeadline =>
       deadline == null ? null : today.daysUntil(deadline!);
-
-  Map<String, bool> get coverageByEntry => <String, bool>{
-    for (final LedgerStep step in cascade?.all.steps ?? const <LedgerStep>[])
-      step.entry.id: step.isCovered,
-  };
-
-  Map<String, Decimal> get balanceByEntry => <String, Decimal>{
-    for (final LedgerStep step in cascade?.all.steps ?? const <LedgerStep>[])
-      step.entry.id: step.balanceAfter,
-  };
-
-  Map<String, bool> get moneyEndsAt {
-    final ({String entryId, bool below})? end = cascade?.moneyEndsAt;
-    return <String, bool>{if (end != null) end.entryId: end.below};
-  }
 }
 
 /// In Budget mode every income is a top-up and joins the fund.

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/holidays/countries.dart';
 import 'package:sielto/core/holidays/holiday_source.dart';
@@ -27,7 +28,7 @@ class HolidaysPage extends ConsumerWidget {
     final String? country = ref.watch(defaultCountryProvider);
     final bool offline = ref.watch(offlineModeProvider);
     final bool? consent = ref.watch(holidayConsentProvider);
-    final DateLabels dates = DateLabels(context.locale.toString());
+    final DateLabels dates = context.dates;
 
     return Scaffold(
       backgroundColor: context.sage.surface,
@@ -341,7 +342,7 @@ class _CustomDays extends ConsumerWidget {
         const <CustomNonWorkingDay>[];
     if (days.isEmpty) return _Note(tr('holidays.noCustomDays'));
 
-    final DateLabels dates = DateLabels(context.locale.toString());
+    final DateLabels dates = context.dates;
     final CalendarDate today = ref.watch(spaceClockProvider).today();
     String when(CalendarDate date) =>
         dates.weekdayAndDate(date, reference: today);

@@ -4,7 +4,9 @@ import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 
 /// Card with the standard inner gutter; look from `cardTheme`.
@@ -629,4 +631,20 @@ class _DragGripState extends State<DragGrip> {
       ),
     );
   }
+}
+
+/// [value] through [builder]; the loader while it loads, a notice if it fails.
+class AsyncBody<T> extends StatelessWidget {
+  const AsyncBody(this.value, {required this.builder, super.key});
+
+  final AsyncValue<T> value;
+  final Widget Function(T) builder;
+
+  @override
+  Widget build(BuildContext context) => value.when(
+    loading: () => const Center(child: LeafLoader()),
+    error: (Object _, StackTrace _) =>
+        EmptyState(message: tr('common.loadFailed')),
+    data: builder,
+  );
 }

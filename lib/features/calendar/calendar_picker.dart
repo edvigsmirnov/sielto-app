@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/form_fields.dart';
@@ -83,7 +84,7 @@ class _GrainPickerState extends State<_GrainPicker> {
 
   @override
   Widget build(BuildContext context) {
-    final DateLabels dates = DateLabels(context.locale.toString());
+    final DateLabels dates = context.dates;
     final bool canBack = widget.weeks
         ? _page.addMonths(-1).year >= widget.firstYear
         : _page.year > widget.firstYear;

@@ -1,7 +1,6 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sielto/core/format/date_format.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 
@@ -14,6 +13,6 @@ Future<void> showDayMenu(
   context,
   ref,
   date: date,
-  title: DateLabels(context.locale.toString()).weekdayAndDate(date),
+  title: context.dates.weekdayAndDate(date),
   askDate: false,
 );

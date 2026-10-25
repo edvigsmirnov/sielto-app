@@ -4,12 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/income_repository.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/layout.dart';
-import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/anchor_help.dart';
@@ -29,10 +29,7 @@ class IncomeRulesPage extends ConsumerWidget {
     final AsyncValue<List<IncomeRecurrenceRule>> rules = ref.watch(
       incomeRulesProvider,
     );
-    final MoneyFormat money = MoneyFormat(
-      locale: context.locale.toString(),
-      currencyCode: space.currencyCode,
-    );
+    final MoneyFormat money = context.moneyIn(space.currencyCode);
 
     return Scaffold(
       backgroundColor: context.sage.surface,
@@ -45,43 +42,34 @@ class IncomeRulesPage extends ConsumerWidget {
         onPressed: () => openIncomeForm(context, regular: true),
         child: const Icon(Icons.add),
       ),
-      body: switch (rules) {
-        AsyncData<List<IncomeRecurrenceRule>>(
-          value: final List<IncomeRecurrenceRule> rows,
-        )
-            when rows.isEmpty =>
-          EmptyState(
-            message: tr(
-              space.budgetMode == BudgetMode.incomeDriven
-                  ? 'income.noRegular'
-                  : 'income.noRegularDated',
-            ),
-          ),
-        AsyncData<List<IncomeRecurrenceRule>>(
-          value: final List<IncomeRecurrenceRule> rows,
-        ) =>
-          ListView.separated(
-            padding: scrollPadding(
-              context,
-              const EdgeInsets.all(SageSpace.gutter),
-            ),
-            itemCount: rows.length,
-            separatorBuilder: (BuildContext _, int _) =>
-                const SizedBox(height: SageSpace.sm),
-            itemBuilder: (BuildContext context, int index) => _RuleTile(
-              rule: rows[index],
-              money: money,
-              isIncomeDriven: space.budgetMode == BudgetMode.incomeDriven,
-              onDelete: () => _delete(context, ref, space, rows[index]),
-              onToggleAnchor: (bool anchor) =>
-                  _setAnchor(context, ref, space, rows[index], anchor),
-            ),
-          ),
-        AsyncError<List<IncomeRecurrenceRule>>() => EmptyState(
-          message: tr('common.loadFailed'),
-        ),
-        _ => const Center(child: LeafLoader()),
-      },
+      body: AsyncBody<List<IncomeRecurrenceRule>>(
+        rules,
+        builder: (List<IncomeRecurrenceRule> rows) => rows.isEmpty
+            ? EmptyState(
+                message: tr(
+                  space.budgetMode == BudgetMode.incomeDriven
+                      ? 'income.noRegular'
+                      : 'income.noRegularDated',
+                ),
+              )
+            : ListView.separated(
+                padding: scrollPadding(
+                  context,
+                  const EdgeInsets.all(SageSpace.gutter),
+                ),
+                itemCount: rows.length,
+                separatorBuilder: (BuildContext _, int _) =>
+                    const SizedBox(height: SageSpace.sm),
+                itemBuilder: (BuildContext context, int index) => _RuleTile(
+                  rule: rows[index],
+                  money: money,
+                  isIncomeDriven: space.budgetMode == BudgetMode.incomeDriven,
+                  onDelete: () => _delete(context, ref, space, rows[index]),
+                  onToggleAnchor: (bool anchor) =>
+                      _setAnchor(context, ref, space, rows[index], anchor),
+                ),
+              ),
+      ),
     );
   }
 

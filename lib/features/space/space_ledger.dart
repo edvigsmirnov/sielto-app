@@ -82,62 +82,91 @@ LedgerEntry? incomeEntry(Income i) {
   );
 }
 
-/// Flow Space figures, shared by every screen.
+/// What every mode's figures share: one walk of [entries] and its totals.
 @immutable
-class FlowLedger {
-  const FlowLedger({
-    required this.available,
+abstract class SpaceLedger {
+  const SpaceLedger({
     required this.cascade,
     required this.entries,
-    required this.excludedCount,
     required this.today,
     required this.totalPlanned,
     required this.totalPaid,
+  });
+
+  /// Null when the starting amount is unknown.
+  final LedgerCascade? cascade;
+
+  final List<LedgerEntry> entries;
+  final CalendarDate today;
+
+  /// Expenses, paid or not.
+  final Decimal totalPlanned;
+  final Decimal totalPaid;
+
+  /// What the walk starts from; null when unknown.
+  Decimal? get available;
+
+  /// Without it there is no coverage dot, cutoff or end date.
+  bool get isJudged => true;
+
+  Decimal get totalRemaining => totalPlanned - totalPaid;
+
+  Coverage? get coverage => isJudged ? cascade?.coverage : null;
+
+  /// Null when not covered; an unjudged walk reports the plain remainder.
+  Decimal? get freeCash =>
+      isJudged ? cascade?.all.freeCash : cascade?.all.finalBalance;
+
+  /// After mandatory expenses only.
+  Decimal? get baseRemainder =>
+      isJudged ? cascade?.mandatory.freeCash : cascade?.mandatory.finalBalance;
+
+  Coverage? get baseCoverage => isJudged ? cascade?.mandatory.coverage : null;
+
+  /// Last day the money reaches, when short.
+  CalendarDate? get lastCoveredDay => isJudged ? cascade?.lastCoveredDay : null;
+
+  ({String entryId, bool below})? get moneyEndsAt =>
+      isJudged ? cascade?.moneyEndsAt : null;
+
+  List<LedgerStep> get _steps => isJudged
+      ? cascade?.all.steps ?? const <LedgerStep>[]
+      : const <LedgerStep>[];
+
+  Map<String, bool> get coverageByEntry => <String, bool>{
+    for (final LedgerStep step in _steps) step.entry.id: step.isCovered,
+  };
+
+  Map<String, Decimal> get balanceByEntry => <String, Decimal>{
+    for (final LedgerStep step in _steps) step.entry.id: step.balanceAfter,
+  };
+}
+
+/// Flow Space figures, shared by every screen.
+class FlowLedger extends SpaceLedger {
+  const FlowLedger({
+    required this.available,
+    required LedgerCascade super.cascade,
+    required super.entries,
+    required this.excludedCount,
+    required super.today,
+    required super.totalPlanned,
+    required super.totalPaid,
     required this.nearestIncome,
   });
 
   /// Manual balance plus incomes received since it was set.
+  @override
   final Decimal available;
 
-  final LedgerCascade cascade;
-
-  /// Entries after the double-count rule.
-  final List<LedgerEntry> entries;
-
-  /// Rows excluded by that rule.
+  /// Rows the double-count rule excluded.
   final int excludedCount;
-
-  final CalendarDate today;
-
-  /// Every planned expense, paid or not.
-  final Decimal totalPlanned;
-  final Decimal totalPaid;
 
   /// Next income not yet arrived.
   final Income? nearestIncome;
 
-  Decimal get totalRemaining => totalPlanned - totalPaid;
-
-  Coverage? get coverage => cascade.coverage;
-
-  /// Null when not covered.
-  Decimal? get freeCash => cascade.all.freeCash;
-
-  /// After mandatory expenses only.
-  Decimal? get baseRemainder => cascade.mandatory.freeCash;
-
-  /// Null while the money reaches everything.
-  CalendarDate? get lastCoveredDay => cascade.lastCoveredDay;
-
-  Map<String, bool> get coverageByEntry => <String, bool>{
-    for (final LedgerStep step in cascade.all.steps)
-      step.entry.id: step.isCovered,
-  };
-
-  Map<String, Decimal> get balanceByEntry => <String, Decimal>{
-    for (final LedgerStep step in cascade.all.steps)
-      step.entry.id: step.balanceAfter,
-  };
+  @override
+  LedgerCascade get cascade => super.cascade!;
 }
 
 extension BalanceDay on Space {

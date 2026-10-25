@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
@@ -151,7 +152,7 @@ class OverduePage extends ConsumerWidget {
     final Map<String, Category> categories =
         ref.watch(categoryIndexProvider).value ?? const <String, Category>{};
     final FreezeLookup freeze = ref.watch(freezeLookupProvider);
-    final DateLabels dates = DateLabels(context.locale.toString());
+    final DateLabels dates = context.dates;
 
     return Scaffold(
       backgroundColor: sage.surface,
