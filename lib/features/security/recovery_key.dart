@@ -9,6 +9,7 @@ import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/drive.dart';
 
@@ -171,7 +172,10 @@ class _RecoveryKeyPageState extends ConsumerState<RecoveryKeyPage> {
         title: Text(tr(_changing ? 'recovery.changeTitle' : 'recovery.title')),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(SageSpace.formGutter),
+        padding: scrollPadding(
+          context,
+          const EdgeInsets.all(SageSpace.formGutter),
+        ),
         children: <Widget>[
           Text(
             tr(_existing ? 'recovery.existingWhy' : 'recovery.why'),

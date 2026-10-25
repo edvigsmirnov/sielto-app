@@ -34,7 +34,10 @@ class SettingsPage extends ConsumerWidget {
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('settings.title'))),
       body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+        padding: scrollPadding(
+          context,
+          const EdgeInsets.symmetric(vertical: SageSpace.md),
+        ),
         children: <Widget>[
           ListTile(
             leading: const Icon(Icons.person_outline),

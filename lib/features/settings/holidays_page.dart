@@ -11,6 +11,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -32,7 +33,10 @@ class HolidaysPage extends ConsumerWidget {
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('holidays.title'))),
       body: ListView(
-        padding: const EdgeInsets.only(bottom: SageSpace.xl),
+        padding: scrollPadding(
+          context,
+          const EdgeInsets.only(bottom: SageSpace.xl),
+        ),
         children: <Widget>[
           SectionLabel(tr('holidays.country')),
           ListTile(

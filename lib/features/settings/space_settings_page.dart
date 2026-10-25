@@ -13,6 +13,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/choice_field.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/categories_page.dart';
@@ -108,9 +109,12 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('spaceSettings.title'))),
       body: ListView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: SageSpace.formGutter,
-          vertical: SageSpace.md,
+        padding: scrollPadding(
+          context,
+          const EdgeInsets.symmetric(
+            horizontal: SageSpace.formGutter,
+            vertical: SageSpace.md,
+          ),
         ),
         children: <Widget>[
           Row(

@@ -8,6 +8,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -60,7 +61,10 @@ class IncomeRulesPage extends ConsumerWidget {
           value: final List<IncomeRecurrenceRule> rows,
         ) =>
           ListView.separated(
-            padding: const EdgeInsets.all(SageSpace.gutter),
+            padding: scrollPadding(
+              context,
+              const EdgeInsets.all(SageSpace.gutter),
+            ),
             itemCount: rows.length,
             separatorBuilder: (BuildContext _, int _) =>
                 const SizedBox(height: SageSpace.sm),

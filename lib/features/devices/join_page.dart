@@ -145,7 +145,10 @@ class _JoinPageState extends ConsumerState<JoinPage> {
         backgroundColor: context.sage.surface,
         appBar: sageAppBar(context, title: Text(tr('devices.joinTitle'))),
         body: ListView(
-          padding: const EdgeInsets.all(SageSpace.formGutter),
+          padding: scrollPadding(
+            context,
+            const EdgeInsets.all(SageSpace.formGutter),
+          ),
           children: content,
         ),
       );

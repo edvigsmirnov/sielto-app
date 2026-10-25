@@ -10,6 +10,7 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
@@ -162,7 +163,10 @@ class OverduePage extends ConsumerWidget {
                 _Total(summary: summary, money: money),
                 Expanded(
                   child: ListView.builder(
-                    padding: const EdgeInsets.only(bottom: SageSpace.xl),
+                    padding: scrollPadding(
+                      context,
+                      const EdgeInsets.only(bottom: SageSpace.xl),
+                    ),
                     itemCount: summary.payments.length,
                     itemBuilder: (BuildContext context, int index) {
                       final Payment payment = summary.payments[index];

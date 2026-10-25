@@ -8,6 +8,11 @@ bool isWide(BuildContext context) =>
 
 const double readableWidth = 720;
 
+/// [padding] plus the navigation bar, which an explicit ListView padding drops.
+/// Below an app bar, so the status bar is left out.
+EdgeInsets scrollPadding(BuildContext context, EdgeInsets padding) =>
+    padding + MediaQuery.paddingOf(context).copyWith(top: 0);
+
 /// Names a route whose page lays itself out across the whole window, wide.
 const String fullWindowRoute = 'full-window';
 

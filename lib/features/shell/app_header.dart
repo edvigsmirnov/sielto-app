@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
@@ -111,12 +112,12 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                 tooltip: tr('spaceSettings.title'),
                 onTap: () {
                   HapticFeedback.lightImpact();
+                  final Space space = ref.read(currentSpaceProvider)!;
                   DetailHost.push(
                     context,
                     MaterialPageRoute<void>(
-                      builder: (BuildContext _) => SpaceSettingsPage(
-                        space: ref.read(currentSpaceProvider)!,
-                      ),
+                      builder: (BuildContext _) =>
+                          SpaceSettingsPage(space: space),
                     ),
                   );
                 },

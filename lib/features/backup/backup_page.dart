@@ -38,7 +38,10 @@ class BackupPage extends ConsumerWidget {
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('backup.title'))),
       body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+        padding: scrollPadding(
+          context,
+          const EdgeInsets.symmetric(vertical: SageSpace.md),
+        ),
         children: <Widget>[
           ListTile(
             leading: const Icon(Icons.key_outlined),
@@ -462,7 +465,10 @@ class _RestorePageState extends State<RestorePage> {
       appBar: sageAppBar(context, title: Text(tr('backup.restore'))),
       bottomNavigationBar: FormActionBar(child: action),
       body: ListView(
-        padding: const EdgeInsets.all(SageSpace.formGutter),
+        padding: scrollPadding(
+          context,
+          const EdgeInsets.all(SageSpace.formGutter),
+        ),
         children: content,
       ),
     );

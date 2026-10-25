@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
@@ -100,7 +101,10 @@ class _MemberPageState extends ConsumerState<MemberPage> {
           title: Text(widget.member.name ?? tr('members.noName')),
         ),
         body: ListView(
-          padding: const EdgeInsets.all(SageSpace.formGutter),
+          padding: scrollPadding(
+            context,
+            const EdgeInsets.all(SageSpace.formGutter),
+          ),
           children: <Widget>[
             if (widget.member.owner) ...<Widget>[
               Text(tr('members.owner'), style: text.bodyMedium),

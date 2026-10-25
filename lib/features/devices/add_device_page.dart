@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/features/devices/code_card.dart';
 import 'package:sielto/features/security/recovery_key.dart';
@@ -84,7 +85,10 @@ class _AddDevicePageState extends ConsumerState<AddDevicePage> {
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('devices.addTitle'))),
       body: ListView(
-        padding: const EdgeInsets.all(SageSpace.formGutter),
+        padding: scrollPadding(
+          context,
+          const EdgeInsets.all(SageSpace.formGutter),
+        ),
         children: <Widget>[
           Text(tr('devices.addBody'), style: text.bodyMedium),
           const SizedBox(height: SageSpace.xl),

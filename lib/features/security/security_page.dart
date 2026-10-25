@@ -8,6 +8,7 @@ import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/security/app_lock.dart';
 import 'package:sielto/features/security/recovery_key.dart';
@@ -182,7 +183,10 @@ class SecurityPage extends ConsumerWidget {
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('security.title'))),
       body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+        padding: scrollPadding(
+          context,
+          const EdgeInsets.symmetric(vertical: SageSpace.md),
+        ),
         children: <Widget>[
           SwitchListTile.adaptive(
             secondary: const Icon(Icons.lock_outline),

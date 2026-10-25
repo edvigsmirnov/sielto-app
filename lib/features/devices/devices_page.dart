@@ -7,6 +7,7 @@ import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -119,7 +120,10 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
         null => const Center(child: LeafLoader()),
         (result: CloudResult.done, devices: final List<LinkedDevice> devices) =>
           ListView(
-            padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+            padding: scrollPadding(
+              context,
+              const EdgeInsets.symmetric(vertical: SageSpace.md),
+            ),
             children: <Widget>[
               for (final LinkedDevice device in devices) _tile(device, text),
               Padding(

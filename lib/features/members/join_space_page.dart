@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/members/public_name.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
@@ -71,7 +72,10 @@ class _JoinSpacePageState extends ConsumerState<JoinSpacePage> {
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('members.joinTitle'))),
       body: ListView(
-        padding: const EdgeInsets.all(SageSpace.formGutter),
+        padding: scrollPadding(
+          context,
+          const EdgeInsets.all(SageSpace.formGutter),
+        ),
         children: <Widget>[
           Text(tr('members.joinBody'), style: text.bodyMedium),
           const SizedBox(height: SageSpace.lg),

@@ -8,6 +8,7 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/features/members/invite_page.dart';
 import 'package:sielto/features/members/member_page.dart';
@@ -84,7 +85,10 @@ class _MembersPageState extends ConsumerState<MembersPage> {
         (result: CloudResult.done, members: final List<Member> members) =>
           _list(members, _limit(), text),
         (result: final CloudResult result, members: _) => ListView(
-          padding: const EdgeInsets.all(SageSpace.formGutter),
+          padding: scrollPadding(
+            context,
+            const EdgeInsets.all(SageSpace.formGutter),
+          ),
           children: <Widget>[
             Text(
               tr(switch (result) {
@@ -115,7 +119,10 @@ class _MembersPageState extends ConsumerState<MembersPage> {
     final int? max = limit == null ? null : math.max(limit, members.length);
     final bool room = max == null || members.length < max;
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
+      padding: scrollPadding(
+        context,
+        const EdgeInsets.symmetric(vertical: SageSpace.md),
+      ),
       children: <Widget>[
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: SageSpace.formGutter),
