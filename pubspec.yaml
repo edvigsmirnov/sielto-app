@@ -18,6 +18,8 @@ dependencies:
   drift: ^2.34.3
   # Localization: JSON dictionaries read directly, no .arb conversion step.
   easy_localization: ^3.0.8
+  # Category icons: any emoji, grouped and searchable.
+  emoji_picker_flutter: ^4.5.4
   # Opens a .finbackup everywhere; saves one on desktop. GTK dialogs on Linux,
   # no zenity.
   file_selector: ^1.1.0

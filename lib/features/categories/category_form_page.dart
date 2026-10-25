@@ -14,6 +14,7 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_icons.dart';
 import 'package:sielto/features/categories/category_title.dart';
+import 'package:sielto/features/categories/emoji_sheet.dart';
 import 'package:sielto/features/payments/category_picker.dart';
 
 /// Add or edit a category.
@@ -152,11 +153,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   }
 
   Future<void> _pickCustomIcon() async {
-    final String? typed = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => const _CustomIconDialog(),
-    );
-    final String? cleaned = sanitiseCategoryIcon(typed);
+    final String? cleaned = sanitiseCategoryIcon(await pickEmoji(context));
     if (cleaned != null) setState(() => _icon = cleaned);
   }
 
@@ -166,6 +163,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
     final TextTheme text = Theme.of(context).textTheme;
     final Category? existing = widget.category;
     final bool renameAllowed = _canRename ?? false;
+    final String? custom = categoryIconChoices.contains(_icon) ? null : _icon;
 
     return Scaffold(
       backgroundColor: sage.surface,
@@ -232,11 +230,10 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                     selected: _icon == glyph,
                     onTap: () => setState(() => _icon = glyph),
                   ),
-                // Custom emoji.
                 _IconChoice(
                   label: tr('category.customIcon'),
-                  glyph: '+',
-                  selected: false,
+                  glyph: custom ?? '+',
+                  selected: custom != null,
                   onTap: _pickCustomIcon,
                 ),
               ],
@@ -359,53 +356,6 @@ class _IconChoice extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Dialog for a custom emoji.
-class _CustomIconDialog extends StatefulWidget {
-  const _CustomIconDialog();
-
-  @override
-  State<_CustomIconDialog> createState() => _CustomIconDialogState();
-}
-
-class _CustomIconDialogState extends State<_CustomIconDialog> {
-  final TextEditingController _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    backgroundColor: context.sage.card,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(SageRadius.card),
-    ),
-    title: Text(
-      tr('category.fieldIcon'),
-      style: Theme.of(context).textTheme.titleMedium,
-    ),
-    content: TextField(
-      controller: _controller,
-      autofocus: true,
-      textAlign: TextAlign.center,
-      style: const TextStyle(fontSize: 28, fontFamilyFallback: emojiFonts),
-      decoration: InputDecoration(hintText: tr('category.iconHint')),
-    ),
-    actions: <Widget>[
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: Text(tr('common.cancel')),
-      ),
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(_controller.text),
-        child: Text(tr('common.save')),
-      ),
-    ],
-  );
 }
 
 /// 48 dp items spread so the rows run from edge to edge.

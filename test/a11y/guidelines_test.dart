@@ -279,6 +279,11 @@ void main() {
       before: null,
       then: null,
     ),
+    'emoji picker': (
+      page: () => const CategoryFormPage(),
+      before: null,
+      then: tap('+'),
+    ),
     'regular incomes': (
       page: () => const IncomeRulesPage(),
       before: null,
