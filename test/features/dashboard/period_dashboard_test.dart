@@ -16,6 +16,7 @@ import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
+import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/dashboard_page.dart';
 import 'package:sielto/features/security/recovery_key.dart';
@@ -161,8 +162,7 @@ void main() {
         mode: BudgetMode.incomeDriven,
         title: 'Salary',
         amount: Decimal.parse('1000'),
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 5,
+        schedule: FixedDateSchedule(5),
       );
 
   testWidgets('first regular income', (WidgetTester tester) async {
@@ -206,8 +206,7 @@ void main() {
         spaceId: space.id,
         title: 'Side',
         amount: Decimal.parse('100'),
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 20,
+        schedule: FixedDateSchedule(20),
       ),
     );
   });

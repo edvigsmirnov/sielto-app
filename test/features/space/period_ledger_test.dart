@@ -6,6 +6,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
+import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -86,8 +87,7 @@ void main() {
     ).create(
       spaceId: space.id,
       title: 'Salary',
-      scheduleType: ScheduleType.fixedDate,
-      fixedDay: 5,
+      schedule: FixedDateSchedule(5),
       amount: amount == null ? null : m(amount),
       isAnchor: true,
     );

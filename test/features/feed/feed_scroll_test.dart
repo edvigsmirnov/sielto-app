@@ -15,6 +15,7 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -109,8 +110,7 @@ void main() {
         mode: BudgetMode.incomeDriven,
         title: 'Salary',
         amount: Decimal.parse('1000'),
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 1,
+        schedule: FixedDateSchedule(1),
       );
       await PeriodService(
         repos: repos,
@@ -196,8 +196,7 @@ void main() {
           mode: BudgetMode.incomeDriven,
           title: 'Salary',
           amount: Decimal.parse('1000'),
-          scheduleType: ScheduleType.fixedDate,
-          fixedDay: 1,
+          schedule: FixedDateSchedule(1),
         );
         await PeriodService(
           repos: repos,

@@ -6,6 +6,7 @@ import 'package:sielto/app/startup.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -55,8 +56,7 @@ void main() {
   }) => repos.incomeRules.create(
     spaceId: space.id,
     title: title,
-    scheduleType: ScheduleType.fixedDate,
-    fixedDay: day,
+    schedule: FixedDateSchedule(day),
     amount: amount == null ? null : m(amount),
     isAnchor: true,
   );
@@ -75,8 +75,7 @@ void main() {
       await repos.incomeRules.create(
         spaceId: space.id,
         title: 'Rent from tenants',
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 5,
+        schedule: FixedDateSchedule(5),
         amount: m('400'),
       );
       await service.refresh(space, today);
@@ -208,8 +207,7 @@ void main() {
       await older.create(
         spaceId: space.id,
         title: 'Salary',
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 1,
+        schedule: FixedDateSchedule(1),
         amount: m('3000'),
         isAnchor: true,
       );
@@ -286,8 +284,7 @@ void main() {
       await repos.incomeRules.create(
         spaceId: space.id,
         title: 'Rent from tenants',
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 15,
+        schedule: FixedDateSchedule(15),
         amount: m('400'),
       );
       await service.refresh(space, today);
@@ -311,8 +308,7 @@ void main() {
       await repos.incomeRules.create(
         spaceId: flow.id,
         title: 'Salary',
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 15,
+        schedule: FixedDateSchedule(15),
         amount: m('3200'),
       );
       await service.refresh(flow, today);
@@ -377,9 +373,8 @@ void main() {
         await repos.incomeRules.updateRule(
           rule.id,
           title: 'Salary',
-          scheduleType: ScheduleType.fixedDate,
+          schedule: FixedDateSchedule(day),
           amount: m('3000'),
-          fixedDay: day,
         );
         await service.regenerate(space, rule.id, today);
       }

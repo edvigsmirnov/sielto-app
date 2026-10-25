@@ -22,6 +22,7 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/analytics/analytics_page.dart';
 import 'package:sielto/features/backup/backup_page.dart';
@@ -97,8 +98,7 @@ void main() {
       mode: BudgetMode.incomeDriven,
       title: 'Salary',
       amount: Decimal.parse('1000'),
-      scheduleType: ScheduleType.fixedDate,
-      fixedDay: 5,
+      schedule: FixedDateSchedule(5),
     );
     final today = SpaceClock(timezone: 'Europe/Berlin').today();
     await repos.payments.create(

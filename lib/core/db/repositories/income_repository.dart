@@ -6,6 +6,7 @@ import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/db/repositories/budget_period_repository.dart';
 import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/domain/period/freeze.dart';
+import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
@@ -52,43 +53,64 @@ class IncomeRuleRepository
   Future<IncomeRecurrenceRule> create({
     required String spaceId,
     required String title,
-    required ScheduleType scheduleType,
+    required IncomeSchedule schedule,
     Decimal? amount,
     bool isAnchor = false,
-    int? fixedDay,
-    WeekdayOrdinal? weekdayOrdinal,
-    Weekday? weekdayDay,
-    int? dateRangeStart,
-    int? dateRangeEnd,
-    BoundaryAnchor? boundaryAnchor,
-    int? boundaryCount,
     String? countryCode,
   }) {
     final ({String author, DateTime editedAt}) s = stamp();
     return db
         .into(db.incomeRecurrenceRules)
         .insertReturning(
-          IncomeRecurrenceRulesCompanion.insert(
-            id: SyncedRepository.newId(),
-            spaceId: spaceId,
-            title: title.trim(),
-            scheduleType: scheduleType,
+          _scheduleColumns(schedule).copyWith(
+            id: Value<String>(SyncedRepository.newId()),
+            spaceId: Value<String>(spaceId),
+            title: Value<String>(title.trim()),
             amount: Value<Decimal?>(amount),
             isAnchor: Value<bool>(isAnchor),
-            fixedDay: Value<int?>(fixedDay),
-            weekdayOrdinal: Value<WeekdayOrdinal?>(weekdayOrdinal),
-            weekdayDay: Value<Weekday?>(weekdayDay),
-            dateRangeStart: Value<int?>(dateRangeStart),
-            dateRangeEnd: Value<int?>(dateRangeEnd),
-            boundaryAnchor: Value<BoundaryAnchor?>(boundaryAnchor),
-            boundaryCount: Value<int?>(boundaryCount),
             countryCode: Value<String?>(countryCode),
             syncStatus: const Value<SyncStatus>(SyncStatus.pending),
             lastModifiedBy: Value<String?>(s.author),
-            clientEditedAt: s.editedAt,
-            createdAt: s.editedAt,
+            clientEditedAt: Value<DateTime>(s.editedAt),
+            createdAt: Value<DateTime>(s.editedAt),
           ),
         );
+  }
+
+  /// The schedule's type and fields; the other types' fields cleared, as the
+  /// table requires.
+  static IncomeRecurrenceRulesCompanion _scheduleColumns(
+    IncomeSchedule schedule,
+  ) {
+    return IncomeRecurrenceRulesCompanion(
+      scheduleType: Value<ScheduleType>(switch (schedule) {
+        FixedDateSchedule() => ScheduleType.fixedDate,
+        WeekdayRuleSchedule() => ScheduleType.weekdayRule,
+        DateRangeSchedule() => ScheduleType.dateRange,
+        BoundaryDaysSchedule() => ScheduleType.boundaryDays,
+      }),
+      fixedDay: Value<int?>(
+        schedule is FixedDateSchedule ? schedule.day : null,
+      ),
+      weekdayOrdinal: Value<WeekdayOrdinal?>(
+        schedule is WeekdayRuleSchedule ? schedule.ordinal : null,
+      ),
+      weekdayDay: Value<Weekday?>(
+        schedule is WeekdayRuleSchedule ? schedule.weekday : null,
+      ),
+      dateRangeStart: Value<int?>(
+        schedule is DateRangeSchedule ? schedule.startDay : null,
+      ),
+      dateRangeEnd: Value<int?>(
+        schedule is DateRangeSchedule ? schedule.endDay : null,
+      ),
+      boundaryAnchor: Value<BoundaryAnchor?>(
+        schedule is BoundaryDaysSchedule ? schedule.anchor : null,
+      ),
+      boundaryCount: Value<int?>(
+        schedule is BoundaryDaysSchedule ? schedule.count : null,
+      ),
+    );
   }
 
   /// Writes every schedule field, clearing the unused ones. Existing occurrences
@@ -96,31 +118,16 @@ class IncomeRuleRepository
   Future<int> updateRule(
     String ruleId, {
     required String title,
-    required ScheduleType scheduleType,
+    required IncomeSchedule schedule,
     Decimal? amount,
-    int? fixedDay,
-    WeekdayOrdinal? weekdayOrdinal,
-    Weekday? weekdayDay,
-    int? dateRangeStart,
-    int? dateRangeEnd,
-    BoundaryAnchor? boundaryAnchor,
-    int? boundaryCount,
   }) {
     final ({String author, DateTime editedAt}) s = stamp();
     return (db.update(
       db.incomeRecurrenceRules,
     )..where(($IncomeRecurrenceRulesTable t) => t.id.equals(ruleId))).write(
-      IncomeRecurrenceRulesCompanion(
+      _scheduleColumns(schedule).copyWith(
         title: Value<String>(title.trim()),
-        scheduleType: Value<ScheduleType>(scheduleType),
         amount: Value<Decimal?>(amount),
-        fixedDay: Value<int?>(fixedDay),
-        weekdayOrdinal: Value<WeekdayOrdinal?>(weekdayOrdinal),
-        weekdayDay: Value<Weekday?>(weekdayDay),
-        dateRangeStart: Value<int?>(dateRangeStart),
-        dateRangeEnd: Value<int?>(dateRangeEnd),
-        boundaryAnchor: Value<BoundaryAnchor?>(boundaryAnchor),
-        boundaryCount: Value<int?>(boundaryCount),
         syncStatus: const Value<SyncStatus>(SyncStatus.pending),
         lastModifiedBy: Value<String?>(s.author),
         clientEditedAt: Value<DateTime>(s.editedAt),
@@ -133,15 +140,8 @@ class IncomeRuleRepository
     required String spaceId,
     required BudgetMode mode,
     required String title,
-    required ScheduleType scheduleType,
+    required IncomeSchedule schedule,
     Decimal? amount,
-    int? fixedDay,
-    WeekdayOrdinal? weekdayOrdinal,
-    Weekday? weekdayDay,
-    int? dateRangeStart,
-    int? dateRangeEnd,
-    BoundaryAnchor? boundaryAnchor,
-    int? boundaryCount,
     String? countryCode,
   }) async {
     final bool anchor =
@@ -150,16 +150,9 @@ class IncomeRuleRepository
     return create(
       spaceId: spaceId,
       title: title,
-      scheduleType: scheduleType,
+      schedule: schedule,
       amount: amount,
       isAnchor: anchor,
-      fixedDay: fixedDay,
-      weekdayOrdinal: weekdayOrdinal,
-      weekdayDay: weekdayDay,
-      dateRangeStart: dateRangeStart,
-      dateRangeEnd: dateRangeEnd,
-      boundaryAnchor: boundaryAnchor,
-      boundaryCount: boundaryCount,
       countryCode: countryCode,
     );
   }

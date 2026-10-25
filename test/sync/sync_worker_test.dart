@@ -14,6 +14,7 @@ import 'package:sielto/core/db/repositories/space_repository.dart';
 import 'package:sielto/core/sync/cloud_identity.dart';
 import 'package:sielto/core/sync/sync_worker.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -184,9 +185,8 @@ void main() {
                 ).create(
                   spaceId: spaceId,
                   title: 'Salary',
-                  scheduleType: ScheduleType.fixedDate,
+                  schedule: FixedDateSchedule(1),
                   amount: Decimal.parse('3000'),
-                  fixedDay: 1,
                 ))
                 .id;
         await syncA.syncAll();
@@ -251,8 +251,7 @@ void main() {
     await repos(a).incomeRules.create(
       spaceId: space.id,
       title: 'Salary',
-      scheduleType: ScheduleType.fixedDate,
-      fixedDay: 26,
+      schedule: FixedDateSchedule(26),
       amount: Decimal.parse('3000'),
       isAnchor: true,
     );

@@ -224,12 +224,9 @@ periodReachProvider = NotifierProvider<PeriodReachController, CalendarDate?>(
   PeriodReachController.new,
 );
 
-/// Recomputes periods and future occurrences for the open Space.
-final FutureProvider<PeriodRefresh> periodRefreshProvider =
-    FutureProvider<PeriodRefresh>((Ref ref) async {
-      final Space? space = ref.watch(currentSpaceProvider);
-      if (space == null) return const PeriodRefresh();
-
+/// Periods and income dates on the open Space's working-day calendar.
+final FutureProvider<PeriodService> periodServiceProvider =
+    FutureProvider<PeriodService>((Ref ref) async {
       final ResolvedCalendar resolved = await ref.watch(
         resolvedCalendarProvider.future,
       );
@@ -237,7 +234,18 @@ final FutureProvider<PeriodRefresh> periodRefreshProvider =
         repos: ref.watch(repositoriesProvider),
         calendar: resolved.calendar,
         missingHolidayYears: resolved.missingYears,
-      ).refresh(
+      );
+    });
+
+/// Recomputes periods and future occurrences for the open Space.
+final FutureProvider<PeriodRefresh> periodRefreshProvider =
+    FutureProvider<PeriodRefresh>((Ref ref) async {
+      final Space? space = ref.watch(currentSpaceProvider);
+      if (space == null) return const PeriodRefresh();
+      final PeriodService service = await ref.watch(
+        periodServiceProvider.future,
+      );
+      return service.refresh(
         space,
         ref.watch(spaceClockProvider).today(),
         until: ref.watch(periodReachProvider),

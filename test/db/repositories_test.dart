@@ -11,6 +11,7 @@ import 'package:sielto/core/db/repositories/income_repository.dart';
 import 'package:sielto/core/db/repositories/payment_repository.dart';
 import 'package:sielto/core/db/repositories/space_repository.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
 
@@ -561,8 +562,7 @@ void main() {
     }) => rules.create(
       spaceId: space.id,
       title: title,
-      scheduleType: ScheduleType.fixedDate,
-      fixedDay: 26,
+      schedule: FixedDateSchedule(26),
       isAnchor: anchor,
     );
 
@@ -572,8 +572,7 @@ void main() {
         spaceId: space.id,
         mode: BudgetMode.incomeDriven,
         title: 'Salary',
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 26,
+        schedule: FixedDateSchedule(26),
       );
       expect(rule.isAnchor, isTrue);
     });
@@ -584,15 +583,13 @@ void main() {
         spaceId: space.id,
         mode: BudgetMode.incomeDriven,
         title: 'Salary',
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 26,
+        schedule: FixedDateSchedule(26),
       );
       final IncomeRecurrenceRule second = await rules.createFirstAsAnchor(
         spaceId: space.id,
         mode: BudgetMode.incomeDriven,
         title: 'Freelance',
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 10,
+        schedule: FixedDateSchedule(10),
       );
       expect(second.isAnchor, isFalse);
     });
@@ -603,8 +600,7 @@ void main() {
         spaceId: space.id,
         mode: BudgetMode.flow,
         title: 'Salary',
-        scheduleType: ScheduleType.fixedDate,
-        fixedDay: 26,
+        schedule: FixedDateSchedule(26),
       );
       expect(rule.isAnchor, isFalse);
     });
@@ -742,8 +738,7 @@ void main() {
     final IncomeRecurrenceRule rule = await rules.create(
       spaceId: space.id,
       title: 'Salary',
-      scheduleType: ScheduleType.fixedDate,
-      fixedDay: 20,
+      schedule: FixedDateSchedule(20),
       amount: Decimal.fromInt(3000),
       isAnchor: true,
     );

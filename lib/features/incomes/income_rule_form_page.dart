@@ -15,8 +15,6 @@ import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/incomes/schedule_editor.dart';
-import 'package:sielto/features/periods/holiday_service.dart';
-import 'package:sielto/features/periods/period_service.dart';
 
 /// Edits a regular income's rule. The occurrence form edits one month.
 Future<void> openIncomeRuleForm(
@@ -104,14 +102,7 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
         widget.rule.id,
         title: _title.text,
         amount: amount,
-        scheduleType: _schedule.type,
-        fixedDay: _schedule.fixedDayOrNull,
-        weekdayOrdinal: _schedule.ordinalOrNull,
-        weekdayDay: _schedule.weekdayOrNull,
-        dateRangeStart: _schedule.rangeStartOrNull,
-        dateRangeEnd: _schedule.rangeEndOrNull,
-        boundaryAnchor: _schedule.boundaryAnchorOrNull,
-        boundaryCount: _schedule.boundaryCountOrNull,
+        schedule: _schedule.schedule,
       );
 
       if (amount != widget.rule.amount) {
@@ -132,20 +123,12 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
   }
 
   /// Puts upcoming occurrences back on the schedule. Returns rows changed.
-  Future<int> _regenerateOccurrences() async {
-    final ResolvedCalendar resolved = await ref.read(
-      resolvedCalendarProvider.future,
-    );
-    return PeriodService(
-      repos: ref.read(repositoriesProvider),
-      calendar: resolved.calendar,
-      missingHolidayYears: resolved.missingYears,
-    ).regenerate(
-      ref.read(currentSpaceProvider)!,
-      widget.rule.id,
-      ref.read(spaceClockProvider).today(),
-    );
-  }
+  Future<int> _regenerateOccurrences() async =>
+      (await ref.read(periodServiceProvider.future)).regenerate(
+        ref.read(currentSpaceProvider)!,
+        widget.rule.id,
+        ref.read(spaceClockProvider).today(),
+      );
 
   Future<void> _regenerate() async {
     final bool confirmed = await confirmDialog(

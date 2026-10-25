@@ -27,7 +27,6 @@ import 'package:sielto/features/incomes/schedule_editor.dart';
 import 'package:sielto/features/payments/series_scope_dialog.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
-import 'package:sielto/features/periods/holiday_service.dart';
 import 'package:sielto/features/periods/period_choice.dart';
 import 'package:sielto/features/periods/period_service.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
@@ -249,14 +248,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
           mode: space.budgetMode,
           title: _title.text,
           amount: _parsedAmount,
-          scheduleType: _schedule.type,
-          fixedDay: _schedule.fixedDayOrNull,
-          weekdayOrdinal: _schedule.ordinalOrNull,
-          weekdayDay: _schedule.weekdayOrNull,
-          dateRangeStart: _schedule.rangeStartOrNull,
-          dateRangeEnd: _schedule.rangeEndOrNull,
-          boundaryAnchor: _schedule.boundaryAnchorOrNull,
-          boundaryCount: _schedule.boundaryCountOrNull,
+          schedule: _schedule.schedule,
         );
 
     if (_anchorChoiceApplies && _isAnchor) {
@@ -273,7 +265,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   /// how far back to add earlier ones. Null when either question is
   /// dismissed.
   Future<_PastAnswer?> _askPastDates() async {
-    final PeriodService service = await _periodService();
+    final PeriodService service = await ref.read(periodServiceProvider.future);
     final CalendarDate today = ref.read(spaceClockProvider).today();
     final CalendarDate last = service.lastDateOf(_schedule.schedule, today);
     if (!mounted) return null;
@@ -325,23 +317,12 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     );
   }
 
-  Future<PeriodService> _periodService() async {
-    final ResolvedCalendar resolved = await ref.read(
-      resolvedCalendarProvider.future,
-    );
-    return PeriodService(
-      repos: ref.read(repositoriesProvider),
-      calendar: resolved.calendar,
-      missingHolidayYears: resolved.missingYears,
-    );
-  }
-
   Future<void> _backfill(
     Space space,
     IncomeRecurrenceRule rule,
     _PastAnswer past,
   ) async {
-    final PeriodService service = await _periodService();
+    final PeriodService service = await ref.read(periodServiceProvider.future);
     await service.backfill(
       space,
       rule,
