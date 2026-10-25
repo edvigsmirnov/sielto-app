@@ -133,13 +133,11 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             ListTile(
-              title: Text(
+              title: SheetTitle(
                 tr(
                   'feed.bulk.selected',
                   namedArgs: <String, String>{'count': '${chosen.length}'},
                 ),
-                textAlign: TextAlign.center,
-                style: Theme.of(sheet).textTheme.titleMedium,
               ),
             ),
             ListTile(

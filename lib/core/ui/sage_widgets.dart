@@ -46,6 +46,26 @@ class SageCard extends StatelessWidget {
   }
 }
 
+/// A sheet's or panel's centred heading.
+class SheetTitle extends StatelessWidget {
+  const SheetTitle(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    header: true,
+    child: SizedBox(
+      width: double.infinity,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    ),
+  );
+}
+
 /// Uppercase label above a form field.
 class FieldLabel extends StatelessWidget {
   const FieldLabel(this.text, {super.key});

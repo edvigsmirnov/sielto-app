@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/popover.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
 
 /// Shows [value]; a tap opens a sheet of [options] titled [title].
 class ChoiceField<T> extends StatelessWidget {
@@ -24,12 +25,15 @@ class ChoiceField<T> extends StatelessWidget {
   final int? columns;
 
   Future<void> _pick(BuildContext context) async {
-    final _Picked<T>? picked = await showAdaptiveSheet<_Picked<T>>(
+    final (T,)? picked = await pickChoice<T>(
       context,
-      dragHandle: true,
-      builder: (BuildContext _) => _ChoiceSheet<T>(field: this),
+      title: title,
+      options: options,
+      value: value,
+      labelOf: labelOf,
+      columns: columns,
     );
-    if (picked != null && picked.value != value) onChanged(picked.value);
+    if (picked != null && picked.$1 != value) onChanged(picked.$1);
   }
 
   @override
@@ -53,17 +57,41 @@ class ChoiceField<T> extends StatelessWidget {
   );
 }
 
-/// Wraps the choice so a null [T] is still a choice.
-class _Picked<T> {
-  const _Picked(this.value);
-
-  final T value;
-}
+/// A sheet of [options] with [value] checked. The choice comes in a record,
+/// so a null [T] is still a choice; null when dismissed.
+Future<(T,)?> pickChoice<T>(
+  BuildContext context, {
+  required String title,
+  required List<T> options,
+  required T value,
+  required String Function(T) labelOf,
+  int? columns,
+}) => showAdaptiveSheet<(T,)>(
+  context,
+  dragHandle: true,
+  builder: (BuildContext _) => _ChoiceSheet<T>(
+    title: title,
+    options: options,
+    value: value,
+    labelOf: labelOf,
+    columns: columns,
+  ),
+);
 
 class _ChoiceSheet<T> extends StatelessWidget {
-  const _ChoiceSheet({required this.field});
+  const _ChoiceSheet({
+    required this.title,
+    required this.options,
+    required this.value,
+    required this.labelOf,
+    required this.columns,
+  });
 
-  final ChoiceField<T> field;
+  final String title;
+  final List<T> options;
+  final T value;
+  final String Function(T) labelOf;
+  final int? columns;
 
   @override
   Widget build(BuildContext context) => SafeArea(
@@ -80,25 +108,18 @@ class _ChoiceSheet<T> extends StatelessWidget {
               SageSpace.gutter,
               SageSpace.sm,
             ),
-            child: SizedBox(
-              width: double.infinity,
-              child: Text(
-                field.title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
+            child: SheetTitle(title),
           ),
           Flexible(
-            child: field.columns == null
+            child: columns == null
                 ? ListView.builder(
                     shrinkWrap: true,
-                    itemCount: field.options.length,
+                    itemCount: options.length,
                     itemBuilder: (BuildContext context, int index) {
-                      final T option = field.options[index];
-                      final bool selected = option == field.value;
+                      final T option = options[index];
+                      final bool selected = option == value;
                       return ListTile(
-                        title: Text(field.labelOf(option)),
+                        title: Text(labelOf(option)),
                         trailing: selected
                             ? Icon(
                                 Icons.check,
@@ -106,26 +127,24 @@ class _ChoiceSheet<T> extends StatelessWidget {
                               )
                             : null,
                         selected: selected,
-                        onTap: () =>
-                            Navigator.of(context).pop(_Picked<T>(option)),
+                        onTap: () => Navigator.of(context).pop((option,)),
                       );
                     },
                   )
                 : GridView.count(
                     shrinkWrap: true,
-                    crossAxisCount: field.columns!,
+                    crossAxisCount: columns!,
                     padding: const EdgeInsets.symmetric(
                       horizontal: SageSpace.gutter,
                     ),
                     mainAxisSpacing: SageSpace.xs,
                     crossAxisSpacing: SageSpace.xs,
                     children: <Widget>[
-                      for (final T option in field.options)
+                      for (final T option in options)
                         _GridCell(
-                          label: field.labelOf(option),
-                          selected: option == field.value,
-                          onTap: () =>
-                              Navigator.of(context).pop(_Picked<T>(option)),
+                          label: labelOf(option),
+                          selected: option == value,
+                          onTap: () => Navigator.of(context).pop((option,)),
                         ),
                     ],
                   ),

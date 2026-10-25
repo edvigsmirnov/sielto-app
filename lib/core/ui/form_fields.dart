@@ -104,7 +104,7 @@ class FormSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text(title, textAlign: TextAlign.center, style: text.titleMedium),
+            SheetTitle(title),
             const SizedBox(height: SageSpace.sm),
             Text(body, textAlign: TextAlign.center, style: text.bodyMedium),
             const SizedBox(height: SageSpace.lg),

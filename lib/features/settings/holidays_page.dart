@@ -436,14 +436,7 @@ class _CountryPickerState extends ConsumerState<_CountryPicker> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              SizedBox(
-                width: double.infinity,
-                child: Text(
-                  tr('holidays.country'),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
+              SheetTitle(tr('holidays.country')),
               const SizedBox(height: SageSpace.md),
               TextField(
                 decoration: InputDecoration(

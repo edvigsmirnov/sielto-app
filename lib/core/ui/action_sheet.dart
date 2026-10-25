@@ -74,11 +74,7 @@ Future<T?> showActionSheet<T>(
                       SageSpace.gutter,
                       SageSpace.sm,
                     ),
-                    child: Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(sheet).textTheme.titleMedium,
-                    ),
+                    child: SheetTitle(title),
                   ),
                   for (int i = 0; i < shown.length; i++) ...<Widget>[
                     if (i > 0)

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/popover.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/categories/category_icons.dart';
 
 /// Any emoji, by group or by name; a typed or pasted one is offered too.
@@ -92,11 +93,7 @@ class _EmojiSheetState extends State<_EmojiSheet> {
           height: 440,
           child: Column(
             children: <Widget>[
-              Text(
-                tr('category.fieldIcon'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              SheetTitle(tr('category.fieldIcon')),
               Padding(
                 padding: const EdgeInsets.all(SageSpace.gutter),
                 child: TextField(

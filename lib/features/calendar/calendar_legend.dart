@@ -5,6 +5,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/popover.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/calendar/calendar_cell.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
@@ -50,14 +51,7 @@ Widget _legend(
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: <Widget>[
-      SizedBox(
-        width: double.infinity,
-        child: Text(
-          tr('calendar.legend.title'),
-          textAlign: TextAlign.center,
-          style: Theme.of(sheet).textTheme.titleMedium,
-        ),
-      ),
+      SheetTitle(tr('calendar.legend.title')),
       const SizedBox(height: SageSpace.xs),
       Text(
         tr(

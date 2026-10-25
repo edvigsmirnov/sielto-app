@@ -109,14 +109,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             if (widget.heading) ...<Widget>[
-              SizedBox(
-                width: double.infinity,
-                child: Text(
-                  tr('settings.spaces'),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
+              SheetTitle(tr('settings.spaces')),
               const SizedBox(height: SageSpace.md),
             ],
             TextField(
