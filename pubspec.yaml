@@ -13,7 +13,6 @@ environment:
 dependencies:
   # AES-GCM and Argon2id: the envelopes, backups and the PIN.
   cryptography: ^2.9.0
-  cupertino_icons: ^1.0.8
   # Money is Decimal end to end, stored as TEXT. Never double.
   decimal: ^3.2.6
   drift: ^2.34.3

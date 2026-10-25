@@ -10331,10 +10331,11 @@ class $$SpacesTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (spaceMembersRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           Space,
                           $SpacesTable,
-                          SpaceMember
+                          SpaceMember,
+                          $SpaceMembersTable
                         >(
                           currentTable: table,
                           referencedTable: $$SpacesTableReferences
@@ -10345,17 +10346,16 @@ class $$SpacesTableTableManager
                                 table,
                                 p0,
                               ).spaceMembersRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.spaceId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'space_id',
                           typedResults: items,
                         ),
                       if (memberLocalLabelsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           Space,
                           $SpacesTable,
-                          MemberLocalLabel
+                          MemberLocalLabel,
+                          $MemberLocalLabelsTable
                         >(
                           currentTable: table,
                           referencedTable: $$SpacesTableReferences
@@ -10366,17 +10366,16 @@ class $$SpacesTableTableManager
                                 table,
                                 p0,
                               ).memberLocalLabelsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.spaceId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'space_id',
                           typedResults: items,
                         ),
                       if (categoriesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           Space,
                           $SpacesTable,
-                          Category
+                          Category,
+                          $CategoriesTable
                         >(
                           currentTable: table,
                           referencedTable: $$SpacesTableReferences
@@ -10387,17 +10386,16 @@ class $$SpacesTableTableManager
                                 table,
                                 p0,
                               ).categoriesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.spaceId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'space_id',
                           typedResults: items,
                         ),
                       if (budgetPeriodsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           Space,
                           $SpacesTable,
-                          BudgetPeriod
+                          BudgetPeriod,
+                          $BudgetPeriodsTable
                         >(
                           currentTable: table,
                           referencedTable: $$SpacesTableReferences
@@ -10408,17 +10406,16 @@ class $$SpacesTableTableManager
                                 table,
                                 p0,
                               ).budgetPeriodsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.spaceId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'space_id',
                           typedResults: items,
                         ),
                       if (incomeRecurrenceRulesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           Space,
                           $SpacesTable,
-                          IncomeRecurrenceRule
+                          IncomeRecurrenceRule,
+                          $IncomeRecurrenceRulesTable
                         >(
                           currentTable: table,
                           referencedTable: $$SpacesTableReferences
@@ -10429,14 +10426,17 @@ class $$SpacesTableTableManager
                                 table,
                                 p0,
                               ).incomeRecurrenceRulesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.spaceId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'space_id',
                           typedResults: items,
                         ),
                       if (incomesRefs)
-                        await $_getPrefetchedData<Space, $SpacesTable, Income>(
+                        await $_getPrefetchedDataByColumns<
+                          Space,
+                          $SpacesTable,
+                          Income,
+                          $IncomesTable
+                        >(
                           currentTable: table,
                           referencedTable: $$SpacesTableReferences
                               ._incomesRefsTable(db),
@@ -10446,14 +10446,17 @@ class $$SpacesTableTableManager
                                 table,
                                 p0,
                               ).incomesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.spaceId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'space_id',
                           typedResults: items,
                         ),
                       if (paymentsRefs)
-                        await $_getPrefetchedData<Space, $SpacesTable, Payment>(
+                        await $_getPrefetchedDataByColumns<
+                          Space,
+                          $SpacesTable,
+                          Payment,
+                          $PaymentsTable
+                        >(
                           currentTable: table,
                           referencedTable: $$SpacesTableReferences
                               ._paymentsRefsTable(db),
@@ -10463,10 +10466,8 @@ class $$SpacesTableTableManager
                                 table,
                                 p0,
                               ).paymentsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.spaceId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'space_id',
                           typedResults: items,
                         ),
                     ];
@@ -12020,10 +12021,11 @@ class $$CategoriesTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (paymentsRefs)
-                    await $_getPrefetchedData<
+                    await $_getPrefetchedDataByColumns<
                       Category,
                       $CategoriesTable,
-                      Payment
+                      Payment,
+                      $PaymentsTable
                     >(
                       currentTable: table,
                       referencedTable: $$CategoriesTableReferences
@@ -12034,8 +12036,8 @@ class $$CategoriesTableTableManager
                             table,
                             p0,
                           ).paymentsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.categoryId == item.id),
+                      currentColumn: 'id',
+                      referencedColumn: 'category_id',
                       typedResults: items,
                     ),
                 ];
@@ -12831,10 +12833,11 @@ class $$BudgetPeriodsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (incomesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           BudgetPeriod,
                           $BudgetPeriodsTable,
-                          Income
+                          Income,
+                          $IncomesTable
                         >(
                           currentTable: table,
                           referencedTable: $$BudgetPeriodsTableReferences
@@ -12845,17 +12848,16 @@ class $$BudgetPeriodsTableTableManager
                                 table,
                                 p0,
                               ).incomesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.budgetPeriodId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'budget_period_id',
                           typedResults: items,
                         ),
                       if (paymentsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           BudgetPeriod,
                           $BudgetPeriodsTable,
-                          Payment
+                          Payment,
+                          $PaymentsTable
                         >(
                           currentTable: table,
                           referencedTable: $$BudgetPeriodsTableReferences
@@ -12866,10 +12868,8 @@ class $$BudgetPeriodsTableTableManager
                                 table,
                                 p0,
                               ).paymentsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.budgetPeriodId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'budget_period_id',
                           typedResults: items,
                         ),
                     ];
@@ -13604,10 +13604,11 @@ class $$IncomeRecurrenceRulesTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (incomesRefs)
-                    await $_getPrefetchedData<
+                    await $_getPrefetchedDataByColumns<
                       IncomeRecurrenceRule,
                       $IncomeRecurrenceRulesTable,
-                      Income
+                      Income,
+                      $IncomesTable
                     >(
                       currentTable: table,
                       referencedTable: $$IncomeRecurrenceRulesTableReferences
@@ -13618,10 +13619,8 @@ class $$IncomeRecurrenceRulesTableTableManager
                             table,
                             p0,
                           ).incomesRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.recurrenceRuleId == item.id,
-                          ),
+                      currentColumn: 'id',
+                      referencedColumn: 'recurrence_rule_id',
                       typedResults: items,
                     ),
                 ];
