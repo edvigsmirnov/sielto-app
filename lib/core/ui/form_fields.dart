@@ -1,10 +1,13 @@
+import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
+import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
+import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -343,5 +346,97 @@ class _SecretFieldState extends State<SecretField> {
         onPressed: () => setState(() => _hidden = !_hidden),
       ),
     ),
+  );
+}
+
+/// One amount in a sheet. With [optional], an empty field saves null.
+Future<void> showAmountSheet(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String symbol,
+  required Decimal? initial,
+  required Future<void> Function(Decimal?) onSave,
+  bool optional = false,
+  String? hint,
+}) => showAdaptiveSheet<void>(
+  context,
+  builder: (BuildContext _) => _AmountSheet(
+    title: title,
+    body: body,
+    symbol: symbol,
+    initial: initial,
+    onSave: onSave,
+    optional: optional,
+    hint: hint,
+  ),
+);
+
+class _AmountSheet extends StatefulWidget {
+  const _AmountSheet({
+    required this.title,
+    required this.body,
+    required this.symbol,
+    required this.initial,
+    required this.onSave,
+    required this.optional,
+    required this.hint,
+  });
+
+  final String title;
+  final String body;
+  final String symbol;
+  final Decimal? initial;
+  final Future<void> Function(Decimal?) onSave;
+  final bool optional;
+  final String? hint;
+
+  @override
+  State<_AmountSheet> createState() => _AmountSheetState();
+}
+
+class _AmountSheetState extends State<_AmountSheet> {
+  late final TextEditingController _amount = TextEditingController(
+    text: moneyText(widget.initial),
+  )..addListener(() => setState(() {}));
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  bool get _empty => _amount.text.trim().isEmpty;
+
+  Decimal? get _parsed {
+    final Decimal? value = parseMoney(_amount.text);
+    return value == null || value < Decimal.zero ? null : value;
+  }
+
+  bool get _valid => _empty ? widget.optional : _parsed != null;
+
+  Future<void> _save() async {
+    if (!_valid) return;
+    await widget.onSave(_empty ? null : _parsed);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) => FormSheet(
+    title: widget.title,
+    body: widget.body,
+    action: FilledButton(
+      onPressed: _valid ? _save : null,
+      child: Text(tr('common.save')),
+    ),
+    children: <Widget>[
+      MoneyField(
+        controller: _amount,
+        symbol: widget.symbol,
+        autofocus: true,
+        hintText: widget.hint,
+        onSubmitted: (String _) => _save(),
+      ),
+    ],
   );
 }

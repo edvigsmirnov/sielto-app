@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
-import 'package:sielto/core/format/money_format.dart';
-import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/popover.dart';
@@ -18,78 +16,19 @@ Future<void> editBudgetFund(
   BuildContext context,
   WidgetRef ref, {
   required BudgetLedger ledger,
-}) => showAdaptiveSheet<void>(
+}) => showAmountSheet(
   context,
-  builder: (BuildContext _) => _FundSheet(ledger: ledger),
+  title: tr('budget.fundSheetTitle'),
+  body: tr('budget.fundSheetBody'),
+  symbol: context.moneyIn(ref.space.currencyCode).symbol,
+  initial: ledger.target,
+  optional: true,
+  hint: tr('budget.targetHint'),
+  onSave: (Decimal? value) => ref
+      .read(repositoriesProvider)
+      .periods
+      .setBudgetTarget(ledger.period.id, value),
 );
-
-class _FundSheet extends ConsumerStatefulWidget {
-  const _FundSheet({required this.ledger});
-
-  final BudgetLedger ledger;
-
-  @override
-  ConsumerState<_FundSheet> createState() => _FundSheetState();
-}
-
-class _FundSheetState extends ConsumerState<_FundSheet> {
-  late final TextEditingController _amount = TextEditingController(
-    text: moneyText(widget.ledger.target),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _amount.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _amount.dispose();
-    super.dispose();
-  }
-
-  bool get _isValid {
-    if (_amount.text.trim().isEmpty) return true;
-    final Decimal? value = parseMoney(_amount.text);
-    return value != null && value >= Decimal.zero;
-  }
-
-  Future<void> _save() async {
-    if (!_isValid) return;
-    final Decimal? value = _amount.text.trim().isEmpty
-        ? null
-        : parseMoney(_amount.text);
-    await ref
-        .read(repositoriesProvider)
-        .periods
-        .setBudgetTarget(widget.ledger.period.id, value);
-    if (mounted) Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final MoneyFormat money = context.moneyIn(ref.space.currencyCode);
-
-    return FormSheet(
-      title: tr('budget.fundSheetTitle'),
-      body: tr('budget.fundSheetBody'),
-      action: FilledButton(
-        onPressed: _isValid ? _save : null,
-        child: Text(tr('common.save')),
-      ),
-      children: <Widget>[
-        MoneyField(
-          controller: _amount,
-          symbol: money.symbol,
-          autofocus: true,
-          hintText: tr('budget.targetHint'),
-          onSubmitted: (String _) => _save(),
-        ),
-      ],
-    );
-  }
-}
 
 /// Edits the event date and whether it is hard.
 Future<void> editBudgetDeadline(

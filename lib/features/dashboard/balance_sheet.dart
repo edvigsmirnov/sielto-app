@@ -5,9 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/money_format.dart';
-import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/ui/form_fields.dart';
-import 'package:sielto/core/ui/popover.dart';
 
 /// "Set current balance". Paid expenses dated on or before the snapshot day
 /// are excluded from the walk.
@@ -16,72 +14,12 @@ Future<void> showBalanceSheet(
   WidgetRef ref, {
   required Space space,
   required MoneyFormat money,
-}) => showAdaptiveSheet<void>(
+}) => showAmountSheet(
   context,
-  builder: (BuildContext sheetContext) =>
-      _BalanceSheet(space: space, money: money),
+  title: tr('balance.sheetTitle'),
+  body: tr('balance.sheetBody'),
+  symbol: money.symbol,
+  initial: space.manualBalance,
+  onSave: (Decimal? value) =>
+      ref.read(repositoriesProvider).spaces.setManualBalance(space.id, value!),
 );
-
-class _BalanceSheet extends ConsumerStatefulWidget {
-  const _BalanceSheet({required this.space, required this.money});
-
-  final Space space;
-  final MoneyFormat money;
-
-  @override
-  ConsumerState<_BalanceSheet> createState() => _BalanceSheetState();
-}
-
-class _BalanceSheetState extends ConsumerState<_BalanceSheet> {
-  late final TextEditingController _amount = TextEditingController(
-    text: moneyText(widget.space.manualBalance),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _amount.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _amount.dispose();
-    super.dispose();
-  }
-
-  Decimal? get _parsed {
-    final Decimal? value = parseMoney(_amount.text);
-    if (value == null || value < Decimal.zero) return null;
-    return value;
-  }
-
-  Future<void> _save() async {
-    final Decimal? value = _parsed;
-    if (value == null) return;
-    await ref
-        .read(repositoriesProvider)
-        .spaces
-        .setManualBalance(widget.space.id, value);
-    if (mounted) Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FormSheet(
-      title: tr('balance.sheetTitle'),
-      body: tr('balance.sheetBody'),
-      action: FilledButton(
-        onPressed: _parsed == null ? null : _save,
-        child: Text(tr('common.save')),
-      ),
-      children: <Widget>[
-        MoneyField(
-          controller: _amount,
-          symbol: widget.money.symbol,
-          autofocus: true,
-          onSubmitted: (String _) => _save(),
-        ),
-      ],
-    );
-  }
-}
