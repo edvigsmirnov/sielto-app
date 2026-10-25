@@ -36,6 +36,16 @@ class _TitleFieldState extends ConsumerState<TitleField> {
   static const double _maxOverlayHeight = 200;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.autofocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focus.requestFocus();
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _focus.dispose();
     super.dispose();
@@ -78,7 +88,6 @@ class _TitleFieldState extends ConsumerState<TitleField> {
             controller: field,
             focusNode: focus,
             enabled: widget.enabled,
-            autofocus: widget.autofocus,
             textCapitalization: TextCapitalization.sentences,
             textInputAction: TextInputAction.next,
             onSubmitted: (String _) => onSubmitted(),

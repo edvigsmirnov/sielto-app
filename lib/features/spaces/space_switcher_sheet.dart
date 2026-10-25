@@ -43,11 +43,32 @@ class SpacesPage extends StatelessWidget {
   );
 }
 
+/// With several Spaces and none open: the person picks one.
+class ChooseSpacePage extends StatelessWidget {
+  const ChooseSpacePage({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: context.sage.surface,
+    appBar: sageAppBar(context, title: Text(tr('space.choose'))),
+    body: const Readable(
+      maxWidth: 560,
+      child: Padding(
+        padding: EdgeInsets.only(top: SageSpace.sm),
+        child: _SpaceSwitcher(heading: false, settings: false),
+      ),
+    ),
+  );
+}
+
 class _SpaceSwitcher extends ConsumerStatefulWidget {
-  const _SpaceSwitcher({this.heading = true});
+  const _SpaceSwitcher({this.heading = true, this.settings = true});
 
   /// A page already names itself in its app bar.
   final bool heading;
+
+  /// The phone's way to general settings.
+  final bool settings;
 
   @override
   ConsumerState<_SpaceSwitcher> createState() => _SpaceSwitcherState();
@@ -159,7 +180,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
               ),
             ),
             // Wide, the profile button in the top bar opens them.
-            if (!isWide(context)) ...<Widget>[
+            if (widget.settings && !isWide(context)) ...<Widget>[
               const SizedBox(height: SageSpace.md),
               const Hairline(),
               // General settings.

@@ -348,7 +348,13 @@ class _IconChoice extends StatelessWidget {
               width: selected ? 2 : 1,
             ),
           ),
-          child: Text(glyph, style: const TextStyle(fontSize: 18)),
+          child: Text(
+            glyph,
+            style: const TextStyle(
+              fontSize: 18,
+              fontFamilyFallback: emojiFonts,
+            ),
+          ),
         ),
       ),
     );
@@ -386,7 +392,7 @@ class _CustomIconDialogState extends State<_CustomIconDialog> {
       controller: _controller,
       autofocus: true,
       textAlign: TextAlign.center,
-      style: const TextStyle(fontSize: 28),
+      style: const TextStyle(fontSize: 28, fontFamilyFallback: emojiFonts),
       decoration: InputDecoration(hintText: tr('category.iconHint')),
     ),
     actions: <Widget>[

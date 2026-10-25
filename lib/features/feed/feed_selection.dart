@@ -12,6 +12,7 @@ import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/payments/category_picker.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
+import 'package:sielto/features/space/budget_ledger.dart';
 
 /// Selected Feed record ids. Cleared when the Space changes.
 class FeedSelectionController extends Notifier<Set<String>> {
@@ -54,7 +55,8 @@ Future<void> showBulkActions(
             namedArgs: <String, String>{'count': '${records.length}'},
           ),
     groups: <List<SheetAction<Object>>>[
-      if (records.length == 1) recordActions(records.single),
+      if (records.length == 1)
+        recordActions(records.single, lastDate: ref.read(hardDeadlineProvider)),
       <SheetAction<Object>>[
         if (records.any((FeedRecord r) => !r.isPaid))
           SheetAction<Object>(

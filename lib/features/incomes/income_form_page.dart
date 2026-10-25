@@ -168,7 +168,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       _anchorChoiceApplies = anchors.isNotEmpty;
     }
 
-    _date ??= widget.initialDate ?? ref.read(spaceClockProvider).today();
+    _date ??= widget.initialDate ?? _todayWithin();
     _pristine = _fingerprint;
     if (mounted) setState(() => _loaded = true);
   }
@@ -230,7 +230,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       }
 
       ref.invalidate(periodRefreshProvider);
-      if (mounted) Navigator.of(context).pop();
+      _close();
     } on Exception catch (e) {
       if (!mounted || !sayRefusal(context, e)) rethrow;
     } finally {
@@ -446,7 +446,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     if (existing == null) return;
     await ref.read(repositoriesProvider).incomes.softDelete(existing.id);
     ref.invalidate(periodRefreshProvider);
-    if (mounted) Navigator.of(context).pop();
+    _close();
   }
 
   Future<void> _openRule() async {
@@ -464,11 +464,14 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     await openIncomeRuleForm(context, rule: rule);
   }
 
-  /// A fixed Budget deadline, which no record may pass.
-  CalendarDate? get _hardDeadline {
-    final BudgetLedger? budget = ref.read(budgetLedgerProvider).value;
-    return budget != null && budget.deadlineIsHard ? budget.deadline : null;
+  /// Today, or a fixed deadline already passed.
+  CalendarDate _todayWithin() {
+    final CalendarDate today = ref.read(spaceClockProvider).today();
+    final CalendarDate? last = _hardDeadline;
+    return last != null && today.isAfter(last) ? last : today;
   }
+
+  CalendarDate? get _hardDeadline => ref.read(hardDeadlineProvider);
 
   Future<void> _pickDate({required bool actual}) async {
     final CalendarDate current =
@@ -488,9 +491,28 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     });
   }
 
+  bool _closed = false;
+
+  /// Pops at most once.
+  void _close() {
+    if (_closed || !mounted) return;
+    _closed = true;
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final Space space = ref.space;
+    final String? id = _existing?.id;
+    if (id != null) {
+      ref.listen(spaceIncomesProvider, (
+        AsyncValue<List<Income>>? _,
+        AsyncValue<List<Income>> next,
+      ) {
+        final List<Income>? rows = next.value;
+        if (rows != null && !rows.any((Income r) => r.id == id)) _close();
+      });
+    }
     final String locale = context.locale.toString();
     final MoneyFormat money = MoneyFormat(
       locale: locale,
@@ -505,6 +527,8 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     final bool isOccurrence = _existing != null;
     final bool partOfSeries = _existing?.recurrenceRuleId != null;
 
+    final bool canDelete = isOccurrence && !_isFrozen && !_isAnchorOccurrence;
+    final bool wide = isWide(context);
     return DiscardGuard(
       isDirty: () => _pristine != null && _fingerprint != _pristine,
       child: Scaffold(
@@ -521,7 +545,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
           actions: <Widget>[
             // No delete in a frozen period or for an anchor occurrence; the rule is
             // deleted from the regular income list.
-            if (isOccurrence && !_isFrozen && !_isAnchorOccurrence)
+            if (canDelete && !wide)
               IconButton(
                 icon: const Icon(Icons.delete_outline),
                 tooltip: tr('common.delete'),
@@ -530,6 +554,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
           ],
         ),
         bottomNavigationBar: FormActionBar(
+          onDelete: canDelete && wide ? _delete : null,
           child: FilledButton(
             onPressed: _isValid ? _save : null,
             child: Text(tr('common.save')),
@@ -796,8 +821,7 @@ class _LandsIn extends ConsumerWidget {
             tr(
               'income.landsIn',
               namedArgs: <String, String>{
-                'period':
-                    '${dates.short(period.startDate)} – ${dates.short(end)}',
+                'period': dates.range(period.startDate, end),
               },
             ),
             style: text.bodySmall?.copyWith(color: sage.inkSecondary),

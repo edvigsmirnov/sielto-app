@@ -4,6 +4,7 @@ import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart' show HapticFeedback, HardwareKeyboard;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
@@ -102,10 +103,13 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     super.dispose();
   }
 
-  /// Widens the window at either end and syncs the selected period.
+  /// Widens the window at either end and, while the user scrolls, syncs the
+  /// selected period.
   void _extendOnEdge() {
     if (!_scroll.hasClients) return;
-    _syncPeriodToScroll();
+    if (_scroll.position.userScrollDirection != ScrollDirection.idle) {
+      _syncPeriodToScroll();
+    }
     final ScrollPosition position = _scroll.position;
     const double margin = 400;
     if (_extending) return;
@@ -294,7 +298,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       swipe: !atBottom,
     );
 
-    return Scaffold(
+    final Widget page = Scaffold(
       backgroundColor: context.sage.surface,
       appBar: AppHeader(
         title: tr('nav.feed'),
@@ -527,6 +531,21 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           ),
         ),
       ),
+    );
+    if (!table) return page;
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints box) {
+        final ThemeData theme = Theme.of(context);
+        return Theme(
+          data: theme.copyWith(
+            snackBarTheme: theme.snackBarTheme.copyWith(
+              width:
+                  math.min(box.maxWidth, Readable.feedTable) - 2 * SageSpace.md,
+            ),
+          ),
+          child: ScaffoldMessenger(child: page),
+        );
+      },
     );
   }
 
@@ -1037,6 +1056,10 @@ class _FeedSource {
     BudgetMode.budget => 'budget.fund',
   };
 
+  /// The Dashboard's name for [freeCash].
+  String get freeLabel =>
+      mode == BudgetMode.budget ? 'budget.remaining' : 'dashboard.freeMoney';
+
   final Decimal paid;
   final Decimal remaining;
 
@@ -1125,7 +1148,7 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
                   onTap: onBalanceTap,
                 ),
                 _Tile(
-                  label: tr('dashboard.freeMoney'),
+                  label: tr(source.freeLabel),
                   text: freeText,
                   value: free,
                   money: money,
@@ -1581,7 +1604,7 @@ class _TableToolbar extends StatelessWidget {
                         money.format(source.remaining),
                       ),
                       figure(
-                        tr('dashboard.freeMoney'),
+                        tr(source.freeLabel),
                         free == null
                             ? tr('feed.runsShort')
                             : money.format(free),

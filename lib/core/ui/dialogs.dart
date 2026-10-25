@@ -460,12 +460,7 @@ class _TypedConfirmDialogState extends State<_TypedConfirmDialog> {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: SageSpace.md),
-          TextField(
-            controller: _typed,
-            autofocus: true,
-            autocorrect: false,
-            decoration: InputDecoration(hintText: widget.word),
-          ),
+          TextField(controller: _typed, autofocus: true, autocorrect: false),
           const SizedBox(height: SageSpace.lg),
           ChoiceGrid(
             choices: <(String, VoidCallback?)>[

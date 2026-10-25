@@ -267,6 +267,21 @@ class TickHintSeenController extends Notifier<bool> {
 final NotifierProvider<TickHintSeenController, bool> tickHintSeenProvider =
     NotifierProvider<TickHintSeenController, bool>(TickHintSeenController.new);
 
+class BackupPlateClosedController extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(localSettingsProvider).backupPlateClosed;
+
+  Future<void> close() async {
+    await ref.read(localSettingsProvider).setBackupPlateClosed();
+    state = true;
+  }
+}
+
+final NotifierProvider<BackupPlateClosedController, bool>
+backupPlateClosedProvider = NotifierProvider<BackupPlateClosedController, bool>(
+  BackupPlateClosedController.new,
+);
+
 class VanishedSpacesController extends Notifier<List<String>> {
   @override
   List<String> build() => ref.watch(localSettingsProvider).vanishedSpaces;

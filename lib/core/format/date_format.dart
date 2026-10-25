@@ -11,8 +11,7 @@ class DateLabels {
       _monthYear = DateFormat('LLLL y', locale),
       _monthShort = DateFormat.MMM(locale),
       _dayMonthShort = DateFormat.MMMd(locale),
-      _dayOfMonth = DateFormat.d(locale),
-      _short = DateFormat.yMd(locale);
+      _dayOfMonth = DateFormat.d(locale);
 
   final String locale;
   final DateFormat _dayMonth;
@@ -23,7 +22,6 @@ class DateLabels {
   final DateFormat _monthShort;
   final DateFormat _dayMonthShort;
   final DateFormat _dayOfMonth;
-  final DateFormat _short;
 
   /// "14 August". No year when it matches [reference].
   String dayMonth(CalendarDate date, {CalendarDate? reference}) {
@@ -88,7 +86,4 @@ class DateLabels {
     }
     return '${dayMonth(from, reference: reference)} – $end';
   }
-
-  /// Numeric.
-  String short(CalendarDate date) => _short.format(date.toUtcMidnight());
 }

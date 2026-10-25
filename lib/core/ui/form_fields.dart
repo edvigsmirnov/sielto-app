@@ -10,9 +10,12 @@ import 'package:sielto/domain/value/calendar_date.dart';
 /// A form's main action: stays on screen, above the keyboard, while the
 /// fields scroll. Goes in `Scaffold.bottomNavigationBar`.
 class FormActionBar extends StatelessWidget {
-  const FormActionBar({required this.child, super.key});
+  const FormActionBar({required this.child, this.onDelete, super.key});
 
   final Widget child;
+
+  /// A Delete button beside [child].
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -28,7 +31,24 @@ class FormActionBar extends StatelessWidget {
             SageSpace.formGutter,
             SageSpace.md,
           ),
-          child: child,
+          child: onDelete == null
+              ? child
+              : Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: onDelete,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: context.sage.dangerTint,
+                          foregroundColor: context.sage.danger,
+                        ),
+                        child: Text(tr('common.delete')),
+                      ),
+                    ),
+                    const SizedBox(width: SageSpace.sm),
+                    Expanded(child: child),
+                  ],
+                ),
         ),
       ),
     ),

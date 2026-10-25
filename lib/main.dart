@@ -26,6 +26,7 @@ import 'package:sielto/features/security/passphrase_page.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/shell/main_shell.dart';
+import 'package:sielto/features/spaces/space_switcher_sheet.dart';
 import 'package:sielto/features/sync/vanished_prompt.dart';
 
 Future<void> main() async {
@@ -199,12 +200,19 @@ class AppGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<Space?> resolved = ref.watch(resolvedSpaceProvider);
+    final bool anySpace =
+        ref.watch(spaceListProvider).value?.isNotEmpty ?? false;
 
     return switch (resolved) {
-      AsyncData<Space?>(value: final Space? space) =>
-        space == null
-            ? const BudgetApp(home: VanishedPrompt(child: OnboardingPage()))
-            : const BudgetApp(home: VanishedPrompt(child: MainShell())),
+      AsyncData<Space?>(value: final Space? space) => BudgetApp(
+        home: VanishedPrompt(
+          child: space != null
+              ? const MainShell()
+              : anySpace
+              ? const ChooseSpacePage()
+              : const OnboardingPage(),
+        ),
+      ),
       AsyncError<Space?>() => const BudgetApp(home: _StartupError()),
       _ => const BudgetApp(home: _StartupLoading()),
     };

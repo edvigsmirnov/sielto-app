@@ -41,7 +41,13 @@ class CategoryMark extends StatelessWidget {
       decoration: BoxDecoration(color: ground, shape: BoxShape.circle),
       child: glyph == null
           ? null
-          : Text(glyph, style: TextStyle(fontSize: size * 0.45)),
+          : Text(
+              glyph,
+              style: TextStyle(
+                fontSize: size * 0.45,
+                fontFamilyFallback: emojiFonts,
+              ),
+            ),
     );
   }
 }

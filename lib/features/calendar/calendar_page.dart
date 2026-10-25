@@ -91,7 +91,7 @@ class CalendarPage extends ConsumerWidget {
                       SizedBox(width: 400, child: navigator),
                       const Spacer(),
                       SizedBox(
-                        width: 320,
+                        width: _Body.paneWidth,
                         child: _ViewSwitcher(view: view, wide: wide),
                       ),
                     ],
@@ -475,7 +475,7 @@ class _Body extends ConsumerWidget {
                 ),
                 const SizedBox(width: SageSpace.lg),
                 SizedBox(
-                  width: 360,
+                  width: paneWidth,
                   height: math.min(box.maxHeight, 620),
                   child: pane,
                 ),
@@ -525,8 +525,11 @@ class _Body extends ConsumerWidget {
 
   static const double _sideBySide = 720;
 
+  /// The day pane beside the grid, and the view switcher above it.
+  static const double paneWidth = 360;
+
   /// The grid, the gap and the day pane side by side.
-  static const double wideWidth = 760 + SageSpace.lg + 360;
+  static const double wideWidth = 760 + SageSpace.lg + paneWidth;
 }
 
 /// The selected day beside or under the month, with an add button.

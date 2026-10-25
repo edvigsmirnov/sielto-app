@@ -220,7 +220,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       _categoryId = draft.categoryId;
     }
 
-    _date ??= widget.initialDate ?? ref.read(spaceClockProvider).today();
+    _date ??= widget.initialDate ?? _todayWithin();
     _pristine = _fingerprint;
     if (mounted) setState(() => _loaded = true);
   }
@@ -266,11 +266,14 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     if (picked != null) setState(() => _date = picked);
   }
 
-  /// A fixed Budget deadline, which no record may pass.
-  CalendarDate? get _hardDeadline {
-    final BudgetLedger? budget = ref.read(budgetLedgerProvider).value;
-    return budget != null && budget.deadlineIsHard ? budget.deadline : null;
+  /// Today, or a fixed deadline already passed.
+  CalendarDate _todayWithin() {
+    final CalendarDate today = ref.read(spaceClockProvider).today();
+    final CalendarDate? last = _hardDeadline;
+    return last != null && today.isAfter(last) ? last : today;
   }
+
+  CalendarDate? get _hardDeadline => ref.read(hardDeadlineProvider);
 
   Future<void> _save() async {
     final Decimal? amount = _parsedAmount;
@@ -413,7 +416,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       }
       // The recompute binds the payment to its period.
       ref.invalidate(periodRefreshProvider);
-      if (mounted) Navigator.of(context).pop();
+      _close();
     } on Exception catch (e) {
       if (!mounted || !sayRefusal(context, e)) rethrow;
     } finally {
@@ -454,7 +457,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
               ),
             ),
     );
-    if (mounted) Navigator.of(context).pop();
+    _close();
   }
 
   /// Deletes the whole series or from this occurrence on.
@@ -479,7 +482,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       );
     });
     ref.invalidate(periodRefreshProvider);
-    if (mounted) Navigator.of(context).pop();
+    _close();
   }
 
   /// Records in a series ask for the scope.
@@ -507,12 +510,31 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     }
     await ref.read(repositoriesProvider).payments.softDelete(existing.id);
     ref.invalidate(periodRefreshProvider);
-    if (mounted) Navigator.of(context).pop();
+    _close();
+  }
+
+  bool _closed = false;
+
+  /// Pops at most once.
+  void _close() {
+    if (_closed || !mounted) return;
+    _closed = true;
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final Space space = ref.space;
+    final String? id = _existing?.id;
+    if (id != null) {
+      ref.listen(spacePaymentsProvider, (
+        AsyncValue<List<Payment>>? _,
+        AsyncValue<List<Payment>> next,
+      ) {
+        final List<Payment>? rows = next.value;
+        if (rows != null && !rows.any((Payment r) => r.id == id)) _close();
+      });
+    }
     final SageColors sage = context.sage;
     final String locale = context.locale.toString();
     final MoneyFormat money = MoneyFormat(
@@ -524,6 +546,8 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
       return const Scaffold(body: Center(child: LeafLoader()));
     }
 
+    final bool canDelete = _existing != null && !_isFrozen;
+    final bool wide = isWide(context);
     return DiscardGuard(
       isDirty: () => _pristine != null && _fingerprint != _pristine,
       child: Scaffold(
@@ -535,7 +559,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
           ),
           actions: <Widget>[
             // No delete in a frozen period.
-            if (_existing != null && !_isFrozen)
+            if (canDelete && !wide)
               IconButton(
                 icon: const Icon(Icons.delete_outline),
                 tooltip: tr('common.delete'),
@@ -544,6 +568,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
           ],
         ),
         bottomNavigationBar: FormActionBar(
+          onDelete: canDelete && wide ? _delete : null,
           child: FilledButton(
             onPressed: _isValid ? _save : null,
             child: Text(tr('common.save')),

@@ -299,7 +299,10 @@ class RecoveryKeyPlate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (ref.watch(recoveryKeySetProvider)) return const SizedBox.shrink();
+    if (ref.watch(recoveryKeySetProvider) ||
+        ref.watch(backupPlateClosedProvider)) {
+      return const SizedBox.shrink();
+    }
     final SageColors sage = context.sage;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -308,42 +311,63 @@ class RecoveryKeyPlate extends ConsumerWidget {
         SageSpace.gutter,
         SageSpace.sm,
       ),
-      child: Semantics(
-        container: true,
-        button: true,
-        child: Material(
-          color: sage.warningTint,
-          borderRadius: BorderRadius.circular(SageRadius.card),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(SageRadius.card),
-            child: Container(
-              constraints: const BoxConstraints(
-                minHeight: kMinInteractiveDimension,
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: SageSpace.md,
-                vertical: SageSpace.sm,
-              ),
-              child: Row(
-                children: <Widget>[
-                  Icon(Icons.shield_outlined, size: 18, color: sage.warning),
-                  const SizedBox(width: SageSpace.sm),
-                  Expanded(
-                    child: Text(
-                      tr(
-                        ref.watch(localSettingsProvider).joinedAccount
-                            ? 'recovery.plateExisting'
-                            : 'recovery.plate',
-                      ),
-                      style: Theme.of(context).textTheme.bodySmall,
+      child: Material(
+        color: sage.warningTint,
+        borderRadius: BorderRadius.circular(SageRadius.card),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Semantics(
+                container: true,
+                button: true,
+                child: InkWell(
+                  onTap: onTap,
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minHeight: kMinInteractiveDimension,
+                    ),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      SageSpace.md,
+                      SageSpace.sm,
+                      SageSpace.xs,
+                      SageSpace.sm,
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 18,
+                          color: sage.warning,
+                        ),
+                        const SizedBox(width: SageSpace.sm),
+                        Expanded(
+                          child: Text(
+                            tr(
+                              ref.watch(localSettingsProvider).joinedAccount
+                                  ? 'recovery.plateExisting'
+                                  : 'recovery.plate',
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: sage.inkLabel,
+                        ),
+                      ],
                     ),
                   ),
-                  Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),
-                ],
+                ),
               ),
             ),
-          ),
+            IconButton(
+              tooltip: tr('common.close'),
+              icon: Icon(Icons.close, size: 18, color: sage.inkLabel),
+              onPressed: ref.read(backupPlateClosedProvider.notifier).close,
+            ),
+          ],
         ),
       ),
     );

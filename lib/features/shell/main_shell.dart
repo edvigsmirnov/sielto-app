@@ -1,6 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show LogicalKeyboardKey;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
@@ -214,8 +214,37 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   int get _index => ref.read(shellTabProvider);
 
+  final FocusNode _focus = FocusNode(skipTraversal: true);
+  Map<ShortcutActivator, VoidCallback> _keys =
+      const <ShortcutActivator, VoidCallback>{};
+
+  /// The shell's shortcuts while the focus is outside it.
+  bool _strayKey(KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        _focus.hasFocus ||
+        !(ModalRoute.of(context)?.isCurrent ?? false)) {
+      return false;
+    }
+    _focus.requestFocus();
+    for (final MapEntry<ShortcutActivator, VoidCallback> key in _keys.entries) {
+      if (key.key.accepts(event, HardwareKeyboard.instance)) {
+        key.value();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_strayKey);
+  }
+
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_strayKey);
+    _focus.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -360,19 +389,20 @@ class _MainShellState extends ConsumerState<MainShell> {
           ),
       ],
     );
-    return CallbackShortcuts(
-      bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
-            openPaymentForm(_inside.currentContext ?? context),
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
-          ref.read(feedFilterOpenProvider.notifier).set(open: true);
-          if (mode != ShellMode.columns && index != 1) _goTo(1);
-        },
+    _keys = <ShortcutActivator, VoidCallback>{
+      const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
+          openPaymentForm(_inside.currentContext ?? context),
+      const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
+        ref.read(feedFilterOpenProvider.notifier).set(open: true);
+        if (mode != ShellMode.columns && index != 1) _goTo(1);
       },
+    };
+    return CallbackShortcuts(
+      bindings: _keys,
       // Keeps a focus inside the shell, so its shortcuts hear the keys.
       child: Focus(
+        focusNode: _focus,
         autofocus: true,
-        skipTraversal: true,
         child: PopScope(
           canPop: index == 0 && !selecting,
           onPopInvokedWithResult: (bool didPop, Object? _) {

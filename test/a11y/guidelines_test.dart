@@ -261,6 +261,11 @@ void main() {
     'join device': (page: () => const JoinPage(), before: null, then: null),
     'join space': (page: () => const JoinSpacePage(), before: null, then: null),
     'spaces': (page: () => const SpacesPage(), before: null, then: null),
+    'choose space': (
+      page: () => const ChooseSpacePage(),
+      before: null,
+      then: null,
+    ),
     'backup': (page: () => const BackupPage(), before: null, then: null),
     'security': (page: () => const SecurityPage(), before: null, then: null),
     'recovery key': (

@@ -293,7 +293,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             ),
           ],
           if (owner) ...<Widget>[
-            const SizedBox(height: SageSpace.sm),
+            const SizedBox(height: SageSpace.lg),
             _DangerButton(
               label: tr('space.delete'),
               onTap: () => _delete(space),
@@ -560,7 +560,6 @@ class _LimitStepper extends StatelessWidget {
   }
 }
 
-/// Read-only setting: label left, value right.
 /// A setting's name above its control, sized like the rows around it.
 class _Setting extends StatelessWidget {
   const _Setting({required this.label, required this.child});
@@ -592,6 +591,7 @@ class _Rule extends StatelessWidget {
   Widget build(BuildContext context) => const Hairline();
 }
 
+/// Read-only setting: label left, value right.
 class _FactRow extends StatelessWidget {
   const _FactRow({required this.label, required this.value});
 
@@ -607,7 +607,9 @@ class _FactRow extends StatelessWidget {
           child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
         ),
         const SizedBox(width: SageSpace.md),
-        Flexible(child: value),
+        Flexible(
+          child: Align(alignment: AlignmentDirectional.centerEnd, child: value),
+        ),
       ],
     ),
   );

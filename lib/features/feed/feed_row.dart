@@ -333,11 +333,9 @@ String feedAmountLabel(FeedRecord r, MoneyFormat money) {
     FeedColumn.category => (category?.shownTitle ?? '', muted),
     FeedColumn.kind => (
       tr(
-        'feed.filter.kind.${record.isIncome
-            ? 'income'
-            : record.isMandatory
-            ? 'mandatory'
-            : 'variable'}',
+        record.isIncome
+            ? 'feed.income'
+            : 'expenseType.${record.isMandatory ? 'mandatory' : 'variable'}',
       ),
       muted,
     ),

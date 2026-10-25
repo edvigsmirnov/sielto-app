@@ -107,23 +107,26 @@ class MainFigure extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
                 Flexible(
-                  child: switch ((amount, shownDay)) {
-                    (final Decimal value, _) => RollingAmount(
-                      value: value,
-                      money: money,
-                      style: text.displaySmall?.copyWith(color: sage.ink),
-                    ),
-                    (null, final CalendarDate day) => Text(
-                      dates.dayMonth(day, reference: today),
-                      textAlign: TextAlign.center,
-                      style: text.displaySmall?.copyWith(color: sage.danger),
-                    ),
-                    (null, null) => Text(
-                      money.format(overspend),
-                      textAlign: TextAlign.center,
-                      style: text.displaySmall?.copyWith(color: sage.danger),
-                    ),
-                  },
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: switch ((amount, shownDay)) {
+                      (final Decimal value, _) => RollingAmount(
+                        value: value,
+                        money: money,
+                        style: text.displaySmall?.copyWith(color: sage.ink),
+                      ),
+                      (null, final CalendarDate day) => Text(
+                        dates.dayMonth(day, reference: today),
+                        textAlign: TextAlign.center,
+                        style: text.displaySmall?.copyWith(color: sage.danger),
+                      ),
+                      (null, null) => Text(
+                        money.format(overspend),
+                        textAlign: TextAlign.center,
+                        style: text.displaySmall?.copyWith(color: sage.danger),
+                      ),
+                    },
+                  ),
                 ),
                 if (coverage != null) ...<Widget>[
                   const SizedBox(width: SageSpace.sm),
@@ -200,7 +203,10 @@ class SpentFigure extends StatelessWidget {
             ],
           ),
           const SizedBox(height: SageSpace.xs),
-          Text(money.format(amount), style: text.displaySmall),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(money.format(amount), style: text.displaySmall),
+          ),
         ],
       ),
     );
@@ -411,13 +417,18 @@ class NearestIncomeCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: SageSpace.md),
-              Text(
-                amount == null
-                    ? tr('income.amountUnknown')
-                    : '+${money.format(amount)}',
-                style: text.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: amount == null ? sage.inkLabel : sage.accentStrong,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    amount == null
+                        ? tr('income.amountUnknown')
+                        : '+${money.format(amount)}',
+                    style: text.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: amount == null ? sage.inkLabel : sage.accentStrong,
+                    ),
+                  ),
                 ),
               ),
             ],

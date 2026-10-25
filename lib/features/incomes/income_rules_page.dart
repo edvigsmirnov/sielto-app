@@ -49,7 +49,13 @@ class IncomeRulesPage extends ConsumerWidget {
           value: final List<IncomeRecurrenceRule> rows,
         )
             when rows.isEmpty =>
-          EmptyState(message: tr('income.noRegular')),
+          EmptyState(
+            message: tr(
+              space.budgetMode == BudgetMode.incomeDriven
+                  ? 'income.noRegular'
+                  : 'income.noRegularDated',
+            ),
+          ),
         AsyncData<List<IncomeRecurrenceRule>>(
           value: final List<IncomeRecurrenceRule> rows,
         ) =>

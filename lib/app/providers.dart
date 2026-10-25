@@ -99,16 +99,16 @@ currentSpaceIdProvider = NotifierProvider<CurrentSpaceIdController, String?>(
   CurrentSpaceIdController.new,
 );
 
-/// The stored selection, else the first Space, else null (onboarding).
+/// The stored selection, else the only Space, else null: onboarding without
+/// Spaces, the chooser with several.
 final Provider<AsyncValue<Space?>> resolvedSpaceProvider =
     Provider<AsyncValue<Space?>>((Ref ref) {
       final String? selected = ref.watch(currentSpaceIdProvider);
       return ref.watch(spaceListProvider).whenData((List<Space> spaces) {
-        if (spaces.isEmpty) return null;
         for (final Space space in spaces) {
           if (space.id == selected) return space;
         }
-        return spaces.first;
+        return spaces.length == 1 ? spaces.single : null;
       });
     });
 

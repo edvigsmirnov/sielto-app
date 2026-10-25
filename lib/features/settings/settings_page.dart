@@ -82,6 +82,7 @@ class SettingsPage extends ConsumerWidget {
             ),
           if (isWide(context))
             SwitchListTile.adaptive(
+              secondary: const Icon(Icons.view_column_outlined),
               title: Text(tr('settings.threeColumns')),
               subtitle: Text(tr('settings.threeColumnsBody')),
               value: ref.watch(threeColumnsProvider),

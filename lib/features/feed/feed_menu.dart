@@ -69,32 +69,39 @@ Future<void> showQuickAddMenu(
 
 enum RecordAction { addBefore, addAfter, duplicateBefore, duplicateAfter }
 
-/// Add or duplicate on a neighbouring day.
-List<SheetAction<Object>> recordActions(FeedRecord record) =>
-    <SheetAction<Object>>[
-      SheetAction<Object>(
-        Icons.arrow_upward,
-        tr('feed.addBefore'),
-        RecordAction.addBefore,
-      ),
+/// Add or duplicate on a neighbouring day; none after [lastDate].
+List<SheetAction<Object>> recordActions(
+  FeedRecord record, {
+  CalendarDate? lastDate,
+}) {
+  final bool after = lastDate == null || record.date.isBefore(lastDate);
+  return <SheetAction<Object>>[
+    SheetAction<Object>(
+      Icons.arrow_upward,
+      tr('feed.addBefore'),
+      RecordAction.addBefore,
+    ),
+    if (after)
       SheetAction<Object>(
         Icons.arrow_downward,
         tr('feed.addAfter'),
         RecordAction.addAfter,
       ),
-      if (!record.isIncome) ...<SheetAction<Object>>[
-        SheetAction<Object>(
-          Icons.content_copy_outlined,
-          tr('feed.duplicateBefore'),
-          RecordAction.duplicateBefore,
-        ),
+    if (!record.isIncome) ...<SheetAction<Object>>[
+      SheetAction<Object>(
+        Icons.content_copy_outlined,
+        tr('feed.duplicateBefore'),
+        RecordAction.duplicateBefore,
+      ),
+      if (after)
         SheetAction<Object>(
           Icons.content_copy,
           tr('feed.duplicateAfter'),
           RecordAction.duplicateAfter,
         ),
-      ],
-    ];
+    ],
+  ];
+}
 
 Future<void> runRecordAction(
   BuildContext context,

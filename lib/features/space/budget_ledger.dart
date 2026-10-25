@@ -161,6 +161,14 @@ final Provider<AsyncValue<BudgetPeriod?>> continuousPeriodProvider =
           );
     });
 
+/// A fixed Budget deadline, which no record may pass.
+final Provider<CalendarDate?> hardDeadlineProvider = Provider<CalendarDate?>((
+  Ref ref,
+) {
+  final BudgetPeriod? period = ref.watch(continuousPeriodProvider).value;
+  return period != null && period.deadlineIsHard ? period.deadlineDate : null;
+});
+
 final Provider<AsyncValue<BudgetLedger>>
 budgetLedgerProvider = Provider<AsyncValue<BudgetLedger>>((Ref ref) {
   // Fills regular income dates.

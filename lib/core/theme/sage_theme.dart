@@ -222,8 +222,10 @@ abstract final class SageTheme {
         contentTextStyle: text.bodyLarge,
         actionTextColor: c.accentStrong,
         behavior: SnackBarBehavior.floating,
+        elevation: 6,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(SageRadius.button),
+          side: BorderSide(color: c.border),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(

@@ -1,5 +1,6 @@
 {
   "common": {
+    "blockedByOffline": "Turned off by fully offline mode.",
     "add": "Add",
     "discardTitle": "Discard your changes?",
     "discardBody": "What you've typed here won't be saved.",
@@ -77,6 +78,7 @@
     "unlinked": "This device is no longer linked, so the cloud is off here."
   },
   "space": {
+    "choose": "Choose a Space",
     "createTitle": "New Space",
     "firstTitle": "Create your first Space",
     "firstBody": "A Space is one budget. Keep separate things separate: home, a trip, freelance work.",
@@ -371,6 +373,7 @@
     "roleAdditionalHint": "Adds to the money available without moving period boundaries.",
     "regularTitle": "Regular incomes",
     "noRegular": "No regular income yet. Add your salary to start planning periods.",
+    "noRegularDated": "No regular income yet. Add one and its dates show up in the Feed.",
     "anchorBadge": "Anchor",
     "makeAnchor": "Make it an anchor",
     "makeAdditional": "Make it additional",
@@ -561,7 +564,6 @@
     "region": "Region, for its own holidays",
     "wholeCountry": "Whole country",
     "addDay": "Add a date",
-    "blockedByOffline": "Turned off by fully offline mode.",
     "consentAllow": "Allow",
     "consentBody": "The list comes from the open service date.nager.at. Without it, the app uses its built-in holidays, weekends and your own non-working days.",
     "consentTitle": "Download public holidays?",

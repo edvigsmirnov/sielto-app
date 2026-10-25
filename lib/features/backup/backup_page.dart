@@ -13,6 +13,7 @@ import 'package:sielto/core/backup/backup_file.dart';
 import 'package:sielto/core/backup/backup_service.dart';
 import 'package:sielto/core/crypto/key_store.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
@@ -230,6 +231,11 @@ Future<Uint8List?> pickBackup(BuildContext context, {bool? fromDrive}) async {
   );
   if (fromDrive == null || !context.mounted) return null;
   if (!fromDrive) return pickBackupFile(context);
+  if (ProviderScope.containerOf(context).read(offlineModeProvider)) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(tr('storage.offlineMode'))));
+    return null;
+  }
   return Navigator.of(context).push<Uint8List>(
     MaterialPageRoute<Uint8List>(
       builder: (BuildContext _) => const DriveSnapshotsPage(),
@@ -494,6 +500,7 @@ class _DriveSection extends ConsumerWidget {
     final DriveState drive = ref.watch(driveProvider);
     final String? email = drive.email;
     final DateTime? last = drive.lastBackup;
+    final bool offline = ref.watch(offlineModeProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -502,7 +509,10 @@ class _DriveSection extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.add_to_drive_outlined),
             title: Text(tr('drive.connect')),
-            subtitle: Text(tr('drive.connectHint')),
+            subtitle: Text(
+              tr(offline ? 'common.blockedByOffline' : 'drive.connectHint'),
+            ),
+            enabled: !offline,
             onTap: () => _connect(context, ref),
           )
         else ...<Widget>[
@@ -511,7 +521,7 @@ class _DriveSection extends ConsumerWidget {
             title: const Text('Google Drive'),
             subtitle: Text(email),
             trailing: TextButton(
-              onPressed: drive.busy
+              onPressed: drive.busy || offline
                   ? null
                   : () => ref.read(driveProvider.notifier).disconnect(),
               child: Text(tr('drive.disconnect')),
@@ -531,7 +541,8 @@ class _DriveSection extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.backup_outlined),
             title: Text(tr(drive.busy ? 'recovery.working' : 'drive.now')),
-            enabled: !drive.busy,
+            subtitle: offline ? Text(tr('common.blockedByOffline')) : null,
+            enabled: !drive.busy && !offline,
             onTap: () => _backUpNow(context, ref),
           ),
         ],

@@ -246,11 +246,9 @@ class _FigureTile extends StatelessWidget {
       child: Column(
         children: <Widget>[
           if (value case final String figure)
-            Text(
-              figure,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: text.titleMedium,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(figure, style: text.titleMedium),
             )
           else
             Text(

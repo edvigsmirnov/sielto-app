@@ -49,7 +49,7 @@ class HolidaysPage extends ConsumerWidget {
             secondary: const Icon(Icons.cloud_download_outlined),
             title: Text(tr('holidays.download')),
             subtitle: Text(
-              offline ? tr('holidays.blockedByOffline') : tr('holidays.source'),
+              offline ? tr('common.blockedByOffline') : tr('holidays.source'),
             ),
             value: !offline && (consent ?? false),
             // Inactive while offline mode is on.
@@ -363,7 +363,7 @@ class _PublicHolidays extends ConsumerWidget {
             subtitle: Text(
               <String>[
                 ...?names[day]?.skip(1),
-                '${dates.short(day)} · ${dates.weekday(day)}',
+                dates.weekdayAndDate(day),
               ].join('\n'),
             ),
           ),
@@ -384,6 +384,9 @@ class _CustomDays extends ConsumerWidget {
     if (days.isEmpty) return _Note(tr('holidays.noCustomDays'));
 
     final DateLabels dates = DateLabels(context.locale.toString());
+    final CalendarDate today = ref.watch(spaceClockProvider).today();
+    String when(CalendarDate date) =>
+        dates.weekdayAndDate(date, reference: today);
     return Column(
       children: <Widget>[
         for (final CustomNonWorkingDay day in days)
@@ -394,12 +397,8 @@ class _CustomDays extends ConsumerWidget {
               size: 20,
               color: context.sage.accentStrong,
             ),
-            title: Text(day.title ?? dates.short(day.date)),
-            subtitle: Text(
-              day.title == null
-                  ? dates.weekday(day.date)
-                  : '${dates.short(day.date)} · ${dates.weekday(day.date)}',
-            ),
+            title: Text(day.title ?? when(day.date)),
+            subtitle: day.title == null ? null : Text(when(day.date)),
             trailing: IconButton(
               icon: const Icon(Icons.close, size: 20),
               tooltip: tr('common.delete'),

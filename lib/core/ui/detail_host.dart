@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sielto/core/ui/layout.dart';
 
 /// A navigator that pages opened anywhere under it go to. [builder] places
@@ -66,15 +67,22 @@ class _DetailHostState extends State<DetailHost> {
     notifier: _open,
     child: widget.builder(
       context,
-      Navigator(
-        key: _navigator,
-        observers: <NavigatorObserver>[_observer, ...widget.observers],
-        onGenerateRoute: (RouteSettings _) => PageRouteBuilder<void>(
-          pageBuilder: (
-            BuildContext _,
-            Animation<double> _,
-            Animation<double> _,
-          ) => widget.root ?? const SizedBox.shrink(),
+      // Escape closes the page open here, also while typing in it.
+      CallbackShortcuts(
+        bindings: <ShortcutActivator, VoidCallback>{
+          const SingleActivator(LogicalKeyboardKey.escape): () =>
+              _navigator.currentState?.maybePop(),
+        },
+        child: Navigator(
+          key: _navigator,
+          observers: <NavigatorObserver>[_observer, ...widget.observers],
+          onGenerateRoute: (RouteSettings _) => PageRouteBuilder<void>(
+            pageBuilder: (
+              BuildContext _,
+              Animation<double> _,
+              Animation<double> _,
+            ) => widget.root ?? const SizedBox.shrink(),
+          ),
         ),
       ),
       open: _shown,

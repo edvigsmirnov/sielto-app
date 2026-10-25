@@ -8,7 +8,7 @@ import 'package:sielto/core/settings/settings_providers.dart';
 enum FeedColumn {
   date(96),
   category(140),
-  kind(100),
+  kind(124),
   note(170),
   amount(116),
   left(124);

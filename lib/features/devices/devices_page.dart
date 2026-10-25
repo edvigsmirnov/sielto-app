@@ -8,6 +8,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/devices/add_device_page.dart';
 import 'package:sielto/features/security/security_page.dart';
@@ -142,25 +143,18 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
               ),
             ],
           ),
-        (result: final CloudResult result, devices: _) => ListView(
-          padding: const EdgeInsets.all(SageSpace.formGutter),
-          children: <Widget>[
-            Text(
-              tr(switch (result) {
-                CloudResult.offlineMode => 'storage.offlineMode',
-                CloudResult.unlinked => 'storage.unlinked',
-                _ => 'storage.noNetwork',
-              }),
-              style: text.bodyLarge,
-            ),
-            if (result == CloudResult.noNetwork) ...<Widget>[
-              const SizedBox(height: SageSpace.lg),
-              FilledButton(
-                onPressed: _load,
-                child: Text(tr('devices.tryAgain')),
-              ),
-            ],
-          ],
+        (result: final CloudResult result, devices: _) => EmptyState(
+          message: tr(switch (result) {
+            CloudResult.offlineMode => 'storage.offlineMode',
+            CloudResult.unlinked => 'storage.unlinked',
+            _ => 'storage.noNetwork',
+          }),
+          action: result == CloudResult.noNetwork
+              ? FilledButton(
+                  onPressed: _load,
+                  child: Text(tr('devices.tryAgain')),
+                )
+              : null,
         ),
       },
     );

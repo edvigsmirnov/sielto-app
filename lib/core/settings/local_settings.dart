@@ -39,6 +39,7 @@ class LocalSettings {
   static const String _keyAppLockBiometric = 'app_lock_biometric';
   static const String _keyBlockScreenshots = 'block_screenshots';
   static const String _keyTickHintSeen = 'feed_tick_hint_seen';
+  static const String _keyBackupPlateClosed = 'backup_plate_closed';
   static const String _keyDriveEmail = 'drive_email';
   static const String _keyDriveLastBackup = 'drive_last_backup';
   static const String _keyJoinedAccount = 'joined_account';
@@ -202,6 +203,12 @@ class LocalSettings {
   bool get tickHintSeen => _prefs.getBool(_keyTickHintSeen) ?? false;
 
   Future<void> setTickHintSeen() => _prefs.setBool(_keyTickHintSeen, true);
+
+  /// The Dashboard's no-backup plate, closed for good.
+  bool get backupPlateClosed => _prefs.getBool(_keyBackupPlateClosed) ?? false;
+
+  Future<void> setBackupPlateClosed() =>
+      _prefs.setBool(_keyBackupPlateClosed, true);
 
   /// Null when Google Drive backup is off.
   String? get driveEmail => _prefs.getString(_keyDriveEmail);

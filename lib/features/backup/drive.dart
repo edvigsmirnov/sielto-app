@@ -174,6 +174,7 @@ class DriveController extends Notifier<DriveState> with WidgetsBindingObserver {
 
   /// Signs in and makes the first snapshot. False when cancelled.
   Future<bool> connect() async {
+    if (ref.read(offlineModeProvider)) return false;
     final http.Client? client;
     try {
       client = await const DriveAuth().client(interactive: true);
@@ -196,10 +197,12 @@ class DriveController extends Notifier<DriveState> with WidgetsBindingObserver {
     state = (email: null, lastBackup: null, busy: false);
   }
 
-  /// False when Drive is off, the sign-in is gone, or the Recovery Key is
-  /// not at hand.
+  /// False when Drive is off, the sign-in is gone, the Recovery Key is not
+  /// at hand, or fully offline mode is on.
   Future<bool> backUp({required bool interactive}) async {
-    if (state.email == null || state.busy) return false;
+    if (state.email == null || state.busy || ref.read(offlineModeProvider)) {
+      return false;
+    }
     final String? recoveryKey = await ref
         .read(keyManagerProvider)
         .storedRecoveryKey();
