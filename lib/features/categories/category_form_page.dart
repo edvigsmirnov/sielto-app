@@ -76,9 +76,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
       await _write();
     } on CategoryTitleTaken {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(tr('category.titleTaken'))));
+      ScaffoldMessenger.of(context).say(tr('category.titleTaken'));
       return;
     }
     if (mounted) Navigator.of(context).pop();

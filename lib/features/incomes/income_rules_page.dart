@@ -137,9 +137,7 @@ class IncomeRulesPage extends ConsumerWidget {
   }
 
   void _sayAnchorRequired(BuildContext context) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(tr('income.lastAnchorRequired'))));
+    ScaffoldMessenger.of(context).say(tr('income.lastAnchorRequired'));
   }
 }
 

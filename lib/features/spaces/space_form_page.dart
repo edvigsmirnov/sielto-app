@@ -10,6 +10,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/core/ui/choice_field.dart';
 import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -119,9 +120,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
             .read(syncProvider.notifier)
             .moveToCloud(space.id);
         if (result != CloudResult.done && mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(tr('storage.${result.name}'))));
+          ScaffoldMessenger.of(context).say(tr('storage.${result.name}'));
         }
       }
       await ref.read(currentSpaceIdProvider.notifier).select(space.id);

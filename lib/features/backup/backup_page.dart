@@ -121,7 +121,7 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
   }
 
   final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-  messenger.showSnackBar(SnackBar(content: Text(tr('recovery.working'))));
+  messenger.say(tr('recovery.working'));
   final Uint8List bytes = await BackupFile.seal(
     await ref.read(repositoriesProvider).backup.export(spaceId: only?.id),
     key,
@@ -148,7 +148,7 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
         <String, Object>{'name': name, 'bytes': bytes},
       );
       if (saved ?? false) {
-        messenger.showSnackBar(SnackBar(content: Text(tr('backup.saved'))));
+        messenger.say(tr('backup.saved'));
       }
       return;
     }
@@ -165,7 +165,7 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
   final FileSaveLocation? target = await getSaveLocation(suggestedName: name);
   if (target == null) return;
   File(target.path).writeAsBytesSync(bytes, flush: true);
-  messenger.showSnackBar(SnackBar(content: Text(tr('backup.saved'))));
+  messenger.say(tr('backup.saved'));
 }
 
 /// Picks a backup and walks through the restore.
@@ -237,8 +237,7 @@ Future<Uint8List?> pickBackup(BuildContext context, {bool? fromDrive}) async {
   if (fromDrive == null || !context.mounted) return null;
   if (!fromDrive) return pickBackupFile(context);
   if (ProviderScope.containerOf(context).read(offlineModeProvider)) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(tr('storage.offlineMode'))));
+    ScaffoldMessenger.of(context).say(tr('storage.offlineMode'));
     return null;
   }
   return Navigator.of(context).push<Uint8List>(
@@ -264,8 +263,7 @@ Future<Uint8List?> pickBackupFile(BuildContext context) async {
   final Uint8List bytes = await file.readAsBytes();
   if (BackupFile.looksLikeBackup(bytes)) return bytes;
   if (context.mounted) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(tr('backup.problem.notABackup'))));
+    ScaffoldMessenger.of(context).say(tr('backup.problem.notABackup'));
   }
   return null;
 }
@@ -346,9 +344,7 @@ class _RestorePageState extends State<RestorePage> {
               _choices[s.id] != RestoreChoice.skip,
         )
         .length;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(plural('backup.restored', count))));
+    ScaffoldMessenger.of(context).say(plural('backup.restored', count));
     Navigator.of(context).pop();
   }
 
@@ -429,50 +425,11 @@ class _RestorePageState extends State<RestorePage> {
           ),
       ],
     ];
-    if (widget.inSetup && isWide(context)) {
-      return Scaffold(
-        backgroundColor: context.sage.surface,
-        body: SetupCard(
-          child: ListView(
-            shrinkWrap: true,
-            padding: EdgeInsets.zero,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  const BackButton(),
-                  Expanded(
-                    child: Semantics(
-                      header: true,
-                      child: Text(
-                        tr('backup.restore'),
-                        textAlign: TextAlign.center,
-                        style: text.titleMedium,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: kMinInteractiveDimension),
-                ],
-              ),
-              const SizedBox(height: SageSpace.md),
-              ...content,
-              const SizedBox(height: SageSpace.lg),
-              action,
-            ],
-          ),
-        ),
-      );
-    }
-    return Scaffold(
-      backgroundColor: context.sage.surface,
-      appBar: sageAppBar(context, title: Text(tr('backup.restore'))),
-      bottomNavigationBar: FormActionBar(child: action),
-      body: ListView(
-        padding: scrollPadding(
-          context,
-          const EdgeInsets.all(SageSpace.formGutter),
-        ),
-        children: content,
-      ),
+    return SetupPage(
+      title: tr('backup.restore'),
+      card: widget.inSetup && isWide(context),
+      action: action,
+      children: content,
     );
   }
 }
@@ -487,8 +444,7 @@ class _DriveSection extends ConsumerWidget {
     }
     final bool connected = await ref.read(driveProvider.notifier).connect();
     if (!connected && context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(tr('drive.failed'))));
+      ScaffoldMessenger.of(context).say(tr('drive.failed'));
     }
   }
 

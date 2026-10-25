@@ -152,6 +152,13 @@ Future<bool> confirmMandatory(BuildContext context, MandatoryChange change) =>
       confirmLabel: tr('common.continue'),
     );
 
+extension Say on ScaffoldMessengerState {
+  /// A plain message in place of any shown one.
+  void say(String message) => this
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
+}
+
 const Duration undoWindow = Duration(seconds: 5);
 
 /// Shown after a soft delete; the action restores the row.

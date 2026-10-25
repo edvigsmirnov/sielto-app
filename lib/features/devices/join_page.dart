@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/layout.dart';
-import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/security/recovery_key.dart';
+import 'package:sielto/features/sync/codes.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
 /// A fresh install joins an existing account with a code from another device.
@@ -20,41 +20,23 @@ class JoinPage extends ConsumerStatefulWidget {
 }
 
 class _JoinPageState extends ConsumerState<JoinPage> {
-  final TextEditingController _code = TextEditingController();
   bool _busy = false;
   String? _problem;
   List<String>? _done;
 
-  @override
-  void initState() {
-    super.initState();
-    _code.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _code.dispose();
-    super.dispose();
-  }
-
-  Future<void> _join() async {
+  Future<void> _join(String code) async {
     setState(() {
       _busy = true;
       _problem = null;
     });
     final ({JoinResult result, String? userId, String? recoveryKey}) joined =
-        await ref.read(syncProvider.notifier).join(_code.text);
+        await ref.read(syncProvider.notifier).join(code);
     if (!mounted) return;
     final String? userId = joined.userId;
     if (joined.result != JoinResult.joined || userId == null) {
       setState(() {
         _busy = false;
-        _problem = switch (joined.result) {
-          JoinResult.offlineMode => tr('storage.offlineMode'),
-          JoinResult.noNetwork => tr('storage.noNetwork'),
-          JoinResult.tooManyAttempts => tr('devices.tooManyAttempts'),
-          _ => tr('devices.wrongCode'),
-        };
+        _problem = codeProblem(joined.result, wrongCode: 'devices.wrongCode');
       });
       return;
     }
@@ -77,7 +59,7 @@ class _JoinPageState extends ConsumerState<JoinPage> {
       final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
       if (recoveryKey == null) {
-        messenger.showSnackBar(SnackBar(content: Text(tr('devices.keyLater'))));
+        messenger.say(tr('devices.keyLater'));
       }
       return;
     }
@@ -92,96 +74,33 @@ class _JoinPageState extends ConsumerState<JoinPage> {
 
   @override
   Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
     final List<String>? done = _done;
     final bool wide = isWide(context);
-    final List<Widget> content = <Widget>[
-      if (done == null) ...<Widget>[
-        Text(
-          tr('devices.joinBody'),
-          style: text.bodyMedium,
-          textAlign: wide ? TextAlign.center : TextAlign.start,
-        ),
-        const SizedBox(height: SageSpace.lg),
-        LabelledField(
-          label: tr('devices.codeField'),
-          child: TextField(
-            controller: _code,
-            enabled: !_busy,
-            autofocus: true,
-            autocorrect: false,
-            enableSuggestions: false,
-            maxLength: 8,
-            textCapitalization: TextCapitalization.characters,
-            onSubmitted: (String _) =>
-                _code.text.trim().length == 8 ? _join() : null,
-          ),
-        ),
-        if (_problem case final String problem) ...<Widget>[
-          const SizedBox(height: SageSpace.sm),
-          Semantics(
-            liveRegion: true,
-            child: Text(problem, style: text.bodyMedium),
-          ),
-        ],
-        const SizedBox(height: SageSpace.lg),
-        FilledButton(
-          onPressed: _busy || _code.text.trim().length != 8 ? null : _join,
-          child: Text(tr(_busy ? 'devices.joining' : 'devices.join')),
-        ),
-      ] else ...<Widget>[
-        for (final String line in done) ...<Widget>[
-          Text(line, style: text.bodyLarge),
-          const SizedBox(height: SageSpace.md),
-        ],
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(tr('devices.continue')),
-        ),
-      ],
-    ];
-    if (!wide) {
-      return Scaffold(
-        backgroundColor: context.sage.surface,
-        appBar: sageAppBar(context, title: Text(tr('devices.joinTitle'))),
-        body: ListView(
-          padding: scrollPadding(
-            context,
-            const EdgeInsets.all(SageSpace.formGutter),
-          ),
-          children: content,
-        ),
-      );
-    }
-    // Wide, the same card as the onboarding steps.
-    return Scaffold(
-      backgroundColor: context.sage.surface,
-      body: SetupCard(
-        child: ListView(
-          shrinkWrap: true,
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                const BackButton(),
-                Expanded(
-                  child: Semantics(
-                    header: true,
-                    child: Text(
-                      tr('devices.joinTitle'),
-                      textAlign: TextAlign.center,
-                      style: text.titleMedium,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: kMinInteractiveDimension),
-              ],
-            ),
+    return SetupPage(
+      title: tr('devices.joinTitle'),
+      card: wide,
+      children: <Widget>[
+        if (done == null)
+          CodeEntry(
+            body: tr('devices.joinBody'),
+            bodyAlign: wide ? TextAlign.center : TextAlign.start,
+            action: tr('devices.join'),
+            busyAction: tr('devices.joining'),
+            busy: _busy,
+            problem: _problem,
+            onSubmit: _join,
+          )
+        else ...<Widget>[
+          for (final String line in done) ...<Widget>[
+            Text(line, style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: SageSpace.md),
-            ...content,
           ],
-        ),
-      ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(tr('devices.continue')),
+          ),
+        ],
+      ],
     );
   }
 }

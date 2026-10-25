@@ -44,13 +44,9 @@ bool sayRefusal(BuildContext context, Exception error) {
     _ => null,
   };
   if (message == null) return false;
-  _say(context, message);
+  ScaffoldMessenger.of(context).say(message);
   return true;
 }
-
-void _say(BuildContext context, String message) => ScaffoldMessenger.of(context)
-  ..hideCurrentSnackBar()
-  ..showSnackBar(SnackBar(content: Text(message)));
 
 /// State of the shown period: nothing while open, a warning before it
 /// freezes, a notice once frozen.

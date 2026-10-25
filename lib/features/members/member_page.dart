@@ -83,8 +83,7 @@ class _MemberPageState extends ConsumerState<MemberPage> {
     if (done) {
       Navigator.of(context).pop();
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(tr('storage.noNetwork'))));
+      ScaffoldMessenger.of(context).say(tr('storage.noNetwork'));
     }
   }
 

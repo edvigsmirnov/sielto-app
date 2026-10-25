@@ -10,6 +10,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/members/invite_page.dart';
 import 'package:sielto/features/members/member_page.dart';
 import 'package:sielto/features/members/public_name.dart';
@@ -84,23 +85,14 @@ class _MembersPageState extends ConsumerState<MembersPage> {
         null => const Center(child: LeafLoader()),
         (result: CloudResult.done, members: final List<Member> members) =>
           _list(members, _limit(), text),
-        (result: final CloudResult result, members: _) => ListView(
-          padding: scrollPadding(
-            context,
-            const EdgeInsets.all(SageSpace.formGutter),
-          ),
-          children: <Widget>[
-            Text(
-              tr(switch (result) {
-                CloudResult.offlineMode => 'storage.offlineMode',
-                CloudResult.unlinked => 'storage.unlinked',
-                _ => 'storage.noNetwork',
-              }),
-              style: text.bodyLarge,
-            ),
-            const SizedBox(height: SageSpace.lg),
-            FilledButton(onPressed: _load, child: Text(tr('devices.tryAgain'))),
-          ],
+        (result: final CloudResult result, members: _) => EmptyState(
+          message: tr('storage.${result.name}'),
+          action: result == CloudResult.noNetwork
+              ? FilledButton(
+                  onPressed: _load,
+                  child: Text(tr('devices.tryAgain')),
+                )
+              : null,
         ),
       },
     );

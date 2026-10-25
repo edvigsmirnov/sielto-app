@@ -63,8 +63,7 @@ class RefusedMark extends ConsumerWidget {
           on: ref.read(spaceClockProvider).today(),
         );
     if (!done && context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(tr('storage.noNetwork'))));
+      ScaffoldMessenger.of(context).say(tr('storage.noNetwork'));
     }
   }
 }

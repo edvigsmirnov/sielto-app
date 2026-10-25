@@ -167,8 +167,7 @@ class SecurityPage extends ConsumerWidget {
     if (pin == null) return;
     await ref.read(pinStoreProvider).set(pin);
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(tr('lock.pinChanged'))));
+      ScaffoldMessenger.of(context).say(tr('lock.pinChanged'));
     }
   }
 

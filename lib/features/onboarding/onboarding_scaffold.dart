@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
 
 /// Onboarding step frame: heading, explanation, fields, pinned primary action.
@@ -96,6 +98,76 @@ class OnboardingScaffold extends StatelessWidget {
       );
     }
     return SetupCard(child: steps);
+  }
+}
+
+/// A pushed setup screen: the setup card when [card], otherwise a page with
+/// [action] in the bottom bar.
+class SetupPage extends StatelessWidget {
+  const SetupPage({
+    required this.title,
+    required this.card,
+    required this.children,
+    this.action,
+    super.key,
+  });
+
+  final String title;
+  final bool card;
+  final List<Widget> children;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!card) {
+      return Scaffold(
+        backgroundColor: context.sage.surface,
+        appBar: sageAppBar(context, title: Text(title)),
+        bottomNavigationBar: action == null
+            ? null
+            : FormActionBar(child: action!),
+        body: ListView(
+          padding: scrollPadding(
+            context,
+            const EdgeInsets.all(SageSpace.formGutter),
+          ),
+          children: children,
+        ),
+      );
+    }
+    return Scaffold(
+      backgroundColor: context.sage.surface,
+      body: SetupCard(
+        child: ListView(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const BackButton(),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: kMinInteractiveDimension),
+              ],
+            ),
+            const SizedBox(height: SageSpace.md),
+            ...children,
+            if (action != null) ...<Widget>[
+              const SizedBox(height: SageSpace.lg),
+              action!,
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 

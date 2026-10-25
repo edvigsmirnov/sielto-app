@@ -351,8 +351,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
 
   void _tellIfFailed(CloudResult result) {
     if (result == CloudResult.done) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(tr('storage.${result.name}'))));
+    ScaffoldMessenger.of(context).say(tr('storage.${result.name}'));
   }
 
   Future<void> _delete(Space space) async {
@@ -395,8 +394,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       _limitConfirmed = true;
     }
     if (max != null && max < (_memberCount ?? 1)) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(tr('members.belowMembers'))));
+      ScaffoldMessenger.of(context).say(tr('members.belowMembers'));
       return;
     }
     await ref.read(repositoriesProvider).spaces.setMaxMembers(space.id, max);

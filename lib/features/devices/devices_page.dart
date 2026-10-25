@@ -49,8 +49,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
     final bool done = await call;
     if (!mounted) return;
     if (!done) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(tr('storage.noNetwork'))));
+      ScaffoldMessenger.of(context).say(tr('storage.noNetwork'));
     }
     await _load();
   }
@@ -146,11 +145,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
             ],
           ),
         (result: final CloudResult result, devices: _) => EmptyState(
-          message: tr(switch (result) {
-            CloudResult.offlineMode => 'storage.offlineMode',
-            CloudResult.unlinked => 'storage.unlinked',
-            _ => 'storage.noNetwork',
-          }),
+          message: tr('storage.${result.name}'),
           action: result == CloudResult.noNetwork
               ? FilledButton(
                   onPressed: _load,
