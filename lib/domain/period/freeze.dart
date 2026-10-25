@@ -49,10 +49,21 @@ class FreezeEvaluator {
   DateTime unfreezeExpiry(DateTime nowUtc) =>
       nowUtc.add(const Duration(hours: 48));
 
-  /// Appends without changing the existing text.
+  /// Appends without changing the existing text, cut to [noteLimit].
   static String appendNote(String? existing, String addition, CalendarDate on) {
+    if (existing != null && existing.length >= noteLimit) return existing;
     final String stamped = '[added ${on.toIso()}]: $addition';
-    if (existing == null || existing.trim().isEmpty) return stamped;
-    return '$existing\n---\n$stamped';
+    final String whole = existing == null || existing.trim().isEmpty
+        ? stamped
+        : '$existing\n---\n$stamped';
+    if (whole.length <= noteLimit) return whole;
+    final int end =
+        noteLimit - (_isLead(whole.codeUnitAt(noteLimit - 1)) ? 1 : 0);
+    return whole.substring(0, end);
   }
+
+  static bool _isLead(int unit) => unit >= 0xD800 && unit <= 0xDBFF;
 }
+
+/// The longest note, in UTF-16 units; the server counts characters, never more.
+const int noteLimit = 5000;

@@ -186,6 +186,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
               child: TextField(
                 controller: _title,
                 enabled: renameAllowed,
+                inputFormatters: titleLimit,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
                   prefixIcon: _canRename == false

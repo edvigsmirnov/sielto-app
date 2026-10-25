@@ -5,7 +5,23 @@ import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+
+/// Text limits, mirrored by the server's CHECKs.
+abstract final class TextLimits {
+  static const int title = 100;
+  static const int name = 40;
+  static const int deviceName = 60;
+  static const int dayTitle = 200;
+  static const int reason = 500;
+  static const int note = noteLimit;
+}
+
+/// Caps a title without a counter under the field.
+final List<TextInputFormatter> titleLimit = <TextInputFormatter>[
+  LengthLimitingTextInputFormatter(TextLimits.title),
+];
 
 /// A form's main action: stays on screen, above the keyboard, while the
 /// fields scroll. Goes in `Scaffold.bottomNavigationBar`.
@@ -211,7 +227,6 @@ class DateField extends StatelessWidget {
   }
 }
 
-/// Existing note and a field that appends to it.
 final RegExp _addedStamp = RegExp(r'\[added (\d{4}-\d{2}-\d{2})\]: ');
 
 /// A note as the reader sees it: the stored date stamps of appended text in
@@ -229,27 +244,46 @@ String shownNote(BuildContext context, String note) {
   );
 }
 
-class AppendNoteField extends StatelessWidget {
-  const AppendNoteField({
-    required this.existing,
+/// Notes. In a frozen period the stored note is shown and new text goes to
+/// [added], to be appended.
+class NotesField extends StatelessWidget {
+  const NotesField({
+    required this.label,
     required this.controller,
-    required this.notesLabel,
+    required this.added,
+    required this.frozen,
+    this.existing,
     super.key,
   });
 
-  final String? existing;
+  final String label;
   final TextEditingController controller;
-  final String notesLabel;
+  final TextEditingController added;
+  final bool frozen;
+  final String? existing;
 
   @override
   Widget build(BuildContext context) {
     final String? note = existing?.trim().isEmpty ?? true ? null : existing;
+    Widget field(TextEditingController controller, String hint) => TextField(
+      controller: controller,
+      maxLines: 3,
+      maxLength: TextLimits.note,
+      textCapitalization: TextCapitalization.sentences,
+      decoration: InputDecoration(hintText: hint),
+    );
+    if (!frozen) {
+      return LabelledField(
+        label: label,
+        child: field(controller, tr('payment.notesHint')),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         if (note != null) ...<Widget>[
           LabelledField(
-            label: notesLabel,
+            label: label,
             child: SageCard(
               child: Text(
                 shownNote(context, note),
@@ -261,13 +295,7 @@ class AppendNoteField extends StatelessWidget {
         ],
         LabelledField(
           label: tr('freeze.addNote'),
-          child: TextField(
-            controller: controller,
-            maxLines: 3,
-            maxLength: 5000,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(hintText: tr('freeze.addNoteHint')),
-          ),
+          child: field(added, tr('freeze.addNoteHint')),
         ),
       ],
     );

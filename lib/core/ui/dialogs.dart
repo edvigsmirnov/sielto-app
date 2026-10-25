@@ -2,6 +2,84 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
+/// The app's dialog: a centred title and body over [content], then [actions].
+class SageDialog extends StatelessWidget {
+  const SageDialog({
+    this.title,
+    this.body,
+    this.content,
+    this.actions,
+    super.key,
+  });
+
+  final String? title;
+  final String? body;
+  final Widget? content;
+  final Widget? actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    return AlertDialog(
+      title: title == null
+          ? null
+          : Text(title!, textAlign: TextAlign.center, style: text.titleMedium),
+      // A phone narrows it.
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (body != null)
+              Text(body!, textAlign: TextAlign.center, style: text.bodyMedium),
+            if (body != null && content != null)
+              const SizedBox(height: SageSpace.md),
+            ?content,
+            if (actions != null) ...<Widget>[
+              const SizedBox(height: SageSpace.lg),
+              actions!,
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One of [choices], laid out by [ChoiceGrid]; null when dismissed.
+Future<T?> choiceDialog<T>(
+  BuildContext context, {
+  required List<(String, T)> choices,
+  String? title,
+  String? body,
+  int columns = 2,
+  bool destructive = false,
+  bool destructiveLast = false,
+  bool primaryLast = false,
+  bool dismissible = true,
+}) => showDialog<T>(
+  context: context,
+  barrierDismissible: dismissible,
+  builder: (BuildContext context) => PopScope(
+    canPop: dismissible,
+    child: SageDialog(
+      title: title,
+      body: body,
+      actions: ChoiceGrid(
+        columns: columns,
+        destructive: destructive,
+        destructiveLast: destructiveLast,
+        primaryLast: primaryLast,
+        choices: <(String, VoidCallback)>[
+          for (final (String label, T value) in choices)
+            (label, () => Navigator.of(context).pop(value)),
+        ],
+      ),
+    ),
+  ),
+);
+
 /// Returns false when dismissed.
 Future<bool> confirmDialog(
   BuildContext context, {
@@ -9,86 +87,30 @@ Future<bool> confirmDialog(
   required String body,
   required String confirmLabel,
   bool isDestructive = false,
-}) async {
-  final bool? answer = await showDialog<bool>(
-    context: context,
-    builder: (BuildContext context) => AlertDialog(
-      backgroundColor: context.sage.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(SageRadius.card),
-      ),
-      title: Text(
-        title,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text(
-            body,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: SageSpace.lg),
-          ChoiceGrid(
-            choices: <(String, VoidCallback)>[
-              (tr('common.cancel'), () => Navigator.of(context).pop(false)),
-              (confirmLabel, () => Navigator.of(context).pop(true)),
-            ],
-            destructiveLast: isDestructive,
-            primaryLast: true,
-          ),
-        ],
-      ),
-    ),
-  );
-  return answer ?? false;
-}
-
-/// One of [options], as stacked full-width buttons. Null when dismissed.
-Future<T?> chooseDialog<T>(
-  BuildContext context, {
-  required String title,
-  required List<(String, T)> options,
-  String? body,
-}) => showDialog<T>(
-  context: context,
-  builder: (BuildContext context) => AlertDialog(
-    backgroundColor: context.sage.card,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(SageRadius.card),
-    ),
-    title: Text(
-      title,
-      textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.titleMedium,
-    ),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        if (body != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: SageSpace.sm),
-            child: Text(
-              body,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-        for (final (String label, T value) in options)
-          Padding(
-            padding: const EdgeInsets.only(top: SageSpace.sm),
-            child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(value),
-              child: Text(label, textAlign: TextAlign.center),
-            ),
-          ),
+}) async =>
+    await choiceDialog<bool>(
+      context,
+      title: title,
+      body: body,
+      choices: <(String, bool)>[
+        (tr('common.cancel'), false),
+        (confirmLabel, true),
       ],
-    ),
-  ),
+      destructiveLast: isDestructive,
+      primaryLast: true,
+    ) ??
+    false;
+
+/// Text to read, with a Close button.
+Future<void> infoDialog(
+  BuildContext context, {
+  required String body,
+  String? title,
+}) => choiceDialog<void>(
+  context,
+  title: title,
+  body: body,
+  choices: <(String, void)>[(tr('common.close'), null)],
 );
 
 /// Back asks before throwing away edits; [isDirty] is read on each press.
@@ -223,10 +245,11 @@ class _UndoCountdownState extends State<_UndoCountdown>
   }
 }
 
-/// Two buttons a row; an odd last one takes the whole row.
+/// [columns] buttons a row; a short last row stretches to fill it.
 class ChoiceGrid extends StatelessWidget {
   const ChoiceGrid({
     required this.choices,
+    this.columns = 2,
     this.destructive = false,
     this.destructiveLast = false,
     this.primaryLast = false,
@@ -235,6 +258,8 @@ class ChoiceGrid extends StatelessWidget {
 
   /// A null callback disables that choice.
   final List<(String, VoidCallback?)> choices;
+
+  final int columns;
 
   /// Every choice in the danger colour.
   final bool destructive;
@@ -274,21 +299,18 @@ class ChoiceGrid extends StatelessWidget {
     }
 
     return Column(
+      spacing: SageSpace.sm,
       children: <Widget>[
-        for (int i = 0; i < choices.length; i += 2)
-          Padding(
-            padding: EdgeInsets.only(top: i == 0 ? 0 : SageSpace.sm),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Expanded(child: button(choices[i])),
-                  if (i + 1 < choices.length) ...<Widget>[
-                    const SizedBox(width: SageSpace.sm),
-                    Expanded(child: button(choices[i + 1])),
-                  ],
-                ],
-              ),
+        for (int i = 0; i < choices.length; i += columns)
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: SageSpace.sm,
+              children: <Widget>[
+                for (final (String, VoidCallback?) choice
+                    in choices.skip(i).take(columns))
+                  Expanded(child: button(choice)),
+              ],
             ),
           ),
       ],
@@ -296,39 +318,59 @@ class ChoiceGrid extends StatelessWidget {
   }
 }
 
-/// One line of text; null when cancelled.
+/// Typed text, trimmed; null when cancelled. Without [allowEmpty] the
+/// confirming button waits for some text.
 Future<String?> textDialog(
   BuildContext context, {
   required String title,
+  String? body,
   String initial = '',
   String? hint,
+  String? confirmLabel,
   int? maxLength,
+  int maxLines = 1,
+  bool allowEmpty = true,
   TextInputType? keyboardType,
+  TextCapitalization capitalization = TextCapitalization.words,
 }) => showDialog<String>(
   context: context,
   builder: (BuildContext context) => _TextDialog(
     title: title,
+    body: body,
     initial: initial,
-    hint: hint,
-    maxLength: maxLength,
-    keyboardType: keyboardType,
+    field: (TextEditingController controller, VoidCallback submit) => TextField(
+      controller: controller,
+      autofocus: true,
+      maxLength: maxLength,
+      maxLines: maxLines,
+      minLines: 1,
+      keyboardType: keyboardType,
+      textCapitalization: capitalization,
+      decoration: InputDecoration(hintText: hint, hintMaxLines: 2),
+      onSubmitted: (String _) => submit(),
+    ),
+    confirmLabel: confirmLabel ?? tr('common.save'),
+    allowEmpty: allowEmpty,
   ),
 );
 
+/// Owns its controller: the dialog outlives the future during its exit.
 class _TextDialog extends StatefulWidget {
   const _TextDialog({
     required this.title,
+    required this.body,
     required this.initial,
-    required this.hint,
-    required this.maxLength,
-    required this.keyboardType,
+    required this.field,
+    required this.confirmLabel,
+    required this.allowEmpty,
   });
 
   final String title;
+  final String? body;
   final String initial;
-  final String? hint;
-  final int? maxLength;
-  final TextInputType? keyboardType;
+  final Widget Function(TextEditingController, VoidCallback submit) field;
+  final String confirmLabel;
+  final bool allowEmpty;
 
   @override
   State<_TextDialog> createState() => _TextDialogState();
@@ -337,7 +379,7 @@ class _TextDialog extends StatefulWidget {
 class _TextDialogState extends State<_TextDialog> {
   late final TextEditingController _controller = TextEditingController(
     text: widget.initial,
-  );
+  )..addListener(() => setState(() {}));
 
   @override
   void dispose() {
@@ -345,42 +387,25 @@ class _TextDialogState extends State<_TextDialog> {
     super.dispose();
   }
 
+  String get _text => _controller.text.trim();
+
+  bool get _ready => widget.allowEmpty || _text.isNotEmpty;
+
+  void _submit() {
+    if (_ready) Navigator.of(context).pop(_text);
+  }
+
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    backgroundColor: context.sage.card,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(SageRadius.card),
-    ),
-    title: Text(
-      widget.title,
-      textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.titleMedium,
-    ),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        TextField(
-          controller: _controller,
-          autofocus: true,
-          maxLength: widget.maxLength,
-          keyboardType: widget.keyboardType,
-          textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(hintText: widget.hint, hintMaxLines: 2),
-          onSubmitted: (String value) => Navigator.of(context).pop(value),
-        ),
-        const SizedBox(height: SageSpace.lg),
-        ChoiceGrid(
-          choices: <(String, VoidCallback)>[
-            (tr('common.cancel'), () => Navigator.of(context).pop()),
-            (
-              tr('common.save'),
-              () => Navigator.of(context).pop(_controller.text),
-            ),
-          ],
-          primaryLast: true,
-        ),
+  Widget build(BuildContext context) => SageDialog(
+    title: widget.title,
+    body: widget.body,
+    content: widget.field(_controller, _submit),
+    actions: ChoiceGrid(
+      choices: <(String, VoidCallback?)>[
+        (tr('common.cancel'), () => Navigator.of(context).pop()),
+        (widget.confirmLabel, _ready ? _submit : null),
       ],
+      primaryLast: true,
     ),
   );
 }
@@ -440,40 +465,24 @@ class _TypedConfirmDialogState extends State<_TypedConfirmDialog> {
   Widget build(BuildContext context) {
     final bool matches =
         _typed.text.trim().toLowerCase() == widget.word.trim().toLowerCase();
-    return AlertDialog(
-      backgroundColor: context.sage.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(SageRadius.card),
+    return SageDialog(
+      title: widget.title,
+      body: widget.body,
+      content: TextField(
+        controller: _typed,
+        autofocus: true,
+        autocorrect: false,
       ),
-      title: Text(
-        widget.title,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text(
-            widget.body,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: SageSpace.md),
-          TextField(controller: _typed, autofocus: true, autocorrect: false),
-          const SizedBox(height: SageSpace.lg),
-          ChoiceGrid(
-            choices: <(String, VoidCallback?)>[
-              (tr('common.cancel'), () => Navigator.of(context).pop(false)),
-              (
-                widget.confirmLabel,
-                matches ? () => Navigator.of(context).pop(true) : null,
-              ),
-            ],
-            destructiveLast: true,
-            primaryLast: true,
+      actions: ChoiceGrid(
+        choices: <(String, VoidCallback?)>[
+          (tr('common.cancel'), () => Navigator.of(context).pop(false)),
+          (
+            widget.confirmLabel,
+            matches ? () => Navigator.of(context).pop(true) : null,
           ),
         ],
+        destructiveLast: true,
+        primaryLast: true,
       ),
     );
   }

@@ -279,13 +279,14 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
 
     final String date = DateLabels(context.locale.toString())
         .dayMonth(last, reference: today);
-    final _Past? past = await chooseDialog<_Past>(
+    final _Past? past = await choiceDialog<_Past>(
       context,
       title: tr(
         'income.pastTitle',
         namedArgs: <String, String>{'title': _title.text, 'date': date},
       ),
-      options: <(String, _Past)>[
+      columns: 1,
+      choices: <(String, _Past)>[
         if (_parsedAmount != null) (tr('income.pastReceived'), _Past.received),
         (tr('income.pastExpected'), _Past.expected),
         (tr('income.pastSkip'), _Past.skip),
@@ -294,11 +295,12 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     if (past == null || !mounted) return null;
     if (past == _Past.skip) return const _PastAnswer.skip();
 
-    int? months = await chooseDialog<int>(
+    int? months = await choiceDialog<int>(
       context,
       title: tr('income.pastEarlierTitle'),
       body: tr('income.pastEarlierBody'),
-      options: <(String, int)>[
+      columns: 1,
+      choices: <(String, int)>[
         (tr('income.pastEarlierNone'), 0),
         for (final int n in const <int>[3, 6, 12])
           (plural('income.pastEarlierMonths', n), n),
@@ -612,6 +614,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                 child: TextField(
                   controller: _title,
                   autofocus: desktopInput && _existing == null,
+                  inputFormatters: titleLimit,
                   textCapitalization: TextCapitalization.sentences,
                 ),
               ),
@@ -694,25 +697,13 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                 const SizedBox(height: SageSpace.lg),
               ],
 
-              if (_isFrozen)
-                AppendNoteField(
-                  existing: _existing?.notes,
-                  controller: _addedNote,
-                  notesLabel: tr('income.fieldNotes'),
-                )
-              else
-                LabelledField(
-                  label: tr('income.fieldNotes'),
-                  child: TextField(
-                    controller: _notes,
-                    maxLines: 3,
-                    maxLength: 5000,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: tr('payment.notesHint'),
-                    ),
-                  ),
-                ),
+              NotesField(
+                label: tr('income.fieldNotes'),
+                controller: _notes,
+                added: _addedNote,
+                frozen: _isFrozen,
+                existing: _existing?.notes,
+              ),
 
               if (!_isRegular) ...<Widget>[
                 SwitchListTile.adaptive(

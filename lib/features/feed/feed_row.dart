@@ -8,6 +8,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -925,15 +926,13 @@ class _RowBody extends StatelessWidget {
 void _showNote(BuildContext context, String note) {
   showDialog<void>(
     context: context,
-    builder: (BuildContext context) => AlertDialog(
-      backgroundColor: context.sage.card,
+    builder: (BuildContext context) => SageDialog(
       content: Text(note, style: Theme.of(context).textTheme.bodyLarge),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(tr('common.close')),
-        ),
-      ],
+      actions: ChoiceGrid(
+        choices: <(String, VoidCallback)>[
+          (tr('common.close'), () => Navigator.of(context).pop()),
+        ],
+      ),
     ),
   );
 }

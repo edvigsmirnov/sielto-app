@@ -168,60 +168,14 @@ Future<void> markNonWorkingDay(
 }
 
 /// Empty string: no name. Null: cancelled.
-Future<String?> _askDayTitle(BuildContext context) => showDialog<String>(
-  context: context,
-  builder: (BuildContext context) => const _DayTitleDialog(),
+Future<String?> _askDayTitle(BuildContext context) => textDialog(
+  context,
+  title: tr('holidays.dayTitle'),
+  hint: tr('holidays.dayTitleHint'),
+  maxLength: TextLimits.dayTitle,
+  maxLines: 5,
+  capitalization: TextCapitalization.sentences,
 );
-
-/// Owns its controller: the dialog outlives the future during its exit.
-class _DayTitleDialog extends StatefulWidget {
-  const _DayTitleDialog();
-
-  @override
-  State<_DayTitleDialog> createState() => _DayTitleDialogState();
-}
-
-class _DayTitleDialogState extends State<_DayTitleDialog> {
-  final TextEditingController _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    backgroundColor: context.sage.card,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(SageRadius.card),
-    ),
-    title: Text(
-      tr('holidays.dayTitle'),
-      style: Theme.of(context).textTheme.titleMedium,
-    ),
-    content: TextField(
-      controller: _controller,
-      autofocus: true,
-      maxLength: 200,
-      minLines: 1,
-      maxLines: 5,
-      textInputAction: TextInputAction.done,
-      textCapitalization: TextCapitalization.sentences,
-      decoration: InputDecoration(hintText: tr('holidays.dayTitleHint')),
-    ),
-    actions: <Widget>[
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: Text(tr('common.cancel')),
-      ),
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
-        child: Text(tr('common.save')),
-      ),
-    ],
-  );
-}
 
 typedef _YearHolidays = ({
   List<CalendarDate>? days,

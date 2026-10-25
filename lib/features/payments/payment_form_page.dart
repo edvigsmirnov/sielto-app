@@ -700,25 +700,13 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
                       ),
                     ],
                     const SizedBox(height: SageSpace.lg),
-                    if (_isFrozen)
-                      AppendNoteField(
-                        existing: _existing?.notes,
-                        controller: _addedNote,
-                        notesLabel: tr('payment.fieldNotes'),
-                      )
-                    else
-                      LabelledField(
-                        label: tr('payment.fieldNotes'),
-                        child: TextField(
-                          controller: _notes,
-                          maxLines: 3,
-                          maxLength: 5000,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: InputDecoration(
-                            hintText: tr('payment.notesHint'),
-                          ),
-                        ),
-                      ),
+                    NotesField(
+                      label: tr('payment.fieldNotes'),
+                      controller: _notes,
+                      added: _addedNote,
+                      frozen: _isFrozen,
+                      existing: _existing?.notes,
+                    ),
                     SwitchListTile.adaptive(
                       value: _isPaid,
                       contentPadding: EdgeInsets.zero,

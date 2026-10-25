@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/backup/backup_service.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/features/backup/backup_page.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
@@ -31,24 +32,15 @@ class DecryptionFailurePage extends StatelessWidget {
   final Future<void> Function() onStartOver;
 
   Future<void> _confirm(BuildContext context) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: Text('decryption.confirmTitle'.tr()),
-        content: Text('decryption.confirmBody'.tr()),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('common.cancel'.tr()),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('decryption.confirmAction'.tr()),
-          ),
-        ],
-      ),
-    );
-    if (confirmed ?? false) await onStartOver();
+    if (await confirmDialog(
+      context,
+      title: 'decryption.confirmTitle'.tr(),
+      body: 'decryption.confirmBody'.tr(),
+      confirmLabel: 'decryption.confirmAction'.tr(),
+      isDestructive: true,
+    )) {
+      await onStartOver();
+    }
   }
 
   Future<void> _restore(BuildContext context) async {

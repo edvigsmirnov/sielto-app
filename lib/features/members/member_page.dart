@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/security/security_page.dart';
@@ -114,7 +115,7 @@ class _MemberPageState extends ConsumerState<MemberPage> {
               label: tr('members.localName'),
               child: TextField(
                 controller: _name,
-                maxLength: 40,
+                maxLength: TextLimits.name,
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   hintText: widget.member.name ?? tr('members.noName'),
@@ -126,7 +127,7 @@ class _MemberPageState extends ConsumerState<MemberPage> {
               label: tr('members.localRole'),
               child: TextField(
                 controller: _role,
-                maxLength: 40,
+                maxLength: TextLimits.name,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
                   hintText: tr('members.localRoleHint'),

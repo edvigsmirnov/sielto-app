@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 
 /// Payment title with autocomplete from this Space's earlier titles. Uses
@@ -88,6 +89,7 @@ class _TitleFieldState extends ConsumerState<TitleField> {
             controller: field,
             focusNode: focus,
             enabled: widget.enabled,
+            inputFormatters: titleLimit,
             textCapitalization: TextCapitalization.sentences,
             textInputAction: TextInputAction.next,
             onSubmitted: (String _) => onSubmitted(),

@@ -7,6 +7,7 @@ import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -59,17 +60,14 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
     final String name = device.name ?? tr('devices.unnamed');
     switch (action) {
       case _Action.rename:
-        final String? typed = await textDialog(
+        final String? name = await textDialog(
           context,
           title: tr('devices.renameTitle'),
           initial: device.name ?? '',
-          maxLength: 60,
+          maxLength: TextLimits.deviceName,
         );
-        final String? trimmed = typed?.trim();
-        if (trimmed == null || trimmed.isEmpty || trimmed == device.name) {
-          return;
-        }
-        await _after(sync.renameDevice(device.id, trimmed));
+        if (name == null || name.isEmpty || name == device.name) return;
+        await _after(sync.renameDevice(device.id, name));
       case _Action.unlink:
         final bool confirmed = await confirmDialog(
           context,

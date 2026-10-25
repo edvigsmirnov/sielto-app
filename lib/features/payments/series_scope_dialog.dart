@@ -1,6 +1,5 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
@@ -41,45 +40,18 @@ Future<SeriesScope> _askScope(
     SeriesScope.wholeSeries,
   ],
   bool isDestructive = false,
-}) async {
-  final SeriesScope? answer = await showDialog<SeriesScope>(
-    context: context,
-    builder: (BuildContext context) => AlertDialog(
-      backgroundColor: context.sage.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(SageRadius.card),
-      ),
-      title: Text(
-        title,
-        style: Theme.of(context).textTheme.titleMedium,
-        textAlign: TextAlign.center,
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text(
-            body,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: SageSpace.lg),
-          ChoiceGrid(
-            destructive: isDestructive,
-            choices: <(String, VoidCallback)>[
-              for (final SeriesScope scope in scopes)
-                (
-                  tr('series.${scope.name}'),
-                  () => Navigator.of(context).pop(scope),
-                ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-  return answer ?? SeriesScope.cancelled;
-}
+}) async =>
+    await choiceDialog<SeriesScope>(
+      context,
+      title: title,
+      body: body,
+      destructive: isDestructive,
+      choices: <(String, SeriesScope)>[
+        for (final SeriesScope scope in scopes)
+          (tr('series.${scope.name}'), scope),
+      ],
+    ) ??
+    SeriesScope.cancelled;
 
 /// Which other dates of a series take the same paid or received status.
 enum StatusScope { thisOne, earlier, later, all, cancelled }
@@ -99,48 +71,19 @@ Future<StatusScope> askStatusScope(
   BuildContext context, {
   required String titleKey,
   String? bodyKey,
-}) async {
-  final StatusScope? answer = await showDialog<StatusScope>(
-    context: context,
-    builder: (BuildContext context) => AlertDialog(
-      backgroundColor: context.sage.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(SageRadius.card),
-      ),
-      title: Text(
-        tr(titleKey),
-        style: Theme.of(context).textTheme.titleMedium,
-        textAlign: TextAlign.center,
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          if (bodyKey != null) ...<Widget>[
-            Text(
-              tr(bodyKey),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: SageSpace.lg),
-          ],
-          ChoiceGrid(
-            choices: <(String, VoidCallback)>[
-              for (final StatusScope scope in <StatusScope>[
-                StatusScope.thisOne,
-                StatusScope.earlier,
-                StatusScope.later,
-                StatusScope.all,
-              ])
-                (
-                  tr('statusScope.${scope.name}'),
-                  () => Navigator.of(context).pop(scope),
-                ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-  return answer ?? StatusScope.cancelled;
-}
+}) async =>
+    await choiceDialog<StatusScope>(
+      context,
+      title: tr(titleKey),
+      body: bodyKey == null ? null : tr(bodyKey),
+      choices: <(String, StatusScope)>[
+        for (final StatusScope scope in <StatusScope>[
+          StatusScope.thisOne,
+          StatusScope.earlier,
+          StatusScope.later,
+          StatusScope.all,
+        ])
+          (tr('statusScope.${scope.name}'), scope),
+      ],
+    ) ??
+    StatusScope.cancelled;

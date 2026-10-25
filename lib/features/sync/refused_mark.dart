@@ -27,11 +27,12 @@ class RefusedMark extends ConsumerWidget {
   );
 
   Future<void> _resolve(BuildContext context, WidgetRef ref) async {
-    final _Resolution? choice = await chooseDialog<_Resolution>(
+    final _Resolution? choice = await choiceDialog<_Resolution>(
       context,
       title: tr('refused.title'),
       body: tr('refused.body'),
-      options: <(String, _Resolution)>[
+      columns: 1,
+      choices: <(String, _Resolution)>[
         (tr('refused.keepNote'), _Resolution.note),
         (tr('refused.takeShared'), _Resolution.shared),
       ],

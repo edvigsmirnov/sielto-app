@@ -13,6 +13,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/choice_field.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
@@ -132,6 +133,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                   label: tr('space.fieldTitle'),
                   child: TextField(
                     controller: _title,
+                    inputFormatters: titleLimit,
                     textCapitalization: TextCapitalization.sentences,
                     style: Theme.of(context).textTheme.bodyLarge,
                     onSubmitted: (String _) => _saveTitle(space),
@@ -435,11 +437,12 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     }
     final Map<String, MemberLabel> labels = await sync.labels(space.id);
     if (!mounted) return;
-    final Member? successor = await chooseDialog<Member>(
+    final Member? successor = await choiceDialog<Member>(
       context,
       title: tr('members.pickOwnerTitle'),
       body: tr('members.pickOwnerBody'),
-      options: <(String, Member)>[
+      columns: 1,
+      choices: <(String, Member)>[
         for (final Member m in others)
           (labels[m.userId]?.name ?? m.name ?? tr('members.noName'), m),
       ],

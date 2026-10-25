@@ -204,6 +204,7 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
               label: tr('income.fieldTitle'),
               child: TextField(
                 controller: _title,
+                inputFormatters: titleLimit,
                 textCapitalization: TextCapitalization.sentences,
               ),
             ),

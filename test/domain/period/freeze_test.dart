@@ -101,5 +101,31 @@ void main() {
         '[added 2026-08-15]: First',
       );
     });
+
+    test('the addition is cut to the limit, the original never', () {
+      final String existing = 'a' * (noteLimit - 30);
+      final String result = FreezeEvaluator.appendNote(
+        existing,
+        'b' * 100,
+        d('2026-10-02'),
+      );
+      expect(result.length, noteLimit);
+      expect(result, startsWith(existing));
+      expect(
+        FreezeEvaluator.appendNote('c' * noteLimit, 'd', d('2026-10-02')),
+        'c' * noteLimit,
+      );
+    });
+
+    test('a cut never splits an emoji', () {
+      final String existing = 'a' * (noteLimit - 26);
+      final String result = FreezeEvaluator.appendNote(
+        existing,
+        '😀😀',
+        d('2026-10-02'),
+      );
+      expect(result.length, noteLimit - 1);
+      expect(result, endsWith(': '));
+    });
   });
 }

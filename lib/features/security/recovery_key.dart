@@ -8,6 +8,7 @@ import 'package:sielto/core/crypto/key_store.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -274,24 +275,24 @@ class _RecoveryKeyPromptState extends State<_RecoveryKeyPrompt> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(tr('decryption.enterRecoveryKey')),
+  Widget build(BuildContext context) => SageDialog(
+    title: tr('decryption.enterRecoveryKey'),
     content: SecretField(
       controller: _key,
       autofocus: true,
       errorText: _wrong ? tr('recovery.wrongKey') : null,
       onSubmitted: (_) => _submit(),
     ),
-    actions: <Widget>[
-      TextButton(
-        onPressed: _busy ? null : () => Navigator.of(context).pop(),
-        child: Text(tr('common.cancel')),
-      ),
-      FilledButton(
-        onPressed: _busy ? null : _submit,
-        child: Text(tr(_busy ? 'recovery.working' : 'common.continue')),
-      ),
-    ],
+    actions: ChoiceGrid(
+      choices: <(String, VoidCallback?)>[
+        (tr('common.cancel'), _busy ? null : () => Navigator.of(context).pop()),
+        (
+          tr(_busy ? 'recovery.working' : 'common.continue'),
+          _busy ? null : _submit,
+        ),
+      ],
+      primaryLast: true,
+    ),
   );
 }
 

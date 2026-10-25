@@ -208,6 +208,7 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
       label: tr('space.fieldTitle'),
       child: TextField(
         controller: _title,
+        inputFormatters: titleLimit,
         textInputAction: TextInputAction.next,
         textCapitalization: TextCapitalization.sentences,
         decoration: InputDecoration(hintText: tr('space.titleHint')),

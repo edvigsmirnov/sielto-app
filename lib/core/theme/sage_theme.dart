@@ -209,6 +209,12 @@ abstract final class SageTheme {
           borderRadius: BorderRadius.circular(SageRadius.pill),
         ),
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: c.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SageRadius.card),
+        ),
+      ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: c.surface,
         shape: const RoundedRectangleBorder(

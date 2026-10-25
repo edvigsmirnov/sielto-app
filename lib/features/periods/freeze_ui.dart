@@ -9,6 +9,7 @@ import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -196,77 +197,16 @@ class FreezeBanner extends ConsumerWidget {
 }
 
 /// Null when dismissed.
-Future<String?> askUnfreezeReason(BuildContext context) => showDialog<String>(
-  context: context,
-  builder: (BuildContext context) => const _UnfreezeDialog(),
+Future<String?> askUnfreezeReason(BuildContext context) => textDialog(
+  context,
+  title: tr('freeze.unfreezeTitle'),
+  body: tr('freeze.unfreezeBody'),
+  hint: tr('freeze.reasonHint'),
+  confirmLabel: tr('freeze.unfreeze'),
+  maxLength: TextLimits.reason,
+  allowEmpty: false,
+  capitalization: TextCapitalization.sentences,
 );
-
-/// Owns its controller: the dialog outlives the future during its exit.
-class _UnfreezeDialog extends StatefulWidget {
-  const _UnfreezeDialog();
-
-  @override
-  State<_UnfreezeDialog> createState() => _UnfreezeDialogState();
-}
-
-class _UnfreezeDialogState extends State<_UnfreezeDialog> {
-  final TextEditingController _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    final String reason = _controller.text.trim();
-
-    return AlertDialog(
-      backgroundColor: sage.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(SageRadius.card),
-      ),
-      title: Text(
-        tr('freeze.unfreezeTitle'),
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text(
-            tr('freeze.unfreezeBody'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: SageSpace.md),
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            maxLength: 500,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(hintText: tr('freeze.reasonHint')),
-            onChanged: (String _) => setState(() {}),
-          ),
-          const SizedBox(height: SageSpace.lg),
-          ChoiceGrid(
-            choices: <(String, VoidCallback?)>[
-              (tr('common.cancel'), () => Navigator.of(context).pop()),
-              (
-                tr('freeze.unfreeze'),
-                reason.isEmpty ? null : () => Navigator.of(context).pop(reason),
-              ),
-            ],
-            primaryLast: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// Shown in place of protected fields.
 class FreezeNotice extends StatelessWidget {

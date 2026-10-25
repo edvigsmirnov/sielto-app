@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
-import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 
 /// Asks, once per Space, whether to keep a shared Space that left the cloud.
@@ -42,45 +41,19 @@ class _VanishedPromptState extends ConsumerState<VanishedPrompt> {
   }
 
   Future<void> _ask(Space space) async {
-    final bool? keep = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          backgroundColor: context.sage.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(SageRadius.card),
-          ),
-          title: Text(
-            tr(
-              'vanished.title',
-              namedArgs: <String, String>{'title': space.title},
-            ),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Text(
-                tr('vanished.body'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: SageSpace.lg),
-              ChoiceGrid(
-                choices: <(String, VoidCallback?)>[
-                  (tr('common.delete'), () => Navigator.of(context).pop(false)),
-                  (tr('vanished.keep'), () => Navigator.of(context).pop(true)),
-                ],
-                primaryLast: true,
-              ),
-            ],
-          ),
-        ),
+    final bool? keep = await choiceDialog<bool>(
+      context,
+      title: tr(
+        'vanished.title',
+        namedArgs: <String, String>{'title': space.title},
       ),
+      body: tr('vanished.body'),
+      choices: <(String, bool)>[
+        (tr('common.delete'), false),
+        (tr('vanished.keep'), true),
+      ],
+      primaryLast: true,
+      dismissible: false,
     );
     final Repositories repos = ref.read(repositoriesProvider);
     if (keep ?? true) {

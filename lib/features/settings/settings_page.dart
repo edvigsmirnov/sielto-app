@@ -9,6 +9,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/backup_page.dart';
@@ -222,6 +223,7 @@ Future<void> _editName(BuildContext context, WidgetRef ref) async {
     title: tr('settings.name'),
     initial: ref.read(nameProvider) ?? '',
     hint: tr('onboarding.nameHint'),
+    maxLength: TextLimits.name,
   );
   if (typed != null) await ref.read(nameProvider.notifier).set(typed);
 }

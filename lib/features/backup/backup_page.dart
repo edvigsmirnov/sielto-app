@@ -107,10 +107,11 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
   final Space? current = ref.read(currentSpaceProvider);
   Space? only;
   if (spaces.length > 1 && current != null) {
-    final bool? all = await chooseDialog<bool>(
+    final bool? all = await choiceDialog<bool>(
       context,
       title: tr('backup.exportWhat'),
-      options: <(String, bool)>[
+      columns: 1,
+      choices: <(String, bool)>[
         (plural('backup.exportAll', spaces.length), true),
         (tr('backup.exportOne', args: <String>[current.title]), false),
       ],
@@ -131,10 +132,11 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
 
   if (Platform.isAndroid) {
     if (!context.mounted) return;
-    final bool? toDevice = await chooseDialog<bool>(
+    final bool? toDevice = await choiceDialog<bool>(
       context,
       title: tr('backup.whereTo'),
-      options: <(String, bool)>[
+      columns: 1,
+      choices: <(String, bool)>[
         (tr('backup.toDevice'), true),
         (tr('backup.share'), false),
       ],

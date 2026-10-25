@@ -9,6 +9,7 @@ import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/choice_field.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_scatter.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -197,6 +198,7 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
           label: tr('onboarding.fieldName'),
           child: TextField(
             controller: _name,
+            maxLength: TextLimits.name,
             textCapitalization: TextCapitalization.words,
             decoration: InputDecoration(hintText: tr('onboarding.nameHint')),
           ),

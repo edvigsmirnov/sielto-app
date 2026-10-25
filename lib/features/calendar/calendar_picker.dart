@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/form_fields.dart';
-import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 
@@ -17,19 +16,7 @@ Future<CalendarDate?> pickCalendarDate(
   final int firstYear = today.year - 10;
   final int lastYear = today.year + 10;
 
-  if (view == CalendarView.day) {
-    final DateTime? picked = await showDatePicker(
-      initialEntryMode: isWide(context)
-          ? DatePickerEntryMode.calendarOnly
-          : DatePickerEntryMode.calendar,
-      context: context,
-      locale: pickerLocale(context),
-      initialDate: selected.toUtcMidnight(),
-      firstDate: DateTime.utc(firstYear),
-      lastDate: DateTime.utc(lastYear, 12, 31),
-    );
-    return picked == null ? null : CalendarDate.fromDateTime(picked);
-  }
+  if (view == CalendarView.day) return pickDate(context, selected);
 
   if (view == CalendarView.year) {
     return showDialog<CalendarDate>(
