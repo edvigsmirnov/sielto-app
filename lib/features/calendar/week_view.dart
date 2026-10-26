@@ -1,6 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/calendar_repository.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
@@ -8,6 +9,7 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_cell.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
+import 'package:sielto/features/categories/category_title.dart';
 
 /// Seven rows, Monday first: date, figures and top categories.
 class WeekView extends StatelessWidget {
@@ -32,8 +34,8 @@ class WeekView extends StatelessWidget {
   final Map<CalendarDate, DayTotals> totals;
   final DayMarks marks;
 
-  /// Up to [maxCategoryNames] titles per day, in spend order.
-  final Map<CalendarDate, List<String>> categories;
+  /// Up to [maxCategoryNames] per day, in spend order.
+  final Map<CalendarDate, List<Category>> categories;
 
   final CalendarDate today;
   final MoneyFormat money;
@@ -66,7 +68,7 @@ class WeekView extends StatelessWidget {
         date: date,
         totals: totals[date],
         mark: marks[date],
-        categories: categories[date] ?? const <String>[],
+        categories: categories[date] ?? const <Category>[],
         isSelected: date == selected,
         today: today,
         money: money,
@@ -95,7 +97,7 @@ class _WeekRow extends StatelessWidget {
   final CalendarDate date;
   final DayTotals? totals;
   final DayMark mark;
-  final List<String> categories;
+  final List<Category> categories;
   final bool isSelected;
   final CalendarDate today;
   final MoneyFormat money;
@@ -163,7 +165,7 @@ class _WeekRow extends StatelessWidget {
               if (categories.isNotEmpty) ...<Widget>[
                 const SizedBox(height: 2),
                 Text(
-                  categories.join(' · '),
+                  categories.map((Category c) => c.shownTitle).join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: text.bodySmall?.copyWith(

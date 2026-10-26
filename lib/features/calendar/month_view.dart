@@ -150,9 +150,7 @@ class _Figures {
     final Set<Decimal> shortened = <Decimal>{};
     for (final DayTotals d in days) {
       for (final Decimal a
-          in net
-              ? <Decimal>[(d.income - d.expenses).abs()]
-              : <Decimal>[d.expenses, d.income]) {
+          in net ? <Decimal>[d.net.abs()] : <Decimal>[d.expenses, d.income]) {
         if (a <= Decimal.zero) continue;
         final double w = textWidth(
           context,
@@ -253,7 +251,7 @@ class _DayCell extends StatelessWidget {
   final ValueChanged<Offset> onHold;
 
   Widget _netFigure(DayTotals day, SageColors sage, Color ink) {
-    final Decimal net = day.income - day.expenses;
+    final Decimal net = day.net;
     final bool gain = net > Decimal.zero;
     return _CellFigure(
       text: figures.format(
@@ -306,7 +304,7 @@ class _DayCell extends StatelessWidget {
                         : FontWeight.w600,
                   ),
                 ),
-                if (figures.net && day != null && !day.isEmptyMoney)
+                if (figures.net && day != null && day.hasMoney)
                   _netFigure(day, sage, ink)
                 else if (day != null && day.expenses > Decimal.zero)
                   _CellFigure(
@@ -327,9 +325,7 @@ class _DayCell extends StatelessWidget {
                     color: isToday ? ink : sage.accentStrong,
                   ),
                 // A dot for a day with only an income without amount.
-                if (day != null &&
-                    day.expenses == Decimal.zero &&
-                    day.income == Decimal.zero)
+                if (day != null && !day.hasMoney)
                   _CellFigure(
                     text: '·',
                     size: figures.size,
@@ -342,10 +338,6 @@ class _DayCell extends StatelessWidget {
       ),
     );
   }
-}
-
-extension on DayTotals {
-  bool get isEmptyMoney => expenses == Decimal.zero && income == Decimal.zero;
 }
 
 /// Small tabular figure.

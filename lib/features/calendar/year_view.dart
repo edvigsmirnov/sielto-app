@@ -7,6 +7,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/calendar/calendar_cell.dart';
 
 /// Twelve month cards: in, out, and net when there are both. Tap opens the
 /// month.
@@ -109,10 +110,7 @@ class _MonthCard extends StatelessWidget {
       label: <String>[
         dates.monthYear(month),
         if (empty) tr('calendar.noRecords'),
-        if (sums != null && sums.income > Decimal.zero)
-          '${tr('calendar.dayIncome')}: ${money.format(sums.income)}',
-        if (sums != null && sums.expenses > Decimal.zero)
-          '${tr('calendar.dayExpenses')}: ${money.format(sums.expenses)}',
+        ...describeTotals(sums, money),
       ].join('. '),
       button: true,
       selected: isSelected,

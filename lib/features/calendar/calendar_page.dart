@@ -20,7 +20,6 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_data.dart';
 import 'package:sielto/features/calendar/calendar_legend.dart';
-import 'package:sielto/features/calendar/calendar_menu.dart';
 import 'package:sielto/features/calendar/calendar_picker.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
@@ -29,7 +28,6 @@ import 'package:sielto/features/calendar/month_view.dart';
 import 'package:sielto/features/calendar/week_categories.dart';
 import 'package:sielto/features/calendar/week_view.dart';
 import 'package:sielto/features/calendar/year_view.dart';
-import 'package:sielto/features/categories/category_title.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/record_actions.dart';
@@ -420,16 +418,9 @@ class _Body extends ConsumerWidget {
             selected: selected,
             totals: totals,
             marks: marks,
-            categories: <CalendarDate, List<String>>{
-              for (final MapEntry<CalendarDate, List<String>> day
-                  in (ref.watch(weekCategoryNamesProvider).value ??
-                          const <CalendarDate, List<String>>{})
-                      .entries)
-                day.key: <String>[
-                  for (final String id in day.value)
-                    ?ref.watch(categoryIndexProvider).value?[id]?.shownTitle,
-                ],
-            },
+            categories:
+                ref.watch(weekCategoriesProvider).value ??
+                const <CalendarDate, List<Category>>{},
             today: today,
             money: money,
             dates: dates,
@@ -755,7 +746,6 @@ class _DayBody extends ConsumerWidget {
     return DayView(
       day: day,
       records: records,
-      orderMode: ref.watch(currentSpaceProvider)!.feedOrderMode,
       today: today,
       categories:
           ref.watch(categoryIndexProvider).value ?? const <String, Category>{},
@@ -763,10 +753,7 @@ class _DayBody extends ConsumerWidget {
       money: money,
       isFrozen: ref.watch(freezeLookupProvider).isFrozen,
       dayOff: ref.watch(dayOffNamesProvider(day)),
-      deadline: _deadlineOn(
-        day,
-        ref.watch(spacePeriodsProvider).value ?? const <BudgetPeriod>[],
-      ),
+      deadline: ref.watch(dayDeadlineProvider(day)),
       onEdit: (FeedRecord r) => editRecord(context, r),
       onTogglePaid: (FeedRecord r) => togglePaid(context, ref, r),
       onDelete: (FeedRecord r) => deleteRecord(context, ref, r),
@@ -775,11 +762,16 @@ class _DayBody extends ConsumerWidget {
   }
 }
 
-DeadlineKind? _deadlineOn(CalendarDate day, List<BudgetPeriod> periods) {
-  for (final BudgetPeriod p in periods) {
-    if (p.deadlineDate == day) {
-      return p.deadlineIsHard ? DeadlineKind.hard : DeadlineKind.soft;
-    }
-  }
-  return null;
-}
+/// Long-press on a day, its pane's Add and the Day view's FAB: the + button's
+/// actions on that day.
+Future<void> showDayMenu(
+  BuildContext context,
+  WidgetRef ref, {
+  required CalendarDate date,
+}) => showQuickAddMenu(
+  context,
+  ref,
+  date: date,
+  title: context.dates.weekdayAndDate(date),
+  askDate: false,
+);

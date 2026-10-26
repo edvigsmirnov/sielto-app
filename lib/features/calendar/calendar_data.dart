@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
@@ -5,6 +6,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/calendar_repository.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
+import 'package:sielto/features/feed/feed_model.dart';
 
 /// Month and Week sums, one query per range. Type inferred: `flutter_riverpod`
 /// does not export `StreamProviderFamily`.
@@ -66,16 +68,38 @@ final dayRecordsProvider = Provider.family<DayRecords?, CalendarDate>((
 ) {
   final List<Payment>? payments = ref.watch(dayPaymentsProvider(day)).value;
   final List<Income>? incomes = ref.watch(dayIncomesProvider(day)).value;
-  if (payments == null || incomes == null) return null;
-  return DayRecords(payments: payments, incomes: incomes);
+  final Space? space = ref.watch(currentSpaceProvider);
+  if (payments == null || incomes == null || space == null) return null;
+  return DayRecords(
+    <FeedRecord>[
+      for (final Payment p in payments) FeedRecord.fromPayment(p),
+      for (final Income i in incomes) FeedRecord.fromIncome(i),
+    ]..sort(
+      (FeedRecord a, FeedRecord b) => compareInDay(a, b, space.feedOrderMode),
+    ),
+  );
 });
 
+/// One day's records in Feed order, with their sums.
 @immutable
 class DayRecords {
-  const DayRecords({required this.payments, required this.incomes});
+  factory DayRecords(List<FeedRecord> rows) {
+    Decimal expenses = Decimal.zero;
+    Decimal income = Decimal.zero;
+    for (final FeedRecord r in rows) {
+      final Decimal amount = r.amount ?? Decimal.zero;
+      if (r.isIncome) {
+        income += amount;
+      } else {
+        expenses += amount;
+      }
+    }
+    return DayRecords._(rows, expenses: expenses, income: income);
+  }
 
-  final List<Payment> payments;
-  final List<Income> incomes;
+  const DayRecords._(this.rows, {required this.expenses, required this.income});
 
-  bool get isEmpty => payments.isEmpty && incomes.isEmpty;
+  final List<FeedRecord> rows;
+  final Decimal expenses;
+  final Decimal income;
 }

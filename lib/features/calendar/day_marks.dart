@@ -8,6 +8,7 @@ import 'package:sielto/core/holidays/holiday_source.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/features/calendar/calendar_data.dart';
 import 'package:sielto/features/calendar/calendar_scope.dart';
 import 'package:sielto/features/periods/holiday_service.dart';
 import 'package:sielto/features/space/space_ledger.dart';
@@ -74,6 +75,14 @@ class DayMark {
 
 enum DeadlineKind { soft, hard }
 
+extension PeriodDeadline on BudgetPeriod {
+  DeadlineKind? get deadlineKind => deadlineDate == null
+      ? null
+      : deadlineIsHard
+      ? DeadlineKind.hard
+      : DeadlineKind.soft;
+}
+
 /// Only days with a decoration are present.
 @immutable
 class DayMarks {
@@ -105,16 +114,18 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
   final CalendarDate around = ref.watch(selectedDateProvider);
   final ({CalendarDate from, CalendarDate to}) range = rangeOf(view, around);
 
-  // The browsed year, which can be outside the materialisation years.
-  final ResolvedCalendar resolved = await ref.watch(
-    calendarForYearProvider(around.year).future,
-  );
-  final WorkingDayCalendar calendar = resolved.calendar;
+  // The browsed years, which can be outside the materialisation years. A
+  // grid at the turn of the year shows days of two.
+  final Map<int, WorkingDayCalendar> calendars = <int, WorkingDayCalendar>{
+    for (int y = range.from.year; y <= range.to.year; y++)
+      y: (await ref.watch(calendarForYearProvider(y).future)).calendar,
+  };
 
   final Map<CalendarDate, DayMark> marks = <CalendarDate, DayMark>{};
   DayMark at(CalendarDate date) => marks[date] ?? DayMark.none;
 
   for (CalendarDate d = range.from; !d.isAfter(range.to); d = d.addDays(1)) {
+    final WorkingDayCalendar calendar = calendars[d.year]!;
     if (!calendar.isNonWorkingDay(d)) continue;
     marks[d] = DayMark(isNonWorking: true, isHoliday: calendar.isDayOff(d));
   }
@@ -134,19 +145,16 @@ final dayMarksProvider = FutureProvider.family<DayMarks, CalendarView>((
 
     final CalendarDate? deadline = p.deadlineDate;
     if (deadline != null) {
-      marks[deadline] = at(deadline).copyWith(
-        deadline: p.deadlineIsHard ? DeadlineKind.hard : DeadlineKind.soft,
-      );
+      marks[deadline] = at(deadline).copyWith(deadline: p.deadlineKind);
     }
   }
 
   final Decimal? threshold = await ref.watch(highLoadThresholdProvider.future);
 
   if (threshold != null) {
-    final Map<CalendarDate, DayTotals> totals = await ref
-        .watch(repositoriesProvider)
-        .calendar
-        .dailyTotals(space.id, range.from, range.to);
+    final Map<CalendarDate, DayTotals> totals = await ref.watch(
+      dailyTotalsProvider(view).future,
+    );
     for (final MapEntry<CalendarDate, DayTotals> e in totals.entries) {
       if (e.value.expenses < threshold) continue;
       marks[e.key] = at(e.key).copyWith(isHighLoad: true);
@@ -198,4 +206,16 @@ final dayOffNamesProvider = Provider.family<List<String>?, CalendarDate>((
     }
   }
   return ref.watch(holidayNamesProvider).value?[day] ?? const <String>[];
+});
+
+/// The deadline that falls on [day], if any.
+final dayDeadlineProvider = Provider.family<DeadlineKind?, CalendarDate>((
+  Ref ref,
+  CalendarDate day,
+) {
+  for (final BudgetPeriod p
+      in ref.watch(spacePeriodsProvider).value ?? const <BudgetPeriod>[]) {
+    if (p.deadlineDate == day) return p.deadlineKind;
+  }
+  return null;
 });

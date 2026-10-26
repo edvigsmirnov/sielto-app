@@ -7,7 +7,6 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
-import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/calendar/calendar_cell.dart';
 import 'package:sielto/features/calendar/calendar_data.dart';
 import 'package:sielto/features/calendar/day_marks.dart';
@@ -19,7 +18,6 @@ class DayView extends StatelessWidget {
   const DayView({
     required this.day,
     required this.records,
-    required this.orderMode,
     required this.today,
     required this.categories,
     required this.density,
@@ -37,8 +35,6 @@ class DayView extends StatelessWidget {
   final CalendarDate day;
   final DayRecords records;
 
-  /// As the Feed orders the day.
-  final FeedOrderMode orderMode;
   final CalendarDate today;
   final Map<String, Category> categories;
   final FeedDensity density;
@@ -57,22 +53,9 @@ class DayView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<FeedRecord> rows = <FeedRecord>[
-      for (final Payment p in records.payments) FeedRecord.fromPayment(p),
-      for (final Income i in records.incomes) FeedRecord.fromIncome(i),
-    ]..sort((FeedRecord a, FeedRecord b) => compareInDay(a, b, orderMode));
-
-    Decimal expenses = Decimal.zero;
-    Decimal income = Decimal.zero;
-    for (final FeedRecord r in rows) {
-      final Decimal? amount = r.amount;
-      if (amount == null) continue;
-      if (r.isIncome) {
-        income += amount;
-      } else {
-        expenses += amount;
-      }
-    }
+    final List<FeedRecord> rows = records.rows;
+    final Decimal expenses = records.expenses;
+    final Decimal income = records.income;
 
     // One scroll: with large text the totals alone can outgrow a short pane.
     return CustomScrollView(

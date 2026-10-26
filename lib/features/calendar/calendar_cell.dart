@@ -20,12 +20,7 @@ String describeDay(
 }) => <String>[
   dates.weekdayAndDate(date, reference: today),
   if (date == today) tr('calendar.legend.today'),
-  if (totals case final DayTotals t when t.expenses > Decimal.zero)
-    '${tr('calendar.dayExpenses')}: ${money.format(t.expenses)}',
-  if (totals case final DayTotals t when t.income > Decimal.zero)
-    '${tr('calendar.dayIncome')}: ${money.format(t.income)}',
-  if (totals case final DayTotals t when t.hasUnknownAmount)
-    tr('calendar.legend.noAmount'),
+  ...describeTotals(totals, money),
   if (mark.isHoliday)
     tr('calendar.legend.holiday')
   else if (mark.isNonWorking)
@@ -35,6 +30,16 @@ String describeDay(
   if (mark.deadline case final DeadlineKind kind)
     tr('calendar.legend.${kind.name}Deadline'),
 ].join('. ');
+
+/// Spoken sums of a day or a month.
+List<String> describeTotals(DayTotals? totals, MoneyFormat money) => <String>[
+  if (totals case final DayTotals t when t.expenses > Decimal.zero)
+    '${tr('calendar.dayExpenses')}: ${money.format(t.expenses)}',
+  if (totals case final DayTotals t when t.income > Decimal.zero)
+    '${tr('calendar.dayIncome')}: ${money.format(t.income)}',
+  if (totals case final DayTotals t when t.hasUnknownAmount)
+    tr('calendar.legend.noAmount'),
+];
 
 /// A day cell's tap, long-press and spoken [label]. The menu opens at the
 /// finger, or mid-cell for a screen reader.
@@ -139,7 +144,7 @@ class CellDecoration extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
 
-    final Widget body = DecoratedBox(
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: dimmed ? null : groundOf(sage, mark, isToday: isToday),
         borderRadius: BorderRadius.circular(radius),
@@ -193,8 +198,6 @@ class CellDecoration extends StatelessWidget {
         ],
       ),
     );
-
-    return body;
   }
 
   static Color groundOf(

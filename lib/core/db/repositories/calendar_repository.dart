@@ -37,6 +37,8 @@ class DayTotals {
 
   bool get isEmpty => recordCount == 0;
 
+  bool get hasMoney => expenses > Decimal.zero || income > Decimal.zero;
+
   Decimal get net => income - expenses;
 
   DayTotals add(
