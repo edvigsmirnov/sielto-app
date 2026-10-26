@@ -54,10 +54,27 @@ class PeriodService {
   /// Periods anchored in these years get `holiday_data_incomplete`.
   final Set<int> missingHolidayYears;
 
-  /// How far ahead periods and regular income dates reach, in months.
+  /// How far ahead periods and regular income dates always reach, in months.
   static const int horizonMonths = 24;
 
-  Future<PeriodRefresh> refresh(Space space, CalendarDate today) async {
+  /// Furthest [refresh] may be asked to reach, in months from today.
+  static const int maxReachMonths = 120;
+
+  /// Months added per request.
+  static const int reachStepMonths = 12;
+
+  /// Reaches [horizonMonths] ahead, or to [until] within [maxReachMonths],
+  /// never less far than existing periods.
+  Future<PeriodRefresh> refresh(
+    Space space,
+    CalendarDate today, {
+    CalendarDate? until,
+  }) async {
+    CalendarDate reach = today.addMonths(horizonMonths);
+    if (until != null && until.isAfter(reach)) reach = until;
+    final CalendarDate cap = today.addMonths(maxReachMonths);
+    if (reach.isAfter(cap)) reach = cap;
+
     final List<IncomeRecurrenceRule> rules = await repos.incomeRules.inSpace(
       space.id,
     );
@@ -70,7 +87,7 @@ class PeriodService {
             space: space,
             rules: rules,
             from: today,
-            horizonEnd: null,
+            horizonEnd: reach,
           ),
         ),
       );
@@ -84,7 +101,9 @@ class PeriodService {
     ];
     if (anchors.isEmpty) return const PeriodRefresh();
 
-    final CalendarDate reach = today.addMonths(horizonMonths);
+    for (final BudgetPeriod p in await repos.periods.incomeDrivenIn(space.id)) {
+      if (p.startDate.isAfter(reach)) reach = p.startDate;
+    }
     int count = PeriodMaterializer.horizonPeriods;
     List<MaterializedPeriod> computed;
     while (true) {

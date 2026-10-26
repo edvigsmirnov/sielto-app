@@ -56,6 +56,7 @@ void main() {
         overrides: [
           incomePeriodsProvider.overrideWithValue(<BudgetPeriod>[period]),
           selectedPeriodProvider.overrideWithValue(period),
+          periodReachProvider.overrideWith(_NoReach.new),
           todayProvider.overrideWithValue(const CalendarDate(2026, 9, 22)),
         ],
         child: EasyLocalization(
@@ -94,4 +95,10 @@ void main() {
       greaterThan(screen / 2),
     );
   });
+}
+
+/// Without the Space dependency; this test has no Space.
+class _NoReach extends PeriodReachController {
+  @override
+  CalendarDate? build() => null;
 }

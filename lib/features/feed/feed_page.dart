@@ -111,7 +111,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       _syncPeriodToScroll();
     }
     final ScrollPosition position = _scroll.position;
-    const double margin = 400;
+    // Two screens ahead, so rows are in place before they come into view.
+    final double margin = math.max(400, position.viewportDimension * 2);
     if (_extending) return;
     final FeedWindow window = ref.read(feedWindowProvider);
     if (position.pixels <= position.minScrollExtent + margin &&
@@ -124,6 +125,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         _extending = true;
         ref.read(feedWindowProvider.notifier).extendForwards();
       }
+      reachPast(ref, window.to);
     }
   }
 

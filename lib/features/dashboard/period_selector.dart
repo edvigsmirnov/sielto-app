@@ -38,6 +38,12 @@ class PeriodSelector extends ConsumerWidget {
     final DateLabels dates = context.dates;
     final CalendarDate today = ref.watch(todayProvider);
 
+    if (index >= periods.length - 2) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) reachPast(ref, periods.last.startDate);
+      });
+    }
+
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       // Swipe does what the arrows do.

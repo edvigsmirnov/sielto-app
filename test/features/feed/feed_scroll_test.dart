@@ -22,7 +22,6 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/feed/feed_page.dart';
 import 'package:sielto/features/feed/feed_window.dart';
 import 'package:sielto/features/periods/period_service.dart';
-import 'package:sielto/features/space/period_ledger.dart';
 
 /// Feed scrolling: the selected period follows the list, and the window
 /// widens while records or periods lie beyond.
@@ -85,7 +84,7 @@ void main() {
     ),
   );
 
-  testWidgets('scrolling reaches the last period and the window stops', (
+  testWidgets('scrolling asks for periods past the standing horizon', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1080, 2400);
@@ -147,18 +146,16 @@ void main() {
       });
     }
 
-    expect(
-      c.read(selectedPeriodProvider)?.id,
-      c.read(incomePeriodsProvider).last.id,
-    );
-    final FeedWindow window = c.read(feedWindowProvider);
     final CalendarDate today = SpaceClock(timezone: 'UTC').today();
-    expect(window.from, today.addMonths(-FeedWindow.stepMonths));
     expect(
-      window.to.isAfter(
-        today.addMonths(PeriodService.horizonMonths + FeedWindow.stepMonths),
-      ),
-      isFalse,
+      c
+          .read(periodReachProvider)!
+          .isAfter(today.addMonths(PeriodService.horizonMonths)),
+      isTrue,
+    );
+    expect(
+      c.read(feedWindowProvider).from,
+      today.addMonths(-FeedWindow.stepMonths),
     );
 
     await tester.pumpWidget(const SizedBox.shrink());
