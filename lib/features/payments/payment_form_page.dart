@@ -5,9 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
-import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/format/context_format.dart';
-import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
@@ -23,6 +21,7 @@ import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/feed/record_writes.dart';
 import 'package:sielto/features/payments/category_picker.dart';
 import 'package:sielto/features/payments/recurrence.dart';
 import 'package:sielto/features/payments/series_scope_dialog.dart';
@@ -226,11 +225,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
     if (mounted) setState(() => _loaded = true);
   }
 
-  Decimal? get _parsedAmount {
-    final Decimal? value = parseMoney(_amount.text);
-    if (value == null || value < Decimal.zero) return null;
-    return value;
-  }
+  Decimal? get _parsedAmount => parseAmount(_amount.text);
 
   /// Trimmed title and a non-negative amount. Zero is a dated to-do.
   bool get _isValid =>
@@ -400,20 +395,7 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
           case SeriesScope.cancelled:
             return;
         }
-        if (group != null && paidScope != StatusScope.thisOne) {
-          for (final Payment p in await repos.payments.seriesOf(group)) {
-            if (p.id == existing.id ||
-                p.isPaid == _isPaid ||
-                !paidScope.reaches(p.dueDate, existing.dueDate)) {
-              continue;
-            }
-            try {
-              await repos.payments.setPaid(p.id, isPaid: _isPaid);
-            } on PeriodFrozen {
-              continue;
-            }
-          }
-        }
+        await repos.spreadPaid(existing, paidScope, paid: _isPaid);
       }
       // The recompute binds the payment to its period.
       ref.invalidate(periodRefreshProvider);
@@ -763,30 +745,11 @@ class _LivePreview extends ConsumerWidget {
     final CalendarDate? draftDate = date;
     if (draftDate == null) return null;
 
-    final List<BudgetPeriod> periods = ref.watch(incomePeriodsProvider);
     final BudgetPeriod? target = periodsAround(
-      periods,
+      ref.watch(incomePeriodsProvider),
       draftDate,
     ).forChoice(periodChoice);
-    if (target == null) return null;
-
-    final List<Payment>? payments = ref.watch(spacePaymentsProvider).value;
-    final List<Income>? incomes = ref.watch(spaceIncomesProvider).value;
-    final List<IncomeRecurrenceRule>? rules = ref
-        .watch(incomeRulesProvider)
-        .value;
-    if (payments == null || incomes == null || rules == null) return null;
-
-    return buildPeriodLedger(
-      period: target,
-      payments: payments,
-      incomes: incomes,
-      anchorRuleIds: <String>{
-        for (final IncomeRecurrenceRule r in rules)
-          if (r.isAnchor) r.id,
-      },
-      today: ref.watch(spaceClockProvider).today(),
-    );
+    return target == null ? null : ref.watch(ledgerOfPeriodProvider(target.id));
   }
 
   /// "12.08 – 10.09", or null without cycles.
@@ -805,8 +768,7 @@ class _LivePreview extends ConsumerWidget {
     final CalendarDate? end = target?.endDate;
     if (target == null || end == null) return null;
 
-    final DateLabels dates = context.dates;
-    return '${dates.dayMonth(target.startDate)} – ${dates.dayMonth(end)}';
+    return context.dates.range(target.startDate, end);
   }
 
   @override

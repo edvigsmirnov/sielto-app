@@ -94,6 +94,29 @@ void main() {
     await service.refresh(space, today);
   }
 
+  test('an edited income replaces itself in the preview', () async {
+    await addSalary(amount: '3000');
+    final Income bonus = await repos.incomes.create(
+      spaceId: space.id,
+      title: 'Bonus',
+      expectedDate: d('2026-03-20'),
+      amount: m('500'),
+    );
+    await service.refresh(space, today);
+
+    final PeriodLedger ledger = await ledgerOf(await currentPeriod());
+    expect(ledger.freeCash, m('3500'));
+    expect(
+      ledger.freeCashWithIncome(
+        d('2026-03-20'),
+        m('600'),
+        replacingId: bonus.id,
+      ),
+      m('3600'),
+    );
+    expect(ledger.freeCashWithIncome(d('2026-03-20'), m('600')), m('4100'));
+  });
+
   test('the anchor is counted once, not once per materialised month', () async {
     await repos.payments.create(
       spaceId: space.id,

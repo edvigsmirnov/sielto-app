@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
-import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
@@ -22,6 +21,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/feed/record_writes.dart';
 import 'package:sielto/features/incomes/anchor_help.dart';
 import 'package:sielto/features/incomes/income_rule_form_page.dart';
 import 'package:sielto/features/incomes/income_scope_dialog.dart';
@@ -156,11 +156,8 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
 
         final String? ruleId = row.recurrenceRuleId;
         if (ruleId != null) {
-          final List<IncomeRecurrenceRule> anchors = await repos.incomeRules
-              .anchorsInSpace(space.id);
-          _isAnchorOccurrence = anchors.any(
-            (IncomeRecurrenceRule r) => r.id == ruleId,
-          );
+          _isAnchorOccurrence =
+              (await repos.incomeRules.byId(ruleId))?.isAnchor ?? false;
         }
       }
     } else if (space.budgetMode == BudgetMode.incomeDriven) {
@@ -176,11 +173,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
   }
 
   /// Null: amount not known yet.
-  Decimal? get _parsedAmount {
-    final Decimal? value = parseMoney(_amount.text);
-    if (value == null || value <= Decimal.zero) return null;
-    return value;
-  }
+  Decimal? get _parsedAmount => parseAmount(_amount.text, allowZero: false);
 
   bool get _amountFieldIsWellFormed =>
       _amount.text.trim().isEmpty || _parsedAmount != null;
@@ -394,27 +387,7 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
       actualDate: Value<CalendarDate?>(_isReceived ? _actualDate : null),
     );
 
-    if (ruleId != null && receivedScope != StatusScope.thisOne) {
-      for (final Income i in await repos.incomes.forRule(ruleId)) {
-        if (i.id == existing.id ||
-            i.isPaid == _isReceived ||
-            (_isReceived && i.amount == null) ||
-            !receivedScope.reaches(i.expectedDate, existing.expectedDate)) {
-          continue;
-        }
-        try {
-          await (_isReceived
-              ? repos.incomes.markReceived(i.id)
-              : repos.incomes.update(
-                  i.id,
-                  isPaid: const Value<bool>(false),
-                  actualDate: const Value<CalendarDate?>(null),
-                ));
-        } on PeriodFrozen {
-          continue;
-        }
-      }
-    }
+    await repos.spreadReceived(existing, receivedScope, received: _isReceived);
 
     if (scope == IncomeScope.allFuture) {
       await repos.incomeRules.setAmount(
@@ -441,13 +414,10 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
     final String? ruleId = _existing?.recurrenceRuleId;
     if (ruleId == null) return;
 
-    final List<IncomeRecurrenceRule> rules = await ref
+    final IncomeRecurrenceRule? rule = await ref
         .read(repositoriesProvider)
         .incomeRules
-        .inSpace(ref.read(currentSpaceProvider)!.id);
-    final IncomeRecurrenceRule? rule = rules
-        .where((IncomeRecurrenceRule r) => r.id == ruleId)
-        .firstOrNull;
+        .byId(ruleId);
     if (rule == null || !mounted) return;
     await openIncomeRuleForm(context, rule: rule);
   }
@@ -625,7 +595,12 @@ class _IncomeFormPageState extends ConsumerState<IncomeFormPage> {
                   ),
                 ),
                 const SizedBox(height: SageSpace.sm),
-                _LandsIn(date: _date!, amount: _parsedAmount, money: money),
+                _LandsIn(
+                  date: _date!,
+                  amount: _isAnchorOccurrence ? null : _parsedAmount,
+                  money: money,
+                  replacingId: _existing?.id,
+                ),
                 const SizedBox(height: SageSpace.lg),
               ],
 
@@ -742,11 +717,17 @@ class _LandsIn extends ConsumerWidget {
     required this.date,
     required this.amount,
     required this.money,
+    required this.replacingId,
   });
 
   final CalendarDate date;
+
+  /// Null hides the figures.
   final Decimal? amount;
   final MoneyFormat money;
+
+  /// The income being edited; the draft replaces it.
+  final String? replacingId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -764,29 +745,15 @@ class _LandsIn extends ConsumerWidget {
 
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
-    final DateLabels dates = context.dates;
 
-    final PeriodLedger ledger = buildPeriodLedger(
-      period: period,
-      payments: ref.watch(spacePaymentsProvider).value ?? const <Payment>[],
-      incomes: ref.watch(spaceIncomesProvider).value ?? const <Income>[],
-      anchorRuleIds: <String>{
-        for (final IncomeRecurrenceRule r
-            in ref.watch(incomeRulesProvider).value ??
-                const <IncomeRecurrenceRule>[])
-          if (r.isAnchor) r.id,
-      },
-      today: ref.watch(spaceClockProvider).today(),
-    );
-    final Decimal? free = ledger.freeCash;
+    final PeriodLedger? ledger = ref.watch(ledgerOfPeriodProvider(period.id));
+    final Decimal? draft = amount;
+    final Decimal? before = ledger?.freeCash;
+    final Decimal? after = draft == null
+        ? null
+        : ledger?.freeCashWithIncome(date, draft, replacingId: replacingId);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(SageSpace.md),
-      decoration: BoxDecoration(
-        color: sage.accentTint,
-        borderRadius: BorderRadius.circular(SageRadius.button),
-      ),
+    return TintBox(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -794,18 +761,17 @@ class _LandsIn extends ConsumerWidget {
             tr(
               'income.landsIn',
               namedArgs: <String, String>{
-                'period': dates.range(period.startDate, end),
+                'period': context.dates.range(period.startDate, end),
               },
             ),
             style: text.bodySmall?.copyWith(color: sage.inkSecondary),
           ),
-          // Nothing to add while the amount is empty.
-          if (free != null && amount != null) ...<Widget>[
+          if (before != null && after != null) ...<Widget>[
             const SizedBox(height: SageSpace.xs),
             Row(
               children: <Widget>[
                 Text(
-                  money.format(free),
+                  money.format(before),
                   style: text.titleSmall?.copyWith(color: sage.inkSecondary),
                 ),
                 Padding(
@@ -818,7 +784,7 @@ class _LandsIn extends ConsumerWidget {
                 ),
                 Flexible(
                   child: Text(
-                    money.format(free + amount!),
+                    money.format(after),
                     overflow: TextOverflow.ellipsis,
                     style: text.titleMedium?.copyWith(color: sage.accentStrong),
                   ),

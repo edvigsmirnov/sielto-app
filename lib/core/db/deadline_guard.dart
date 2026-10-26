@@ -19,11 +19,14 @@ class DeadlineGuard {
 
   final BudgetPeriodRepository periods;
 
-  Future<void> refuseIfBeyondDeadline(String spaceId, CalendarDate date) async {
+  /// Null without a hard deadline.
+  Future<CalendarDate?> hardDeadline(String spaceId) async {
     final BudgetPeriod? period = await periods.continuousFor(spaceId);
-    if (period == null || !period.deadlineIsHard) return;
+    return period != null && period.deadlineIsHard ? period.deadlineDate : null;
+  }
 
-    final CalendarDate? deadline = period.deadlineDate;
+  Future<void> refuseIfBeyondDeadline(String spaceId, CalendarDate date) async {
+    final CalendarDate? deadline = await hardDeadline(spaceId);
     if (deadline == null || !date.isAfter(deadline)) return;
     throw BeyondHardDeadline(deadline);
   }

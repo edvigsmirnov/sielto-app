@@ -6,6 +6,7 @@ import 'package:sielto/domain/ledger/ledger_entry.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/periods/period_choice.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// One income cycle, walked from its anchor income. `is_paid` changes no
@@ -46,10 +47,40 @@ class PeriodLedger extends SpaceLedger {
 
   bool get isComputable => cascade != null;
 
+  /// [freeCash] with [amount] arriving on [date], in place of the income
+  /// [replacingId]. Null when not covered or the anchor amount is unknown.
+  Decimal? freeCashWithIncome(
+    CalendarDate date,
+    Decimal amount, {
+    String? replacingId,
+  }) {
+    final Decimal? start = anchorAmount;
+    if (start == null) return null;
+    return previewRun(
+      available: start,
+      entries: entries,
+      draft: <LedgerEntry>[
+        LedgerEntry(
+          id: 'draft',
+          date: date,
+          amount: amount,
+          isIncome: true,
+          sortOrder: 1 << 30,
+        ),
+      ],
+      replacingId: replacingId,
+    ).freeCash;
+  }
+
   /// A cycle without income and without anything owed is not judged.
   @override
   bool get isJudged => hasIncome || hasUnpaidExpense;
 }
+
+Set<String> anchorIdsOf(List<IncomeRecurrenceRule> rules) => <String>{
+  for (final IncomeRecurrenceRule r in rules)
+    if (r.isAnchor) r.id,
+};
 
 PeriodLedger buildPeriodLedger({
   required BudgetPeriod period,
@@ -189,12 +220,7 @@ final Provider<BudgetPeriod?> selectedPeriodProvider = Provider<BudgetPeriod?>((
   }
 
   final CalendarDate today = ref.watch(spaceClockProvider).today();
-  for (final BudgetPeriod p in periods) {
-    if (p.startDate.isAfter(today)) continue;
-    final CalendarDate? end = p.endDate;
-    if (end == null || !end.isBefore(today)) return p;
-  }
-  return periods.first;
+  return periodsAround(periods, today).current ?? periods.first;
 });
 
 /// Every cycle's figures, oldest first. Independent of the selection.
@@ -222,10 +248,7 @@ final Provider<AsyncValue<List<PeriodLedger>>> periodLedgersProvider =
         return const AsyncValue<List<PeriodLedger>>.loading();
       }
 
-      final Set<String> anchors = <String>{
-        for (final IncomeRecurrenceRule r in ruleRows)
-          if (r.isAnchor) r.id,
-      };
+      final Set<String> anchors = anchorIdsOf(ruleRows);
       final CalendarDate today = ref.watch(spaceClockProvider).today();
 
       return AsyncValue<List<PeriodLedger>>.data(<PeriodLedger>[
@@ -239,6 +262,15 @@ final Provider<AsyncValue<List<PeriodLedger>>> periodLedgersProvider =
           ),
       ]);
     });
+
+/// One cycle's figures by its id; null while loading or for an unknown id.
+final ledgerOfPeriodProvider = Provider.family<PeriodLedger?, String>(
+  (Ref ref, String periodId) => ref
+      .watch(periodLedgersProvider)
+      .value
+      ?.where((PeriodLedger l) => l.period.id == periodId)
+      .firstOrNull,
+);
 
 final Provider<AsyncValue<PeriodLedger>> periodLedgerProvider =
     Provider<AsyncValue<PeriodLedger>>((Ref ref) {

@@ -408,10 +408,7 @@ class _AmountSheetState extends State<_AmountSheet> {
 
   bool get _empty => _amount.text.trim().isEmpty;
 
-  Decimal? get _parsed {
-    final Decimal? value = parseMoney(_amount.text);
-    return value == null || value < Decimal.zero ? null : value;
-  }
+  Decimal? get _parsed => parseAmount(_amount.text);
 
   bool get _valid => _empty ? widget.optional : _parsed != null;
 

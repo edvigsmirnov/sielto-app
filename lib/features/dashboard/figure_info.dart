@@ -179,12 +179,7 @@ class _InfoBody extends StatelessWidget {
         Text(info.what, style: text.bodyMedium),
         if (info.sum.isNotEmpty) ...<Widget>[
           const SizedBox(height: SageSpace.md),
-          Container(
-            padding: const EdgeInsets.all(SageSpace.md),
-            decoration: BoxDecoration(
-              color: sage.accentTint,
-              borderRadius: BorderRadius.circular(SageRadius.button),
-            ),
+          TintBox(
             child: Column(
               children: <Widget>[
                 for (int i = 0; i < info.sum.length; i++) ...<Widget>[

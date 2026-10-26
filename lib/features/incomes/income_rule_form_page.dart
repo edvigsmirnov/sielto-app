@@ -42,16 +42,17 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
   late ScheduleDraft _schedule = _draftOf(widget.rule);
   bool _saving = false;
 
-  static ScheduleDraft _draftOf(IncomeRecurrenceRule rule) => ScheduleDraft(
-    type: rule.scheduleType,
-    fixedDay: rule.fixedDay ?? 1,
-    ordinal: rule.weekdayOrdinal ?? WeekdayOrdinal.first,
-    weekday: rule.weekdayDay ?? Weekday.monday,
-    rangeStart: rule.dateRangeStart ?? 23,
-    rangeEnd: rule.dateRangeEnd ?? 25,
-    boundaryAnchor: rule.boundaryAnchor ?? BoundaryAnchor.start,
-    boundaryCount: rule.boundaryCount ?? 3,
-  );
+  static ScheduleDraft _draftOf(IncomeRecurrenceRule rule) =>
+      const ScheduleDraft().copyWith(
+        type: rule.scheduleType,
+        fixedDay: rule.fixedDay,
+        ordinal: rule.weekdayOrdinal,
+        weekday: rule.weekdayDay,
+        rangeStart: rule.dateRangeStart,
+        rangeEnd: rule.dateRangeEnd,
+        boundaryAnchor: rule.boundaryAnchor,
+        boundaryCount: rule.boundaryCount,
+      );
 
   @override
   void initState() {
@@ -71,11 +72,7 @@ class _IncomeRuleFormPageState extends ConsumerState<IncomeRuleFormPage> {
     super.dispose();
   }
 
-  Decimal? get _parsedAmount {
-    final Decimal? value = parseMoney(_amount.text);
-    if (value == null || value <= Decimal.zero) return null;
-    return value;
-  }
+  Decimal? get _parsedAmount => parseAmount(_amount.text, allowZero: false);
 
   bool get _amountIsWellFormed =>
       _amount.text.trim().isEmpty || _parsedAmount != null;

@@ -10,6 +10,15 @@ Decimal? parseMoney(String input) {
   return Decimal.tryParse(cleaned);
 }
 
+/// A typed amount of zero or more, or above zero unless [allowZero]. Null
+/// otherwise.
+Decimal? parseAmount(String input, {bool allowZero = true}) {
+  final Decimal? value = parseMoney(input);
+  if (value == null || value < Decimal.zero) return null;
+  if (!allowZero && value == Decimal.zero) return null;
+  return value;
+}
+
 /// An amount for an input field: `2.50`, `40`.
 String moneyText(Decimal? amount) => amount == null
     ? ''

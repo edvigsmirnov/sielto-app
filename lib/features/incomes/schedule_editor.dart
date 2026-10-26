@@ -210,22 +210,13 @@ class UncertaintyNote extends StatelessWidget {
   final bool weekday;
 
   @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(SageSpace.md),
-      decoration: BoxDecoration(
-        color: sage.accentTint,
-        borderRadius: BorderRadius.circular(SageRadius.button),
-      ),
-      child: Text(
-        tr(weekday ? 'schedule.weekdayNote' : 'schedule.uncertaintyNote'),
-        style: Theme.of(context).textTheme.bodySmall
-            ?.copyWith(color: sage.inkSecondary),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => TintBox(
+    child: Text(
+      tr(weekday ? 'schedule.weekdayNote' : 'schedule.uncertaintyNote'),
+      style: Theme.of(context).textTheme.bodySmall
+          ?.copyWith(color: context.sage.inkSecondary),
+    ),
+  );
 }
 
 /// "The 26th of every month."

@@ -318,6 +318,37 @@ void main() {
       expect(rows.every((Income i) => !i.expectedDate.isBefore(today)), isTrue);
       expect(await repos.periods.incomeDrivenIn(flow.id), isEmpty);
     });
+
+    test('a Budget Space skips dates past its hard deadline', () async {
+      final Space budget = await repos.spaces.create(
+        title: 'Trip',
+        spaceType: SpaceType.personal,
+        budgetMode: BudgetMode.budget,
+        ownerId: 'tester',
+        timezone: 'UTC',
+        currencyCode: 'EUR',
+      );
+      await repos.periods.ensureContinuous(
+        spaceId: budget.id,
+        startDate: today,
+        deadlineDate: d('2026-05-31'),
+        deadlineIsHard: true,
+      );
+      await repos.incomeRules.create(
+        spaceId: budget.id,
+        title: 'Allowance',
+        schedule: FixedDateSchedule(15),
+        amount: m('200'),
+      );
+      await service.refresh(budget, today);
+
+      final List<Income> rows = await repos.incomes.inSpace(budget.id);
+      expect(rows.map((Income i) => i.expectedDate), <CalendarDate>[
+        d('2026-03-16'),
+        d('2026-04-15'),
+        d('2026-05-15'),
+      ]);
+    });
   });
 
   group('regenerate', () {

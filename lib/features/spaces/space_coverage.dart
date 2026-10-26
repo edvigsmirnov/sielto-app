@@ -5,6 +5,7 @@ import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/periods/period_choice.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
@@ -57,13 +58,7 @@ Future<Coverage?> coverageOf(Repositories repos, Space space) async {
   final List<BudgetPeriod> periods = await repos.periods.incomeDrivenIn(
     space.id,
   );
-  final BudgetPeriod? current = periods
-      .where(
-        (BudgetPeriod p) =>
-            !p.startDate.isAfter(today) &&
-            (p.endDate == null || !p.endDate!.isBefore(today)),
-      )
-      .firstOrNull;
+  final BudgetPeriod? current = periodsAround(periods, today).current;
   // No period yet: nothing to report.
   if (current == null) return null;
 
@@ -74,10 +69,7 @@ Future<Coverage?> coverageOf(Repositories repos, Space space) async {
     period: current,
     payments: payments,
     incomes: incomes,
-    anchorRuleIds: <String>{
-      for (final IncomeRecurrenceRule r in rules)
-        if (r.isAnchor) r.id,
-    },
+    anchorRuleIds: anchorIdsOf(rules),
     today: today,
   ).coverage;
 }

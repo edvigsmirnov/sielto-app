@@ -3,6 +3,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:meta/meta.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/db/deadline_guard.dart';
 import 'package:sielto/core/db/synced_repository.dart';
 import 'package:sielto/domain/period/freeze.dart';
 import 'package:sielto/domain/period/period_materializer.dart';
@@ -10,6 +11,7 @@ import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/schedule/working_days.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/domain/value/enums.dart';
+import 'package:sielto/features/periods/period_choice.dart';
 import 'package:sielto/features/periods/schedule_mapping.dart';
 
 @immutable
@@ -145,15 +147,11 @@ class PeriodService {
       final int rebound = await _bindRecords(space);
       return (periods: periods, materialised: materialised, rebound: rebound);
     });
-    final ({int created, int removed, int updated}) periods = result.periods;
-    final int materialised = result.materialised;
-    final int rebound = result.rebound;
-
     return PeriodRefresh(
-      periodsCreated: periods.created,
-      periodsUpdated: periods.updated,
-      incomesMaterialised: materialised,
-      reboundToAuto: rebound,
+      periodsCreated: result.periods.created,
+      periodsUpdated: result.periods.updated,
+      incomesMaterialised: result.materialised,
+      reboundToAuto: result.rebound,
     );
   }
 
@@ -204,8 +202,7 @@ class PeriodService {
         );
 
     final List<String> ids = <String>[
-      for (final MaterializedPeriod p in computed)
-        SyncedRepository.slotId('period:${space.id}:${p.slot}'),
+      for (final MaterializedPeriod p in computed) periodSlotId(space.id, p),
     ];
 
     /// Confirmed receipt date, else the scheduled date.
@@ -296,20 +293,14 @@ class PeriodService {
     final List<BudgetPeriod> boundaries = await repos.periods.incomeDrivenIn(
       space.id,
     );
-    final BudgetPeriod? current = boundaries
-        .where(
-          (BudgetPeriod p) =>
-              !p.startDate.isAfter(today) &&
-              (p.endDate == null || !p.endDate!.isBefore(today)),
-        )
-        .firstOrNull;
     return (
-      from: current?.startDate ?? today,
+      from: periodsAround(boundaries, today).current?.startDate ?? today,
       horizonEnd: boundaries.isEmpty ? null : boundaries.last.endDate,
     );
   }
 
-  /// Scheduled dates within the window, never before the rule was created.
+  /// Scheduled dates within the window, never before the rule was created
+  /// nor after a hard [deadline].
   ({CalendarDate floor, List<({String id, CalendarDate date})> dates})
   _scheduledDates(
     Space space,
@@ -317,6 +308,7 @@ class PeriodService {
     IncomeSchedule schedule, {
     required CalendarDate from,
     required CalendarDate? horizonEnd,
+    required CalendarDate? deadline,
   }) {
     final CalendarDate ruleStart = repos.spaces
         .clockFor(space)
@@ -336,6 +328,7 @@ class PeriodService {
           .resolveFor(year, month, calendar: calendar)
           .anchorDate;
       if ((horizonEnd == null || !date.isAfter(horizonEnd)) &&
+          (deadline == null || !date.isAfter(deadline)) &&
           !date.isBefore(floor)) {
         dates.add((id: incomeSlotId(rule.id, year, month), date: date));
       }
@@ -355,6 +348,7 @@ class PeriodService {
     required CalendarDate from,
     required CalendarDate? horizonEnd,
   }) async {
+    final CalendarDate? deadline = await _hardDeadline(space);
     int written = 0;
     for (final IncomeRecurrenceRule rule in rules) {
       final IncomeSchedule? schedule = scheduleOf(rule);
@@ -370,6 +364,7 @@ class PeriodService {
         schedule,
         from: from,
         horizonEnd: horizonEnd,
+        deadline: deadline,
       ).dates) {
         if (!filled.add(slot.id)) continue;
         await repos.incomes.create(
@@ -386,6 +381,9 @@ class PeriodService {
     }
     return written;
   }
+
+  Future<CalendarDate?> _hardDeadline(Space space) =>
+      DeadlineGuard(periods: repos.periods).hardDeadline(space.id);
 
   /// The latest date of [schedule] on or before [today].
   CalendarDate lastDateOf(IncomeSchedule schedule, CalendarDate today) {
@@ -449,9 +447,7 @@ class PeriodService {
                 !p.startDate.isAfter(end) &&
                 (p.endDate == null || !p.endDate!.isBefore(period.startDate)),
           );
-          final String id = SyncedRepository.slotId(
-            'period:${space.id}:${period.slot}',
-          );
+          final String id = periodSlotId(space.id, period);
           if (taken || await repos.periods.anyById(id) != null) continue;
           await repos.periods.createIncomeDriven(
             id: id,
@@ -525,6 +521,7 @@ class PeriodService {
         schedule,
         from: window.from,
         horizonEnd: window.horizonEnd,
+        deadline: await _hardDeadline(space),
       );
       final Map<String, CalendarDate> scheduled = <String, CalendarDate>{
         for (final ({String id, CalendarDate date}) slot in planned.dates)
@@ -576,14 +573,8 @@ class PeriodService {
     );
     if (periods.isEmpty) return 0;
 
-    String? periodFor(CalendarDate date) {
-      for (final BudgetPeriod p in periods) {
-        if (p.startDate.isAfter(date)) continue;
-        final CalendarDate? end = p.endDate;
-        if (end == null || !end.isBefore(date)) return p.id;
-      }
-      return null;
-    }
+    String? periodFor(CalendarDate date) =>
+        periodsAround(periods, date).current?.id;
 
     for (final Payment payment in await repos.payments.autoAssignedIn(
       space.id,
@@ -622,6 +613,10 @@ class PeriodService {
     return rebound;
   }
 }
+
+/// One income-driven period, the same on every device.
+String periodSlotId(String spaceId, MaterializedPeriod period) =>
+    SyncedRepository.slotId('period:$spaceId:${period.slot}');
 
 /// One schedule month of one regular income, the same on every device.
 String incomeSlotId(String ruleId, int year, int month) =>

@@ -49,6 +49,24 @@ class SageCard extends StatelessWidget {
   }
 }
 
+/// A note or figure on the accent tint, full width.
+class TintBox extends StatelessWidget {
+  const TintBox({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(SageSpace.md),
+    decoration: BoxDecoration(
+      color: context.sage.accentTint,
+      borderRadius: BorderRadius.circular(SageRadius.button),
+    ),
+    child: child,
+  );
+}
+
 /// A sheet's or panel's centred heading.
 class SheetTitle extends StatelessWidget {
   const SheetTitle(this.text, {super.key});

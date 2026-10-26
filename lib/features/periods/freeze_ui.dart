@@ -63,41 +63,28 @@ class FreezeBanner extends ConsumerWidget {
     if (state == FreezeState.open &&
         until != null &&
         ref.watch(spaceClockProvider).nowUtc().isBefore(until)) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: SageSpace.md),
-        child: SageCard(
-          color: sage.warningTint,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Icon(Icons.lock_open_outlined, size: 18, color: sage.warning),
-              const SizedBox(width: SageSpace.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      tr(
-                        'freeze.reopenedTitle',
-                        args: <String>[
-                          DateFormat.MMMMd(context.locale.toString())
-                              .add_Hm()
-                              .format(until.toLocal()),
-                        ],
-                      ),
-                      style: text.labelLarge?.copyWith(color: sage.warning),
-                    ),
-                    if (period.unfreezeReason case final String reason)
-                      Text(
-                        tr('freeze.reopenedReason', args: <String>[reason]),
-                        style: text.bodySmall,
-                      ),
-                  ],
-                ),
-              ),
-            ],
+      return _StateCard(
+        icon: Icons.lock_open_outlined,
+        ink: sage.warning,
+        color: sage.warningTint,
+        children: <Widget>[
+          Text(
+            tr(
+              'freeze.reopenedTitle',
+              args: <String>[
+                DateFormat.MMMMd(context.locale.toString())
+                    .add_Hm()
+                    .format(until.toLocal()),
+              ],
+            ),
+            style: text.labelLarge?.copyWith(color: sage.warning),
           ),
-        ),
+          if (period.unfreezeReason case final String reason)
+            Text(
+              tr('freeze.reopenedReason', args: <String>[reason]),
+              style: text.bodySmall,
+            ),
+        ],
       );
     }
     if (state == FreezeState.open) return const SizedBox.shrink();
@@ -110,69 +97,47 @@ class FreezeBanner extends ConsumerWidget {
     final bool isOwner =
         space != null && space.ownerId == ref.watch(userIdProvider);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: SageSpace.md),
-      child: SageCard(
-        color: frozen ? sage.card : sage.warningTint,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return _StateCard(
+      icon: frozen ? Icons.lock_outline : Icons.schedule,
+      ink: ink,
+      color: frozen ? sage.card : sage.warningTint,
+      children: <Widget>[
+        Row(
           children: <Widget>[
-            Icon(
-              frozen ? Icons.lock_outline : Icons.schedule,
-              size: 18,
-              color: ink,
-            ),
-            const SizedBox(width: SageSpace.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Flexible(
-                        child: Text(
-                          frozen
-                              ? tr('freeze.frozenTitle')
-                              : tr('freeze.soonTitle'),
-                          style: text.labelLarge?.copyWith(color: ink),
-                        ),
-                      ),
-                      InfoButton(
-                        FigureInfo(
-                          title: tr('freeze.infoTitle'),
-                          what: tr('freeze.infoWhat'),
-                          note: tr('freeze.infoNote'),
-                        ),
-                        dense: true,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: SageSpace.xs),
-                  Text(
-                    frozen
-                        ? tr('freeze.frozenBody')
-                        : plural(
-                            'freeze.soonBody',
-                            lookup.daysUntilFreeze(period),
-                          ),
-                    style: text.bodySmall,
-                  ),
-                  if (frozen && isOwner) ...<Widget>[
-                    const SizedBox(height: SageSpace.xs),
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: TextButton(
-                        onPressed: () => _unfreeze(context, ref),
-                        child: Text(tr('freeze.unfreeze')),
-                      ),
-                    ),
-                  ],
-                ],
+            Flexible(
+              child: Text(
+                frozen ? tr('freeze.frozenTitle') : tr('freeze.soonTitle'),
+                style: text.labelLarge?.copyWith(color: ink),
               ),
+            ),
+            InfoButton(
+              FigureInfo(
+                title: tr('freeze.infoTitle'),
+                what: tr('freeze.infoWhat'),
+                note: tr('freeze.infoNote'),
+              ),
+              dense: true,
             ),
           ],
         ),
-      ),
+        const SizedBox(height: SageSpace.xs),
+        Text(
+          frozen
+              ? tr('freeze.frozenBody')
+              : plural('freeze.soonBody', lookup.daysUntilFreeze(period)),
+          style: text.bodySmall,
+        ),
+        if (frozen && isOwner) ...<Widget>[
+          const SizedBox(height: SageSpace.xs),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton(
+              onPressed: () => _unfreeze(context, ref),
+              child: Text(tr('freeze.unfreeze')),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -188,6 +153,42 @@ class FreezeBanner extends ConsumerWidget {
       reason,
     );
   }
+}
+
+/// An icon beside a column of text, on a card.
+class _StateCard extends StatelessWidget {
+  const _StateCard({
+    required this.icon,
+    required this.ink,
+    required this.children,
+    this.color,
+  });
+
+  final IconData icon;
+  final Color ink;
+  final Color? color;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: SageSpace.md),
+    child: SageCard(
+      color: color,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, size: 18, color: ink),
+          const SizedBox(width: SageSpace.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Null when dismissed.
@@ -207,25 +208,14 @@ class FreezeNotice extends StatelessWidget {
   const FreezeNotice({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: SageSpace.md),
-      child: SageCard(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Icon(Icons.lock_outline, size: 18, color: sage.inkLabel),
-            const SizedBox(width: SageSpace.sm),
-            Expanded(
-              child: Text(
-                tr('freeze.formNotice'),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => _StateCard(
+    icon: Icons.lock_outline,
+    ink: context.sage.inkLabel,
+    children: <Widget>[
+      Text(
+        tr('freeze.formNotice'),
+        style: Theme.of(context).textTheme.bodySmall,
       ),
-    );
-  }
+    ],
+  );
 }
