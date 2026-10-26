@@ -76,7 +76,8 @@ class _NoAnchorState extends StatelessWidget {
             ),
             const SizedBox(height: SageSpace.lg),
             FilledButton(
-              onPressed: () => openIncomeForm(context, regular: true),
+              onPressed: () =>
+                  openIncomeForm(context, regular: true, here: true),
               child: Text(tr('income.add')),
             ),
             Builder(
@@ -245,6 +246,7 @@ class _FloatingAnchorCard extends StatelessWidget {
                   context,
                   incomeId: income?.id,
                   date: income == null ? ledger.period.startDate : null,
+                  here: true,
                 ),
                 child: Text(tr('period.setAmount')),
               ),

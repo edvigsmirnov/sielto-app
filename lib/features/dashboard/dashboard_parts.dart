@@ -388,7 +388,7 @@ class NearestIncomeCard extends StatelessWidget {
 
     return SageCard(
       color: sage.accentTint,
-      onTap: () => openIncomeForm(context, incomeId: row.id),
+      onTap: () => openIncomeForm(context, incomeId: row.id, here: true),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

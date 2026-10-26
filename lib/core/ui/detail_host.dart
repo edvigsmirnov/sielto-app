@@ -25,14 +25,23 @@ class DetailHost extends StatefulWidget {
   final Widget? root;
 
   /// Pushes [route] into the nearest host, replacing what it showed, or onto
-  /// the caller's own navigator inside the host or without one.
-  static Future<T?> push<T>(BuildContext context, Route<T> route) {
+  /// the caller's own navigator inside the host or without one. [here] keeps
+  /// it in the caller's own column when that has a navigator of its own.
+  static Future<T?> push<T>(
+    BuildContext context,
+    Route<T> route, {
+    bool here = false,
+  }) {
     final NavigatorState own = Navigator.of(context);
     final NavigatorState? host = context
         .getInheritedWidgetOfExactType<_Scope>()
         ?.navigator
         .currentState;
-    if (host == null || identical(host, own)) return own.push(route);
+    if (host == null ||
+        identical(host, own) ||
+        (here && !identical(own, Navigator.of(context, rootNavigator: true)))) {
+      return own.push(route);
+    }
     return host.pushAndRemoveUntil(route, (Route<dynamic> r) => r.isFirst);
   }
 

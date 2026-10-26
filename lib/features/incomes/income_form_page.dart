@@ -41,6 +41,7 @@ Future<void> openIncomeForm(
   String? incomeId,
   CalendarDate? date,
   bool regular = false,
+  bool here = false,
 }) => DetailHost.push(
   context,
   MaterialPageRoute<void>(
@@ -48,6 +49,7 @@ Future<void> openIncomeForm(
     builder: (BuildContext _) =>
         IncomeFormPage(incomeId: incomeId, initialDate: date, regular: regular),
   ),
+  here: here,
 );
 
 class IncomeFormPage extends ConsumerStatefulWidget {
