@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:decimal/decimal.dart';
-import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
@@ -33,14 +32,15 @@ import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/feed_reorder.dart';
 import 'package:sielto/features/feed/feed_row.dart';
 import 'package:sielto/features/feed/feed_selection.dart';
+import 'package:sielto/features/feed/feed_source.dart';
 import 'package:sielto/features/feed/feed_window.dart';
 import 'package:sielto/features/feed/record_actions.dart';
+import 'package:sielto/features/feed/record_writes.dart';
 import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/periods/period_service.dart';
 import 'package:sielto/features/shell/app_header.dart';
-import 'package:sielto/features/space/budget_ledger.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
@@ -220,7 +220,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final MoneyFormat money = context.moneyIn(space.currencyCode);
     final DateLabels dates = context.dates;
 
-    final _FeedSource? source = _source(space);
+    final FeedSource? source = ref.watch(feedSourceProvider);
     if (source == null) {
       return Scaffold(
         backgroundColor: context.sage.surface,
@@ -232,18 +232,18 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final FeedFilter filter = ref.watch(feedFilterProvider);
     final Set<String> selection = ref.watch(feedSelectionProvider);
     if (selection.isEmpty) _bulkSeen = false;
-    _records = source.records;
+    _records = _withDropped(source.records);
     _items = buildFeedItems(
       records: filter.isActive
-          ? source.records.where(filter.matches).toList()
-          : source.records,
+          ? _records.where(filter.matches).toList()
+          : _records,
       orderMode: space.feedOrderMode,
       coverage: source.coverage,
       moneyEndsAt: source.moneyEndsAt,
       today: filter.isActive ? null : source.today,
-      emptyPeriodStarts: filter.isActive || !source.byPeriod
+      emptyPeriodStarts: filter.isActive
           ? const <CalendarDate>[]
-          : _emptyPeriodStarts(source.records),
+          : source.emptyPeriodStarts,
     );
     final List<FeedItem> items = _items;
     final double grow = feedGrowth(context);
@@ -348,14 +348,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               tooltip: tr('feed.bulk.title'),
               onPressed: () {
                 setState(() => _bulkSeen = true);
-                showBulkActions(
-                  context,
-                  ref,
-                  records: <FeedRecord>[
-                    for (final FeedRecord r in source.records)
-                      if (selection.contains(r.id)) r,
-                  ],
-                );
+                showBulkActions(context, ref, records: _selected(selection));
               },
             )
           : table
@@ -426,7 +419,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                           ),
                           child: SingleChildScrollView(
                             child: FeedFilterPanel(
-                              shown: _allMatches(filter),
+                              shown: feedMatches(ref, filter),
                               money: money,
                             ),
                           ),
@@ -438,7 +431,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 Semantics(
                   container: true,
                   child: FeedFilterBar(
-                    shown: _allMatches(filter),
+                    shown: feedMatches(ref, filter),
                     money: money,
                   ),
                 ),
@@ -630,140 +623,27 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     );
   }
 
-  /// Every record the filter matches, outside the render window too.
-  List<FeedRecord> _allMatches(FeedFilter filter) => <FeedRecord>[
-    for (final Payment p
-        in ref.read(spacePaymentsProvider).value ?? const <Payment>[])
-      if (filter.matches(FeedRecord.fromPayment(p))) FeedRecord.fromPayment(p),
-    for (final Income i
-        in ref.read(spaceIncomesProvider).value ?? const <Income>[])
-      if (filter.matches(FeedRecord.fromIncome(i))) FeedRecord.fromIncome(i),
-  ];
-
-  /// The list and its figures. One continuous list in every mode; only the
-  /// figures follow the selected period.
-  _FeedSource? _source(Space space) {
-    final List<Payment>? payments = ref.watch(spacePaymentsProvider).value;
-    final List<Income>? incomes = ref.watch(spaceIncomesProvider).value;
-    if (payments == null || incomes == null) return null;
-    // Right after a Space switch the lists still hold the previous Space.
-    if (payments.firstOrNull?.spaceId case final String id
-        when id != space.id) {
-      return null;
-    }
-    if (incomes.firstOrNull?.spaceId case final String id when id != space.id) {
-      return null;
-    }
-
-    final FeedWindow window = ref.watch(feedWindowProvider);
-    final List<FeedRecord> records = <FeedRecord>[
-      for (final Payment p in payments)
-        if (window.contains(p.dueDate)) FeedRecord.fromPayment(p),
-      for (final Income i in incomes)
-        if (window.contains(i.expectedDate)) FeedRecord.fromIncome(i),
-    ];
-    _applyDropped(records);
-
-    if (space.budgetMode == BudgetMode.incomeDriven) {
-      final List<PeriodLedger> ledgers =
-          ref.watch(periodLedgersProvider).value ?? const <PeriodLedger>[];
-      final Map<String, bool> coverage = <String, bool>{};
-      final Map<String, bool> endsAt = <String, bool>{};
-      final Map<String, Decimal> left = <String, Decimal>{};
-      for (final PeriodLedger ledger in ledgers) {
-        coverage.addAll(ledger.coverageByEntry);
-        left.addAll(ledger.balanceByEntry);
-        final ({String entryId, bool below})? end = ledger.moneyEndsAt;
-        if (end != null) endsAt[end.entryId] = end.below;
-      }
-
-      // No periods before the first regular income.
-      final PeriodLedger? selected = ref.watch(periodLedgerProvider).value;
-      if (selected == null) {
-        return _FeedSource(
-          records: records,
-          today: ref.watch(spaceClockProvider).today(),
-          coverage: coverage,
-          moneyEndsAt: endsAt,
-          available: Decimal.zero,
-          freeCash: null,
-          paid: Decimal.zero,
-          remaining: Decimal.zero,
-          byPeriod: false,
-          mode: space.budgetMode,
-          hasIncome: false,
-        );
-      }
-
-      return _FeedSource(
-        records: records,
-        today: selected.today,
-        coverage: coverage,
-        leftAfter: left,
-        moneyEndsAt: endsAt,
-        available: selected.anchorAmount,
-        freeCash: selected.freeCash,
-        paid: selected.totalPaid,
-        remaining: selected.totalRemaining,
-        byPeriod: true,
-        mode: space.budgetMode,
-        hasIncome: selected.hasIncome,
-      );
-    }
-
-    final SpaceLedger? ledger = space.budgetMode == BudgetMode.budget
-        ? ref.watch(budgetLedgerProvider).value
-        : ref.watch(flowLedgerProvider).value;
-    if (ledger == null) return null;
-    final BudgetLedger? budget = ledger is BudgetLedger ? ledger : null;
-    final ({String entryId, bool below})? end = ledger.moneyEndsAt;
-    return _FeedSource(
-      records: records,
-      today: ledger.today,
-      coverage: ledger.coverageByEntry,
-      leftAfter: ledger.balanceByEntry,
-      moneyEndsAt: <String, bool>{if (end != null) end.entryId: end.below},
-      available: ledger.available,
-      // Without a fund the Budget figure is what was spent.
-      freeCash: budget?.hasFund ?? true ? ledger.freeCash : ledger.available,
-      paid: ledger.totalPaid,
-      remaining: ledger.totalRemaining,
-      byPeriod: false,
-      mode: space.budgetMode,
-      beyondDeadline: budget?.beyondDeadline ?? const <String>{},
-    );
-  }
-
-  /// Drops the overlay once the records match it.
-  void _applyDropped(List<FeedRecord> records) {
+  /// [records] in the order just dropped; the overlay goes once they match.
+  List<FeedRecord> _withDropped(List<FeedRecord> records) {
     final Map<String, int>? dropped = _dropped;
-    if (dropped == null) return;
-
-    bool settled = true;
-    for (int i = 0; i < records.length; i++) {
-      final int? order = dropped[records[i].id];
-      if (order == null || records[i].sortOrder == order) continue;
-      records[i] = records[i].withSortOrder(order);
-      settled = false;
+    if (dropped == null) return records;
+    if (records.every(
+      (FeedRecord r) => (dropped[r.id] ?? r.sortOrder) == r.sortOrder,
+    )) {
+      _dropped = null;
+      return records;
     }
-    if (settled) _dropped = null;
-  }
-
-  /// Periods in the render window with no entries, so the selector can
-  /// still scroll to them.
-  List<CalendarDate> _emptyPeriodStarts(List<FeedRecord> records) {
-    final FeedWindow window = ref.watch(feedWindowProvider);
-    return <CalendarDate>[
-      for (final BudgetPeriod p in ref.watch(incomePeriodsProvider))
-        if (window.contains(p.startDate) &&
-            !records.any(
-              (FeedRecord r) =>
-                  !r.date.isBefore(p.startDate) &&
-                  (p.endDate == null || !r.date.isAfter(p.endDate!)),
-            ))
-          p.startDate,
+    return <FeedRecord>[
+      for (final FeedRecord r in records)
+        r.withSortOrder(dropped[r.id] ?? r.sortOrder),
     ];
   }
+
+  /// The selected records, in list order.
+  List<FeedRecord> _selected(Set<String> selection) => <FeedRecord>[
+    for (final FeedRecord r in _records)
+      if (selection.contains(r.id)) r,
+  ];
 
   /// Selects the period of the top visible day.
   void _syncPeriodToScroll() {
@@ -897,10 +777,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             context,
             ref,
             records: selection.contains(record.id)
-                ? <FeedRecord>[
-                    for (final FeedRecord r in _records)
-                      if (selection.contains(r.id)) r,
-                  ]
+                ? _selected(selection)
                 : <FeedRecord>[record],
           ),
           selecting: selection.isNotEmpty,
@@ -956,14 +833,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             for (final MapEntry<String, int> e in orders.entries) {
               final FeedRecord? record = byId[e.key];
               if (record == null || record.sortOrder == e.value) continue;
-              if (record.isIncome) {
-                await repos.incomes.setSortOrder(record.id, e.value);
-              } else {
-                await repos.payments.update(
-                  record.id,
-                  sortOrder: Value<int>(e.value),
-                );
-              }
+              await repos.setRecordOrder(record, e.value);
             }
           });
         } catch (_) {
@@ -983,78 +853,20 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             .firstOrNull;
         if (row == null) return;
         if (!mounted) return;
-        await guardWrite(
-          context,
-          () => row.record.isIncome
-              ? repos.incomes.update(
-                  id,
-                  expectedDate: Value<CalendarDate>(date),
-                )
-              : repos.payments.update(id, dueDate: Value<CalendarDate>(date)),
-        );
+        await guardWrite(context, () => repos.moveRecord(row.record, date));
         // The new date may belong to another period.
         ref.invalidate(periodRefreshProvider);
     }
   }
 }
 
-/// What the Feed draws, in any mode.
-@immutable
-class _FeedSource {
-  const _FeedSource({
-    required this.records,
-    required this.today,
-    required this.coverage,
-    required this.moneyEndsAt,
-    required this.available,
-    required this.freeCash,
-    required this.paid,
-    required this.remaining,
-    required this.byPeriod,
-    required this.mode,
-    this.beyondDeadline = const <String>{},
-    this.hasIncome = true,
-    this.leftAfter = const <String, Decimal>{},
-  });
+extension on FeedSource {
+  String availableText(MoneyFormat money) =>
+      available == null ? tr('income.amountUnknown') : money.format(available!);
 
-  final List<FeedRecord> records;
-  final CalendarDate today;
-  final Map<String, bool> coverage;
-
-  /// Left to spend after each entry.
-  final Map<String, Decimal> leftAfter;
-
-  /// Row id to the side of the row where the cutoff falls.
-  final Map<String, bool> moneyEndsAt;
-
-  /// Null when the anchor income has no amount.
-  final Decimal? available;
-
-  /// Null when not covered or [available] is unknown.
-  final Decimal? freeCash;
-
-  String get availableLabel => switch (mode) {
-    BudgetMode.incomeDriven => 'feed.income',
-    BudgetMode.flow => 'feed.currentMoney',
-    BudgetMode.budget => 'budget.fund',
-  };
-
-  /// The Dashboard's name for [freeCash].
-  String get freeLabel =>
-      mode == BudgetMode.budget ? 'budget.remaining' : 'dashboard.freeMoney';
-
-  final Decimal paid;
-  final Decimal remaining;
-
-  final bool byPeriod;
-
-  final BudgetMode mode;
-
-  /// Dimmed and excluded.
-  final Set<String> beyondDeadline;
-
-  /// False for a cycle with no income; free money is then zero.
-  final bool hasIncome;
+  String freeText(MoneyFormat money) => free != null
+      ? money.format(free!)
+      : tr(available == null ? 'income.amountUnknown' : 'feed.runsShort');
 }
 
 /// The four figures above the list, in a 2x2 grid.
@@ -1067,7 +879,7 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
     this.onBalanceTap,
   });
 
-  final _FeedSource source;
+  final FeedSource source;
   final MoneyFormat money;
 
   /// Flow only: the balance opens its sheet, as on the Dashboard.
@@ -1091,16 +903,6 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Decimal? available = source.available;
-    final Decimal? free = source.hasIncome ? source.freeCash : Decimal.zero;
-
-    // Only "not covered" is red.
-    final String freeText = free != null
-        ? money.format(free)
-        : (available == null
-              ? tr('income.amountUnknown')
-              : tr('feed.runsShort'));
-
     // The bar declares its height up front, so its text grows only so far.
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
@@ -1122,22 +924,19 @@ class _FeedTotals extends StatelessWidget implements PreferredSizeWidget {
               ..._tileRows(<Widget>[
                 _Tile(
                   label: tr(source.availableLabel),
-                  text: available == null
-                      ? tr('income.amountUnknown')
-                      : money.format(available),
-                  value: available,
+                  text: source.availableText(money),
+                  value: source.available,
                   money: money,
                   highlighted: true,
                   onTap: onBalanceTap,
                 ),
                 _Tile(
                   label: tr(source.freeLabel),
-                  text: freeText,
-                  value: free,
+                  text: source.freeText(money),
+                  value: source.free,
                   money: money,
-                  valueColor: free == null && available != null
-                      ? context.sage.danger
-                      : null,
+                  // Only "not covered" is red.
+                  valueColor: source.runsShort ? context.sage.danger : null,
                 ),
                 _Tile(
                   label: tr('dashboard.paid'),
@@ -1464,7 +1263,7 @@ class _TableToolbar extends StatelessWidget {
 
   final VoidCallback onSearch;
 
-  final _FeedSource source;
+  final FeedSource source;
   final MoneyFormat money;
   final bool filtered;
 
@@ -1477,8 +1276,7 @@ class _TableToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
-    final Decimal? available = source.available;
-    final Decimal? free = source.hasIncome ? source.freeCash : Decimal.zero;
+    final Decimal? free = source.free;
 
     // A small tile: the mobile figures, shrunk.
     Widget figure(
@@ -1575,9 +1373,7 @@ class _TableToolbar extends StatelessWidget {
                     children: <Widget>[
                       figure(
                         tr(source.availableLabel),
-                        available == null
-                            ? tr('income.amountUnknown')
-                            : money.format(available),
+                        source.availableText(money),
                         highlighted: true,
                         onTap: onBalanceTap,
                       ),
@@ -1588,10 +1384,10 @@ class _TableToolbar extends StatelessWidget {
                       ),
                       figure(
                         tr(source.freeLabel),
-                        free == null
-                            ? tr('feed.runsShort')
-                            : money.format(free),
-                        color: free == null || free < Decimal.zero
+                        source.freeText(money),
+                        color:
+                            source.runsShort ||
+                                (free ?? Decimal.zero) < Decimal.zero
                             ? sage.danger
                             : sage.accentStrong,
                       ),

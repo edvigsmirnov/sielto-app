@@ -7,9 +7,9 @@ import 'package:sielto/core/db/deadline_guard.dart';
 import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/ui/action_sheet.dart';
 import 'package:sielto/core/ui/dialogs.dart';
-import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
+import 'package:sielto/features/feed/record_writes.dart';
 import 'package:sielto/features/payments/category_picker.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/space/budget_ledger.dart';
@@ -152,16 +152,11 @@ Future<bool> _setDone(
     return false;
   }
   final Repositories repos = ref.read(repositoriesProvider);
-  final List<FeedRecord> written = await _each(ref, targets, (FeedRecord r) {
-    if (!r.isIncome) return repos.payments.setPaid(r.id, isPaid: done);
-    return done
-        ? repos.incomes.markReceived(r.id)
-        : repos.incomes.update(
-            r.id,
-            isPaid: const Value<bool>(false),
-            actualDate: const Value<CalendarDate?>(null),
-          );
-  });
+  final List<FeedRecord> written = await _each(
+    ref,
+    targets,
+    (FeedRecord r) => repos.setRecordDone(r, done: done),
+  );
   ref.invalidate(periodRefreshProvider);
   if (context.mounted) _saySkipped(context, targets.length - written.length);
   return true;
@@ -204,9 +199,7 @@ Future<bool> _delete(
   final List<FeedRecord> deleted = await _each(
     ref,
     records,
-    (FeedRecord r) => r.isIncome
-        ? repos.incomes.softDelete(r.id)
-        : repos.payments.softDelete(r.id),
+    repos.softDeleteRecord,
   );
   ref.invalidate(periodRefreshProvider);
   if (!context.mounted) return true;
@@ -236,9 +229,7 @@ Future<bool> _delete(
     ].join(' · '),
     onUndo: () async {
       for (final FeedRecord r in deleted) {
-        await (r.isIncome
-            ? repos.incomes.restore(r.id)
-            : repos.payments.restore(r.id));
+        await repos.restoreRecord(r);
       }
       ref.invalidate(periodRefreshProvider);
     },

@@ -88,6 +88,12 @@ class FeedRecord {
     refused: refused,
   );
 
+  /// The notes trimmed; null when blank.
+  String? get note => switch (notes?.trim()) {
+    final String n when n.isNotEmpty => n,
+    _ => null,
+  };
+
   bool get isMandatory => expenseType == ExpenseType.mandatory;
 
   /// Incomes, then mandatory, then variable.

@@ -13,6 +13,19 @@ const double readableWidth = 720;
 EdgeInsets scrollPadding(BuildContext context, EdgeInsets padding) =>
     padding + MediaQuery.paddingOf(context).copyWith(top: 0);
 
+/// One line of [value] laid out in [style], at the reader's text size.
+double textWidth(BuildContext context, String value, TextStyle? style) {
+  final TextPainter painter = TextPainter(
+    text: TextSpan(text: value, style: style),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    maxLines: 1,
+  )..layout();
+  final double width = painter.width;
+  painter.dispose();
+  return width;
+}
+
 /// Names a route whose page lays itself out across the whole window, wide.
 const String fullWindowRoute = 'full-window';
 

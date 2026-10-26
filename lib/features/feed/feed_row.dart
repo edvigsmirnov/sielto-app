@@ -132,9 +132,7 @@ class FeedRowTile extends StatelessWidget {
     final bool bordered = hasRowBorder(density, table: table != null);
     // A note under the row: the controls stay level with the title.
     final bool tall =
-        density == FeedDensity.spacious &&
-        table == null &&
-        (record.notes?.trim().isNotEmpty ?? false);
+        density == FeedDensity.spacious && table == null && record.note != null;
     final CrossAxisAlignment align = tall
         ? CrossAxisAlignment.start
         : CrossAxisAlignment.center;
@@ -341,9 +339,10 @@ String feedAmountLabel(FeedRecord r, MoneyFormat money) {
       muted,
     ),
     FeedColumn.note => (
-      record.notes?.trim().isEmpty ?? true
-          ? ''
-          : shownNote(context, record.notes!.trim()),
+      switch (record.note) {
+        final String note => shownNote(context, note),
+        null => '',
+      },
       muted,
     ),
     FeedColumn.amount => (
@@ -352,19 +351,6 @@ String feedAmountLabel(FeedRecord r, MoneyFormat money) {
     ),
     FeedColumn.left => (leftAfter ?? '', figures),
   };
-}
-
-/// One line of [value] laid out in [style], at the reader's text size.
-double textWidth(BuildContext context, String value, TextStyle style) {
-  final TextPainter painter = TextPainter(
-    text: TextSpan(text: value, style: style),
-    textDirection: Directionality.of(context),
-    textScaler: MediaQuery.textScalerOf(context),
-    maxLines: 1,
-  )..layout();
-  final double width = painter.width;
-  painter.dispose();
-  return width;
 }
 
 /// What a table row shows beyond the narrow row.
@@ -476,14 +462,10 @@ class FeedTableHeader extends ConsumerWidget {
           child: LayoutBuilder(
             builder: (BuildContext _, BoxConstraints box) {
               final List<FeedColumn> shown = layout.shownIn(box.maxWidth);
-              return Row(
-                children: <Widget>[
-                  for (final FeedColumn c in shown)
-                    if (c == FeedColumn.date) cell(c, box.maxWidth),
-                  Expanded(child: label('title')),
-                  for (final FeedColumn c in shown)
-                    if (c != FeedColumn.date) cell(c, box.maxWidth),
-                ],
+              return _TableLine(
+                columns: shown,
+                cell: (FeedColumn c) => cell(c, box.maxWidth),
+                title: label('title'),
               );
             },
           ),
@@ -646,44 +628,58 @@ class _TableCells extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext _, BoxConstraints box) {
         final List<FeedColumn> shown = layout.shownIn(box.maxWidth);
-        return Row(
-          children: <Widget>[
-            for (final FeedColumn c in shown)
-              if (c == FeedColumn.date) cell(c),
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  if (isOverdue) ...<Widget>[
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      size: 16,
-                      color: sage.danger,
-                    ),
-                    const SizedBox(width: SageSpace.xs),
-                  ],
-                  Flexible(
-                    child: Text(
-                      record.title,
-                      style: text.bodyLarge!.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: record.isPaid ? sage.inkSecondary : sage.ink,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
+        return _TableLine(
+          columns: shown,
+          cell: cell,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              if (isOverdue) ...<Widget>[
+                Icon(Icons.warning_amber_rounded, size: 16, color: sage.danger),
+                const SizedBox(width: SageSpace.xs),
+              ],
+              Flexible(
+                child: Text(
+                  record.title,
+                  style: text.bodyLarge!.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: record.isPaid ? sage.inkSecondary : sage.ink,
                   ),
-                ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
               ),
-            ),
-            for (final FeedColumn c in shown)
-              if (c != FeedColumn.date) cell(c),
-          ],
+            ],
+          ),
         );
       },
     );
   }
+}
+
+/// The date column, the title in the remaining room, then the other columns.
+class _TableLine extends StatelessWidget {
+  const _TableLine({
+    required this.columns,
+    required this.cell,
+    required this.title,
+  });
+
+  final List<FeedColumn> columns;
+  final Widget Function(FeedColumn c) cell;
+  final Widget title;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: <Widget>[
+      for (final FeedColumn c in columns)
+        if (c == FeedColumn.date) cell(c),
+      Expanded(child: title),
+      for (final FeedColumn c in columns)
+        if (c != FeedColumn.date) cell(c),
+    ],
+  );
 }
 
 /// Title and amount on one line when both fit, else the amount below. Then
@@ -712,9 +708,10 @@ class _RowBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
-    final String? note = record.notes?.trim().isEmpty ?? true
-        ? null
-        : shownNote(context, record.notes!.trim());
+    final String? note = switch (record.note) {
+      final String n => shownNote(context, n),
+      null => null,
+    };
     final bool spacious = density == FeedDensity.spacious;
 
     final TextStyle titleStyle = text.bodyLarge!.copyWith(
@@ -800,20 +797,8 @@ class _RowBody extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        double width(String value, TextStyle style) {
-          final TextPainter painter = TextPainter(
-            text: TextSpan(text: value, style: style),
-            textDirection: Directionality.of(context),
-            textScaler: MediaQuery.textScalerOf(context),
-            maxLines: 1,
-          )..layout();
-          final double w = painter.width;
-          painter.dispose();
-          return w;
-        }
-
-        final double titleWidth = width(record.title, titleStyle);
-        final double amountWidth = width(amount, amountStyle);
+        final double titleWidth = textWidth(context, record.title, titleStyle);
+        final double amountWidth = textWidth(context, amount, amountStyle);
         final double room = constraints.maxWidth - marksWidth - SageSpace.sm;
         final bool oneLine =
             titleWidth + amountWidth <= room ||

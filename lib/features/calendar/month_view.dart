@@ -146,37 +146,30 @@ class _Figures {
     required bool net,
   }) {
     final double maxSize = desktopInput ? _maxDesktop : _maxSize;
-    final TextPainter painter = TextPainter(
-      textDirection: Directionality.of(context),
-      textScaler: MediaQuery.textScalerOf(context),
-      maxLines: 1,
-    );
-    try {
-      double widest = 0;
-      final Set<Decimal> shortened = <Decimal>{};
-      for (final DayTotals d in days) {
-        for (final Decimal a
-            in net
-                ? <Decimal>[(d.income - d.expenses).abs()]
-                : <Decimal>[d.expenses, d.income]) {
-          if (a <= Decimal.zero) continue;
-          painter
-            ..text = TextSpan(text: '−${money.bare(a)}', style: _style(maxSize))
-            ..layout();
-          if (painter.width * _minSize / maxSize > width) {
-            shortened.add(a);
-          } else if (painter.width > widest) {
-            widest = painter.width;
-          }
+    double widest = 0;
+    final Set<Decimal> shortened = <Decimal>{};
+    for (final DayTotals d in days) {
+      for (final Decimal a
+          in net
+              ? <Decimal>[(d.income - d.expenses).abs()]
+              : <Decimal>[d.expenses, d.income]) {
+        if (a <= Decimal.zero) continue;
+        final double w = textWidth(
+          context,
+          '−${money.bare(a)}',
+          _style(maxSize),
+        );
+        if (w * _minSize / maxSize > width) {
+          shortened.add(a);
+        } else if (w > widest) {
+          widest = w;
         }
       }
-      final double size = widest <= width
-          ? maxSize
-          : (maxSize * width / widest).clamp(_minSize, maxSize);
-      return _Figures(money: money, size: size, shortened: shortened, net: net);
-    } finally {
-      painter.dispose();
     }
+    final double size = widest <= width
+        ? maxSize
+        : (maxSize * width / widest).clamp(_minSize, maxSize);
+    return _Figures(money: money, size: size, shortened: shortened, net: net);
   }
 
   final MoneyFormat money;

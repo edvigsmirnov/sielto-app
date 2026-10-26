@@ -73,6 +73,13 @@ class FeedFilter {
         (r.notes?.toLowerCase().contains(q) ?? false);
   }
 
+  /// [id] added to the categories, or removed when there.
+  FeedFilter toggled(String id) => copyWith(
+    categoryIds: categoryIds.contains(id)
+        ? (Set<String>.of(categoryIds)..remove(id))
+        : <String>{...categoryIds, id},
+  );
+
   FeedFilter copyWith({
     String? query,
     FeedKind? kind,
@@ -95,6 +102,8 @@ class FeedFilterController extends Notifier<FeedFilter> {
   }
 
   void set(FeedFilter filter) => state = filter;
+
+  void update(FeedFilter Function(FeedFilter) change) => state = change(state);
 
   void clear() => state = FeedFilter.none;
 }
@@ -156,10 +165,8 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
     super.dispose();
   }
 
-  void _update(FeedFilter Function(FeedFilter) change) {
-    final FeedFilterController c = ref.read(feedFilterProvider.notifier);
-    c.set(change(ref.read(feedFilterProvider)));
-  }
+  void _update(FeedFilter Function(FeedFilter) change) =>
+      ref.read(feedFilterProvider.notifier).update(change);
 
   void _close() => ref.read(feedFilterOpenProvider.notifier).set(open: false);
 
@@ -170,17 +177,6 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
     final FeedFilter filter = ref.watch(feedFilterProvider);
     final List<Category> categories =
         ref.watch(spaceCategoriesProvider).value ?? const <Category>[];
-
-    Decimal spent = Decimal.zero;
-    Decimal received = Decimal.zero;
-    for (final FeedRecord r in widget.shown) {
-      final Decimal amount = r.amount ?? Decimal.zero;
-      if (r.isIncome) {
-        received += amount;
-      } else {
-        spent += amount;
-      }
-    }
 
     Widget row(String label, List<Widget> chips) => Padding(
       padding: const EdgeInsets.only(top: SageSpace.sm),
@@ -280,13 +276,7 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
                     label: c.shownTitle,
                     dot: parseCategoryColor(c.color),
                     selected: filter.categoryIds.contains(c.id),
-                    onTap: () => _update(
-                      (FeedFilter f) => f.copyWith(
-                        categoryIds: f.categoryIds.contains(c.id)
-                            ? (Set<String>.of(f.categoryIds)..remove(c.id))
-                            : <String>{...f.categoryIds, c.id},
-                      ),
-                    ),
+                    onTap: () => _update((FeedFilter f) => f.toggled(c.id)),
                   ),
               ]),
             row(tr('feed.filter.statusLabel'), <Widget>[
@@ -306,13 +296,7 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
                 children: <Widget>[
                   Expanded(
                     child: Text(
-                      <String>[
-                        plural('analytics.records', widget.shown.length),
-                        if (spent > Decimal.zero)
-                          widget.money.formatSigned(-spent),
-                        if (received > Decimal.zero)
-                          widget.money.formatSigned(received),
-                      ].join(' · '),
+                      _found(widget.shown, widget.money),
                       style: text.bodySmall?.copyWith(color: sage.ink),
                     ),
                   ),
@@ -409,10 +393,8 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
     super.dispose();
   }
 
-  void _update(FeedFilter Function(FeedFilter) change) {
-    final FeedFilterController c = ref.read(feedFilterProvider.notifier);
-    c.set(change(ref.read(feedFilterProvider)));
-  }
+  void _update(FeedFilter Function(FeedFilter) change) =>
+      ref.read(feedFilterProvider.notifier).update(change);
 
   @override
   Widget build(BuildContext context) {
@@ -491,14 +473,8 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                                 ),
                               ),
                               selected: filter.categoryIds.contains(c.id),
-                              onSelected: (bool on) => _update(
-                                (FeedFilter f) => f.copyWith(
-                                  categoryIds: on
-                                      ? <String>{...f.categoryIds, c.id}
-                                      : (Set<String>.of(f.categoryIds)
-                                          ..remove(c.id)),
-                                ),
-                              ),
+                              onSelected: (bool _) =>
+                                  _update((FeedFilter f) => f.toggled(c.id)),
                             ),
                           ),
                       ],
@@ -538,17 +514,6 @@ class FeedFilterBar extends ConsumerWidget {
         ref.watch(categoryIndexProvider).value ?? const <String, Category>{};
     final FeedFilterController c = ref.read(feedFilterProvider.notifier);
     final SageColors sage = context.sage;
-
-    Decimal spent = Decimal.zero;
-    Decimal received = Decimal.zero;
-    for (final FeedRecord r in shown) {
-      final Decimal amount = r.amount ?? Decimal.zero;
-      if (r.isIncome) {
-        received += amount;
-      } else {
-        spent += amount;
-      }
-    }
 
     Widget chip(String label, FeedFilter without) => Padding(
       padding: const EdgeInsets.only(right: SageSpace.xs),
@@ -591,24 +556,36 @@ class FeedFilterBar extends ConsumerWidget {
                 for (final String id in filter.categoryIds)
                   chip(
                     categories[id]?.shownTitle ?? tr('category.none'),
-                    filter.copyWith(
-                      categoryIds: Set<String>.of(filter.categoryIds)
-                        ..remove(id),
-                    ),
+                    filter.toggled(id),
                   ),
               ],
             ),
           ),
           Text(
-            <String>[
-              plural('analytics.records', shown.length),
-              if (spent > Decimal.zero) money.formatSigned(-spent),
-              if (received > Decimal.zero) money.formatSigned(received),
-            ].join(' · '),
+            _found(shown, money),
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),
     );
   }
+}
+
+/// How many records matched, what they spent and what they brought.
+String _found(List<FeedRecord> shown, MoneyFormat money) {
+  Decimal spent = Decimal.zero;
+  Decimal received = Decimal.zero;
+  for (final FeedRecord r in shown) {
+    final Decimal amount = r.amount ?? Decimal.zero;
+    if (r.isIncome) {
+      received += amount;
+    } else {
+      spent += amount;
+    }
+  }
+  return <String>[
+    plural('analytics.records', shown.length),
+    if (spent > Decimal.zero) money.formatSigned(-spent),
+    if (received > Decimal.zero) money.formatSigned(received),
+  ].join(' · ');
 }

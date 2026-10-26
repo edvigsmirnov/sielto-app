@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +5,7 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/feed/feed_model.dart';
+import 'package:sielto/features/feed/record_writes.dart';
 import 'package:sielto/features/incomes/income_form_page.dart';
 import 'package:sielto/features/incomes/receipt_dialog.dart';
 import 'package:sielto/features/payments/payment_form_page.dart';
@@ -36,38 +36,24 @@ Future<void> togglePaid(
   }
   if (!context.mounted) return;
 
-  if (!record.isIncome) {
-    await guardWrite(
-      context,
-      () => repos.payments.setPaid(record.id, isPaid: next),
-    );
-    return;
-  }
-
-  if (next && record.amount == null) {
+  if (next && record.isIncome && record.amount == null) {
     // A receipt needs an amount.
     openIncomeForm(context, incomeId: record.id, date: record.date);
     return;
   }
 
   CalendarDate? actual;
-  if (next) {
+  if (next && record.isIncome) {
     actual = await askReceiptDate(context, expected: record.date);
     if (actual == null || !context.mounted) return;
   }
 
   await guardWrite(
     context,
-    () => next
-        ? repos.incomes.markReceived(record.id, actualDate: actual)
-        : repos.incomes.update(
-            record.id,
-            isPaid: const Value<bool>(false),
-            actualDate: const Value<CalendarDate?>(null),
-          ),
+    () => repos.setRecordDone(record, done: next, actualDate: actual),
   );
   // An early anchor moves its cycle.
-  ref.invalidate(periodRefreshProvider);
+  if (record.isIncome) ref.invalidate(periodRefreshProvider);
 }
 
 Future<void> deleteRecord(
@@ -84,9 +70,7 @@ Future<void> deleteRecord(
 
   final bool deleted = await guardWrite(
     context,
-    () => record.isIncome
-        ? repos.incomes.softDelete(record.id)
-        : repos.payments.softDelete(record.id),
+    () => repos.softDeleteRecord(record),
   );
   ref.invalidate(periodRefreshProvider);
   if (!deleted || !context.mounted) return;
@@ -96,8 +80,6 @@ Future<void> deleteRecord(
       'feed.deleted',
       namedArgs: <String, String>{'title': record.title},
     ),
-    onUndo: () => record.isIncome
-        ? repos.incomes.restore(record.id)
-        : repos.payments.restore(record.id),
+    onUndo: () => repos.restoreRecord(record),
   );
 }

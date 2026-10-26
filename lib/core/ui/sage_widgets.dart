@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 
@@ -194,25 +195,10 @@ class SegmentedChoice<T> extends StatelessWidget {
 
   bool _fits(BuildContext context, double width, int columns) {
     final double share = width / columns - 2 * _Segment.inset;
-    final TextPainter painter = TextPainter(
-      textDirection: Directionality.of(context),
-      textScaler: MediaQuery.textScalerOf(context),
-      maxLines: 1,
+    final TextStyle? style = Theme.of(context).textTheme.labelLarge;
+    return values.every(
+      (T value) => textWidth(context, labelOf(value), style) <= share,
     );
-    try {
-      for (final T value in values) {
-        painter
-          ..text = TextSpan(
-            text: labelOf(value),
-            style: Theme.of(context).textTheme.labelLarge,
-          )
-          ..layout();
-        if (painter.width > share) return false;
-      }
-      return true;
-    } finally {
-      painter.dispose();
-    }
   }
 }
 
