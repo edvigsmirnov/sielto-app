@@ -8,7 +8,6 @@ import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
-import 'package:sielto/features/periods/period_service.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 
 /// Previous and next period arrows with the cycle's dates. Moves only between
@@ -38,18 +37,6 @@ class PeriodSelector extends ConsumerWidget {
 
     final DateLabels dates = context.dates;
     final CalendarDate today = ref.watch(todayProvider);
-
-    // Near the last period, request more.
-    final CalendarDate last = periods.last.startDate;
-    if (index >= periods.length - 2 &&
-        last.isBefore(today.addMonths(PeriodService.maxReachMonths))) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!context.mounted) return;
-        ref
-            .read(periodReachProvider.notifier)
-            .reach(last.addMonths(PeriodService.horizonStepMonths));
-      });
-    }
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,

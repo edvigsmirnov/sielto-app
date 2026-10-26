@@ -84,14 +84,15 @@ void main() {
   });
 
   group('materialisation', () {
-    test('one anchor produces the six-period horizon', () async {
+    test('one anchor reaches 24 months ahead', () async {
       await anchorOn(26);
       await service.refresh(space, today);
 
       final List<BudgetPeriod> rows = await periods();
-      expect(rows, hasLength(6));
+      expect(rows, hasLength(25));
       expect(rows.first.startDate, d('2026-02-26'));
       expect(rows.first.endDate, d('2026-03-25'));
+      expect(rows.last.startDate, d('2028-02-28'));
     });
 
     test('boundaries abut without gaps or overlaps', () async {
@@ -565,7 +566,7 @@ void main() {
 
     test('a period anchored in a missing year is flagged', () async {
       await anchorOn(5);
-      await serviceMissing(<int>{today.year, today.year + 1})
+      await serviceMissing(<int>{today.year, today.year + 1, today.year + 2})
           .refresh(space, today);
       expect(
         (await periods()).every((BudgetPeriod p) => p.holidayDataIncomplete),
@@ -584,7 +585,7 @@ void main() {
 
     test('the flag clears when the data arrives', () async {
       await anchorOn(5);
-      await serviceMissing(<int>{today.year, today.year + 1})
+      await serviceMissing(<int>{today.year, today.year + 1, today.year + 2})
           .refresh(space, today);
       // Same rows, flag cleared.
       await service.refresh(space, today);

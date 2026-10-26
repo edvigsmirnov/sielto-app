@@ -39,7 +39,6 @@ import 'package:sielto/features/feed/record_writes.dart';
 import 'package:sielto/features/overdue/overdue.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
 import 'package:sielto/features/periods/freeze_ui.dart';
-import 'package:sielto/features/periods/period_service.dart';
 import 'package:sielto/features/shell/app_header.dart';
 import 'package:sielto/features/space/period_ledger.dart';
 import 'package:sielto/features/space/space_ledger.dart';
@@ -124,18 +123,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
       if (_anyRecord((CalendarDate d) => d.isAfter(window.to))) {
         _extending = true;
         ref.read(feedWindowProvider.notifier).extendForwards();
-      } else if (ref.read(currentSpaceProvider)?.budgetMode ==
-              BudgetMode.incomeDriven &&
-          window.to.isBefore(
-            ref
-                .read(spaceClockProvider)
-                .today()
-                .addMonths(PeriodService.maxReachMonths),
-          )) {
-        // No records beyond: request more periods.
-        ref
-            .read(periodReachProvider.notifier)
-            .reach(window.to.addMonths(PeriodService.horizonStepMonths));
       }
     }
   }

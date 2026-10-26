@@ -171,7 +171,7 @@ final FutureProvider<ResolvedCalendar> resolvedCalendarProvider =
       return _resolveCalendar(ref, <int>{
         for (
           int y = today.year;
-          y <= today.addMonths(PeriodService.maxReachMonths).year;
+          y <= today.addMonths(PeriodService.horizonMonths).year;
           y++
         )
           y,
@@ -205,25 +205,6 @@ Future<ResolvedCalendar> _resolveCalendar(Ref ref, Set<int> years) {
       );
 }
 
-/// How far ahead periods must reach. Null until asked; only moves forward.
-class PeriodReachController extends Notifier<CalendarDate?> {
-  @override
-  CalendarDate? build() {
-    ref.watch(currentSpaceIdProvider);
-    return null;
-  }
-
-  void reach(CalendarDate date) {
-    final CalendarDate? current = state;
-    if (current == null || date.isAfter(current)) state = date;
-  }
-}
-
-final NotifierProvider<PeriodReachController, CalendarDate?>
-periodReachProvider = NotifierProvider<PeriodReachController, CalendarDate?>(
-  PeriodReachController.new,
-);
-
 /// Periods and income dates on the open Space's working-day calendar.
 final FutureProvider<PeriodService> periodServiceProvider =
     FutureProvider<PeriodService>((Ref ref) async {
@@ -245,11 +226,7 @@ final FutureProvider<PeriodRefresh> periodRefreshProvider =
       final PeriodService service = await ref.watch(
         periodServiceProvider.future,
       );
-      return service.refresh(
-        space,
-        ref.watch(spaceClockProvider).today(),
-        until: ref.watch(periodReachProvider),
-      );
+      return service.refresh(space, ref.watch(spaceClockProvider).today());
     });
 
 final StreamProvider<List<BudgetPeriod>> spacePeriodsProvider =

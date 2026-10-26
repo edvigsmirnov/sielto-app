@@ -54,19 +54,10 @@ class PeriodService {
   /// Periods anchored in these years get `holiday_data_incomplete`.
   final Set<int> missingHolidayYears;
 
-  /// Furthest [refresh] may reach, in months from today.
-  static const int maxReachMonths = 24;
+  /// How far ahead periods and regular income dates reach, in months.
+  static const int horizonMonths = 24;
 
-  /// Months per reach request.
-  static const int horizonStepMonths = 3;
-
-  /// Reaches [PeriodMaterializer.horizonPeriods] ahead or to [until], never
-  /// less far than existing periods.
-  Future<PeriodRefresh> refresh(
-    Space space,
-    CalendarDate today, {
-    CalendarDate? until,
-  }) async {
+  Future<PeriodRefresh> refresh(Space space, CalendarDate today) async {
     final List<IncomeRecurrenceRule> rules = await repos.incomeRules.inSpace(
       space.id,
     );
@@ -93,12 +84,7 @@ class PeriodService {
     ];
     if (anchors.isEmpty) return const PeriodRefresh();
 
-    final CalendarDate cap = today.addMonths(maxReachMonths);
-    CalendarDate? reach = until;
-    for (final BudgetPeriod p in await repos.periods.incomeDrivenIn(space.id)) {
-      if (reach == null || p.startDate.isAfter(reach)) reach = p.startDate;
-    }
-    if (reach != null && reach.isAfter(cap)) reach = cap;
+    final CalendarDate reach = today.addMonths(horizonMonths);
     int count = PeriodMaterializer.horizonPeriods;
     List<MaterializedPeriod> computed;
     while (true) {
@@ -108,17 +94,12 @@ class PeriodService {
         calendar: calendar,
         count: count,
       );
-      if (reach == null ||
-          computed.length < count ||
-          !computed.last.startDate.isBefore(reach)) {
+      if (computed.length < count || !computed.last.startDate.isBefore(reach)) {
         break;
       }
       count += PeriodMaterializer.horizonPeriods;
     }
-    // Trims the step overshoot.
-    while (reach != null &&
-        computed.length > PeriodMaterializer.horizonPeriods &&
-        computed.last.startDate.isAfter(reach)) {
+    while (computed.length > 1 && computed.last.startDate.isAfter(reach)) {
       computed.removeLast();
     }
 
@@ -320,8 +301,7 @@ class PeriodService {
     int year = floor.year;
     int month = floor.month;
     final int months = horizonEnd == null
-        // One period per month.
-        ? PeriodMaterializer.horizonPeriods
+        ? horizonMonths
         : (horizonEnd.year - year) * 12 + horizonEnd.month - month + 1;
     for (int i = 0; i < months; i++) {
       final CalendarDate date = schedule

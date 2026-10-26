@@ -156,9 +156,7 @@ void main() {
     expect(window.from, today.addMonths(-FeedWindow.stepMonths));
     expect(
       window.to.isAfter(
-        today.addMonths(
-          PeriodService.maxReachMonths + PeriodService.horizonStepMonths,
-        ),
+        today.addMonths(PeriodService.horizonMonths + FeedWindow.stepMonths),
       ),
       isFalse,
     );
