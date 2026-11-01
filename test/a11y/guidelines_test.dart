@@ -47,6 +47,7 @@ import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/settings/about_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
+import 'package:sielto/features/settings/privacy_page.dart';
 import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/settings/space_settings_page.dart';
 import 'package:sielto/features/shell/main_shell.dart';
@@ -284,6 +285,7 @@ void main() {
     ),
     'holidays': (page: () => const HolidaysPage(), before: null, then: null),
     'about': (page: () => const AboutPage(), before: null, then: null),
+    'privacy': (page: () => const PrivacyPage(), before: null, then: null),
     'category form': (
       page: () => const CategoryFormPage(),
       before: null,

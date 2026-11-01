@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/features/settings/privacy_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const String repositoryUrl = 'https://github.com/edvigsmirnov/sielto-app';
@@ -43,6 +45,7 @@ class AboutPage extends ConsumerWidget {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
     final PackageInfo? info = ref.watch(appVersionProvider).value;
+    final String userId = ref.watch(userIdProvider);
 
     return Scaffold(
       backgroundColor: sage.surface,
@@ -84,6 +87,11 @@ class AboutPage extends ConsumerWidget {
             onTap: () => openLink(context, repositoryUrl),
           ),
           LinkTile(
+            icon: Icons.shield_outlined,
+            title: tr('about.privacy'),
+            onTap: () => pushPage<void>(context, const PrivacyPage()),
+          ),
+          LinkTile(
             icon: Icons.gavel_outlined,
             title: tr('about.licence'),
             subtitle: tr('about.licenceBody'),
@@ -93,6 +101,19 @@ class AboutPage extends ConsumerWidget {
             icon: Icons.article_outlined,
             title: tr('about.thirdParty'),
             onTap: () => pushPage<void>(context, const _PackagesPage()),
+          ),
+          ListTile(
+            leading: const Icon(Icons.badge_outlined),
+            title: Text(tr('about.userId')),
+            subtitle: Text(userId),
+            trailing: const Icon(Icons.copy_outlined),
+            onTap: () async {
+              final ScaffoldMessengerState messenger = ScaffoldMessenger.of(
+                context,
+              );
+              await Clipboard.setData(ClipboardData(text: userId));
+              messenger.say(tr('devices.copied'));
+            },
           ),
         ],
       ),

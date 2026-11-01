@@ -98,3 +98,6 @@ flutter:
     - assets/brand/
     # The project's own licence, shown on the About page.
     - LICENSE
+    # The privacy policy, English at the root for GitHub, others by language.
+    - PRIVACY.md
+    - assets/privacy/

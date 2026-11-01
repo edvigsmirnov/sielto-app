@@ -562,7 +562,9 @@
   "welcome": {
     "tagline": "A simple space\nfor complicated money",
     "start": "Create a Space",
-    "haveAccount": "I already use Sielto"
+    "haveAccount": "I already use Sielto",
+    "privacyNote": "Your data stays on this device.",
+    "privacy": "Privacy policy"
   },
   "period": {
     "previous": "Previous period",
@@ -1019,9 +1021,11 @@
     "title": "About Sielto",
     "version": "Version {} (build {})",
     "source": "Source code",
+    "privacy": "Privacy policy",
     "licence": "Licence",
     "licenceBody": "Personal, non-commercial use",
     "thirdParty": "Third-party licences",
-    "linkCopied": "No browser opened, so the link is copied."
+    "linkCopied": "No browser opened, so the link is copied.",
+    "userId": "Your user id"
   }
 }

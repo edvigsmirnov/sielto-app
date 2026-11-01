@@ -33,6 +33,9 @@ friends.
 - **Hard to lose.** A Recovery Key opens your data on a new device, and even we
   can't open it without that key.
 
+What reaches the network, and only when you turn it on, is in the
+[privacy policy](PRIVACY.md).
+
 ## Three ways to budget
 
 Each Space is one budget with its own type, so home, a trip and freelance work

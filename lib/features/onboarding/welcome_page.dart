@@ -4,9 +4,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_loader.dart';
 import 'package:sielto/features/launch/launch_curtain.dart';
+import 'package:sielto/features/settings/privacy_page.dart';
 
 /// First screen of a fresh install, on [SageBrand.night] in both themes. Leaves
 /// gather onto the "i", then the name, motto and button fade in. A tap skips.
@@ -190,6 +192,37 @@ class _WelcomePageState extends State<WelcomePage>
                                           foregroundColor: SageBrand.leaf,
                                         ),
                                         child: Text(tr('welcome.haveAccount')),
+                                      ),
+                                      Wrap(
+                                        alignment: WrapAlignment.center,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        children: <Widget>[
+                                          Text(
+                                            tr('welcome.privacyNote'),
+                                            style: text.bodySmall?.copyWith(
+                                              color: SageBrand.leaf,
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: button > 0.5
+                                                ? () => pushPage<void>(
+                                                    context,
+                                                    const PrivacyPage(),
+                                                    fullWindow: true,
+                                                  )
+                                                : null,
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: SageBrand.leaf,
+                                              textStyle: text.bodySmall
+                                                  ?.copyWith(
+                                                    decoration: TextDecoration
+                                                        .underline,
+                                                  ),
+                                            ),
+                                            child: Text(tr('welcome.privacy')),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
