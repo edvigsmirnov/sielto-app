@@ -2,7 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
-import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/dialogs.dart';
@@ -37,16 +36,15 @@ class RefusedMark extends ConsumerWidget {
       ],
     );
     if (choice == null || !context.mounted) return;
-    final Space? space = ref.read(currentSpaceProvider);
     final String note = tr(
       'refused.noteText',
       namedArgs: <String, String>{
-        'what': <String>[
+        'what': context.entryLine(
           record.title,
-          if ((record.amount, space) case (final amount?, final Space s))
-            context.moneyIn(s.currencyCode).format(amount),
-          context.dates.dayMonth(record.date),
-        ].join(', '),
+          record.amount,
+          record.date,
+          currencyCode: ref.read(currentSpaceProvider)?.currencyCode,
+        ),
       },
     );
     final bool done = await ref

@@ -110,18 +110,57 @@ class SyncWorker {
     await _archiveVanished(<String>{
       for (final Map<String, dynamic> r in remote) r['id'] as String,
     });
-    final List<Space> spaces =
-        await (db.select(db.spaces)..where(
-              ($SpacesTable t) =>
-                  t.storageMode.equalsValue(StorageMode.cloud) &
-                  t.isArchived.equals(false),
-            ))
-            .get();
-    for (final Space space in spaces) {
-      await syncSpace(space.id);
+    for (final Space space in await cloudSpaces()) {
+      if (!space.isArchived) await syncSpace(space.id);
     }
     return true;
   }
+
+  Future<List<Space>> cloudSpaces() =>
+      (db.select(db.spaces)..where(
+            ($SpacesTable t) => t.storageMode.equalsValue(StorageMode.cloud),
+          ))
+          .get();
+
+  /// Cloud Spaces that have reached the server.
+  Future<List<Space>> _uploaded() async => <Space>[
+    for (final Space s in await cloudSpaces())
+      if (s.serverReceivedAt != null) s,
+  ];
+
+  /// Off the cloud, with no sync state left.
+  Future<void> makeLocal(String spaceId, {bool archived = false}) =>
+      (db.update(
+        db.spaces,
+      )..where(($SpacesTable t) => t.id.equals(spaceId))).write(
+        SpacesCompanion(
+          storageMode: const Value<StorageMode>(StorageMode.local),
+          isArchived: archived
+              ? const Value<bool>(true)
+              : const Value<bool>.absent(),
+          syncStatus: const Value<SyncStatus>(SyncStatus.none),
+          serverReceivedAt: const Value<DateTime?>(null),
+          syncedUntil: const Value<DateTime?>(null),
+        ),
+      );
+
+  /// Into the cloud: the Space and every row of it go up with the next run.
+  Future<void> markPending(String spaceId) => db.transaction(() async {
+    await db.customUpdate(
+      "UPDATE spaces SET storage_mode = 'cloud', sync_status = 'pending' "
+      'WHERE id = ?',
+      variables: <Variable<Object>>[Variable<String>(spaceId)],
+      updates: <TableInfo<Table, dynamic>>{db.spaces},
+    );
+    for (final String table in records) {
+      await db.customUpdate(
+        "UPDATE $table SET sync_status = 'pending' "
+        "WHERE space_id = ? AND sync_status <> 'rejected'",
+        variables: <Variable<Object>>[Variable<String>(spaceId)],
+        updates: <TableInfo<Table, dynamic>>{_table(table)},
+      );
+    }
+  });
 
   /// Marks this device active; false once it has been unlinked.
   Future<bool> touch() async => client.rpc<bool>(
@@ -151,14 +190,7 @@ class SyncWorker {
     final Set<String> onServer = <String>{
       for (final Map<String, dynamic> r in remote) r['id'] as String,
     };
-    final List<Space> here =
-        await (db.select(db.spaces)..where(
-              ($SpacesTable t) =>
-                  t.storageMode.equalsValue(StorageMode.cloud) &
-                  t.serverReceivedAt.isNotNull(),
-            ))
-            .get();
-    return here.any((Space s) => !onServer.contains(s.id));
+    return (await _uploaded()).any((Space s) => !onServer.contains(s.id));
   }
 
   /// Spaces the last [syncAll] archived.
@@ -167,26 +199,9 @@ class SyncWorker {
   /// Cloud Spaces gone from the server become local archives.
   Future<void> _archiveVanished(Set<String> onServer) async {
     vanished.clear();
-    final List<Space> gone =
-        await (db.select(db.spaces)..where(
-              ($SpacesTable t) =>
-                  t.storageMode.equalsValue(StorageMode.cloud) &
-                  t.serverReceivedAt.isNotNull() &
-                  t.id.isNotIn(onServer),
-            ))
-            .get();
-    for (final Space space in gone) {
-      await (db.update(
-        db.spaces,
-      )..where(($SpacesTable t) => t.id.equals(space.id))).write(
-        const SpacesCompanion(
-          storageMode: Value<StorageMode>(StorageMode.local),
-          isArchived: Value<bool>(true),
-          syncStatus: Value<SyncStatus>(SyncStatus.none),
-          serverReceivedAt: Value<DateTime?>(null),
-          syncedUntil: Value<DateTime?>(null),
-        ),
-      );
+    for (final Space space in await _uploaded()) {
+      if (onServer.contains(space.id)) continue;
+      await makeLocal(space.id, archived: true);
       vanished.add(space.id);
     }
   }
@@ -267,31 +282,51 @@ class SyncWorker {
     await _mark(table, rejected, SyncStatus.rejected);
     for (final QueryRow r in rejected) {
       final bool deletion = r.read<bool>('is_deleted');
-      changes.add(_refusal(table, r, deletion: deletion));
+      final DateTime? mine = _editedAt(r.data['client_edited_at']);
+      changes.add(
+        _change(
+          table,
+          r.data,
+          kind: deletion ? ChangeKind.deleted : ChangeKind.edited,
+          author: userId ?? '',
+          conflict: deletion
+              ? ConflictKind.refusedDeletion
+              : ConflictKind.refused,
+          mine: mine,
+          theirs: mine ?? DateTime.now(),
+        ),
+      );
       // A deleted entry shows no row that could carry the mark.
       if (deletion) await takeServer(table, r.data['id'] as String);
     }
   }
 
-  RemoteChange _refusal(String table, QueryRow r, {required bool deletion}) {
+  /// The payment or income in [row], as a change by [author].
+  RemoteChange _change(
+    String table,
+    Map<String, dynamic> row, {
+    required ChangeKind kind,
+    required String author,
+    required DateTime theirs,
+    ConflictKind? conflict,
+    DateTime? mine,
+  }) {
     final bool income = table == 'incomes';
-    final String? amount = r.data['amount'] as String?;
+    final String? amount = row['amount'] as String?;
     return (
-      spaceId: r.data['space_id'] as String,
+      spaceId: row['space_id'] as String,
       income: income,
-      kind: deletion ? ChangeKind.deleted : ChangeKind.edited,
-      title: r.data['title'] as String,
+      kind: kind,
+      title: row['title'] as String,
       amount: amount == null ? null : Decimal.parse(amount),
       date: CalendarDate.parse(
-        (income
-                ? r.data['actual_date'] ?? r.data['expected_date']
-                : r.data['due_date'])
+        (income ? row['actual_date'] ?? row['expected_date'] : row['due_date'])
             as String,
       ),
-      author: userId ?? '',
-      conflict: deletion ? ConflictKind.refusedDeletion : ConflictKind.refused,
-      mine: _editedAt(r.data['client_edited_at']),
-      theirs: _editedAt(r.data['client_edited_at']) ?? DateTime.now(),
+      author: author,
+      conflict: conflict,
+      mine: mine,
+      theirs: theirs,
     );
   }
 
@@ -309,11 +344,13 @@ class SyncWorker {
         .eq('id', id)
         .maybeSingle();
     if (remote == null) return false;
-    await db.customUpdate(
-      "UPDATE $table SET sync_status = 'synced' WHERE id = ?",
-      variables: <Variable<Object>>[Variable<String>(id)],
-    );
-    await _apply(table, <Map<String, dynamic>>[remote]);
+    await db.transaction(() async {
+      await db.customUpdate(
+        "UPDATE $table SET sync_status = 'synced' WHERE id = ?",
+        variables: <Variable<Object>>[Variable<String>(id)],
+      );
+      await _apply(table, <Map<String, dynamic>>[remote]);
+    });
     if (note != null && on != null) {
       await db.customUpdate(
         'UPDATE $table SET notes = ?, client_edited_at = ?, '
@@ -470,20 +507,10 @@ class SyncWorker {
         _pushed[id] ??
         (local?.read<String>('sync_status') == 'pending' ? before : null);
     final bool clash = mine != null && theirs.isAfter(mine);
-    final bool income = table == 'incomes';
-    final String? amount = remote['amount'] as String?;
-    return (
-      spaceId: remote['space_id'] as String,
-      income: income,
+    return _change(
+      table,
+      remote,
       kind: kind,
-      title: remote['title'] as String,
-      amount: amount == null ? null : Decimal.parse(amount),
-      date: CalendarDate.parse(
-        (income
-                ? remote['actual_date'] ?? remote['expected_date']
-                : remote['due_date'])
-            as String,
-      ),
       author: author,
       conflict: !clash
           ? null

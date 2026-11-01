@@ -386,6 +386,28 @@ class _MainShellState extends ConsumerState<MainShell> {
           ),
       ],
     );
+    // A side panel over [child] with a navigator of its own.
+    Widget panel({
+      required GlobalKey inside,
+      required Widget root,
+      required ColumnRoutes routes,
+      required Widget child,
+      Key? key,
+      bool start = false,
+    }) => DetailHost(
+      key: key,
+      root: root,
+      observers: <NavigatorObserver>[routes],
+      builder: (BuildContext _, Widget navigator, {required bool open}) =>
+          SidePanel(
+            key: inside,
+            start: start,
+            panel: ColumnHome(label: here, routes: routes, child: navigator),
+            open: open,
+            width: 440,
+            child: child,
+          ),
+    );
     _keys = <ShortcutActivator, VoidCallback>{
       const SingleActivator(LogicalKeyboardKey.keyN, control: true): () =>
           openPaymentForm(_inside.currentContext ?? context),
@@ -435,48 +457,18 @@ class _MainShellState extends ConsumerState<MainShell> {
                             color: context.sage.hairline,
                           ),
                           Expanded(
-                            child: DetailHost(
+                            child: panel(
+                              inside: _spacesInside,
                               root: const SizedBox.shrink(),
-                              observers: <NavigatorObserver>[_spacesRoutes],
-                              builder:
-                                  (
-                                    BuildContext _,
-                                    Widget navigator, {
-                                    required bool open,
-                                  }) => SidePanel(
-                                    key: _spacesInside,
-                                    start: true,
-                                    panel: ColumnHome(
-                                      label: here,
-                                      routes: _spacesRoutes,
-                                      child: navigator,
-                                    ),
-                                    open: open,
-                                    width: 440,
-                                    child: DetailHost(
-                                      key: _host,
-                                      root: const CalendarPage(),
-                                      observers: <NavigatorObserver>[
-                                        _calendarRoutes,
-                                      ],
-                                      builder:
-                                          (
-                                            BuildContext _,
-                                            Widget navigator, {
-                                            required bool open,
-                                          }) => SidePanel(
-                                            key: _inside,
-                                            panel: ColumnHome(
-                                              label: here,
-                                              routes: _calendarRoutes,
-                                              child: navigator,
-                                            ),
-                                            open: open,
-                                            width: 440,
-                                            child: pages,
-                                          ),
-                                    ),
-                                  ),
+                              routes: _spacesRoutes,
+                              start: true,
+                              child: panel(
+                                key: _host,
+                                inside: _inside,
+                                root: const CalendarPage(),
+                                routes: _calendarRoutes,
+                                child: pages,
+                              ),
                             ),
                           ),
                         ],

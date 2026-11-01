@@ -2,7 +2,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
-import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/sync/sync_worker.dart';
@@ -11,18 +10,17 @@ import 'package:sielto/domain/value/calendar_date.dart';
 /// A change by another member; [who] is the name this user sees.
 typedef Activity = ({RemoteChange change, String? who});
 
-class ActivityController extends Notifier<List<Activity>> {
+/// The latest batch of messages for the shell to show.
+class Posted<T> extends Notifier<List<T>> {
   @override
-  List<Activity> build() => const <Activity>[];
+  List<T> build() => <T>[];
 
-  void post(List<Activity> batch) => state = batch;
+  void post(List<T> batch) => state = batch;
 }
 
 /// What other members changed in the last sync.
-final NotifierProvider<ActivityController, List<Activity>> activityProvider =
-    NotifierProvider<ActivityController, List<Activity>>(
-      ActivityController.new,
-    );
+final NotifierProvider<Posted<Activity>, List<Activity>> activityProvider =
+    NotifierProvider<Posted<Activity>, List<Activity>>(Posted<Activity>.new);
 
 typedef RemoteEdit = ({String spaceId, DateTime at});
 
@@ -50,7 +48,6 @@ void showActivity(
   final String locale = context.locale.toString();
   final String? open = ref.read(currentSpaceIdProvider);
   final Set<String> quiet = ref.read(quietSpacesProvider);
-  final List<Space> spaces = ref.read(spaceListProvider).value ?? <Space>[];
   final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
   String nameOf(Activity a) => a.who ?? tr('members.noName');
 
@@ -109,13 +106,12 @@ void showActivity(
   }
 
   final RemoteChange c = news.single.change;
-  final Space? space = spaces.where((Space s) => s.id == c.spaceId).firstOrNull;
-  final String what = <String>[
+  final String what = context.entryLine(
     c.title,
-    if ((c.amount, space) case (final amount?, final Space s))
-      context.moneyIn(s.currencyCode).format(amount),
-    context.dates.dayMonth(c.date),
-  ].join(', ');
+    c.amount,
+    c.date,
+    currencyCode: ref.read(spaceByIdProvider(c.spaceId))?.currencyCode,
+  );
   toast(
     tr(
       'activity.${c.kind.name}${c.income ? 'Income' : 'Payment'}',

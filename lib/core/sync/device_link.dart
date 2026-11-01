@@ -8,7 +8,7 @@ import 'package:supabase/supabase.dart';
 abstract final class DeviceLink {
   static final X25519 _exchange = X25519();
   static final AesGcm _cipher = AesGcm.with256bits();
-  static const Duration _poll = Duration(seconds: 2);
+  static const Duration _every = Duration(seconds: 2);
 
   static Future<SimpleKeyPair> newKeyPair() => _exchange.newKeyPair();
 
@@ -71,26 +71,20 @@ abstract final class DeviceLink {
     SupabaseClient client, {
     Duration timeout = const Duration(minutes: 5),
     bool Function()? keepGoing,
-  }) async {
-    final DateTime until = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(until) && (keepGoing?.call() ?? true)) {
-      final Map<String, dynamic>? row = await client
-          .from('device_link_codes')
-          .select('id, ephemeral_pubkey, claimant_name')
-          .eq('status', 'claimed')
-          .eq('owner_auth_uid', client.auth.currentUser!.id)
-          .maybeSingle();
-      if (row != null) {
-        return (
-          id: row['id'] as String,
-          publicKey: row['ephemeral_pubkey'] as String,
-          name: row['claimant_name'] as String?,
-        );
-      }
-      await Future<void>.delayed(_poll);
-    }
-    return null;
-  }
+  }) => _poll(timeout, keepGoing, () async {
+    final Map<String, dynamic>? row = await client
+        .from('device_link_codes')
+        .select('id, ephemeral_pubkey, claimant_name')
+        .eq('status', 'claimed')
+        .eq('owner_auth_uid', client.auth.currentUser!.id)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      id: row['id'] as String,
+      publicKey: row['ephemeral_pubkey'] as String,
+      name: row['claimant_name'] as String?,
+    );
+  });
 
   /// Allows or refuses [claim]; allowing seals [recoveryKey] to it. False when
   /// the answer came too late.
@@ -116,26 +110,36 @@ abstract final class DeviceLink {
     SimpleKeyPair keyPair, {
     Duration timeout = const Duration(minutes: 5),
     bool Function()? keepGoing,
-  }) async {
+  }) => _poll(timeout, keepGoing, () async {
+    final List<dynamic> rows = await client.rpc<List<dynamic>>(
+      'device_link_claim',
+    );
+    final Map<String, dynamic>? row = rows.firstOrNull as Map<String, dynamic>?;
+    switch (row?['status']) {
+      case 'allowed':
+        final String? sealed = row!['encrypted_payload'] as String?;
+        return (
+          allowed: true,
+          userId: row['user_id'] as String,
+          recoveryKey: sealed == null ? null : await open(sealed, keyPair),
+        );
+      case 'refused':
+        return (allowed: false, userId: null, recoveryKey: null);
+    }
+    return null;
+  });
+
+  /// [once] every two seconds until it finds something, [timeout] passes or
+  /// [keepGoing] says stop.
+  static Future<T?> _poll<T extends Object>(
+    Duration timeout,
+    bool Function()? keepGoing,
+    Future<T?> Function() once,
+  ) async {
     final DateTime until = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(until) && (keepGoing?.call() ?? true)) {
-      final List<dynamic> rows = await client.rpc<List<dynamic>>(
-        'device_link_claim',
-      );
-      final Map<String, dynamic>? row =
-          rows.firstOrNull as Map<String, dynamic>?;
-      switch (row?['status']) {
-        case 'allowed':
-          final String? sealed = row!['encrypted_payload'] as String?;
-          return (
-            allowed: true,
-            userId: row['user_id'] as String,
-            recoveryKey: sealed == null ? null : await open(sealed, keyPair),
-          );
-        case 'refused':
-          return (allowed: false, userId: null, recoveryKey: null);
-      }
-      await Future<void>.delayed(_poll);
+      if (await once() case final T found) return found;
+      await Future<void>.delayed(_every);
     }
     return null;
   }

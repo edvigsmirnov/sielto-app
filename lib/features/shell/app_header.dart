@@ -35,6 +35,11 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final SageColors sage = context.sage;
+    final Widget name = Text(
+      title,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.titleMedium,
+    );
     // Tab leaves the header before the scrolled content.
     return FocusTraversalGroup(
       child: AppBar(
@@ -58,14 +63,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               ),
         // Tapping the Space name opens the switcher; wide, the bar above does.
         title: ShellLayout.of(context) != ShellMode.phone
-            ? Semantics(
-                header: true,
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              )
+            ? Semantics(header: true, child: name)
             : Semantics(
                 button: true,
                 child: InkWell(
@@ -82,13 +80,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        Flexible(
-                          child: Text(
-                            title,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
+                        Flexible(child: name),
                         const SizedBox(width: SageSpace.xs),
                         Icon(Icons.expand_more, size: 18, color: sage.inkLabel),
                       ],

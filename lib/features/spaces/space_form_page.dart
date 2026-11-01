@@ -68,6 +68,12 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
 
   Future<void> _create(String currency) async {
     setState(() => _saving = true);
+    // A first Space replaces onboarding with the shell mid-way.
+    final SyncController sync = ref.read(syncProvider.notifier);
+    final CurrentSpaceIdController current = ref.read(
+      currentSpaceIdProvider.notifier,
+    );
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       final Space space = await ref
           .read(repositoriesProvider)
@@ -80,14 +86,12 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
             starters: starterCategories(),
           );
       if (_storage == StorageMode.cloud) {
-        final CloudResult result = await ref
-            .read(syncProvider.notifier)
-            .moveToCloud(space.id);
-        if (result != CloudResult.done && mounted) {
-          ScaffoldMessenger.of(context).say(tr('storage.${result.name}'));
+        final CloudResult result = await sync.moveToCloud(space.id);
+        if (result != CloudResult.done) {
+          messenger.say(tr('storage.${result.name}'));
         }
       }
-      await ref.read(currentSpaceIdProvider.notifier).select(space.id);
+      await current.select(space.id);
       // Pops to the shell.
       if (mounted && !widget.isFirstSpace) {
         Navigator.of(context).popUntil((Route<void> r) => r.isFirst);

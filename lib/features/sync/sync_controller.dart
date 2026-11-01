@@ -186,21 +186,8 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   /// Cloud Spaces leave this device. One that never reached the cloud stays
   /// as a local Space: this device holds its only copy.
   Future<void> _unlinked() async {
-    _closeChannel();
     state = (unlinked: true, lastSync: state.lastSync);
-    final List<Space> cloud =
-        await (_db.select(_db.spaces)..where(
-              ($SpacesTable t) => t.storageMode.equalsValue(StorageMode.cloud),
-            ))
-            .get();
-    for (final Space space in cloud) {
-      if (space.serverReceivedAt == null) {
-        await _makeLocal(space.id);
-      } else {
-        await ref.read(repositoriesProvider).spaces.deleteForever(space.id);
-      }
-    }
-    await _identity.forget();
+    await _leaveCloud((Space s) => s.serverReceivedAt == null);
     // An empty device starts over, as a fresh install.
     if ((await _db.select(_db.spaces).get()).isEmpty) {
       await ref.read(localSettingsProvider).startOver();
@@ -247,19 +234,24 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     ];
     if (unnamed.isNotEmpty) {
       try {
-        final List<Map<String, dynamic>> profiles = await _client
-            .from('user_profiles')
-            .select('user_id, nickname')
-            .inFilter('user_id', unnamed);
-        for (final Map<String, dynamic> p in profiles) {
-          names[p['user_id'] as String] = p['nickname'] as String;
-        }
+        names.addAll(await _publicNames(unnamed));
       } on Exception catch (e) {
         debugPrint('names: $e');
       }
     }
     return names;
   }
+
+  /// The names [userIds] gave themselves.
+  Future<Map<String, String>> _publicNames(List<String> userIds) async =>
+      <String, String>{
+        for (final Map<String, dynamic> p
+            in await _client
+                .from('user_profiles')
+                .select('user_id, nickname')
+                .inFilter('user_id', userIds))
+          p['user_id'] as String: p['nickname'] as String,
+      };
 
   /// Empty when the server cannot say.
   Future<Map<String, DateTime?>> _lastSeen(String spaceId) async {
@@ -300,15 +292,8 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     final Set<String> stillAway = <String>{};
     final List<({String spaceId, String spaceTitle, String userId})> due =
         <({String spaceId, String spaceTitle, String userId})>[];
-    final List<Space> owned =
-        await (_db.select(_db.spaces)..where(
-              ($SpacesTable t) =>
-                  t.storageMode.equalsValue(StorageMode.cloud) &
-                  t.ownerId.equals(me) &
-                  t.serverReceivedAt.isNotNull(),
-            ))
-            .get();
-    for (final Space space in owned) {
+    for (final Space space in await _worker.cloudSpaces()) {
+      if (space.ownerId != me || space.serverReceivedAt == null) continue;
       final Map<String, DateTime?> seen = await _lastSeen(space.id);
       for (final MapEntry<String, DateTime?> m in seen.entries) {
         final DateTime? at = m.value;
@@ -341,25 +326,16 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     String id, {
     required CalendarDate on,
     String? note,
-  }) => _serial(() async {
-    if (await _signIn() != CloudResult.done) return false;
-    try {
-      return await _worker.takeServer(table, id, note: note, on: on);
-    } on Exception catch (e) {
-      debugPrint('refused: $e');
-      return false;
-    }
-  });
+  }) => _cloud(
+    () => _worker.takeServer(table, id, note: note, on: on),
+    (CloudResult _) => false,
+  );
 
   /// A one-time code for a new device; null with no network.
-  Future<String?> newLinkCode() => _serial(() async {
-    if (await _signIn() != CloudResult.done) return null;
-    try {
-      return await _client.rpc<String>('create_device_link_code');
-    } on Exception {
-      return null;
-    }
-  });
+  Future<String?> newLinkCode() => _cloud(
+    () => _client.rpc<String>('create_device_link_code'),
+    (CloudResult _) => null,
+  );
 
   /// Waits for someone to claim this device's code; null when nobody does in
   /// time or the network dropped.
@@ -432,26 +408,7 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     final CloudResult result = await _serial(() async {
       final CloudResult signedIn = await _signIn();
       if (signedIn != CloudResult.done) return signedIn;
-      await _db.transaction(() async {
-        await _db.customUpdate(
-          "UPDATE spaces SET storage_mode = 'cloud', sync_status = 'pending' "
-          'WHERE id = ?',
-          variables: <Variable<Object>>[Variable<String>(spaceId)],
-          updates: <TableInfo<dynamic, dynamic>>{_db.spaces},
-        );
-        for (final String table in SyncWorker.records) {
-          await _db.customUpdate(
-            "UPDATE $table SET sync_status = 'pending' "
-            "WHERE space_id = ? AND sync_status <> 'rejected'",
-            variables: <Variable<Object>>[Variable<String>(spaceId)],
-            updates: <TableInfo<dynamic, dynamic>>{
-              _db.allTables.firstWhere(
-                (TableInfo<dynamic, dynamic> t) => t.actualTableName == table,
-              ),
-            },
-          );
-        }
-      });
+      await _worker.markPending(spaceId);
       return CloudResult.done;
     });
     if (result == CloudResult.done) unawaited(syncNow());
@@ -463,16 +420,9 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   Future<CloudResult> moveToLocal(String spaceId) => _serial(() async {
     final CloudResult removed = await _removeFromServer(spaceId);
     if (removed != CloudResult.done) return removed;
-    await _makeLocal(spaceId);
+    await _worker.makeLocal(spaceId);
     return CloudResult.done;
   });
-
-  Future<void> _makeLocal(String spaceId) => _db.customUpdate(
-    "UPDATE spaces SET storage_mode = 'local', sync_status = 'none', "
-    'server_received_at = NULL, synced_until = NULL WHERE id = ?',
-    variables: <Variable<Object>>[Variable<String>(spaceId)],
-    updates: <TableInfo<dynamic, dynamic>>{_db.spaces},
-  );
 
   /// Deletes everything the cloud holds for this user and unlinks every
   /// device. Here, own cloud Spaces stay as local ones.
@@ -484,23 +434,23 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     } on Exception {
       return CloudResult.noNetwork;
     }
-    _closeChannel();
     final String me = ref.read(userIdProvider);
-    final List<Space> cloud =
-        await (_db.select(_db.spaces)..where(
-              ($SpacesTable t) => t.storageMode.equalsValue(StorageMode.cloud),
-            ))
-            .get();
-    for (final Space space in cloud) {
-      if (space.ownerId == me) {
-        await _makeLocal(space.id);
+    await _leaveCloud((Space s) => s.ownerId == me);
+    return CloudResult.done;
+  });
+
+  /// Cloud Spaces leave this device; those [keep] picks stay as local ones.
+  Future<void> _leaveCloud(bool Function(Space space) keep) async {
+    _closeChannel();
+    for (final Space space in await _worker.cloudSpaces()) {
+      if (keep(space)) {
+        await _worker.makeLocal(space.id);
       } else {
         await ref.read(repositoriesProvider).spaces.deleteForever(space.id);
       }
     }
     await _identity.forget();
-    return CloudResult.done;
-  });
+  }
 
   /// Makes the name visible to people who share a Space with this user.
   Future<void> _uploadProfile() async {
@@ -518,30 +468,19 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   /// no room, or with a failure result.
   Future<({CloudResult result, String? code, bool full})> createInvite(
     String spaceId,
-  ) => _serial(() async {
-    final CloudResult signedIn = await _signIn();
-    if (signedIn != CloudResult.done) {
-      return (result: signedIn, code: null, full: false);
-    }
+  ) => _cloud(() async {
+    await _uploadProfile();
     try {
-      await _uploadProfile();
       final String code = await _client.rpc<String>(
         'create_space_invite',
         params: <String, String>{'p_space_id': spaceId},
       );
       return (result: CloudResult.done, code: code, full: false);
     } on PostgrestException catch (e) {
-      return (
-        result: e.message == 'space_full'
-            ? CloudResult.done
-            : CloudResult.noNetwork,
-        code: null,
-        full: e.message == 'space_full',
-      );
-    } on Exception {
-      return (result: CloudResult.noNetwork, code: null, full: false);
+      if (e.message != 'space_full') rethrow;
+      return (result: CloudResult.done, code: null, full: true);
     }
-  });
+  }, (CloudResult result) => (result: result, code: null, full: false));
 
   /// Drops the unused code before anyone joins with it.
   Future<bool> revokeInvites(String spaceId) => _online(
@@ -550,22 +489,10 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
 
   /// Joins someone else's Space and brings it here. Returns its id.
   Future<({JoinResult result, String? spaceId})> joinSpace(String code) async {
-    if (ref.read(offlineModeProvider)) {
-      return (result: JoinResult.offlineMode, spaceId: null);
-    }
-    final ({JoinResult result, String? spaceId}) joined = await _serial(
+    final ({JoinResult result, String? spaceId}) joined = await _cloud(
       () async {
-        final CloudResult signedIn = await _signIn();
-        if (signedIn != CloudResult.done) {
-          return (
-            result: signedIn == CloudResult.unlinked
-                ? JoinResult.unlinked
-                : JoinResult.noNetwork,
-            spaceId: null,
-          );
-        }
+        await _uploadProfile();
         try {
-          await _uploadProfile();
           final String? spaceId = await _client.rpc<String?>(
             'join_space_by_token',
             params: <String, String>{'p_code': code.trim()},
@@ -583,10 +510,16 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
             },
             spaceId: null,
           );
-        } on Exception {
-          return (result: JoinResult.noNetwork, spaceId: null);
         }
       },
+      (CloudResult result) => (
+        result: switch (result) {
+          CloudResult.offlineMode => JoinResult.offlineMode,
+          CloudResult.unlinked => JoinResult.unlinked,
+          _ => JoinResult.noNetwork,
+        },
+        spaceId: null,
+      ),
     );
     if (joined.result == JoinResult.joined) await syncNow();
     return joined;
@@ -595,51 +528,40 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   /// Everyone in [spaceId], the owner first.
   Future<({CloudResult result, List<Member> members})> members(
     String spaceId,
-  ) => _serial(() async {
-    final CloudResult signedIn = await _signIn();
-    if (signedIn != CloudResult.done) {
-      return (result: signedIn, members: const <Member>[]);
-    }
-    try {
-      final Map<String, dynamic> space = await _client
-          .from('spaces')
-          .select('owner_id')
-          .eq('id', spaceId)
-          .single();
-      final List<Map<String, dynamic>> rows = await _client
-          .from('space_members')
-          .select('user_id')
-          .eq('space_id', spaceId)
-          .order('joined_at');
-      final List<String> ids = <String>[
-        for (final Map<String, dynamic> r in rows) r['user_id'] as String,
-      ];
-      final Map<String, DateTime?> seen = await _lastSeen(spaceId);
-      final List<Map<String, dynamic>> profiles = await _client
-          .from('user_profiles')
-          .select('user_id, nickname')
-          .inFilter('user_id', ids);
-      final Map<String, String> names = <String, String>{
-        for (final Map<String, dynamic> p in profiles)
-          p['user_id'] as String: p['nickname'] as String,
-      };
-      final String me = ref.read(userIdProvider);
-      final String ownerId = space['owner_id'] as String;
-      final List<Member> members = <Member>[
+  ) => _cloud(() async {
+    final Map<String, dynamic> space = await _client
+        .from('spaces')
+        .select('owner_id')
+        .eq('id', spaceId)
+        .single();
+    final List<Map<String, dynamic>> rows = await _client
+        .from('space_members')
+        .select('user_id')
+        .eq('space_id', spaceId)
+        .order('joined_at');
+    final List<String> ids = <String>[
+      for (final Map<String, dynamic> r in rows) r['user_id'] as String,
+    ];
+    final Map<String, DateTime?> seen = await _lastSeen(spaceId);
+    final Map<String, String> names = await _publicNames(ids);
+    final String me = ref.read(userIdProvider);
+    final String ownerId = space['owner_id'] as String;
+    Member member(String id) => (
+      userId: id,
+      name: names[id],
+      owner: id == ownerId,
+      me: id == me,
+      lastSeen: seen[id],
+    );
+    return (
+      result: CloudResult.done,
+      members: <Member>[
+        if (ids.contains(ownerId)) member(ownerId),
         for (final String id in ids)
-          (
-            userId: id,
-            name: names[id],
-            owner: id == ownerId,
-            me: id == me,
-            lastSeen: seen[id],
-          ),
-      ]..sort((Member a, Member b) => (b.owner ? 1 : 0) - (a.owner ? 1 : 0));
-      return (result: CloudResult.done, members: members);
-    } on Exception {
-      return (result: CloudResult.noNetwork, members: const <Member>[]);
-    }
-  });
+          if (id != ownerId) member(id),
+      ],
+    );
+  }, (CloudResult result) => (result: result, members: const <Member>[]));
 
   /// This user's private labels in [spaceId], by member. Pending local edits
   /// go up first; the later edit wins.
@@ -747,28 +669,19 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   }
 
   /// Leaves someone else's Space; its copy here goes too.
-  Future<bool> leaveSpace(String spaceId) => _serial(() async {
-    if (await _signIn() != CloudResult.done) return false;
-    try {
-      await _client.rpc<void>(
-        'leave_space',
-        params: <String, String>{'p_space_id': spaceId},
-      );
-    } on Exception {
-      return false;
-    }
+  Future<bool> leaveSpace(String spaceId) => _cloud(() async {
+    await _client.rpc<void>(
+      'leave_space',
+      params: <String, String>{'p_space_id': spaceId},
+    );
     await ref.read(repositoriesProvider).spaces.deleteForever(spaceId);
     return true;
-  });
+  }, (CloudResult _) => false);
 
   /// This account's devices, most recently seen first.
   Future<({CloudResult result, List<LinkedDevice> devices})> devices() =>
-      _serial(() async {
-        final CloudResult signedIn = await _signIn();
-        if (signedIn != CloudResult.done) {
-          return (result: signedIn, devices: const <LinkedDevice>[]);
-        }
-        try {
+      _cloud(
+        () async {
           final String mine = await _identity.deviceId();
           final List<Map<String, dynamic>> rows = await _client
               .from('user_devices')
@@ -786,13 +699,10 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
                 ),
             ],
           );
-        } on Exception {
-          return (
-            result: CloudResult.noNetwork,
-            devices: const <LinkedDevice>[],
-          );
-        }
-      });
+        },
+        (CloudResult result) =>
+            (result: result, devices: const <LinkedDevice>[]),
+      );
 
   Future<bool> renameDevice(String deviceId, String name) => _online(
     () => _client
@@ -812,13 +722,24 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       _online(() => _client.rpc<void>('unlink_other_devices'));
 
   /// False with no network or no cloud access.
-  Future<bool> _online(Future<void> Function() call) => _serial(() async {
-    if (await _signIn() != CloudResult.done) return false;
+  Future<bool> _online(Future<void> Function() call) => _cloud(() async {
+    await call();
+    return true;
+  }, (CloudResult _) => false);
+
+  /// [run] once signed in, in turn with every other cloud call. [failed]
+  /// answers for a failed sign-in, and for [run] throwing as no network.
+  Future<T> _cloud<T>(
+    Future<T> Function() run,
+    T Function(CloudResult result) failed,
+  ) => _serial(() async {
+    final CloudResult signedIn = await _signIn();
+    if (signedIn != CloudResult.done) return failed(signedIn);
     try {
-      await call();
-      return true;
-    } on Exception {
-      return false;
+      return await run();
+    } on Exception catch (e) {
+      debugPrint('cloud: $e');
+      return failed(CloudResult.noNetwork);
     }
   });
 
@@ -899,18 +820,11 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
 final NotifierProvider<SyncController, SyncState> syncProvider =
     NotifierProvider<SyncController, SyncState>(SyncController.new);
 
-class RetentionNoticeController extends Notifier<List<RetentionNotice>> {
-  @override
-  List<RetentionNotice> build() => const <RetentionNotice>[];
-
-  void post(List<RetentionNotice> notices) => state = notices;
-}
-
 /// Members whose 90 days ran out, for the creator.
-final NotifierProvider<RetentionNoticeController, List<RetentionNotice>>
+final NotifierProvider<Posted<RetentionNotice>, List<RetentionNotice>>
 retentionNoticeProvider =
-    NotifierProvider<RetentionNoticeController, List<RetentionNotice>>(
-      RetentionNoticeController.new,
+    NotifierProvider<Posted<RetentionNotice>, List<RetentionNotice>>(
+      Posted<RetentionNotice>.new,
     );
 
 /// True once this device has registered with the cloud.
