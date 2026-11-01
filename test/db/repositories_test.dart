@@ -252,7 +252,7 @@ void main() {
       final Payment january = (await payments.seriesOf(group)).first;
       await payments.setPeriod(january.id, closed.id);
 
-      await payments.updateWholeSeries(
+      await payments.updateSeries(
         group,
         title: const Value<String>('Pool'),
         amount: Value<Decimal>(Decimal.ten),

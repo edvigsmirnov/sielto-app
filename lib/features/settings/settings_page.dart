@@ -28,7 +28,6 @@ class SettingsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeMode themeMode = ref.watch(themeModeProvider);
     final FeedDensity density = ref.watch(feedDensityProvider);
 
     return Scaffold(
@@ -52,16 +51,7 @@ class SettingsPage extends ConsumerWidget {
               horizontal: SageSpace.gutter,
               vertical: SageSpace.sm,
             ),
-            child: LabelledField(
-              label: tr('settings.theme'),
-              child: SegmentedChoice<ThemeMode>(
-                values: ThemeMode.values,
-                selected: themeMode,
-                labelOf: (ThemeMode mode) => tr('theme.${mode.name}'),
-                onChanged: (ThemeMode mode) =>
-                    ref.read(themeModeProvider.notifier).set(mode),
-              ),
-            ),
+            child: const ThemeField(),
           ),
           // Wide, the Feed is a table with one row height.
           if (!isWide(context))
@@ -174,6 +164,22 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+class ThemeField extends ConsumerWidget {
+  const ThemeField({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => LabelledField(
+    label: tr('settings.theme'),
+    child: SegmentedChoice<ThemeMode>(
+      values: ThemeMode.values,
+      selected: ref.watch(themeModeProvider),
+      labelOf: (ThemeMode mode) => tr('theme.${mode.name}'),
+      onChanged: (ThemeMode mode) =>
+          ref.read(themeModeProvider.notifier).set(mode),
+    ),
+  );
 }
 
 Future<void> _editName(BuildContext context, WidgetRef ref) async {

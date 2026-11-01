@@ -136,42 +136,17 @@ final NotifierProvider<FeedFilterOpenController, bool> feedFilterOpenProvider =
 
 /// The wide layouts' search: a field, chip rows and what matched, above the
 /// table. Escape closes it.
-class FeedFilterPanel extends ConsumerStatefulWidget {
+class FeedFilterPanel extends ConsumerWidget {
   const FeedFilterPanel({required this.shown, required this.money, super.key});
 
   final List<FeedRecord> shown;
   final MoneyFormat money;
 
   @override
-  ConsumerState<FeedFilterPanel> createState() => _FeedFilterPanelState();
-}
-
-class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
-  late final TextEditingController _query = TextEditingController(
-    text: ref.read(feedFilterProvider).query,
-  );
-  final FocusNode _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
-  }
-
-  @override
-  void dispose() {
-    _query.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  void _update(FeedFilter Function(FeedFilter) change) =>
-      ref.read(feedFilterProvider.notifier).update(change);
-
-  void _close() => ref.read(feedFilterOpenProvider.notifier).set(open: false);
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    void update(FeedFilter Function(FeedFilter) change) =>
+        ref.read(feedFilterProvider.notifier).update(change);
+    void close() => ref.read(feedFilterOpenProvider.notifier).set(open: false);
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
     final FeedFilter filter = ref.watch(feedFilterProvider);
@@ -206,7 +181,7 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
 
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.escape): _close,
+        const SingleActivator(LogicalKeyboardKey.escape): close,
       },
       child: Container(
         margin: const EdgeInsets.fromLTRB(
@@ -231,32 +206,17 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
           children: <Widget>[
             Row(
               children: <Widget>[
-                Expanded(
-                  child: TextField(
-                    controller: _query,
-                    focusNode: _focus,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      hintText: tr('feed.filter.search'),
-                      isDense: true,
-                    ),
-                    onChanged: (String value) =>
-                        _update((FeedFilter f) => f.copyWith(query: value)),
-                  ),
-                ),
+                const Expanded(child: _SearchField(autofocus: true)),
                 const SizedBox(width: SageSpace.sm),
                 OutlinedButton(
                   onPressed: filter.isActive
-                      ? () {
-                          _query.clear();
-                          ref.read(feedFilterProvider.notifier).clear();
-                        }
+                      ? ref.read(feedFilterProvider.notifier).clear
                       : null,
                   child: Text(tr('common.clear')),
                 ),
                 IconButton(
                   tooltip: tr('common.close'),
-                  onPressed: _close,
+                  onPressed: close,
                   icon: const Icon(Icons.close),
                 ),
               ],
@@ -266,7 +226,7 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
                 _Chip(
                   label: tr('feed.filter.kind.${k.name}'),
                   selected: filter.kind == k,
-                  onTap: () => _update((FeedFilter f) => f.copyWith(kind: k)),
+                  onTap: () => update((FeedFilter f) => f.copyWith(kind: k)),
                 ),
             ]),
             if (categories.isNotEmpty)
@@ -276,7 +236,7 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
                     label: c.shownTitle,
                     dot: parseCategoryColor(c.color),
                     selected: filter.categoryIds.contains(c.id),
-                    onTap: () => _update((FeedFilter f) => f.toggled(c.id)),
+                    onTap: () => update((FeedFilter f) => f.toggled(c.id)),
                   ),
               ]),
             row(tr('feed.filter.statusLabel'), <Widget>[
@@ -284,8 +244,7 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
                 _Chip(
                   label: statusLabel(st, filter.kind),
                   selected: filter.status == st,
-                  onTap: () =>
-                      _update((FeedFilter f) => f.copyWith(status: st)),
+                  onTap: () => update((FeedFilter f) => f.copyWith(status: st)),
                 ),
             ]),
             const SizedBox(height: SageSpace.sm),
@@ -296,7 +255,7 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
                 children: <Widget>[
                   Expanded(
                     child: Text(
-                      _found(widget.shown, widget.money),
+                      _found(shown, money),
                       style: text.bodySmall?.copyWith(color: sage.ink),
                     ),
                   ),
@@ -313,6 +272,62 @@ class _FeedFilterPanelState extends ConsumerState<FeedFilterPanel> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Follows the filter's query, so clearing the filter empties it.
+class _SearchField extends ConsumerStatefulWidget {
+  const _SearchField({this.autofocus = false});
+
+  final bool autofocus;
+
+  @override
+  ConsumerState<_SearchField> createState() => _SearchFieldState();
+}
+
+class _SearchFieldState extends ConsumerState<_SearchField> {
+  late final TextEditingController _query = TextEditingController(
+    text: ref.read(feedFilterProvider).query,
+  );
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autofocus) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _focus.requestFocus(),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _query.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(feedFilterProvider.select((FeedFilter f) => f.query), (
+      String? _,
+      String query,
+    ) {
+      if (query != _query.text) _query.text = query;
+    });
+    return TextField(
+      controller: _query,
+      focusNode: _focus,
+      decoration: InputDecoration(
+        prefixIcon: const Icon(Icons.search, size: 20),
+        hintText: tr('feed.filter.search'),
+        isDense: true,
+      ),
+      onChanged: (String value) => ref
+          .read(feedFilterProvider.notifier)
+          .update((FeedFilter f) => f.copyWith(query: value)),
     );
   }
 }
@@ -375,29 +390,13 @@ class _Chip extends StatelessWidget {
   }
 }
 
-class _FilterSheet extends ConsumerStatefulWidget {
+class _FilterSheet extends ConsumerWidget {
   const _FilterSheet();
 
   @override
-  ConsumerState<_FilterSheet> createState() => _FilterSheetState();
-}
-
-class _FilterSheetState extends ConsumerState<_FilterSheet> {
-  late final TextEditingController _query = TextEditingController(
-    text: ref.read(feedFilterProvider).query,
-  );
-
-  @override
-  void dispose() {
-    _query.dispose();
-    super.dispose();
-  }
-
-  void _update(FeedFilter Function(FeedFilter) change) =>
-      ref.read(feedFilterProvider.notifier).update(change);
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    void update(FeedFilter Function(FeedFilter) change) =>
+        ref.read(feedFilterProvider.notifier).update(change);
     final FeedFilter filter = ref.watch(feedFilterProvider);
     final List<Category> categories =
         ref.watch(spaceCategoriesProvider).value ?? const <Category>[];
@@ -416,23 +415,14 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              TextField(
-                controller: _query,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  hintText: tr('feed.filter.search'),
-                  isDense: true,
-                ),
-                onChanged: (String value) =>
-                    _update((FeedFilter f) => f.copyWith(query: value)),
-              ),
+              const _SearchField(),
               const SizedBox(height: SageSpace.lg),
               SegmentedChoice<FeedKind>(
                 values: FeedKind.values,
                 selected: filter.kind,
                 labelOf: (FeedKind k) => tr('feed.filter.kind.${k.name}'),
                 onChanged: (FeedKind k) =>
-                    _update((FeedFilter f) => f.copyWith(kind: k)),
+                    update((FeedFilter f) => f.copyWith(kind: k)),
               ),
               const SizedBox(height: SageSpace.sm),
               SegmentedChoice<FeedStatus>(
@@ -440,7 +430,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                 selected: filter.status,
                 labelOf: (FeedStatus s) => statusLabel(s, filter.kind),
                 onChanged: (FeedStatus s) =>
-                    _update((FeedFilter f) => f.copyWith(status: s)),
+                    update((FeedFilter f) => f.copyWith(status: s)),
               ),
               if (categories.isNotEmpty) ...<Widget>[
                 const SizedBox(height: SageSpace.lg),
@@ -474,7 +464,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                               ),
                               selected: filter.categoryIds.contains(c.id),
                               onSelected: (bool _) =>
-                                  _update((FeedFilter f) => f.toggled(c.id)),
+                                  update((FeedFilter f) => f.toggled(c.id)),
                             ),
                           ),
                       ],
@@ -485,10 +475,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
               if (filter.isActive) ...<Widget>[
                 const SizedBox(height: SageSpace.lg),
                 TextButton(
-                  onPressed: () {
-                    _query.clear();
-                    ref.read(feedFilterProvider.notifier).clear();
-                  },
+                  onPressed: ref.read(feedFilterProvider.notifier).clear,
                   child: Text(tr('feed.filter.clear')),
                 ),
               ],

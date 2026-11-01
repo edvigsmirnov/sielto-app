@@ -370,21 +370,11 @@ class _PaymentFormPageState extends ConsumerState<PaymentFormPage> {
             if (_periodChoice != _loadedPeriodChoice) {
               await _applyPeriodChoice(repos, existing.id);
             }
-          case SeriesScope.allFuture:
+          case SeriesScope.allFuture || SeriesScope.wholeSeries:
             // Each occurrence keeps its own date.
-            await repos.payments.updateSeriesFrom(
+            await repos.payments.updateSeries(
               existing.groupRecurringId!,
-              existing.dueDate,
-              title: Value<String>(_title.text),
-              amount: Value<Decimal>(amount),
-              expenseType: Value<ExpenseType>(_type),
-              categoryId: Value<String?>(_categoryId),
-              notes: Value<String?>(notes),
-            );
-            await applyOwn();
-          case SeriesScope.wholeSeries:
-            await repos.payments.updateWholeSeries(
-              existing.groupRecurringId!,
+              from: scope == SeriesScope.allFuture ? existing.dueDate : null,
               title: Value<String>(_title.text),
               amount: Value<Decimal>(amount),
               expenseType: Value<ExpenseType>(_type),

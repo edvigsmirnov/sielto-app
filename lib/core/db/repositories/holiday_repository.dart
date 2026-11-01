@@ -112,21 +112,15 @@ class CustomNonWorkingDayRepository {
         .toList();
   }
 
-  Future<List<CustomNonWorkingDay>> all() =>
-      (db.select(db.customNonWorkingDays)
-            ..orderBy(<OrderClauseGenerator<$CustomNonWorkingDaysTable>>[
-              ($CustomNonWorkingDaysTable t) =>
-                  OrderingTerm(expression: t.date),
-            ]))
-          .get();
+  Future<List<CustomNonWorkingDay>> all() => _byDate().get();
 
-  Stream<List<CustomNonWorkingDay>> watchAll() =>
-      (db.select(db.customNonWorkingDays)
-            ..orderBy(<OrderClauseGenerator<$CustomNonWorkingDaysTable>>[
-              ($CustomNonWorkingDaysTable t) =>
-                  OrderingTerm(expression: t.date),
-            ]))
-          .watch();
+  Stream<List<CustomNonWorkingDay>> watchAll() => _byDate().watch();
+
+  SimpleSelectStatement<$CustomNonWorkingDaysTable, CustomNonWorkingDay>
+  _byDate() => db.select(db.customNonWorkingDays)
+    ..orderBy(<OrderClauseGenerator<$CustomNonWorkingDaysTable>>[
+      ($CustomNonWorkingDaysTable t) => OrderingTerm(expression: t.date),
+    ]);
 
   /// Returns the existing row for the same date and country.
   Future<CustomNonWorkingDay> add({

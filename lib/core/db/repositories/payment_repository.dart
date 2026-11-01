@@ -241,42 +241,6 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     return groupId;
   }
 
-  /// Skips paid rows.
-  Future<int> updateSeriesFrom(
-    String groupRecurringId,
-    CalendarDate from, {
-    Value<String> title = const Value<String>.absent(),
-    Value<Decimal> amount = const Value<Decimal>.absent(),
-    Value<ExpenseType> expenseType = const Value<ExpenseType>.absent(),
-    Value<String?> categoryId = const Value<String?>.absent(),
-    Value<String?> notes = const Value<String?>.absent(),
-  }) => _writeSeries(
-    groupRecurringId,
-    from: from,
-    title: title,
-    amount: amount,
-    expenseType: expenseType,
-    categoryId: categoryId,
-    notes: notes,
-  );
-
-  /// Every occurrence except paid ones.
-  Future<int> updateWholeSeries(
-    String groupRecurringId, {
-    Value<String> title = const Value<String>.absent(),
-    Value<Decimal> amount = const Value<Decimal>.absent(),
-    Value<ExpenseType> expenseType = const Value<ExpenseType>.absent(),
-    Value<String?> categoryId = const Value<String?>.absent(),
-    Value<String?> notes = const Value<String?>.absent(),
-  }) => _writeSeries(
-    groupRecurringId,
-    title: title,
-    amount: amount,
-    expenseType: expenseType,
-    categoryId: categoryId,
-    notes: notes,
-  );
-
   /// Live occurrences in date order. A series has no rule row.
   Future<List<Payment>> seriesOf(String groupRecurringId) =>
       (selectAlive()
@@ -304,8 +268,9 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     );
   }
 
-  /// Frozen rows take only the title and the category.
-  Future<int> _writeSeries(
+  /// Every unpaid occurrence, or from [from] on. Frozen rows take only the
+  /// title and the category.
+  Future<int> updateSeries(
     String groupRecurringId, {
     CalendarDate? from,
     Value<String> title = const Value<String>.absent(),

@@ -119,13 +119,18 @@ class LinkTile extends StatelessWidget {
 
 /// Uppercase label above a form field.
 class FieldLabel extends StatelessWidget {
-  const FieldLabel(this.text, {super.key});
+  const FieldLabel(
+    this.text, {
+    this.padding = const EdgeInsets.only(bottom: SageSpace.sm),
+    super.key,
+  });
 
   final String text;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: SageSpace.sm),
+    padding: padding,
     child: Semantics(
       header: true,
       child: Text(
@@ -609,28 +614,16 @@ class EmptyState extends StatelessWidget {
 }
 
 /// Upper-case label over a settings section.
-class SectionLabel extends StatelessWidget {
-  const SectionLabel(this.text, {super.key});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      SageSpace.gutter,
-      SageSpace.md,
-      SageSpace.gutter,
-      SageSpace.xs,
-    ),
-    child: Semantics(
-      header: true,
-      child: Text(
-        text.toUpperCase(),
-        semanticsLabel: text,
-        style: Theme.of(context).textTheme.labelSmall,
-      ),
-    ),
-  );
+class SectionLabel extends FieldLabel {
+  const SectionLabel(super.text, {super.key})
+    : super(
+        padding: const EdgeInsets.fromLTRB(
+          SageSpace.gutter,
+          SageSpace.md,
+          SageSpace.gutter,
+          SageSpace.xs,
+        ),
+      );
 }
 
 /// Reorder grip for a [ReorderableListView] item: 48 dp wide, and it

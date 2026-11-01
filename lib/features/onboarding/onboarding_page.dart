@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/l10n/app_locales.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/choice_field.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/form_fields.dart';
@@ -21,6 +20,7 @@ import 'package:sielto/features/onboarding/welcome_page.dart';
 import 'package:sielto/features/security/app_lock.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/security/security_page.dart';
+import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/spaces/space_form_page.dart';
 
 /// First run: basics, then the first Space.
@@ -194,7 +194,6 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
     final String locale = context.locale.toString();
     final String currency =
         _currency ?? ref.read(localSettingsProvider).currencyFor(locale);
-    final ThemeMode themeMode = ref.watch(themeModeProvider);
 
     return OnboardingScaffold(
       step: 1,
@@ -235,16 +234,7 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: SageSpace.lg),
-        LabelledField(
-          label: tr('settings.theme'),
-          child: SegmentedChoice<ThemeMode>(
-            values: ThemeMode.values,
-            selected: themeMode,
-            labelOf: (ThemeMode mode) => tr('theme.${mode.name}'),
-            onChanged: (ThemeMode mode) =>
-                ref.read(themeModeProvider.notifier).set(mode),
-          ),
-        ),
+        const ThemeField(),
         const SizedBox(height: SageSpace.lg),
         LabelledField(
           label: tr('settings.language'),
