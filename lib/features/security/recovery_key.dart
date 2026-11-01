@@ -11,6 +11,7 @@ import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
+import 'package:sielto/core/ui/plate.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/backup/drive.dart';
 
@@ -305,73 +306,16 @@ class RecoveryKeyPlate extends ConsumerWidget {
         ref.watch(backupPlateClosedProvider)) {
       return const SizedBox.shrink();
     }
-    final SageColors sage = context.sage;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        SageSpace.gutter,
-        0,
-        SageSpace.gutter,
-        SageSpace.sm,
+    return Plate(
+      icon: Icons.shield_outlined,
+      warning: true,
+      text: tr(
+        ref.watch(localSettingsProvider).joinedAccount
+            ? 'recovery.plateExisting'
+            : 'recovery.plate',
       ),
-      child: Material(
-        color: sage.warningTint,
-        borderRadius: BorderRadius.circular(SageRadius.card),
-        clipBehavior: Clip.antiAlias,
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Semantics(
-                container: true,
-                button: true,
-                child: InkWell(
-                  onTap: onTap,
-                  child: Container(
-                    constraints: const BoxConstraints(
-                      minHeight: kMinInteractiveDimension,
-                    ),
-                    padding: const EdgeInsetsDirectional.fromSTEB(
-                      SageSpace.md,
-                      SageSpace.sm,
-                      SageSpace.xs,
-                      SageSpace.sm,
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Icon(
-                          Icons.shield_outlined,
-                          size: 18,
-                          color: sage.warning,
-                        ),
-                        const SizedBox(width: SageSpace.sm),
-                        Expanded(
-                          child: Text(
-                            tr(
-                              ref.watch(localSettingsProvider).joinedAccount
-                                  ? 'recovery.plateExisting'
-                                  : 'recovery.plate',
-                            ),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                        Icon(
-                          Icons.chevron_right,
-                          size: 18,
-                          color: sage.inkLabel,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: tr('common.close'),
-              icon: Icon(Icons.close, size: 18, color: sage.inkLabel),
-              onPressed: ref.read(backupPlateClosedProvider.notifier).close,
-            ),
-          ],
-        ),
-      ),
+      onTap: onTap,
+      onClose: ref.read(backupPlateClosedProvider.notifier).close,
     );
   }
 }

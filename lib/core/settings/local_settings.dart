@@ -47,6 +47,10 @@ class LocalSettings {
   static const String _keyVanished = 'vanished_spaces';
   static const String _keyQuiet = 'quiet_spaces';
   static const String _keyRetention = 'retention_noticed';
+  static const String _keyUpdateChecks = 'update_checks';
+  static const String _keyUpdateLastCheck = 'update_last_check';
+  static const String _keyUpdateLatest = 'update_latest';
+  static const String _keyUpdateDismissed = 'update_dismissed';
 
   final SharedPreferences _prefs;
 
@@ -230,6 +234,33 @@ class LocalSettings {
   Future<void> setDriveLastBackup(DateTime? at) => at == null
       ? _prefs.remove(_keyDriveLastBackup)
       : _prefs.setString(_keyDriveLastBackup, at.toUtc().toIso8601String());
+
+  /// Daily update checks. Null means not asked yet.
+  bool? get updateChecks => _prefs.getBool(_keyUpdateChecks);
+
+  Future<void> setUpdateChecks({required bool value}) =>
+      _prefs.setBool(_keyUpdateChecks, value);
+
+  DateTime? get updateLastCheck {
+    final String? raw = _prefs.getString(_keyUpdateLastCheck);
+    return raw == null ? null : DateTime.parse(raw);
+  }
+
+  Future<void> setUpdateLastCheck(DateTime at) =>
+      _prefs.setString(_keyUpdateLastCheck, at.toUtc().toIso8601String());
+
+  /// The newest release found, as JSON.
+  String? get updateLatest => _prefs.getString(_keyUpdateLatest);
+
+  Future<void> setUpdateLatest(String? json) => json == null
+      ? _prefs.remove(_keyUpdateLatest)
+      : _prefs.setString(_keyUpdateLatest, json);
+
+  /// The version whose Dashboard plate was closed.
+  String? get updateDismissed => _prefs.getString(_keyUpdateDismissed);
+
+  Future<void> setUpdateDismissed(String version) =>
+      _prefs.setString(_keyUpdateDismissed, version);
 
   /// The one-column sidebar shows icons only.
   bool get compactSidebar => _prefs.getBool(_keyCompactSidebar) ?? false;

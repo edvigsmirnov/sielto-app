@@ -14,6 +14,7 @@ import 'package:sielto/features/dashboard/flow_dashboard.dart';
 import 'package:sielto/features/dashboard/period_dashboard.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/shell/app_header.dart';
+import 'package:sielto/features/update/update_ui.dart';
 
 /// Aggregated figures for the open Space, by mode.
 class DashboardPage extends ConsumerWidget {
@@ -35,6 +36,7 @@ class DashboardPage extends ConsumerWidget {
               RecoveryKeyPlate(
                 onTap: () => pushPage<void>(context, const BackupPage()),
               ),
+              const UpdatePlate(),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   SageSpace.gutter,

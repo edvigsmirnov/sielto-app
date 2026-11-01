@@ -1,25 +1,28 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sielto/features/settings/privacy_page.dart';
+import 'package:sielto/core/ui/plain_markdown.dart';
 
 void main() {
-  test('policyBlocks drops the title and reads headings and bullets', () {
+  test('markdownBlocks drops the title and reads headings and bullets', () {
     expect(
-      policyBlocks('# Title\n\nIntro line.\n\n## Part\n\n- one\n- two\n'),
-      <({BlockKind kind, String text})>[
+      markdownBlocks(
+        '# Title\r\n\r\nIntro line.\n\n## Part\n\n- one\n* two\n### Fixes\n',
+      ),
+      <Block>[
         (kind: BlockKind.paragraph, text: 'Intro line.'),
         (kind: BlockKind.heading, text: 'Part'),
         (kind: BlockKind.bullet, text: 'one'),
         (kind: BlockKind.bullet, text: 'two'),
+        (kind: BlockKind.heading, text: 'Fixes'),
       ],
     );
   });
 
-  test('every translation of the policy has the same sections', () {
+  test('every translation of the privacy policy has the same sections', () {
     int sections(String path) =>
-        policyBlocks(File(path).readAsStringSync())
-            .where((b) => b.kind == BlockKind.heading)
+        markdownBlocks(File(path).readAsStringSync())
+            .where((Block b) => b.kind == BlockKind.heading)
             .length;
 
     for (final FileSystemEntity file in Directory(

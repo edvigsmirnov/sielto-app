@@ -22,6 +22,7 @@ import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/spaces/space_form_page.dart';
+import 'package:sielto/features/update/update_controller.dart';
 
 /// First run: basics, then the first Space.
 class OnboardingPage extends ConsumerStatefulWidget {
@@ -176,6 +177,7 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
   );
   String? _currency;
   bool _restoreOpen = false;
+  bool _updateChecks = false;
 
   @override
   void dispose() {
@@ -186,6 +188,7 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
   Future<void> _save(String currency) async {
     await ref.read(nameProvider.notifier).set(_name.text);
     await ref.read(localSettingsProvider).setCurrencyCode(currency);
+    await ref.read(updateProvider.notifier).setEnabled(value: _updateChecks);
     widget.onContinue();
   }
 
@@ -246,6 +249,14 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
             onChanged: (AppLocale language) =>
                 context.setLocale(language.locale),
           ),
+        ),
+        const SizedBox(height: SageSpace.md),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: Text(tr('update.checks')),
+          subtitle: Text(tr('update.checksHint')),
+          value: _updateChecks,
+          onChanged: (bool value) => setState(() => _updateChecks = value),
         ),
       ],
     );

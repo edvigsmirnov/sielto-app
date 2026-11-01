@@ -23,6 +23,7 @@ import 'package:sielto/features/shell/sidebar.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
 import 'package:sielto/features/sync/activity.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
+import 'package:sielto/features/update/update_controller.dart';
 
 /// Dashboard, Feed and Calendar, switched by the bottom bar or, wide, the sidebar.
 class MainShell extends ConsumerStatefulWidget {
@@ -312,8 +313,10 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
     _resetOnSpaceChange();
-    // Keeps the daily Drive snapshot running while the shell is up.
+    // Keeps the daily Drive snapshot and update check running while the
+    // shell is up.
     if (driveSupported) ref.watch(driveProvider);
+    ref.watch(updateProvider);
     ref.listen(syncProvider.select((SyncState s) => s.unlinked), (
       bool? was,
       bool now,

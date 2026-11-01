@@ -1027,5 +1027,26 @@
     "thirdParty": "Third-party licences",
     "linkCopied": "No browser opened, so the link is copied.",
     "userId": "Your user id"
+  },
+  "update": {
+    "askPlate": "Check for new versions once a day?",
+    "turnOn": "Turn on",
+    "noThanks": "No, thanks",
+    "available": "Version {} is available. See what's new.",
+    "checks": "Check for updates",
+    "checksHint": "Once a day, from GitHub",
+    "checking": "Checking…",
+    "upToDate": "Up to date",
+    "notChecked": "Not checked yet",
+    "failed": "Couldn't check. Try again later.",
+    "offline": "Fully offline is on, so nothing is checked.",
+    "checkNow": "Check now",
+    "newVersion": "Version {} is available",
+    "whatsNew": "What's new in {}",
+    "noNotes": "No notes for this version.",
+    "install": "Update",
+    "downloading": "Downloading… {}%",
+    "openPage": "Open the download page",
+    "downloadFailed": "The download didn't finish. Try again, or get it from the download page."
   }
 }

@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/app/startup.dart';
@@ -23,6 +24,7 @@ import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_theme.dart';
 import 'package:sielto/core/time/space_clock.dart';
+import 'package:sielto/core/update/update_service.dart';
 import 'package:sielto/domain/schedule/income_schedule.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/analytics/analytics_page.dart';
@@ -53,6 +55,7 @@ import 'package:sielto/features/settings/space_settings_page.dart';
 import 'package:sielto/features/shell/main_shell.dart';
 import 'package:sielto/features/spaces/space_form_page.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
+import 'package:sielto/features/update/update_ui.dart';
 
 /// Tap targets, labels and contrast on every main screen, in both themes and
 /// at text scale 2.0.
@@ -286,6 +289,18 @@ void main() {
     'holidays': (page: () => const HolidaysPage(), before: null, then: null),
     'about': (page: () => const AboutPage(), before: null, then: null),
     'privacy': (page: () => const PrivacyPage(), before: null, then: null),
+    'whats new': (
+      page: () => WhatsNewPage(
+        release: (
+          version: Version.parse('1.1.0'),
+          notes: '## Fixes\n\n- The Feed keeps its place.\n',
+          page: Uri.parse('https://github.com/$repository/releases'),
+          apk: null,
+        ),
+      ),
+      before: null,
+      then: null,
+    ),
     'category form': (
       page: () => const CategoryFormPage(),
       before: null,

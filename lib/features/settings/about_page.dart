@@ -11,31 +11,14 @@ import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/layout.dart';
+import 'package:sielto/core/ui/links.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/core/update/update_service.dart';
 import 'package:sielto/features/settings/privacy_page.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:sielto/features/update/update_controller.dart';
+import 'package:sielto/features/update/update_ui.dart';
 
-const String repositoryUrl = 'https://github.com/edvigsmirnov/sielto-app';
-
-final FutureProvider<PackageInfo> appVersionProvider =
-    FutureProvider<PackageInfo>((Ref ref) => PackageInfo.fromPlatform());
-
-/// Opens [url] in the browser, or copies it when none opens.
-Future<void> openLink(BuildContext context, String url) async {
-  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-  bool opened = false;
-  try {
-    opened = await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
-  } on PlatformException {
-    opened = false;
-  }
-  if (opened) return;
-  await Clipboard.setData(ClipboardData(text: url));
-  messenger.say(tr('about.linkCopied'));
-}
+const String repositoryUrl = 'https://github.com/$repository';
 
 class AboutPage extends ConsumerWidget {
   const AboutPage({super.key});
@@ -80,6 +63,7 @@ class AboutPage extends ConsumerWidget {
               style: text.bodyMedium?.copyWith(color: sage.inkSecondary),
             ),
           const SizedBox(height: SageSpace.lg),
+          const UpdateSection(),
           LinkTile(
             icon: Icons.code,
             title: tr('about.source'),
