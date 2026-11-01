@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/app/startup.dart';
@@ -44,6 +45,7 @@ import 'package:sielto/features/security/decryption_failure_page.dart';
 import 'package:sielto/features/security/passphrase_page.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/security/security_page.dart';
+import 'package:sielto/features/settings/about_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
 import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/settings/space_settings_page.dart';
@@ -74,6 +76,13 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     await EasyLocalization.ensureInitialized();
     SpaceClock.initialize();
+    PackageInfo.setMockInitialValues(
+      appName: 'Sielto',
+      packageName: 'dev.edvig.sielto',
+      version: '1.0.0',
+      buildNumber: '123',
+      buildSignature: '',
+    );
   });
 
   setUp(() async {
@@ -274,6 +283,7 @@ void main() {
       then: null,
     ),
     'holidays': (page: () => const HolidaysPage(), before: null, then: null),
+    'about': (page: () => const AboutPage(), before: null, then: null),
     'category form': (
       page: () => const CategoryFormPage(),
       before: null,

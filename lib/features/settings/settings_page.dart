@@ -18,6 +18,7 @@ import 'package:sielto/features/dev/token_gallery_page.dart';
 import 'package:sielto/features/devices/devices_page.dart';
 import 'package:sielto/features/feed/feed_columns.dart';
 import 'package:sielto/features/security/security_page.dart';
+import 'package:sielto/features/settings/about_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
 import 'package:sielto/features/settings/language_picker.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
@@ -152,6 +153,12 @@ class SettingsPage extends ConsumerWidget {
             value: ref.watch(offlineModeProvider),
             onChanged: (bool value) =>
                 ref.read(offlineModeProvider.notifier).set(value: value),
+          ),
+          const SizedBox(height: SageSpace.md),
+          LinkTile(
+            icon: Icons.info_outline,
+            title: tr('about.title'),
+            onTap: () => pushPage<void>(context, const AboutPage()),
           ),
           // Debug builds, or a release built with --dart-define=SIELTO_DEV=true.
           if (kDebugMode || const bool.fromEnvironment('SIELTO_DEV'))

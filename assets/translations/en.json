@@ -1014,5 +1014,14 @@
     "calendarColumn": "Calendar column",
     "collapseSidebar": "Collapse",
     "expandSidebar": "Expand"
+  },
+  "about": {
+    "title": "About Sielto",
+    "version": "Version {} (build {})",
+    "source": "Source code",
+    "licence": "Licence",
+    "licenceBody": "Personal, non-commercial use",
+    "thirdParty": "Third-party licences",
+    "linkCopied": "No browser opened, so the link is copied."
   }
 }

@@ -45,6 +45,8 @@ dependencies:
   local_auth: ^3.0.2
   # Annotations only. lib/domain uses it and must stay Flutter-free.
   meta: ^1.19.0
+  # The version and build number on the About page.
+  package_info_plus: ^10.2.2
   path: ^1.9.1
   path_provider: ^2.1.6
   riverpod_annotation: ^4.0.6
@@ -60,6 +62,8 @@ dependencies:
   # IANA database. A Space's "today" is its own timezone's, not the device's
   # (plan section 2, invariant 7).
   timezone: ^0.11.1
+  # Opens the repository and other links in the browser.
+  url_launcher: ^6.3.3
   uuid: ^4.6.0
 
 dev_dependencies:
@@ -92,3 +96,5 @@ flutter:
     # The wordmark for the welcome screen, cut from tools/icon/wordmark.png
     # by tools/make_icon.py.
     - assets/brand/
+    # The project's own licence, shown on the About page.
+    - LICENSE
