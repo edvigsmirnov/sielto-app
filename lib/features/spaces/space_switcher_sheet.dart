@@ -151,7 +151,6 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
                       leading: SpaceAvatar(
                         spaceId: space.id,
                         title: space.title,
-                        highlighted: false,
                       ),
                       title: Text(space.title, overflow: TextOverflow.ellipsis),
                       trailing: TextButton(
@@ -221,7 +220,7 @@ class _SpaceSwitcherState extends ConsumerState<_SpaceSwitcher> {
   void _push(Widget page) {
     final NavigatorState navigator = Navigator.of(context);
     if (widget.heading) navigator.pop();
-    navigator.push(MaterialPageRoute<void>(builder: (BuildContext _) => page));
+    pushPage<void>(navigator.context, page);
   }
 }
 

@@ -323,9 +323,17 @@ String? _textOf(Widget? w) => switch (w) {
   _ => null,
 };
 
-/// Opens [page] on top.
-Future<T?> pushPage<T>(BuildContext context, Widget page) =>
-    Navigator.of(context).push(MaterialPageRoute<T>(builder: (_) => page));
+/// Opens [page] on top; across the whole window when [fullWindow].
+Future<T?> pushPage<T>(
+  BuildContext context,
+  Widget page, {
+  bool fullWindow = false,
+}) => Navigator.of(context).push(
+  MaterialPageRoute<T>(
+    settings: fullWindow ? const RouteSettings(name: fullWindowRoute) : null,
+    builder: (_) => page,
+  ),
+);
 
 /// The app bar for pushed pages. In a column the back button gets its own
 /// row and the title sits centred under it.

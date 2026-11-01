@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback, LogicalKeyboardKey;
@@ -6,13 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/category_repository.dart';
-import 'package:sielto/core/db/repositories/payment_repository.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/action_sheet.dart';
 import 'package:sielto/core/ui/bulk_button.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/layout.dart';
-import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/categories/category_colors.dart';
 import 'package:sielto/features/categories/category_form_page.dart';
@@ -31,20 +29,13 @@ class CategoriesPage extends ConsumerStatefulWidget {
 class _CategoriesPageState extends ConsumerState<CategoriesPage> {
   Set<String> _selected = const <String>{};
 
-  /// Whether the bulk button was pressed during this selection.
-  bool _bulkSeen = false;
-
   void _toggle(String id) => setState(() {
     _selected = _selected.contains(id)
         ? (Set<String>.of(_selected)..remove(id))
         : <String>{..._selected, id};
-    if (_selected.isEmpty) _bulkSeen = false;
   });
 
-  void _clear() => setState(() {
-    _selected = const <String>{};
-    _bulkSeen = false;
-  });
+  void _clear() => setState(() => _selected = const <String>{});
 
   @override
   Widget build(BuildContext context) {
@@ -60,15 +51,11 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
       child: Scaffold(
         floatingActionButton: selecting
             ? BulkActionsButton(
-                pulse: !_bulkSeen,
                 tooltip: tr('feed.bulk.title'),
-                onPressed: () {
-                  setState(() => _bulkSeen = true);
-                  _bulkActions(<Category>[
-                    for (final Category c in categories)
-                      if (_selected.contains(c.id)) c,
-                  ]);
-                },
+                onPressed: () => _bulkActions(<Category>[
+                  for (final Category c in categories)
+                    if (_selected.contains(c.id)) c,
+                ]),
               )
             : null,
         backgroundColor: context.sage.surface,
@@ -98,13 +85,16 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
                                     context,
                                     category: categories[index],
                                   ),
-                            onDelete: () =>
-                                _delete(context, ref, categories[index]),
+                            onDelete: () => deleteCategories(
+                              context,
+                              ref,
+                              <Category>[categories[index]],
+                            ),
                           ),
                       onReorderStart: (int index) =>
                           HapticFeedback.mediumImpact(),
                       onReorderItem: (int oldIndex, int newIndex) =>
-                          _reorder(ref, categories, oldIndex, newIndex),
+                          _reorder(categories, oldIndex, newIndex),
                     ),
             ),
             // The actions button takes its place while selecting.
@@ -125,150 +115,122 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
     );
   }
 
+  /// [newIndex] is already corrected for the removal.
+  void _reorder(List<Category> categories, int oldIndex, int newIndex) {
+    final List<Category> ordered = List<Category>.of(categories);
+    ordered.insert(newIndex, ordered.removeAt(oldIndex));
+    ref.read(repositoriesProvider).categories.reorder(ordered);
+  }
+
   Future<void> _bulkActions(List<Category> chosen) async {
-    final bool? move = await showAdaptiveSheet<bool>(
+    final bool? move = await showActionSheet<bool>(
       context,
-      builder: (BuildContext sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ListTile(
-              title: SheetTitle(
-                tr(
-                  'feed.bulk.selected',
-                  namedArgs: <String, String>{'count': '${chosen.length}'},
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.drive_file_move_outline),
-              title: Text(tr('category.moveRecords')),
-              onTap: () => Navigator.of(sheet).pop(true),
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: Text(tr('common.delete')),
-              onTap: () => Navigator.of(sheet).pop(false),
-            ),
-          ],
-        ),
+      title: tr(
+        'feed.bulk.selected',
+        namedArgs: <String, String>{'count': '${chosen.length}'},
       ),
+      groups: <List<SheetAction<bool>>>[
+        <SheetAction<bool>>[
+          SheetAction<bool>(
+            Icons.drive_file_move_outline,
+            tr('category.moveRecords'),
+            true,
+          ),
+        ],
+        <SheetAction<bool>>[
+          SheetAction<bool>(
+            Icons.delete_outline,
+            tr('common.delete'),
+            false,
+            destructive: true,
+          ),
+        ],
+      ],
     );
     if (move == null || !mounted) return;
-    final Repositories repos = ref.read(repositoriesProvider);
+    final bool deleted = move
+        ? await moveRecords(context, ref, chosen)
+        : await deleteCategories(context, ref, chosen);
+    if (deleted && mounted) _clear();
+  }
+}
 
-    List<Category> sources = chosen;
-    if (move) {
-      final CategoryChoice? target = await pickCategory(
-        context,
-        selectedId: null,
-      );
-      if (target == null) return;
-      sources = <Category>[
-        for (final Category c in chosen)
-          if (c.id != target.category?.id) c,
-      ];
-      int moved = 0;
-      for (final Category c in sources) {
-        moved += await repos.payments.moveCategory(c.id, target.category?.id);
-      }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).say(
-        tr('category.moved', namedArgs: <String, String>{'count': '$moved'}),
-      );
-    }
-    if (sources.isEmpty || !mounted) return;
+/// Moves every payment of [from] into a category the reader picks, then
+/// offers to delete the ones it came from. True when they were deleted.
+Future<bool> moveRecords(
+  BuildContext context,
+  WidgetRef ref,
+  List<Category> from,
+) async {
+  final CategoryChoice? target = await pickCategory(
+    context,
+    selectedId: from.length == 1 ? from.single.id : null,
+  );
+  if (target == null || !context.mounted) return false;
+  final List<Category> sources = <Category>[
+    for (final Category c in from)
+      if (c.id != target.category?.id) c,
+  ];
+  if (sources.isEmpty) return false;
+  final int moved = await ref
+      .read(repositoriesProvider)
+      .payments
+      .moveCategories(<String>[
+        for (final Category c in sources) c.id,
+      ], target.category?.id);
+  if (!context.mounted) return false;
+  ScaffoldMessenger.of(
+    context,
+  ).say(tr('category.moved', namedArgs: <String, String>{'count': '$moved'}));
+  return deleteCategories(context, ref, sources);
+}
 
-    final bool confirmed = await confirmDialog(
-      context,
-      title: tr('category.deleteManyTitle'),
-      body: tr(
-        'category.deleteManyBody',
-        namedArgs: <String, String>{
-          'titles': sources.map((Category c) => c.shownTitle).join(', '),
-        },
-      ),
-      confirmLabel: tr('common.delete'),
-      isDestructive: true,
-    );
-    if (!confirmed) return;
-    for (final Category c in sources) {
-      await repos.categories.softDelete(c.id);
-    }
-    _clear();
-    if (!mounted) return;
+/// Asks, then deletes [categories] with an undo. False when declined.
+Future<bool> deleteCategories(
+  BuildContext context,
+  WidgetRef ref,
+  List<Category> categories,
+) async {
+  final bool one = categories.length == 1;
+  final bool confirmed = await confirmDialog(
+    context,
+    title: tr(one ? 'category.deleteTitle' : 'category.deleteManyTitle'),
+    body: one
+        ? tr(
+            'category.deleteBody',
+            namedArgs: <String, String>{'title': categories.single.shownTitle},
+          )
+        : tr(
+            'category.deleteManyBody',
+            namedArgs: <String, String>{
+              'titles': categories.map((Category c) => c.shownTitle).join(', '),
+            },
+          ),
+    confirmLabel: tr('common.delete'),
+    isDestructive: true,
+  );
+  if (!confirmed || !context.mounted) return false;
+  final CategoryRepository repo = ref.read(repositoriesProvider).categories;
+  final List<String> ids = <String>[for (final Category c in categories) c.id];
+  await repo.setDeleted(ids, deleted: true);
+  if (context.mounted) {
     showUndoSnackbar(
       context,
-      message: sources.length == 1
+      message: one
           ? tr(
               'category.deleted',
-              namedArgs: <String, String>{'title': sources.single.shownTitle},
+              namedArgs: <String, String>{
+                'title': categories.single.shownTitle,
+              },
             )
           : tr(
               'feed.bulk.deleted',
-              namedArgs: <String, String>{'count': '${sources.length}'},
+              namedArgs: <String, String>{'count': '${categories.length}'},
             ),
-      onUndo: () async {
-        for (final Category c in sources) {
-          await repos.categories.restore(c.id);
-        }
-      },
+      onUndo: () => repo.setDeleted(ids, deleted: false),
     );
   }
-
-  Future<void> _delete(
-    BuildContext context,
-    WidgetRef ref,
-    Category category,
-  ) async {
-    final bool confirmed = await confirmDialog(
-      context,
-      title: tr('category.deleteTitle'),
-      body: tr(
-        'category.deleteBody',
-        namedArgs: <String, String>{'title': category.shownTitle},
-      ),
-      confirmLabel: tr('common.delete'),
-      isDestructive: true,
-    );
-    if (!confirmed) return;
-
-    final CategoryRepository repo = ref.read(repositoriesProvider).categories;
-    await repo.softDelete(category.id);
-    if (!context.mounted) return;
-    showUndoSnackbar(
-      context,
-      message: tr(
-        'category.deleted',
-        namedArgs: <String, String>{'title': category.shownTitle},
-      ),
-      onUndo: () => repo.restore(category.id),
-    );
-  }
-
-  /// Renumbers the whole list. [newIndex] is already corrected for the removal.
-  Future<void> _reorder(
-    WidgetRef ref,
-    List<Category> categories,
-    int oldIndex,
-    int newIndex,
-  ) async {
-    final List<Category> ordered = List<Category>.of(categories);
-    final Category moved = ordered.removeAt(oldIndex);
-    ordered.insert(newIndex, moved);
-
-    final CategoryRepository repo = ref.read(repositoriesProvider).categories;
-    await repo.db.transaction(() async {
-      for (int i = 0; i < ordered.length; i++) {
-        final int order = i * PaymentRepository.sortOrderGap;
-        if (ordered[i].sortOrder == order) continue;
-        await repo.updateAppearance(
-          ordered[i].id,
-          sortOrder: Value<int>(order),
-        );
-      }
-    });
-  }
+  return true;
 }
 
 /// Grip, mark, name, default type.

@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 
-/// The FAB while items are selected. Rings pulse around it while [pulse].
+/// The FAB while items are selected. Rings pulse around it until it is first
+/// pressed.
 class BulkActionsButton extends StatefulWidget {
   const BulkActionsButton({
-    required this.pulse,
     required this.tooltip,
     required this.onPressed,
     super.key,
   });
 
-  final bool pulse;
   final String tooltip;
   final VoidCallback onPressed;
 
@@ -24,6 +23,7 @@ class _BulkActionsButtonState extends State<BulkActionsButton>
     vsync: this,
     duration: const Duration(milliseconds: 1800),
   );
+  bool _pressed = false;
 
   @override
   void didChangeDependencies() {
@@ -38,7 +38,7 @@ class _BulkActionsButtonState extends State<BulkActionsButton>
   }
 
   void _sync() {
-    final bool run = widget.pulse && !MediaQuery.disableAnimationsOf(context);
+    final bool run = !_pressed && !MediaQuery.disableAnimationsOf(context);
     if (run && !_rings.isAnimating) _rings.repeat();
     if (!run && _rings.isAnimating) _rings.reset();
   }
@@ -59,7 +59,11 @@ class _BulkActionsButtonState extends State<BulkActionsButton>
         foregroundColor: sage.accentOn,
         shape: const CircleBorder(),
         tooltip: widget.tooltip,
-        onPressed: widget.onPressed,
+        onPressed: () {
+          _pressed = true;
+          _sync();
+          widget.onPressed();
+        },
         child: const Icon(Icons.more_horiz),
       ),
     );

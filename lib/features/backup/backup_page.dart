@@ -179,34 +179,31 @@ Future<void> restoreBackup(
   final Uint8List? bytes = await pickBackup(context, fromDrive: fromDrive);
   if (bytes == null || !context.mounted) return;
   final BackupService service = ref.read(repositoriesProvider).backup;
-  await Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      settings: inSetup ? const RouteSettings(name: fullWindowRoute) : null,
-      builder: (BuildContext _) => RestorePage(
-        inSetup: inSetup,
-        bytes: bytes,
-        conflictsOf: service.conflicts,
-        onRestore:
-            (
-              BackupContents backup,
-              String recoveryKey,
-              Map<String, RestoreChoice> choices,
-            ) async {
-              final String date = DateFormat.MMMd(context.locale.toString())
-                  .format(backup.createdAt.toLocal());
-              await service.restore(
-                backup,
-                choices,
-                copyTitle: (String title) =>
-                    tr('backup.copyTitle', args: <String>[title, date]),
-              );
-              if (!ref.read(recoveryKeySetProvider)) {
-                await ref
-                    .read(recoveryKeySetProvider.notifier)
-                    .set(recoveryKey);
-              }
-            },
-      ),
+  await pushPage<void>(
+    context,
+    fullWindow: inSetup,
+    RestorePage(
+      inSetup: inSetup,
+      bytes: bytes,
+      conflictsOf: service.conflicts,
+      onRestore:
+          (
+            BackupContents backup,
+            String recoveryKey,
+            Map<String, RestoreChoice> choices,
+          ) async {
+            final String date = DateFormat.MMMd(context.locale.toString())
+                .format(backup.createdAt.toLocal());
+            await service.restore(
+              backup,
+              choices,
+              copyTitle: (String title) =>
+                  tr('backup.copyTitle', args: <String>[title, date]),
+            );
+            if (!ref.read(recoveryKeySetProvider)) {
+              await ref.read(recoveryKeySetProvider.notifier).set(recoveryKey);
+            }
+          },
     ),
   );
 }

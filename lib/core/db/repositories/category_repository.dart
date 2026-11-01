@@ -24,6 +24,15 @@ class CategoryTitleTaken implements Exception {
   String toString() => 'CategoryTitleTaken: $title';
 }
 
+/// A category every new Space starts with. The title comes translated.
+typedef StarterCategory = ({
+  String key,
+  String title,
+  String? icon,
+  String? color,
+  ExpenseType type,
+});
+
 class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
   CategoryRepository({
     required super.db,
@@ -98,16 +107,7 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
   /// Writes the starter set in the given order. Titles come translated.
   Future<void> createStarterSet(
     String spaceId,
-    List<
-      ({
-        String key,
-        String title,
-        String? icon,
-        String? color,
-        ExpenseType type,
-      })
-    >
-    starters,
+    List<StarterCategory> starters,
   ) {
     final ({String author, DateTime editedAt}) s = stamp();
     return db.batch((Batch b) {
@@ -179,6 +179,23 @@ class CategoryRepository extends SyncedRepository<$CategoriesTable, Category> {
       ),
     );
   }
+
+  /// Numbers [ordered] in sort-gap steps, writing only what changed.
+  Future<void> reorder(List<Category> ordered) => db.transaction(() async {
+    for (int i = 0; i < ordered.length; i++) {
+      final int order = i * PaymentRepository.sortOrderGap;
+      if (ordered[i].sortOrder == order) continue;
+      await updateAppearance(ordered[i].id, sortOrder: Value<int>(order));
+    }
+  });
+
+  /// Soft-deletes or restores [ids] together.
+  Future<void> setDeleted(Iterable<String> ids, {required bool deleted}) =>
+      db.transaction(() async {
+        for (final String id in ids) {
+          await (deleted ? softDelete(id) : restore(id));
+        }
+      });
 
   Future<int> _nextSortOrder(String spaceId) async {
     final List<Category> rows = await inSpace(spaceId);

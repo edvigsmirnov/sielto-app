@@ -3,12 +3,12 @@ import 'dart:ui' as ui;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sielto/core/format/currencies.dart';
 import 'package:sielto/core/l10n/app_locales.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/theme/theme_mode_controller.dart';
 import 'package:sielto/core/ui/choice_field.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/leaf_scatter.dart';
@@ -21,7 +21,6 @@ import 'package:sielto/features/onboarding/welcome_page.dart';
 import 'package:sielto/features/security/app_lock.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 import 'package:sielto/features/security/security_page.dart';
-import 'package:sielto/features/settings/language_picker.dart';
 import 'package:sielto/features/spaces/space_form_page.dart';
 
 /// First run: basics, then the first Space.
@@ -33,14 +32,13 @@ class OnboardingPage extends ConsumerStatefulWidget {
 }
 
 class _OnboardingPageState extends ConsumerState<OnboardingPage> {
-  final PageController _controller = PageController();
-
   // The PIN needs the keyring; the start password already guards the app.
   late final bool _protectStep = !ref.read(keyManagerProvider).usesPassphrase;
   late final int _stepCount = _protectStep ? 4 : 3;
 
   bool _started = false;
   int _page = 0;
+  bool _forward = true;
 
   final GlobalKey _welcome = GlobalKey();
 
@@ -50,7 +48,6 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
   @override
   void dispose() {
-    _controller.dispose();
     _leaving?.dispose();
     super.dispose();
   }
@@ -72,10 +69,33 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     });
   }
 
-  void _next() => _controller.nextPage(
-    duration: const Duration(milliseconds: 240),
-    curve: Curves.easeOutCubic,
-  );
+  void _go(int page) => setState(() {
+    _forward = page > _page;
+    _page = page;
+  });
+
+  void _next() => _go(_page + 1);
+
+  /// Narrow, steps slide sideways; wide, the card changes in place.
+  Widget _transition(Widget child, Animation<double> animation) {
+    if (isWide(context)) {
+      return FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.96, end: 1).animate(animation),
+          child: child,
+        ),
+      );
+    }
+    final bool incoming = child.key == ValueKey<int>(_page);
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: Offset(incoming == _forward ? 1 : -1, 0),
+        end: Offset.zero,
+      ).animate(animation),
+      child: child,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,48 +104,46 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         key: _welcome,
         child: WelcomePage(
           onStart: _start,
-          onJoin: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              settings: const RouteSettings(name: fullWindowRoute),
-              builder: (BuildContext _) => const JoinPage(),
-            ),
-          ),
+          onJoin: () =>
+              pushPage<void>(context, const JoinPage(), fullWindow: true),
         ),
       );
     }
 
     final ui.Image? leaving = _leaving;
+    final List<Widget> pages = <Widget>[
+      _ProfileStep(stepCount: _stepCount, onContinue: _next),
+      if (_protectStep) _ProtectStep(stepCount: _stepCount, onContinue: _next),
+      _RecoveryKeyStep(
+        step: _stepCount - 1,
+        stepCount: _stepCount,
+        onContinue: _next,
+      ),
+      SpaceFormPage(
+        isFirstSpace: true,
+        step: _stepCount,
+        stepCount: _stepCount,
+      ),
+    ];
     final Widget steps = PopScope(
       canPop: _page == 0,
       onPopInvokedWithResult: (bool didPop, Object? _) {
-        if (!didPop) {
-          _controller.previousPage(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-          );
-        }
+        if (!didPop) _go(_page - 1);
       },
       child: Scaffold(
         backgroundColor: context.sage.surface,
-        body: PageView(
-          controller: _controller,
-          physics: const NeverScrollableScrollPhysics(),
-          onPageChanged: (int page) => setState(() => _page = page),
-          children: <Widget>[
-            _ProfileStep(stepCount: _stepCount, onContinue: _next),
-            if (_protectStep)
-              _ProtectStep(stepCount: _stepCount, onContinue: _next),
-            _RecoveryKeyStep(
-              step: _stepCount - 1,
-              stepCount: _stepCount,
-              onContinue: _next,
-            ),
-            SpaceFormPage(
-              isFirstSpace: true,
-              step: _stepCount,
-              stepCount: _stepCount,
-            ),
-          ],
+        body: ClipRect(
+          child: AnimatedSwitcher(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 240),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            // A new closure each build re-runs the outgoing step's transition.
+            transitionBuilder: (Widget child, Animation<double> animation) =>
+                _transition(child, animation),
+            child: KeyedSubtree(key: ValueKey<int>(_page), child: pages[_page]),
+          ),
         ),
       ),
     );
@@ -153,7 +171,9 @@ class _ProfileStep extends ConsumerStatefulWidget {
 }
 
 class _ProfileStepState extends ConsumerState<_ProfileStep> {
-  final TextEditingController _name = TextEditingController();
+  late final TextEditingController _name = TextEditingController(
+    text: ref.read(nameProvider),
+  );
   String? _currency;
   bool _restoreOpen = false;
 
@@ -173,9 +193,7 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
   Widget build(BuildContext context) {
     final String locale = context.locale.toString();
     final String currency =
-        _currency ??
-        ref.read(localSettingsProvider).currencyCode ??
-        Currencies.forLocale(locale);
+        _currency ?? ref.read(localSettingsProvider).currencyFor(locale);
     final ThemeMode themeMode = ref.watch(themeModeProvider);
 
     return OnboardingScaffold(
@@ -230,19 +248,13 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
         const SizedBox(height: SageSpace.lg),
         LabelledField(
           label: tr('settings.language'),
-          // Same size as the currency field.
-          child: InkWell(
-            onTap: () => showLanguagePicker(context),
-            borderRadius: BorderRadius.circular(SageRadius.button),
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                suffixIcon: Icon(Icons.arrow_drop_down),
-              ),
-              child: Text(
-                AppLocales.resolve(context.locale).name,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ),
+          child: ChoiceField<AppLocale>(
+            value: AppLocales.resolve(context.locale),
+            options: AppLocales.offered,
+            labelOf: (AppLocale language) => language.name,
+            title: tr('settings.language'),
+            onChanged: (AppLocale language) =>
+                context.setLocale(language.locale),
           ),
         ),
       ],

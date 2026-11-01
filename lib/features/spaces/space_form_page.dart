@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
-import 'package:sielto/core/format/currencies.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/time/space_clock.dart';
@@ -67,54 +66,19 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
 
   bool get _canSave => _title.text.trim().isNotEmpty && !_saving;
 
-  Future<void> _create() async {
+  Future<void> _create(String currency) async {
     setState(() => _saving = true);
-    final Repositories repos = ref.read(repositoriesProvider);
-    final String locale = context.locale.toString();
-    // Onboarding answer, else the device locale.
-    final String currency =
-        _currency ??
-        ref.read(localSettingsProvider).currencyCode ??
-        Currencies.forLocale(locale);
-
     try {
-      final String timezone = await _deviceTimezone();
-      final Space space = await repos.db.transaction(() async {
-        final Space space = await repos.spaces.create(
-          title: _title.text,
-          spaceType: SpaceType.personal,
-          budgetMode: _mode,
-          ownerId: ref.read(userIdProvider),
-          timezone: timezone,
-          currencyCode: currency,
-        );
-        await repos.categories.createStarterSet(space.id, <
-          ({
-            String key,
-            String title,
-            String? icon,
-            String? color,
-            ExpenseType type,
-          })
-        >[
-          for (final StarterCategory c in starterCategories())
-            (
-              key: c.key,
-              title: c.title,
-              icon: c.icon,
-              color: c.color,
-              type: c.expenseType,
-            ),
-        ]);
-        // Flow and Budget hold exactly one continuous period.
-        if (_mode != BudgetMode.incomeDriven) {
-          await repos.periods.ensureContinuous(
-            spaceId: space.id,
-            startDate: repos.spaces.clockFor(space).today(),
+      final Space space = await ref
+          .read(repositoriesProvider)
+          .createSpace(
+            title: _title.text,
+            budgetMode: _mode,
+            ownerId: ref.read(userIdProvider),
+            timezone: await _deviceTimezone(),
+            currencyCode: currency,
+            starters: starterCategories(),
           );
-        }
-        return space;
-      });
       if (_storage == StorageMode.cloud) {
         final CloudResult result = await ref
             .read(syncProvider.notifier)
@@ -146,12 +110,11 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    final String locale = context.locale.toString();
     // Onboarding answer, else the device locale.
     final String currency =
         _currency ??
-        ref.read(localSettingsProvider).currencyCode ??
-        Currencies.forLocale(locale);
+        ref.read(localSettingsProvider).currencyFor(context.locale.toString());
+    final VoidCallback? create = _canSave ? () => _create(currency) : null;
 
     final int? step = widget.step;
     final int? stepCount = widget.stepCount;
@@ -166,11 +129,11 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
           title: tr('space.firstTitle'),
           body: tr('space.firstBody'),
           primaryLabel: tr('space.create'),
-          onPrimary: _canSave ? _create : null,
+          onPrimary: create,
           secondaryLabel: tr('members.joinWithCode'),
           onSecondary: () => pushPage<void>(context, const JoinSpacePage()),
           // Currency was asked in the previous step.
-          children: _fields(locale, currency, showCurrency: false),
+          children: _fields(currency, showCurrency: false),
         ),
       );
     }
@@ -179,78 +142,84 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
       backgroundColor: sage.surface,
       appBar: sageAppBar(context, title: Text(tr('space.createTitle'))),
       bottomNavigationBar: FormActionBar(
-        child: FilledButton(
-          onPressed: _canSave ? _create : null,
-          child: Text(tr('space.create')),
-        ),
+        child: FilledButton(onPressed: create, child: Text(tr('space.create'))),
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(SageSpace.formGutter),
-          children: <Widget>[..._fields(locale, currency, showCurrency: true)],
+          children: _fields(currency, showCurrency: true),
         ),
       ),
     );
   }
 
   /// Form body, shared by the onboarding frame and the standalone screen.
-  List<Widget> _fields(
-    String locale,
-    String currency, {
-    required bool showCurrency,
-  }) => <Widget>[
-    LabelledField(
-      label: tr('space.fieldTitle'),
-      child: TextField(
-        controller: _title,
-        inputFormatters: titleLimit,
-        textInputAction: TextInputAction.next,
-        textCapitalization: TextCapitalization.sentences,
-        decoration: InputDecoration(hintText: tr('space.titleHint')),
-      ),
-    ),
-    const SizedBox(height: SageSpace.lg),
-    FieldLabel(tr('space.fieldMode')),
-    for (final BudgetMode mode in offeredBudgetModes) ...<Widget>[
-      _ModeCard(
-        mode: mode,
-        selected: _mode == mode,
-        onTap: () => setState(() => _mode = mode),
-      ),
-      const SizedBox(height: SageSpace.sm),
-    ],
-    Text(
-      tr('space.modeIsPermanent'),
-      style: Theme.of(context).textTheme.bodySmall,
-    ),
-    if (showCurrency) ...<Widget>[
-      const SizedBox(height: SageSpace.lg),
-      LabelledField(
-        label: tr('space.fieldCurrency'),
-        child: CurrencyField(
-          value: currency,
-          onChanged: (String code) => setState(() => _currency = code),
+  List<Widget> _fields(String currency, {required bool showCurrency}) =>
+      <Widget>[
+        LabelledField(
+          label: tr('space.fieldTitle'),
+          child: TextField(
+            controller: _title,
+            inputFormatters: titleLimit,
+            textInputAction: TextInputAction.next,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(hintText: tr('space.titleHint')),
+          ),
         ),
-      ),
-    ],
-    const SizedBox(height: SageSpace.lg),
-    FieldLabel(tr('space.fieldStorage')),
-    _StorageChoice(
-      selected: _storage,
-      onChanged: (StorageMode m) => setState(() => _storage = m),
-    ),
-  ];
+        const SizedBox(height: SageSpace.lg),
+        FieldLabel(tr('space.fieldMode')),
+        for (final BudgetMode mode in offeredBudgetModes) ...<Widget>[
+          _RadioCard(
+            title: tr('mode.${mode.name}.name'),
+            body: tr('mode.${mode.name}.body'),
+            note: tr('mode.${mode.name}.examples'),
+            selected: _mode == mode,
+            onTap: () => setState(() => _mode = mode),
+          ),
+          const SizedBox(height: SageSpace.sm),
+        ],
+        Text(
+          tr('space.modeIsPermanent'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        if (showCurrency) ...<Widget>[
+          const SizedBox(height: SageSpace.lg),
+          LabelledField(
+            label: tr('space.fieldCurrency'),
+            child: CurrencyField(
+              value: currency,
+              onChanged: (String code) => setState(() => _currency = code),
+            ),
+          ),
+        ],
+        const SizedBox(height: SageSpace.lg),
+        FieldLabel(tr('space.fieldStorage')),
+        for (final StorageMode mode in StorageMode.values) ...<Widget>[
+          if (mode != StorageMode.values.first)
+            const SizedBox(height: SageSpace.sm),
+          _RadioCard(
+            title: tr('storage.${mode.name}.name'),
+            body: tr('storage.${mode.name}.body'),
+            selected: _storage == mode,
+            onTap: () => setState(() => _storage = mode),
+          ),
+        ],
+      ];
 }
 
-/// A mode with its description and examples.
-class _ModeCard extends StatelessWidget {
-  const _ModeCard({
-    required this.mode,
+/// One choice of several, with its description and an optional note.
+class _RadioCard extends StatelessWidget {
+  const _RadioCard({
+    required this.title,
+    required this.body,
     required this.selected,
     required this.onTap,
+    this.note,
   });
 
-  final BudgetMode mode;
+  final String title;
+  final String body;
+  final String? note;
   final bool selected;
   final VoidCallback onTap;
 
@@ -273,73 +242,18 @@ class _ModeCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(tr('mode.${mode.name}.name'), style: text.titleSmall),
+                Text(title, style: text.titleSmall),
                 const SizedBox(height: SageSpace.xs),
-                Text(tr('mode.${mode.name}.body'), style: text.bodyMedium),
-                const SizedBox(height: SageSpace.xs),
-                Text(tr('mode.${mode.name}.examples'), style: text.bodySmall),
+                Text(body, style: text.bodyMedium),
+                if (note != null) ...<Widget>[
+                  const SizedBox(height: SageSpace.xs),
+                  Text(note!, style: text.bodySmall),
+                ],
               ],
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Local or cloud.
-class _StorageChoice extends StatelessWidget {
-  const _StorageChoice({required this.selected, required this.onChanged});
-
-  final StorageMode selected;
-  final ValueChanged<StorageMode> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        for (final StorageMode mode in StorageMode.values) ...<Widget>[
-          if (mode != StorageMode.values.first)
-            const SizedBox(height: SageSpace.sm),
-          SageCard(
-            selected: selected == mode,
-            onTap: () => onChanged(mode),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Icon(
-                  selected == mode
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  size: 20,
-                  color: selected == mode
-                      ? context.sage.accentStrong
-                      : context.sage.inkLabel,
-                ),
-                const SizedBox(width: SageSpace.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        tr('storage.${mode.name}.name'),
-                        style: text.titleSmall,
-                      ),
-                      const SizedBox(height: SageSpace.xs),
-                      Text(
-                        tr('storage.${mode.name}.body'),
-                        style: text.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
     );
   }
 }

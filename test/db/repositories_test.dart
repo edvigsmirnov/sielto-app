@@ -482,7 +482,7 @@ void main() {
       final Payment deleted = await pay('Aldi');
       await payments.softDelete(deleted.id);
 
-      expect(await payments.moveCategory(from.id, to.id), 1);
+      expect(await payments.moveCategories(<String>[from.id], to.id), 1);
       expect((await payments.byId(live.id))!.categoryId, to.id);
       final Payment deletedRow = await (db.select(
         db.payments,

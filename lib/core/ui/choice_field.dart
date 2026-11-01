@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/format/currencies.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 
@@ -39,22 +40,14 @@ class ChoiceField<T> extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    child: InkWell(
-      onTap: () => _pick(context),
-      borderRadius: BorderRadius.circular(SageRadius.button),
-      child: InputDecorator(
-        decoration: const InputDecoration(
-          suffixIcon: Icon(Icons.arrow_drop_down),
-        ),
-        child: Text(
-          labelOf(value),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
-      ),
+  Widget build(BuildContext context) => TapField(
+    onTap: () => _pick(context),
+    decoration: const InputDecoration(suffixIcon: Icon(Icons.arrow_drop_down)),
+    child: Text(
+      labelOf(value),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.bodyLarge,
     ),
   );
 }

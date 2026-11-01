@@ -4,8 +4,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/backup/backup_service.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
-import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/features/backup/backup_page.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
 import 'package:sielto/features/security/recovery_key.dart';
@@ -35,16 +35,15 @@ class DecryptionFailurePage extends StatelessWidget {
   Future<void> _restore(BuildContext context) async {
     final Uint8List? bytes = await pickBackup(context);
     if (bytes == null || !context.mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        settings: const RouteSettings(name: fullWindowRoute),
-        builder: (BuildContext _) => RestorePage(
-          inSetup: true,
-          bytes: bytes,
-          conflictsOf: (_) async => <String>{},
-          onRestore: (BackupContents backup, String recoveryKey, _) =>
-              onRestore!(backup, recoveryKey),
-        ),
+    await pushPage<void>(
+      context,
+      fullWindow: true,
+      RestorePage(
+        inSetup: true,
+        bytes: bytes,
+        conflictsOf: (_) async => <String>{},
+        onRestore: (BackupContents backup, String recoveryKey, _) =>
+            onRestore!(backup, recoveryKey),
       ),
     );
   }

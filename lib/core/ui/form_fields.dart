@@ -185,6 +185,30 @@ class MoneyField extends StatelessWidget {
   );
 }
 
+/// A read-only field that acts when tapped, drawn like a text field.
+class TapField extends StatelessWidget {
+  const TapField({
+    required this.onTap,
+    required this.decoration,
+    required this.child,
+    super.key,
+  });
+
+  final VoidCallback? onTap;
+  final InputDecoration decoration;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SageRadius.input),
+      child: InputDecorator(decoration: decoration, child: child),
+    ),
+  );
+}
+
 /// Tappable date field.
 class DateField extends StatelessWidget {
   const DateField({
@@ -204,25 +228,22 @@ class DateField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    return InkWell(
+    return TapField(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(SageRadius.input),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          suffixIcon: Icon(
-            Icons.calendar_today_outlined,
-            size: 18,
-            color: sage.inkLabel,
-          ),
-          enabledBorder: warn
-              ? OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(SageRadius.input),
-                  borderSide: BorderSide(color: sage.warning),
-                )
-              : null,
+      decoration: InputDecoration(
+        suffixIcon: Icon(
+          Icons.calendar_today_outlined,
+          size: 18,
+          color: sage.inkLabel,
         ),
-        child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+        enabledBorder: warn
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(SageRadius.input),
+                borderSide: BorderSide(color: sage.warning),
+              )
+            : null,
       ),
+      child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
     );
   }
 }

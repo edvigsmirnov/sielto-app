@@ -71,9 +71,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
   bool _edgeCheckQueued = false;
 
-  /// Whether the bulk button was pressed during this selection.
-  bool _bulkSeen = false;
-
   /// Order just dropped, shown until the query reads it back.
   Map<String, int>? _dropped;
 
@@ -220,7 +217,6 @@ class _FeedPageState extends ConsumerState<FeedPage> {
 
     final FeedFilter filter = ref.watch(feedFilterProvider);
     final Set<String> selection = ref.watch(feedSelectionProvider);
-    if (selection.isEmpty) _bulkSeen = false;
     _records = _withDropped(source.records);
     _items = buildFeedItems(
       records: filter.isActive
@@ -333,12 +329,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           : null,
       floatingActionButton: selection.isNotEmpty
           ? BulkActionsButton(
-              pulse: !_bulkSeen,
               tooltip: tr('feed.bulk.title'),
-              onPressed: () {
-                setState(() => _bulkSeen = true);
-                showBulkActions(context, ref, records: _selected(selection));
-              },
+              onPressed: () =>
+                  showBulkActions(context, ref, records: _selected(selection)),
             )
           : table
           ? null

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
+import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/category_colors.dart';
@@ -31,7 +32,7 @@ class CategoryPickerField extends ConsumerWidget {
         .where((Category c) => c.id == selectedId)
         .firstOrNull;
 
-    return InkWell(
+    return TapField(
       onTap: () async {
         final CategoryChoice? choice = await pickCategory(
           context,
@@ -39,28 +40,25 @@ class CategoryPickerField extends ConsumerWidget {
         );
         if (choice != null) onChanged(choice.category);
       },
-      borderRadius: BorderRadius.circular(SageRadius.input),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          prefixIcon: selected == null
-              ? Icon(Icons.label_outline, size: 20, color: sage.inkLabel)
-              : Center(
-                  widthFactor: 1,
-                  child: CategoryMark(
-                    color: selected.color,
-                    icon: selected.icon,
-                    size: 26,
-                  ),
+      decoration: InputDecoration(
+        prefixIcon: selected == null
+            ? Icon(Icons.label_outline, size: 20, color: sage.inkLabel)
+            : Center(
+                widthFactor: 1,
+                child: CategoryMark(
+                  color: selected.color,
+                  icon: selected.icon,
+                  size: 26,
                 ),
-          suffixIcon: Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),
-        ),
-        child: Text(
-          selected?.shownTitle ?? tr('category.none'),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodyLarge
-              ?.copyWith(color: selected == null ? sage.inkLabel : sage.ink),
-        ),
+              ),
+        suffixIcon: Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),
+      ),
+      child: Text(
+        selected?.shownTitle ?? tr('category.none'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodyLarge
+            ?.copyWith(color: selected == null ? sage.inkLabel : sage.ink),
       ),
     );
   }

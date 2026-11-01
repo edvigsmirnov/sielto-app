@@ -15,6 +15,7 @@ import 'package:sielto/core/db/repositories/space_repository.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/periods/holiday_service.dart';
 import 'package:sielto/features/periods/period_service.dart';
 
@@ -63,6 +64,34 @@ class Repositories {
   final BackupService backup;
 
   late final CategoryRepository categories;
+
+  /// A Space with its starter categories and, outside income-driven mode,
+  /// its one continuous period.
+  Future<Space> createSpace({
+    required String title,
+    required BudgetMode budgetMode,
+    required String ownerId,
+    required String timezone,
+    required String currencyCode,
+    required List<StarterCategory> starters,
+  }) => db.transaction(() async {
+    final Space space = await spaces.create(
+      title: title,
+      spaceType: SpaceType.personal,
+      budgetMode: budgetMode,
+      ownerId: ownerId,
+      timezone: timezone,
+      currencyCode: currencyCode,
+    );
+    await categories.createStarterSet(space.id, starters);
+    if (budgetMode != BudgetMode.incomeDriven) {
+      await periods.ensureContinuous(
+        spaceId: space.id,
+        startDate: spaces.clockFor(space).today(),
+      );
+    }
+    return space;
+  });
 }
 
 final Provider<Repositories> repositoriesProvider = Provider<Repositories>(
