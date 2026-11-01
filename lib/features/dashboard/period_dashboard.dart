@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/format/context_format.dart';
-import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
@@ -102,7 +101,6 @@ class _PeriodBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final MoneyFormat money = context.moneyIn(space.currencyCode);
-    final DateLabels dates = context.dates;
 
     final bool atBottom = controlsAtBottom(
       context,
@@ -126,23 +124,11 @@ class _PeriodBody extends ConsumerWidget {
           SpentFigure(amount: ledger.totalPaid, money: money)
         else ...<Widget>[
           MainFigure(
-            label: tr('dashboard.freeMoney'),
-            amount: ledger.freeCash,
-            coverage: ledger.coverage,
+            ledger: ledger,
             money: money,
-            overspend: ledger.cascade!.all.finalBalance,
-            lastCoveredDay: ledger.lastCoveredDay,
-            dates: dates,
-            today: ledger.today,
-            info: moneyLeftInfo(
-              title: tr('dashboard.freeMoney'),
-              what: tr('info.leftPeriod'),
-              run: ledger.cascade!.all,
-              money: money,
-              dates: dates,
-              today: ledger.today,
-              startLabel: tr('info.income'),
-            ),
+            label: tr('dashboard.freeMoney'),
+            what: tr('info.leftPeriod'),
+            startLabel: tr('info.income'),
           ),
           const SizedBox(height: SageSpace.md),
           CascadeCard(

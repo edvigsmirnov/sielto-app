@@ -9,6 +9,7 @@ import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
+import 'package:sielto/domain/ledger/daily_projection.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/dashboard/balance_sheet.dart';
 import 'package:sielto/features/dashboard/dashboard_parts.dart';
@@ -42,25 +43,18 @@ class _Body extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final MoneyFormat money = context.moneyIn(space.currencyCode);
     final DateLabels dates = context.dates;
-    final DailyProjection projection = projectDays(
-      available: ledger.available,
-      entries: ledger.entries,
-      from: ledger.today,
-    );
+    final DailyProjection projection = ledger.projection;
 
     final bool planned = projection.averageSpendPerDay > Decimal.zero;
     return ListView(
       padding: const EdgeInsets.all(SageSpace.gutter),
       children: <Widget>[
         MainFigure(
-          label: tr('dashboard.freeMoney'),
-          amount: ledger.freeCash,
-          coverage: ledger.coverage,
+          ledger: ledger,
           money: money,
-          overspend: ledger.cascade.all.finalBalance,
-          lastCoveredDay: ledger.lastCoveredDay,
-          dates: dates,
-          today: ledger.today,
+          label: tr('dashboard.freeMoney'),
+          what: tr('info.leftFlow'),
+          startLabel: tr('info.now'),
           subtitle: planned
               ? tr(
                   'dashboard.atAverageSpend',
@@ -72,15 +66,6 @@ class _Body extends ConsumerWidget {
               : null,
           onTap: () =>
               showBalanceSheet(context, ref, space: space, money: money),
-          info: moneyLeftInfo(
-            title: tr('dashboard.freeMoney'),
-            what: tr('info.leftFlow'),
-            run: ledger.cascade.all,
-            money: money,
-            dates: dates,
-            today: ledger.today,
-            startLabel: tr('info.now'),
-          ),
         ),
         const SizedBox(height: SageSpace.md),
         if (space.balanceSetOn == null) ...<Widget>[
@@ -95,12 +80,7 @@ class _Body extends ConsumerWidget {
           money: money,
           margin: const EdgeInsets.only(bottom: SageSpace.md),
         ),
-        ProjectionCard(
-          projection: projection,
-          money: money,
-          dates: dates,
-          today: ledger.today,
-        ),
+        ProjectionCard(projection: projection, money: money),
         const SizedBox(height: SageSpace.md),
         IntrinsicHeight(
           child: Row(
@@ -181,7 +161,7 @@ class _Body extends ConsumerWidget {
 /// When the balance was set, and how many records the walk excluded.
 String? _balanceCaption(Space space, FlowLedger ledger, DateLabels dates) {
   final CalendarDate? setOn = space.balanceSetOn;
-  return <String>[
+  final List<String> lines = <String>[
     if (setOn != null)
       tr(
         'dashboard.balanceSetOn',
@@ -191,11 +171,8 @@ String? _balanceCaption(Space space, FlowLedger ledger, DateLabels dates) {
       ),
     if (ledger.excludedCount > 0)
       plural('balance.excludedFromWalker', ledger.excludedCount),
-  ].join('\n').ifEmptyNull();
-}
-
-extension on String {
-  String? ifEmptyNull() => isEmpty ? null : this;
+  ];
+  return lines.isEmpty ? null : lines.join('\n');
 }
 
 /// Amount over label.

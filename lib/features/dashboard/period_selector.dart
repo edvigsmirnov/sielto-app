@@ -96,7 +96,7 @@ class PeriodSelector extends ConsumerWidget {
                     ],
                   ],
                 ),
-                if (_isCurrent(current, today))
+                if (current.covers(today))
                   Text(
                     tr('period.current'),
                     style: Theme.of(context).textTheme.labelSmall
@@ -126,11 +126,5 @@ class PeriodSelector extends ConsumerWidget {
     final CalendarDate? end = period.endDate;
     if (end == null) return dates.dayMonth(period.startDate);
     return '${dates.dayMonth(period.startDate)} — ${dates.dayMonth(end)}';
-  }
-
-  bool _isCurrent(BudgetPeriod period, CalendarDate today) {
-    if (period.startDate.isAfter(today)) return false;
-    final CalendarDate? end = period.endDate;
-    return end == null || !end.isBefore(today);
   }
 }

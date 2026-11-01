@@ -93,12 +93,8 @@ PeriodLedger buildPeriodLedger({
       i.recurrenceRuleId != null && anchorRuleIds.contains(i.recurrenceRuleId);
 
   // Bound to this period, or unbound and dated inside it.
-  final CalendarDate? end = period.endDate;
-  bool inPeriod(String? boundTo, CalendarDate date) {
-    if (boundTo != null) return boundTo == period.id;
-    return !period.startDate.isAfter(date) &&
-        (end == null || !end.isBefore(date));
-  }
+  bool inPeriod(String? boundTo, CalendarDate date) =>
+      boundTo == null ? period.covers(date) : boundTo == period.id;
 
   final List<Payment> ofPeriod = payments
       .where((Payment p) => inPeriod(p.budgetPeriodId, p.dueDate))

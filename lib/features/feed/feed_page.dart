@@ -642,14 +642,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
     final CalendarDate? top = _topVisibleDate();
     if (top == null) return;
 
-    for (final BudgetPeriod p in periods) {
-      final CalendarDate? end = p.endDate;
-      if (p.startDate.isAfter(top)) continue;
-      if (end != null && end.isBefore(top)) continue;
-      if (ref.read(selectedPeriodIdProvider) != p.id) {
-        ref.read(selectedPeriodIdProvider.notifier).select(p.id);
-      }
-      return;
+    final BudgetPeriod? period = periodOn(periods, top);
+    if (period != null && ref.read(selectedPeriodIdProvider) != period.id) {
+      ref.read(selectedPeriodIdProvider.notifier).select(period.id);
     }
   }
 

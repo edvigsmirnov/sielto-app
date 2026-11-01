@@ -47,14 +47,12 @@ class _Body extends ConsumerWidget {
       children: <Widget>[
         if (ledger.hasFund)
           MainFigure(
-            label: tr('budget.remaining'),
-            amount: ledger.remaining,
-            coverage: ledger.coverage,
+            ledger: ledger,
             money: money,
-            overspend: ledger.cascade!.all.finalBalance,
-            lastCoveredDay: ledger.lastCoveredDay,
-            dates: dates,
-            today: ledger.today,
+            label: tr('budget.remaining'),
+            what: tr('info.leftBudget'),
+            startLabel: tr('info.budget'),
+            spendLabel: tr('info.spentAndPlanned'),
             subtitle: tr(
               'budget.ofFund',
               namedArgs: <String, String>{
@@ -62,16 +60,6 @@ class _Body extends ConsumerWidget {
               },
             ),
             onTap: () => editBudgetFund(context, ref, ledger: ledger),
-            info: moneyLeftInfo(
-              title: tr('budget.remaining'),
-              what: tr('info.leftBudget'),
-              run: ledger.cascade!.all,
-              money: money,
-              dates: dates,
-              today: ledger.today,
-              startLabel: tr('info.budget'),
-              spendLabel: tr('info.spentAndPlanned'),
-            ),
           )
         else
           _NoFundFigure(ledger: ledger, money: money),

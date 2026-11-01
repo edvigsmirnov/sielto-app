@@ -218,3 +218,15 @@ QueryExecutor openEncryptedDatabase({
     },
   );
 }
+
+/// The first of [periods] that covers [day].
+BudgetPeriod? periodOn(List<BudgetPeriod> periods, CalendarDate day) =>
+    periods.where((BudgetPeriod p) => p.covers(day)).firstOrNull;
+
+extension PeriodSpan on BudgetPeriod {
+  /// An open-ended period covers every day from its start.
+  bool covers(CalendarDate date) {
+    final CalendarDate? end = endDate;
+    return !startDate.isAfter(date) && (end == null || !end.isBefore(date));
+  }
+}

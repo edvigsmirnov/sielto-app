@@ -81,6 +81,14 @@ class LedgerRun {
 
   /// Null once there is a cutoff.
   Decimal? get freeCash => hasCutoff ? null : finalBalance;
+
+  Decimal get incoming => _sum(income: true);
+
+  Decimal get outgoing => _sum(income: false);
+
+  Decimal _sum({required bool income}) => steps
+      .where((LedgerStep s) => s.entry.isIncome == income)
+      .fold(Decimal.zero, (Decimal sum, LedgerStep s) => sum + s.entry.amount);
 }
 
 /// Chronological running balance. A future income joins only on its own date,

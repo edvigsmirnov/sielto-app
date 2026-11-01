@@ -137,12 +137,7 @@ class BudgetPeriodRepository
 
   Future<BudgetPeriod?> containing(String spaceId, CalendarDate date) async {
     final List<BudgetPeriod> periods = await inSpace(spaceId);
-    for (final BudgetPeriod p in periods) {
-      if (p.startDate.isAfter(date)) continue;
-      final CalendarDate? end = p.endDate;
-      if (end == null || !end.isBefore(date)) return p;
-    }
-    return null;
+    return periodOn(periods, date);
   }
 
   /// Null clears the fund target.

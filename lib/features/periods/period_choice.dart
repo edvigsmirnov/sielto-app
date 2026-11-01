@@ -28,10 +28,7 @@ class PeriodPair {
 PeriodPair periodsAround(List<BudgetPeriod> periods, CalendarDate date) {
   for (int i = 0; i < periods.length; i++) {
     final BudgetPeriod p = periods[i];
-    if (p.periodType != PeriodType.incomeDriven) continue;
-    if (p.startDate.isAfter(date)) continue;
-    final CalendarDate? end = p.endDate;
-    if (end != null && end.isBefore(date)) continue;
+    if (p.periodType != PeriodType.incomeDriven || !p.covers(date)) continue;
     return PeriodPair(
       current: p,
       next: i + 1 < periods.length ? periods[i + 1] : null,

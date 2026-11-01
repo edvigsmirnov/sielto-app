@@ -1,14 +1,12 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
-import 'package:sielto/domain/value/calendar_date.dart';
 
 /// One line of a worked sum: `+ $300.00 more coming in`.
 class SumLine {
@@ -48,71 +46,18 @@ List<SumLine> runSum(
   required String startLabel,
   String? spendLabel,
 }) {
-  Decimal income = Decimal.zero;
-  Decimal spent = Decimal.zero;
-  for (final LedgerStep step in run.steps) {
-    if (step.entry.isIncome) {
-      income += step.entry.amount;
-    } else {
-      spent += step.entry.amount;
-    }
-  }
   final bool short = run.finalBalance < Decimal.zero;
   return <SumLine>[
     SumLine('', money.format(run.available), startLabel),
-    if (income > Decimal.zero)
-      SumLine('+', money.format(income), tr('info.comingIn')),
-    SumLine('−', money.format(spent), spendLabel ?? tr('info.planned')),
+    if (run.incoming > Decimal.zero)
+      SumLine('+', money.format(run.incoming), tr('info.comingIn')),
+    SumLine('−', money.format(run.outgoing), spendLabel ?? tr('info.planned')),
     SumLine(
       '=',
       money.format(short ? -run.finalBalance : run.finalBalance),
       tr(short ? 'info.short' : 'info.left'),
     ),
   ];
-}
-
-/// The hero figure's explanation; says where the money runs out when it does.
-FigureInfo moneyLeftInfo({
-  required String title,
-  required String what,
-  required LedgerRun run,
-  required MoneyFormat money,
-  required DateLabels dates,
-  required CalendarDate today,
-  required String startLabel,
-  String? spendLabel,
-}) {
-  final CalendarDate? lastDay = run.lastCoveredDay;
-  final bool short = run.hasCutoff && lastDay != null;
-  final bool shortToday = short && lastDay.isBefore(today);
-  return FigureInfo(
-    title: shortToday
-        ? tr('info.shortNow')
-        : short
-        ? tr(
-            'info.lastsTitle',
-            namedArgs: <String, String>{
-              'date': dates.dayMonth(lastDay, reference: today),
-            },
-          )
-        : title,
-    what: short
-        ? shortToday
-              ? tr('info.shortToday')
-              : tr(
-                  'info.lasts',
-                  namedArgs: <String, String>{
-                    'date': dates.dayMonth(lastDay, reference: today),
-                  },
-                )
-        : what,
-    sum: runSum(run, money, startLabel: startLabel, spendLabel: spendLabel),
-    advice: shortToday
-        ? tr('info.shortTodayAdvice')
-        : short
-        ? tr('info.lastsAdvice')
-        : null,
-  );
 }
 
 /// A small (i) that opens [info].

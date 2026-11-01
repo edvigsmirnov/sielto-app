@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/db/app_database.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
@@ -20,51 +21,75 @@ import 'package:sielto/features/space/space_ledger.dart';
 /// runs out, in red.
 class MainFigure extends StatelessWidget {
   const MainFigure({
-    required this.label,
-    required this.amount,
-    required this.coverage,
+    required this.ledger,
     required this.money,
-    required this.overspend,
-    required this.lastCoveredDay,
-    required this.dates,
-    required this.today,
+    required this.label,
+    required this.what,
+    required this.startLabel,
+    this.spendLabel,
     this.subtitle,
     this.onTap,
-    this.info,
     super.key,
   });
 
+  /// Its walk must be judged and have a start.
+  final SpaceLedger ledger;
+
+  final MoneyFormat money;
   final String label;
 
-  /// Null when not covered or unknown.
-  final Decimal? amount;
+  /// What the figure means while covered.
+  final String what;
 
-  final Coverage? coverage;
-  final MoneyFormat money;
-
-  /// Final balance; shown as overspend when negative.
-  final Decimal overspend;
-
-  final CalendarDate? lastCoveredDay;
-  final DateLabels dates;
-  final CalendarDate today;
+  /// Names the start and the spending in the worked sum.
+  final String startLabel;
+  final String? spendLabel;
 
   /// Line under the figure, e.g. Flow's average daily spend.
   final String? subtitle;
 
   final VoidCallback? onTap;
 
-  final FigureInfo? info;
-
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
+    final DateLabels dates = context.dates;
+    final CalendarDate today = ledger.today;
+    final LedgerRun run = ledger.cascade!.all;
+    final Decimal? amount = ledger.freeCash;
+    final Coverage? coverage = ledger.coverage;
+    final CalendarDate? lastDay = ledger.lastCoveredDay;
     final bool short = amount == null;
+    final String? lastDayLabel = lastDay == null
+        ? null
+        : dates.dayMonth(lastDay, reference: today);
+    final bool runsOut = short && lastDay != null;
     // An expense due today that the money cannot cover.
-    final bool shortToday =
-        short && lastCoveredDay != null && lastCoveredDay!.isBefore(today);
-    final CalendarDate? shownDay = shortToday ? today : lastCoveredDay;
+    final bool shortToday = runsOut && lastDay.isBefore(today);
+
+    final FigureInfo info = FigureInfo(
+      title: shortToday
+          ? tr('info.shortNow')
+          : runsOut
+          ? tr(
+              'info.lastsTitle',
+              namedArgs: <String, String>{'date': lastDayLabel!},
+            )
+          : label,
+      what: shortToday
+          ? tr('info.shortToday')
+          : runsOut
+          ? tr('info.lasts', namedArgs: <String, String>{'date': lastDayLabel!})
+          : what,
+      sum: runSum(run, money, startLabel: startLabel, spendLabel: spendLabel),
+      note: coverage == null ? null : tr('info.dot.${coverage.name}'),
+      advice: shortToday
+          ? tr('info.shortTodayAdvice')
+          : runsOut
+          ? tr('info.lastsAdvice')
+          : null,
+    );
 
     return InkWell(
       onTap: onTap,
@@ -80,27 +105,14 @@ class MainFigure extends StatelessWidget {
                   child: Text(
                     shortToday
                         ? tr('dashboard.shortFrom')
-                        : short && lastCoveredDay != null
+                        : runsOut
                         ? tr('dashboard.lasts')
                         : label,
                     textAlign: TextAlign.center,
                     style: text.bodyMedium?.copyWith(color: sage.inkLabel),
                   ),
                 ),
-                if (info case final FigureInfo i)
-                  InfoButton(
-                    FigureInfo(
-                      title: i.title,
-                      what: i.what,
-                      sum: i.sum,
-                      note:
-                          i.note ??
-                          (coverage == null
-                              ? null
-                              : tr('info.dot.${coverage!.name}')),
-                      advice: i.advice,
-                    ),
-                  ),
+                InfoButton(info),
               ],
             ),
             const SizedBox(height: SageSpace.xs),
@@ -111,7 +123,7 @@ class MainFigure extends StatelessWidget {
                 Flexible(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: switch ((amount, shownDay)) {
+                    child: switch ((amount, shortToday ? today : lastDay)) {
                       (final Decimal value, _) => RollingAmount(
                         value: value,
                         money: money,
@@ -123,7 +135,7 @@ class MainFigure extends StatelessWidget {
                         style: text.displaySmall?.copyWith(color: sage.danger),
                       ),
                       (null, null) => Text(
-                        money.format(overspend),
+                        money.format(run.finalBalance),
                         textAlign: TextAlign.center,
                         style: text.displaySmall?.copyWith(color: sage.danger),
                       ),
@@ -132,19 +144,17 @@ class MainFigure extends StatelessWidget {
                 ),
                 if (coverage != null) ...<Widget>[
                   const SizedBox(width: SageSpace.sm),
-                  CoverageDot(coverage!),
+                  CoverageDot(coverage),
                 ],
               ],
             ),
             // Covered, but the money runs out before the end.
-            if (!short && lastCoveredDay != null) ...<Widget>[
+            if (!short && lastDayLabel != null) ...<Widget>[
               const SizedBox(height: SageSpace.xs),
               Text(
                 tr(
                   'dashboard.moneyEndsOn',
-                  namedArgs: <String, String>{
-                    'date': dates.dayMonth(lastCoveredDay!, reference: today),
-                  },
+                  namedArgs: <String, String>{'date': lastDayLabel},
                 ),
                 textAlign: TextAlign.center,
                 style: text.bodySmall?.copyWith(color: sage.warning),
@@ -158,13 +168,13 @@ class MainFigure extends StatelessWidget {
                 style: text.bodySmall?.copyWith(color: sage.inkLabel),
               ),
             ],
-            if (short && overspend < Decimal.zero) ...<Widget>[
+            if (short && run.finalBalance < Decimal.zero) ...<Widget>[
               const SizedBox(height: SageSpace.xs),
               Text(
                 tr(
                   'dashboard.overspend',
                   namedArgs: <String, String>{
-                    'amount': money.format(-overspend),
+                    'amount': money.format(-run.finalBalance),
                   },
                 ),
                 textAlign: TextAlign.center,

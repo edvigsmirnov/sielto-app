@@ -5,6 +5,7 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/time/space_clock.dart';
 import 'package:sielto/domain/ledger/available_money.dart';
+import 'package:sielto/domain/ledger/daily_projection.dart';
 import 'package:sielto/domain/ledger/ledger_entry.dart';
 import 'package:sielto/domain/ledger/ledger_walker.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
@@ -153,6 +154,7 @@ class FlowLedger extends SpaceLedger {
     required super.totalPlanned,
     required super.totalPaid,
     required this.nearestIncome,
+    required this.projection,
   });
 
   /// Manual balance plus incomes received since it was set.
@@ -164,6 +166,8 @@ class FlowLedger extends SpaceLedger {
 
   /// Next income not yet arrived.
   final Income? nearestIncome;
+
+  final DailyProjection projection;
 
   @override
   LedgerCascade get cascade => super.cascade!;
@@ -242,6 +246,11 @@ FlowLedger buildFlowLedger({
     totalPlanned: planned,
     totalPaid: paid,
     nearestIncome: nearest,
+    projection: DailyProjection.walk(
+      available: context.available,
+      entries: context.entries,
+      from: today,
+    ),
   );
 }
 

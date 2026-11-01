@@ -117,16 +117,6 @@ final Provider<AnalyticsRange> analyticsRangeProvider =
           : periodRange(current, today);
     });
 
-BudgetPeriod? periodOn(List<BudgetPeriod> periods, CalendarDate day) {
-  for (final BudgetPeriod p in periods) {
-    final CalendarDate? end = p.endDate;
-    if (!p.startDate.isAfter(day) && (end == null || !end.isBefore(day))) {
-      return p;
-    }
-  }
-  return null;
-}
-
 /// An open-ended period runs to [today].
 AnalyticsRange periodRange(BudgetPeriod p, CalendarDate today) =>
     AnalyticsRange.between(RangeUnit.period, p.startDate, p.endDate ?? today);

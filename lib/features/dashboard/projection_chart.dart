@@ -1,111 +1,29 @@
 import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
-import 'package:sielto/domain/ledger/ledger_entry.dart';
-import 'package:sielto/domain/value/calendar_date.dart';
+import 'package:sielto/domain/ledger/daily_projection.dart';
 import 'package:sielto/features/dashboard/figure_info.dart';
-
-/// End-of-day balances for the next few days.
-@immutable
-class DailyProjection {
-  const DailyProjection({
-    required this.days,
-    required this.balances,
-    required this.spend,
-    required this.averageSpendPerDay,
-  });
-
-  static const int horizonDays = 10;
-
-  final List<CalendarDate> days;
-
-  final List<Decimal> balances;
-
-  /// Planned spend over the window.
-  final Decimal spend;
-
-  /// [spend] divided by the window's length. Zero when nothing is
-  /// planned.
-  final Decimal averageSpendPerDay;
-
-  bool get isEmpty => days.isEmpty;
-
-  Decimal get lowest => balances.isEmpty
-      ? Decimal.zero
-      : balances.reduce((Decimal a, Decimal b) => a < b ? a : b);
-
-  Decimal get highest => balances.isEmpty
-      ? Decimal.zero
-      : balances.reduce((Decimal a, Decimal b) => a > b ? a : b);
-}
-
-/// Day-by-day walk over the window; entries land on their own dates.
-DailyProjection projectDays({
-  required Decimal available,
-  required List<LedgerEntry> entries,
-  required CalendarDate from,
-  int horizon = DailyProjection.horizonDays,
-}) {
-  final List<CalendarDate> days = <CalendarDate>[
-    for (int i = 0; i < horizon; i++) from.addDays(i),
-  ];
-  final CalendarDate last = days.last;
-
-  // Entries before the window are in the opening balance.
-  Decimal balance = available;
-  for (final LedgerEntry e in entries) {
-    if (!e.date.isBefore(from)) continue;
-    balance = e.isIncome ? balance + e.amount : balance - e.amount;
-  }
-
-  Decimal spend = Decimal.zero;
-  final List<Decimal> balances = <Decimal>[];
-  for (final CalendarDate day in days) {
-    for (final LedgerEntry e in entries) {
-      if (e.date != day) continue;
-      if (e.isIncome) {
-        balance += e.amount;
-      } else {
-        balance -= e.amount;
-        if (!e.date.isAfter(last)) spend += e.amount;
-      }
-    }
-    balances.add(balance);
-  }
-
-  return DailyProjection(
-    days: days,
-    balances: balances,
-    spend: spend,
-    averageSpendPerDay: (spend / Decimal.fromInt(horizon)).toDecimal(
-      scaleOnInfinitePrecision: 2,
-    ),
-  );
-}
 
 /// Next ten days as columns.
 class ProjectionCard extends StatelessWidget {
   const ProjectionCard({
     required this.projection,
     required this.money,
-    required this.dates,
-    required this.today,
     super.key,
   });
 
   final DailyProjection projection;
   final MoneyFormat money;
-  final DateLabels dates;
-  final CalendarDate today;
 
   @override
   Widget build(BuildContext context) {
     final TextTheme text = Theme.of(context).textTheme;
-    if (projection.isEmpty) return const SizedBox.shrink();
+    final DateLabels dates = context.dates;
 
     return SageCard(
       child: Column(
@@ -133,12 +51,7 @@ class ProjectionCard extends StatelessWidget {
           const SizedBox(height: SageSpace.md),
           SizedBox(
             height: 72,
-            child: _Columns(
-              projection: projection,
-              today: today,
-              money: money,
-              dates: dates,
-            ),
+            child: _Columns(projection: projection, money: money, dates: dates),
           ),
           const SizedBox(height: SageSpace.sm),
           Row(
@@ -160,13 +73,11 @@ class ProjectionCard extends StatelessWidget {
 class _Columns extends StatelessWidget {
   const _Columns({
     required this.projection,
-    required this.today,
     required this.money,
     required this.dates,
   });
 
   final DailyProjection projection;
-  final CalendarDate today;
   final MoneyFormat money;
   final DateLabels dates;
 
@@ -197,7 +108,7 @@ class _Columns extends StatelessWidget {
                       ? 0
                       : (projection.balances[i] - bottom).toDouble() / span,
                   isNegative: projection.balances[i] < Decimal.zero,
-                  isToday: projection.days[i] == today,
+                  isToday: i == 0,
                   sage: sage,
                 ),
               ),
