@@ -38,7 +38,7 @@ OUT=$(cd "$OUT" && pwd)
 # itself; /usr/bin/sielto is a symlink into it.
 ROOT=$WORK/root
 install -d "$ROOT/usr/lib/$PKG" "$ROOT/usr/bin" \
-  "$ROOT/usr/share/applications" \
+  "$ROOT/usr/share/applications" "$ROOT/usr/share/metainfo" \
   "$ROOT/usr/share/icons/hicolor/512x512/apps" \
   "$ROOT/usr/share/doc/$PKG"
 
@@ -64,6 +64,46 @@ StartupWMClass=$BIN
 DESKTOP
 install -m 644 "$DESKTOP_FILE" \
   "$ROOT/usr/share/applications/$APP_ID.desktop"
+
+RELEASE_TYPE=stable
+[[ "$VERSION" == *-* ]] && RELEASE_TYPE=development
+METAINFO_FILE=$WORK/$APP_ID.appdata.xml
+cat > "$METAINFO_FILE" <<METAINFO
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>$APP_ID</id>
+  <name>Sielto</name>
+  <summary>Offline-first planner for mandatory payments and shared budgets</summary>
+  <developer id="dev.edvig">
+    <name>Edvig Smirnov</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary=https://github.com/edvigsmirnov/sielto-app/blob/main/LICENSE</project_license>
+  <description>
+    <p>
+      Sielto answers one question: how much can I actually spend? It subtracts
+      every upcoming obligation from the money that has arrived, including the
+      ones that only land at the end of the month.
+    </p>
+    <p>
+      The on-device database is the source of truth and is encrypted at rest.
+      No account, no telemetry, no bank connection.
+    </p>
+  </description>
+  <launchable type="desktop-id">$APP_ID.desktop</launchable>
+  <url type="homepage">https://github.com/edvigsmirnov/sielto-app</url>
+  <url type="bugtracker">https://github.com/edvigsmirnov/sielto-app/issues</url>
+  <categories>
+    <category>Office</category>
+    <category>Finance</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="$VERSION" date="$(date -u +%F)" type="$RELEASE_TYPE"/>
+  </releases>
+</component>
+METAINFO
+install -m 644 "$METAINFO_FILE" "$ROOT/usr/share/metainfo/"
 
 SIZE_KB=$(du -sk "$ROOT/usr" | cut -f1)
 
@@ -127,6 +167,7 @@ No account, no telemetry, no bank connection.
 /usr/lib/$PKG
 /usr/bin/$BIN
 /usr/share/applications/$APP_ID.desktop
+/usr/share/metainfo/$APP_ID.appdata.xml
 /usr/share/icons/hicolor/512x512/apps/$BIN.png
 /usr/share/doc/$PKG/copyright
 SPEC
@@ -187,9 +228,12 @@ echo "tar.gz   $(basename "$TAR_FILE")"
 # ------------------------------------------------------------------- AppImage
 if command -v appimagetool >/dev/null 2>&1; then
   APPDIR=$WORK/AppDir
-  install -d "$APPDIR/usr/bin"
+  install -d "$APPDIR/usr/bin" "$APPDIR/usr/share/metainfo" \
+    "$APPDIR/usr/share/applications"
   cp -r "$BUNDLE/." "$APPDIR/usr/bin/"
-  install -m 644 "$DESKTOP_FILE" "$APPDIR/$BIN.desktop"
+  install -m 644 "$DESKTOP_FILE" "$APPDIR/usr/share/applications/"
+  ln -s "usr/share/applications/$APP_ID.desktop" "$APPDIR/"
+  install -m 644 "$METAINFO_FILE" "$APPDIR/usr/share/metainfo/"
   # appimagetool wants the icon beside the .desktop file.
   install -m 644 "$ICON" "$APPDIR/$BIN.png"
   cat > "$APPDIR/AppRun" <<'APPRUN'
