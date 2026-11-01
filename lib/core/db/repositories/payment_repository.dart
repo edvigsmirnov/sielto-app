@@ -132,14 +132,17 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     Value<int> sortOrder = const Value<int>.absent(),
   }) async {
     // Reordering is allowed in a frozen period.
-    if (_touchesProtected(
+    final bool protected = _touchesProtected(
       amount: amount.present,
       dueDate: dueDate.present,
       expenseType: expenseType.present,
       isPaid: isPaid.present,
-    )) {
+    );
+    if (protected || notes.present) {
       final Payment? row = await byId(id);
-      await _freeze.refuseIfFrozen(row?.budgetPeriodId);
+      if (protected || !FreezeEvaluator.onlyAppends(row?.notes, notes.value)) {
+        await _freeze.refuseIfFrozen(row?.budgetPeriodId);
+      }
       if (dueDate.present && row != null) {
         await _deadline.refuseIfBeyondDeadline(row.spaceId, dueDate.value);
       }
@@ -287,16 +290,18 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     String groupRecurringId, {
     CalendarDate? from,
   }) async {
-    final List<String> ids = await _idsInSeries(
+    final ({List<String> open, List<String> frozen}) ids = await _idsInSeries(
       groupRecurringId,
       from,
       unpaidOnly: false,
-      skipFrozen: true,
     );
-    return (db.update(db.payments)..where(($PaymentsTable t) => t.id.isIn(ids)))
-        .write(stamped(PaymentsCompanion(isDeleted: const Value<bool>(true))));
+    return _writeRows(
+      ids.open,
+      PaymentsCompanion(isDeleted: const Value<bool>(true)),
+    );
   }
 
+  /// Frozen rows take only the title and the category.
   Future<int> _writeSeries(
     String groupRecurringId, {
     CalendarDate? from,
@@ -306,35 +311,39 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
     Value<String?> categoryId = const Value<String?>.absent(),
     Value<String?> notes = const Value<String?>.absent(),
   }) async {
-    // Title, category and notes stay editable in a frozen period.
-    final List<String> ids = await _idsInSeries(
+    final ({List<String> open, List<String> frozen}) ids = await _idsInSeries(
       groupRecurringId,
       from,
       unpaidOnly: true,
-      skipFrozen: amount.present || expenseType.present,
     );
-    return (db.update(
-      db.payments,
-    )..where(($PaymentsTable t) => t.id.isIn(ids))).write(
-      stamped(
-        PaymentsCompanion(
-          title: title.present
-              ? Value<String>(title.value.trim())
-              : const Value<String>.absent(),
-          amount: amount,
-          expenseType: expenseType,
-          categoryId: categoryId,
-          notes: notes,
-        ),
-      ),
+    final PaymentsCompanion editable = PaymentsCompanion(
+      title: title.present
+          ? Value<String>(title.value.trim())
+          : const Value<String>.absent(),
+      categoryId: categoryId,
     );
+    return await _writeRows(
+          ids.open,
+          editable.copyWith(
+            amount: amount,
+            expenseType: expenseType,
+            notes: notes,
+          ),
+        ) +
+        (title.present || categoryId.present
+            ? await _writeRows(ids.frozen, editable)
+            : 0);
   }
 
-  Future<List<String>> _idsInSeries(
+  Future<int> _writeRows(List<String> ids, PaymentsCompanion values) =>
+      (db.update(
+        db.payments,
+      )..where(($PaymentsTable t) => t.id.isIn(ids))).write(stamped(values));
+
+  Future<({List<String> open, List<String> frozen})> _idsInSeries(
     String groupRecurringId,
     CalendarDate? from, {
     required bool unpaidOnly,
-    required bool skipFrozen,
   }) async {
     final List<Payment> rows =
         await (db.select(db.payments)..where(($PaymentsTable t) {
@@ -346,12 +355,15 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
               return unpaidOnly ? series & t.isPaid.equals(false) : series;
             }))
             .get();
-    return <String>[
-      for (final Payment row in rows)
-        if (!skipFrozen ||
-            await _freeze.stateOf(row.budgetPeriodId) != FreezeState.frozen)
-          row.id,
-    ];
+    final List<String> open = <String>[];
+    final List<String> frozen = <String>[];
+    for (final Payment row in rows) {
+      (await _freeze.stateOf(row.budgetPeriodId) == FreezeState.frozen
+              ? frozen
+              : open)
+          .add(row.id);
+    }
+    return (open: open, frozen: frozen);
   }
 
   Expression<bool> _seriesFilter(
@@ -422,7 +434,7 @@ class PaymentRepository extends SyncedRepository<$PaymentsTable, Payment> {
         .customSelect(
           'SELECT title, count(*) AS uses FROM payments '
           'WHERE space_id = ?1 AND is_deleted = 0 '
-          "  AND lower(trim(title)) LIKE ?2 || '%' "
+          '  AND instr(lower(trim(title)), ?2) = 1 '
           'GROUP BY lower(trim(title)), title '
           'ORDER BY uses DESC, title ASC LIMIT ?3',
           variables: <Variable<Object>>[

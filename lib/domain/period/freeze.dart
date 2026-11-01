@@ -63,6 +63,10 @@ class FreezeEvaluator {
   }
 
   static bool _isLead(int unit) => unit >= 0xD800 && unit <= 0xDBFF;
+
+  /// What a frozen period allows of a note: the old text kept as the start.
+  static bool onlyAppends(String? before, String? after) =>
+      before == null || (after ?? '').startsWith(before);
 }
 
 /// The longest note, in UTF-16 units; the server counts characters, never more.

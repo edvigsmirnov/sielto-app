@@ -174,6 +174,14 @@ void main() {
       );
       expect(run.exhaustedEntryId, isNull);
     });
+
+    test('a zero-amount to-do at zero spends nothing, so ends nothing', () {
+      final LedgerRun run = LedgerWalker.walk(
+        available: m('0'),
+        entries: <LedgerEntry>[expense('call bank', '2026-03-05', '0')],
+      );
+      expect(run.moneyEndsAt, isNull);
+    });
   });
 
   group('the coverage verdict needs data', () {

@@ -56,7 +56,7 @@ class LedgerRun {
 
   final CalendarDate? cutoffDate;
 
-  /// Expense that leaves exactly zero, before any cutoff.
+  /// Expense that takes the money to exactly zero, before any cutoff.
   final String? exhaustedEntryId;
 
   final CalendarDate? exhaustedDate;
@@ -126,6 +126,7 @@ abstract final class LedgerWalker {
       }
       if (covered &&
           after == Decimal.zero &&
+          balance > Decimal.zero &&
           exhaustedEntryId == null &&
           cutoffEntryId == null) {
         exhaustedEntryId = entry.id;

@@ -162,6 +162,19 @@ void main() {
       expect(merged.ruleIds, isNotEmpty);
     });
 
+    test('every period has an end, however many anchors fall before from', () {
+      final List<MaterializedPeriod> periods = run(
+        <AnchorSchedule>[fixed('advance', 5), fixed('salary', 20)],
+        from: '2026-03-25',
+        count: 5,
+      );
+      expect(periods, hasLength(5));
+      expect(
+        periods.every((MaterializedPeriod p) => p.endDate != null),
+        isTrue,
+      );
+    });
+
     test('back-to-back anchors give a one-day period, not a broken one', () {
       final List<MaterializedPeriod> periods = run(
         <AnchorSchedule>[fixed('a', 14), fixed('b', 15)],

@@ -347,6 +347,16 @@ void main() {
       ]);
     });
 
+    test('a typed % or _ is a character, not a wildcard', () async {
+      await spend('Rent', '10', on: summerStart);
+      await spend('50% off', '10', on: summerStart);
+      expect(await payments.titleSuggestions(space.id, '%'), isEmpty);
+      expect(await payments.titleSuggestions(space.id, '50%'), <String>[
+        '50% off',
+      ]);
+      expect(await payments.titleSuggestions(space.id, '_'), isEmpty);
+    });
+
     test('matching ignores Cyrillic case', () async {
       await spend('Пятёрочка', '10', on: summerStart);
       expect(await payments.titleSuggestions(space.id, 'пят'), <String>[

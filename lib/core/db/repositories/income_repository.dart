@@ -323,13 +323,18 @@ class IncomeRepository extends SyncedRepository<$IncomesTable, Income> {
     Value<String?> notes = const Value<String?>.absent(),
     Value<bool> isPaid = const Value<bool>.absent(),
   }) async {
-    // A frozen period protects amount, dates and the receipt flag.
-    if (amount.present ||
+    // A frozen period protects amount, dates and the receipt flag, and lets a
+    // note only grow.
+    final bool protected =
+        amount.present ||
         expectedDate.present ||
         actualDate.present ||
-        isPaid.present) {
+        isPaid.present;
+    if (protected || notes.present) {
       final Income? row = await byId(id);
-      await _freeze.refuseIfFrozen(row?.budgetPeriodId);
+      if (protected || !FreezeEvaluator.onlyAppends(row?.notes, notes.value)) {
+        await _freeze.refuseIfFrozen(row?.budgetPeriodId);
+      }
       if (expectedDate.present && row != null) {
         await _deadline.refuseIfBeyondDeadline(row.spaceId, expectedDate.value);
       }

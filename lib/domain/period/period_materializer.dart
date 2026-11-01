@@ -128,9 +128,11 @@ abstract final class PeriodMaterializer {
       year -= 1;
     }
 
+    // Each schedule can land twice before `from`: last month and this one.
+    final int wanted = needed + 2 * anchors.length;
     // Guard against a schedule that never lands ahead of `from`.
     const int maxMonths = 120;
-    for (int i = 0; i < maxMonths && byDate.length < needed + 2; i++) {
+    for (int i = 0; i < maxMonths && byDate.length < wanted; i++) {
       final List<IncomeWindow> windows = <IncomeWindow>[
         for (final AnchorSchedule anchor in anchors)
           anchor.schedule.resolveFor(year, month, calendar: calendar),

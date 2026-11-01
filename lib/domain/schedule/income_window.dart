@@ -43,7 +43,8 @@ class IncomeWindow {
 }
 
 /// A precise [start] on a non-working day widens to the working days on both
-/// sides. A span keeps its [start] and only extends right.
+/// sides. A span keeps its [start] and extends right, or left too when every
+/// day of it is off and the anchor falls back before it.
 IncomeWindow resolveIncomeWindow({
   required CalendarDate start,
   required WorkingDayCalendar calendar,
@@ -70,14 +71,15 @@ IncomeWindow resolveIncomeWindow({
     throw ArgumentError.value(end, 'end', 'ends before $start');
   }
   final CalendarDate windowEnd = calendar.workingDayOnOrAfter(end);
+  final CalendarDate anchor = _anchorWithin(
+    end,
+    before: calendar.workingDayOnOrBefore(end),
+    after: windowEnd,
+  );
   return IncomeWindow(
-    windowStart: start,
+    windowStart: anchor.isBefore(start) ? anchor : start,
     windowEnd: windowEnd,
-    anchorDate: _anchorWithin(
-      end,
-      before: calendar.workingDayOnOrBefore(end),
-      after: windowEnd,
-    ),
+    anchorDate: anchor,
   );
 }
 
@@ -86,8 +88,4 @@ CalendarDate _anchorWithin(
   CalendarDate scheduled, {
   required CalendarDate before,
   required CalendarDate after,
-}) {
-  final bool sameMonth =
-      after.year == scheduled.year && after.month == scheduled.month;
-  return sameMonth ? after : before;
-}
+}) => after.isSameMonth(scheduled) ? after : before;

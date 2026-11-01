@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sielto/app/startup.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/deadline_guard.dart';
+import 'package:sielto/core/db/freeze_guard.dart';
 import 'package:sielto/core/db/repositories/budget_period_repository.dart';
 import 'package:sielto/core/db/repositories/category_repository.dart';
 import 'package:sielto/core/db/repositories/income_repository.dart';
@@ -253,15 +254,46 @@ void main() {
 
       await payments.updateWholeSeries(
         group,
+        title: const Value<String>('Pool'),
         amount: Value<Decimal>(Decimal.ten),
+        notes: const Value<String?>('lane 3'),
       );
-      expect(
-        (await payments.seriesOf(group)).map((Payment p) => p.amount),
-        <Decimal>[Decimal.one, Decimal.ten],
-      );
+      final List<Payment> rows = await payments.seriesOf(group);
+      expect(rows.map((Payment p) => p.amount), <Decimal>[
+        Decimal.one,
+        Decimal.ten,
+      ]);
+      expect(rows.map((Payment p) => p.title), <String>['Pool', 'Pool']);
+      expect(rows.map((Payment p) => p.notes), <String?>[null, 'lane 3']);
 
       await payments.deleteSeries(group);
       expect((await payments.seriesOf(group)).single.id, january.id);
+    });
+
+    test('a frozen note may only grow', () async {
+      final Space space = await makeSpace();
+      final BudgetPeriod closed = await periods.createIncomeDriven(
+        spaceId: space.id,
+        startDate: const CalendarDate(2026, 1, 1),
+        endDate: const CalendarDate(2026, 1, 31),
+        anchorDate: const CalendarDate(2026, 1, 1),
+      );
+      final Payment row = await payments.create(
+        spaceId: space.id,
+        title: 'Gym',
+        amount: Decimal.one,
+        dueDate: const CalendarDate(2026, 1, 15),
+        expenseType: ExpenseType.mandatory,
+        notes: 'card',
+      );
+      await payments.setPeriod(row.id, closed.id);
+
+      await payments.update(row.id, notes: const Value<String?>('card, cash'));
+      await expectLater(
+        payments.update(row.id, notes: const Value<String?>('cash')),
+        throwsA(isA<PeriodFrozen>()),
+      );
+      expect((await payments.byId(row.id))!.notes, 'card, cash');
     });
 
     test('a duplicate sort_order still orders deterministically', () async {

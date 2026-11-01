@@ -137,6 +137,7 @@ class CustomNonWorkingDayRepository {
     final String? code = countryCode?.toUpperCase();
     final CustomNonWorkingDay? existing = await _on(date, code);
     if (existing != null) return existing;
+    final String? name = title?.trim();
 
     return db
         .into(db.customNonWorkingDays)
@@ -144,7 +145,7 @@ class CustomNonWorkingDayRepository {
           CustomNonWorkingDaysCompanion.insert(
             id: SyncedRepository.newId(),
             date: date,
-            title: Value<String?>(title?.trim().isEmpty ?? true ? null : title),
+            title: Value<String?>(name == null || name.isEmpty ? null : name),
             countryCode: Value<String?>(code),
             createdAt: clock.nowUtc(),
           ),

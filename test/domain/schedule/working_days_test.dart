@@ -110,6 +110,21 @@ void main() {
       expect(w.anchorDate, d('2026-03-16'));
     });
 
+    test('a range of days off at a month end widens to its anchor', () {
+      // 2026-10-29 to 31 are Thursday to Saturday; the first two are holidays.
+      // Monday 2 November leaves October, so the anchor is Wednesday the 28th.
+      final IncomeWindow w = resolveIncomeWindow(
+        start: d('2026-10-29'),
+        end: d('2026-10-31'),
+        calendar: WorkingDayCalendar(
+          holidays: <CalendarDate>{d('2026-10-29'), d('2026-10-30')},
+        ),
+      );
+      expect(w.windowStart, d('2026-10-28'));
+      expect(w.windowEnd, d('2026-11-02'));
+      expect(w.anchorDate, d('2026-10-28'));
+    });
+
     test('a range ending on a working day is left alone', () {
       final IncomeWindow w = resolveIncomeWindow(
         start: d('2026-03-11'),
