@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -29,6 +30,14 @@ jobs:
         run: |
           echo "version=$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' pubspec.yaml)" \
             >> "$GITHUB_OUTPUT"
+
+      - name: Tag matches pubspec
+        if: github.ref_type == 'tag'
+        run: |
+          if [ "${GITHUB_REF_NAME#v}" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match pubspec.yaml's ${{ steps.version.outputs.version }}."
+            exit 1
+          fi
 
       - uses: subosito/flutter-action@v2
         with:
@@ -146,9 +155,22 @@ jobs:
         run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "sielto-app-$env:BUILD_NAME+$env:BUILD_NUMBER-windows.zip"
         shell: pwsh
 
+      # Inno Setup is on the runner image.
+      - name: Installer
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DAppVersion=$env:BUILD_NAME" "/DFileVersion=$env:BUILD_NAME+$env:BUILD_NUMBER" windows\installer.iss
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+        shell: pwsh
+
       - uses: actions/upload-artifact@v7
         with:
           path: sielto-app-*-windows.zip
+          archive: false
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          path: build/installer/sielto-app-*-windows-setup.exe
           archive: false
           if-no-files-found: error
 
@@ -223,3 +245,43 @@ jobs:
           path: build/packages/sielto-app-*.AppImage
           archive: false
           if-no-files-found: error
+
+  # A v* tag publishes what the jobs above built; v1.0.0-rc.1 a pre-release.
+  release:
+    name: Publish release
+    if: github.ref_type == 'tag'
+    needs: [analyze, android, windows, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # checkout leaves an annotated tag lightweight, which loses the notes.
+      - run: git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      # Release asset names drop the build number: GitHub rewrites "+".
+      - name: Name and checksum
+        working-directory: dist
+        run: |
+          for f in *; do
+            n=$(echo "$f" | sed 's/+[0-9]*//')
+            [ "$f" = "$n" ] || mv "$f" "$n"
+          done
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pre=()
+          [[ "$GITHUB_REF_NAME" == *-* ]] && pre=(--prerelease)
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag --notes-from-tag \
+            --title "Sielto ${GITHUB_REF_NAME#v}" "${pre[@]}"

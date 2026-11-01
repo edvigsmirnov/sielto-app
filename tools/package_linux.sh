@@ -18,6 +18,8 @@ BUNDLE=${3:-build/linux/x64/release/bundle}
 OUT=${4:-build/packages}
 
 PKG=sielto
+# 1.0.0-rc.1 sorts after 1.0.0 in dpkg and is refused by rpm; ~ sorts before.
+PKG_VERSION=${VERSION/-/\~}
 BIN=sielto
 APP_ID=dev.edvig.sielto
 ICON=linux/runner/resources/sielto.png
@@ -73,7 +75,7 @@ cp -r "$ROOT" "$DEB"
 install -d "$DEB/DEBIAN"
 cat > "$DEB/DEBIAN/control" <<CONTROL
 Package: $PKG
-Version: $VERSION+$BUILD
+Version: $PKG_VERSION+$BUILD
 Architecture: amd64
 Maintainer: Edvig Smirnov <edvig.smirnov@16-tons.com>
 Installed-Size: $SIZE_KB
@@ -102,7 +104,7 @@ if command -v rpmbuild >/dev/null 2>&1; then
   SPEC=$WORK/$PKG.spec
   cat > "$SPEC" <<SPEC
 Name:           $PKG
-Version:        $VERSION
+Version:        $PKG_VERSION
 Release:        $BUILD
 Summary:        Offline-first planner for mandatory payments and shared budgets
 License:        LicenseRef-Sielto-NonCommercial
