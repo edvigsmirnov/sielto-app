@@ -11,7 +11,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:sielto/app/providers.dart';
-import 'package:sielto/core/backup/backup_file.dart';
 import 'package:sielto/core/backup/drive_backups.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
@@ -175,15 +174,16 @@ class DriveController extends Notifier<DriveState> with WidgetsBindingObserver {
   /// Signs in and makes the first snapshot. False when cancelled.
   Future<bool> connect() async {
     if (ref.read(offlineModeProvider)) return false;
-    final http.Client? client;
+    final String email;
     try {
-      client = await const DriveAuth().client(interactive: true);
+      final http.Client? client = await const DriveAuth().client(
+        interactive: true,
+      );
+      if (client == null) return false;
+      email = await DriveBackups(client).accountEmail() ?? 'Google Drive';
     } on Exception {
       return false;
     }
-    if (client == null) return false;
-    final String email =
-        await DriveBackups(client).accountEmail() ?? 'Google Drive';
     await _settings.setDriveEmail(email);
     state = (email: email, lastBackup: state.lastBackup, busy: false);
     await backUp(interactive: true);
@@ -213,10 +213,10 @@ class DriveController extends Notifier<DriveState> with WidgetsBindingObserver {
         interactive: interactive,
       );
       if (client == null) return false;
-      final Uint8List bytes = await BackupFile.seal(
-        await ref.read(repositoriesProvider).backup.export(),
-        recoveryKey,
-      );
+      final Uint8List bytes = await ref
+          .read(repositoriesProvider)
+          .backup
+          .sealed(recoveryKey);
       final DateTime now = DateTime.now();
       await DriveBackups(client).upload(bytes, now);
       await _settings.setDriveLastBackup(now);

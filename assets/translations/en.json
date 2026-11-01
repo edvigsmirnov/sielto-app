@@ -729,7 +729,8 @@
     "problem": {
       "notABackup": "This is not a Sielto backup",
       "tooNew": "This backup was made by a newer version of Sielto. Update the app first.",
-      "wrongKey": "This Recovery Key does not open the backup"
+      "wrongKey": "This Recovery Key does not open the backup",
+      "failed": "The backup couldn't be restored. Nothing here was changed."
     },
     "copyTitle": "{} (copy, {})",
     "fromFile": "From a file"

@@ -74,12 +74,14 @@ class BackupPage extends ConsumerWidget {
   }
 }
 
-Future<void> _openRecoveryKeyPage(BuildContext context) => Navigator.of(context)
-    .push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext _) => const RecoveryKeyPage(),
-      ),
-    );
+Future<void> _openRecoveryKeyPage(BuildContext context) =>
+    pushPage<void>(context, const RecoveryKeyPage());
+
+/// Where a backup can come from: icon, label, from Drive.
+const List<(IconData, String, bool)> _sources = <(IconData, String, bool)>[
+  (Icons.folder_open_outlined, 'backup.fromFile', false),
+  (Icons.cloud_download_outlined, 'drive.fromDrive', true),
+];
 
 Future<void> _export(BuildContext context, WidgetRef ref) async {
   if (!ref.read(recoveryKeySetProvider)) {
@@ -120,10 +122,10 @@ Future<void> _export(BuildContext context, WidgetRef ref) async {
 
   final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
   messenger.say(tr('recovery.working'));
-  final Uint8List bytes = await BackupFile.seal(
-    await ref.read(repositoriesProvider).backup.export(spaceId: only?.id),
-    key,
-  );
+  final Uint8List bytes = await ref
+      .read(repositoriesProvider)
+      .backup
+      .sealed(key, spaceId: only?.id);
   final String date = DateFormat('yyyy-MM-dd').format(DateTime.now());
   final String name = 'sielto_$date.${BackupFile.extension}';
   messenger.hideCurrentSnackBar();
@@ -218,16 +220,12 @@ Future<Uint8List?> pickBackup(BuildContext context, {bool? fromDrive}) async {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          ListTile(
-            leading: const Icon(Icons.folder_open_outlined),
-            title: Text(tr('backup.fromFile')),
-            onTap: () => Navigator.of(context).pop(false),
-          ),
-          ListTile(
-            leading: const Icon(Icons.cloud_download_outlined),
-            title: Text(tr('drive.fromDrive')),
-            onTap: () => Navigator.of(context).pop(true),
-          ),
+          for (final (IconData icon, String label, bool drive) in _sources)
+            ListTile(
+              leading: Icon(icon),
+              title: Text(tr(label)),
+              onTap: () => Navigator.of(context).pop(drive),
+            ),
         ],
       ),
     ),
@@ -238,11 +236,7 @@ Future<Uint8List?> pickBackup(BuildContext context, {bool? fromDrive}) async {
     ScaffoldMessenger.of(context).say(tr('storage.offlineMode'));
     return null;
   }
-  return Navigator.of(context).push<Uint8List>(
-    MaterialPageRoute<Uint8List>(
-      builder: (BuildContext _) => const DriveSnapshotsPage(),
-    ),
-  );
+  return pushPage<Uint8List>(context, const DriveSnapshotsPage());
 }
 
 /// Null when cancelled or when the file is not a backup, which says so.
@@ -318,6 +312,7 @@ class _RestorePageState extends State<RestorePage> {
         await BackupFile.open(widget.bytes, _key.text),
       );
       final Set<String> conflicts = await widget.conflictsOf(backup);
+      if (!mounted) return;
       setState(() {
         _backup = backup;
         _conflicts = conflicts;
@@ -326,7 +321,7 @@ class _RestorePageState extends State<RestorePage> {
         }
       });
     } on BackupFileException catch (e) {
-      setState(() => _problem = e.problem);
+      if (mounted) setState(() => _problem = e.problem);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -334,7 +329,14 @@ class _RestorePageState extends State<RestorePage> {
 
   Future<void> _restore(BackupContents backup) async {
     setState(() => _busy = true);
-    await widget.onRestore(backup, _key.text, _choices);
+    try {
+      await widget.onRestore(backup, _key.text, _choices);
+    } on Exception {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).say(tr('backup.problem.failed'));
+      return;
+    }
     if (!mounted) return;
     final int count = backup.spaces
         .where(
@@ -438,7 +440,7 @@ class _DriveSection extends ConsumerWidget {
   Future<void> _connect(BuildContext context, WidgetRef ref) async {
     if (!ref.read(recoveryKeySetProvider)) {
       await _openRecoveryKeyPage(context);
-      if (!ref.read(recoveryKeySetProvider)) return;
+      if (!context.mounted || !ref.read(recoveryKeySetProvider)) return;
     }
     final bool connected = await ref.read(driveProvider.notifier).connect();
     if (!connected && context.mounted) {
@@ -560,6 +562,9 @@ class RestoreOptions extends ConsumerWidget {
   /// As list rows in line with a row's title; otherwise two buttons.
   final bool indent;
 
+  Future<void> _restoreFrom(BuildContext context, WidgetRef ref, bool drive) =>
+      restoreBackup(context, ref, fromDrive: drive, inSetup: inSetup);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) => AnimatedSize(
     duration: MediaQuery.disableAnimationsOf(context)
@@ -573,26 +578,13 @@ class RestoreOptions extends ConsumerWidget {
             padding: const EdgeInsets.only(left: SageSpace.xl),
             child: Column(
               children: <Widget>[
-                ListTile(
-                  leading: const Icon(Icons.folder_open_outlined),
-                  title: Text(tr('backup.fromFile')),
-                  onTap: () => restoreBackup(
-                    context,
-                    ref,
-                    fromDrive: false,
-                    inSetup: inSetup,
+                for (final (IconData icon, String label, bool drive)
+                    in _sources)
+                  ListTile(
+                    leading: Icon(icon),
+                    title: Text(tr(label)),
+                    onTap: () => _restoreFrom(context, ref, drive),
                   ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.cloud_download_outlined),
-                  title: Text(tr('drive.fromDrive')),
-                  onTap: () => restoreBackup(
-                    context,
-                    ref,
-                    fromDrive: true,
-                    inSetup: inSetup,
-                  ),
-                ),
               ],
             ),
           )
@@ -600,32 +592,17 @@ class RestoreOptions extends ConsumerWidget {
         : Padding(
             padding: const EdgeInsets.only(top: SageSpace.sm),
             child: Row(
+              spacing: SageSpace.sm,
               children: <Widget>[
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.folder_open_outlined),
-                    label: Text(tr('backup.fromFile')),
-                    onPressed: () => restoreBackup(
-                      context,
-                      ref,
-                      fromDrive: false,
-                      inSetup: inSetup,
+                for (final (IconData icon, String label, bool drive)
+                    in _sources)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: Icon(icon),
+                      label: Text(tr(label)),
+                      onPressed: () => _restoreFrom(context, ref, drive),
                     ),
                   ),
-                ),
-                const SizedBox(width: SageSpace.sm),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.cloud_download_outlined),
-                    label: Text(tr('drive.fromDrive')),
-                    onPressed: () => restoreBackup(
-                      context,
-                      ref,
-                      fromDrive: true,
-                      inSetup: inSetup,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

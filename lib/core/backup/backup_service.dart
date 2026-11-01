@@ -77,6 +77,10 @@ class BackupService {
     };
   }
 
+  /// [export] as a `.finbackup` file.
+  Future<Uint8List> sealed(String recoveryKey, {String? spaceId}) async =>
+      BackupFile.seal(await export(spaceId: spaceId), recoveryKey);
+
   /// Space ids in [backup] that already exist here.
   Future<Set<String>> conflicts(BackupContents backup) async {
     final Set<String> local = (await db.select(db.spaces).get())
