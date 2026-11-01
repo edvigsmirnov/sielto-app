@@ -742,9 +742,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
           isCovered: item.isCovered,
           density: density,
           money: money,
-          category: record.categoryId == null
-              ? null
-              : categories[record.categoryId],
+          category: categories[record.categoryId],
           // Ctrl-click selects, as a long press does.
           onTap: () =>
               selection.isEmpty && !HardwareKeyboard.instance.isControlPressed

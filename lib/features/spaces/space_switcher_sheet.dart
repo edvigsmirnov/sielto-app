@@ -269,16 +269,10 @@ class _SpaceRow extends StatelessWidget {
           runSpacing: SageSpace.xs,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: <Widget>[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: sage.accentTintAlt,
-                borderRadius: BorderRadius.circular(SageRadius.pill),
-              ),
-              child: Text(
-                tr('mode.${space.budgetMode.name}.name'),
-                style: text.labelSmall?.copyWith(color: sage.accentStrong),
-              ),
+            Tag(
+              tr('mode.${space.budgetMode.name}.name'),
+              ink: sage.accentStrong,
+              fill: sage.accentTintAlt,
             ),
             // Cloud or device.
             Icon(

@@ -904,25 +904,12 @@ class _LivePreview extends ConsumerWidget {
               ),
               if (change != Decimal.zero) ...<Widget>[
                 const SizedBox(width: SageSpace.sm),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: change < Decimal.zero
-                        ? sage.dangerTint
-                        : sage.accentTint,
-                    borderRadius: BorderRadius.circular(SageRadius.pill),
-                  ),
-                  child: Text(
-                    money.formatSigned(change),
-                    style: text.labelSmall?.copyWith(
-                      color: change < Decimal.zero
-                          ? sage.danger
-                          : sage.accentStrong,
-                    ),
-                  ),
+                Tag(
+                  money.formatSigned(change),
+                  ink: change < Decimal.zero ? sage.danger : sage.accentStrong,
+                  fill: change < Decimal.zero
+                      ? sage.dangerTint
+                      : sage.accentTint,
                 ),
               ],
             ],

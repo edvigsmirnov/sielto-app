@@ -67,6 +67,28 @@ class TintBox extends StatelessWidget {
   );
 }
 
+/// A short label on a pill.
+class Tag extends StatelessWidget {
+  const Tag(this.text, {required this.ink, required this.fill, super.key});
+
+  final String text;
+  final Color ink;
+  final Color fill;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: BoxDecoration(
+      color: fill,
+      borderRadius: BorderRadius.circular(SageRadius.pill),
+    ),
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(color: ink),
+    ),
+  );
+}
+
 /// A sheet's or panel's centred heading.
 class SheetTitle extends StatelessWidget {
   const SheetTitle(this.text, {super.key});

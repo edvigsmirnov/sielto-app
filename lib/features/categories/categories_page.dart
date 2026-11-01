@@ -351,21 +351,10 @@ class _CategoryTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: SageSpace.sm),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: sage.canvas,
-                      borderRadius: BorderRadius.circular(SageRadius.pill),
-                    ),
-                    child: Text(
-                      tr('expenseType.${category.expenseType.name}'),
-                      style: text.labelSmall?.copyWith(
-                        color: sage.inkSecondary,
-                      ),
-                    ),
+                  Tag(
+                    tr('expenseType.${category.expenseType.name}'),
+                    ink: sage.inkSecondary,
+                    fill: sage.canvas,
                   ),
                   const SizedBox(width: SageSpace.xs),
                   Icon(Icons.chevron_right, size: 18, color: sage.inkLabel),

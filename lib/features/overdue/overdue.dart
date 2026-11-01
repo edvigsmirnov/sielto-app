@@ -18,9 +18,7 @@ import 'package:sielto/features/feed/feed_menu.dart';
 import 'package:sielto/features/feed/feed_model.dart';
 import 'package:sielto/features/feed/feed_row.dart';
 import 'package:sielto/features/feed/record_actions.dart';
-import 'package:sielto/features/payments/payment_form_page.dart';
 import 'package:sielto/features/periods/freeze_providers.dart';
-import 'package:sielto/features/periods/freeze_ui.dart';
 import 'package:sielto/features/space/space_ledger.dart';
 
 /// Past-due unpaid payments, in any period.
@@ -190,14 +188,12 @@ class OverduePage extends ConsumerWidget {
                             isCovered: true,
                             density: density,
                             money: money,
-                            category: record.categoryId == null
-                                ? null
-                                : categories[record.categoryId],
+                            category: categories[record.categoryId],
                             isFrozen: freeze.isFrozen(payment.budgetPeriodId),
                             isOverdue: true,
-                            onTap: () =>
-                                openPaymentForm(context, paymentId: payment.id),
-                            onTogglePaid: () => _settle(context, ref, record),
+                            onTap: () => editRecord(context, record),
+                            onTogglePaid: () =>
+                                togglePaid(context, ref, record),
                             onDelete: () => deleteRecord(context, ref, record),
                             onLongPress: () =>
                                 showRecordMenu(context, ref, record: record),
@@ -211,19 +207,6 @@ class OverduePage extends ConsumerWidget {
             ),
     );
   }
-
-  /// Marks paid without asking.
-  Future<void> _settle(
-    BuildContext context,
-    WidgetRef ref,
-    FeedRecord record,
-  ) => guardWrite(
-    context,
-    () => ref
-        .read(repositoriesProvider)
-        .payments
-        .setPaid(record.id, isPaid: true),
-  );
 }
 
 /// Count and total.

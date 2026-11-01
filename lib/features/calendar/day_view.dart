@@ -117,9 +117,7 @@ class DayView extends StatelessWidget {
                   isCovered: true,
                   density: density,
                   money: money,
-                  category: record.categoryId == null
-                      ? null
-                      : categories[record.categoryId],
+                  category: categories[record.categoryId],
                   onTap: () => onEdit(record),
                   onTogglePaid: () => onTogglePaid(record),
                   onDelete: () => onDelete(record),

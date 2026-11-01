@@ -41,26 +41,26 @@ Offset _menuOrigin() {
   return _lastPointer ?? Offset.zero;
 }
 
-/// Actions in groups, divided by a hairline. Null when dismissed. On
-/// desktop, a context menu.
+/// Actions in groups, divided by a hairline; empty groups are skipped. Null
+/// when dismissed. On desktop, a context menu.
 Future<T?> showActionSheet<T>(
   BuildContext context, {
   required String title,
   required List<List<SheetAction<T>>> groups,
-}) => desktopInput
-    ? _showMenu(context, title: title, groups: groups)
-    : showModalBottomSheet<T>(
-        context: context,
-        showDragHandle: true,
-        isScrollControlled: true,
-        useSafeArea: true,
-        backgroundColor: context.sage.card,
-        builder: (BuildContext sheet) {
-          final List<List<SheetAction<T>>> shown = <List<SheetAction<T>>>[
-            for (final List<SheetAction<T>> g in groups)
-              if (g.isNotEmpty) g,
-          ];
-          return SafeArea(
+}) {
+  final List<List<SheetAction<T>>> shown = <List<SheetAction<T>>>[
+    for (final List<SheetAction<T>> g in groups)
+      if (g.isNotEmpty) g,
+  ];
+  return desktopInput
+      ? _showMenu(context, title: title, groups: shown)
+      : showModalBottomSheet<T>(
+          context: context,
+          showDragHandle: true,
+          isScrollControlled: true,
+          useSafeArea: true,
+          backgroundColor: context.sage.card,
+          builder: (BuildContext sheet) => SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.only(bottom: SageSpace.sm),
               child: Column(
@@ -91,9 +91,9 @@ Future<T?> showActionSheet<T>(
                 ],
               ),
             ),
-          );
-        },
-      );
+          ),
+        );
+}
 
 class _ActionRow<T> extends StatelessWidget {
   const _ActionRow({required this.action});
@@ -246,10 +246,6 @@ Future<T?> _openMenu<T>(
   final SageColors sage = context.sage;
   final TextTheme text = Theme.of(context).textTheme;
   final Offset at = _menuOrigin();
-  final List<List<SheetAction<T>>> shown = <List<SheetAction<T>>>[
-    for (final List<SheetAction<T>> g in groups)
-      if (g.isNotEmpty) g,
-  ];
   return showMenu<T>(
     context: context,
     popUpAnimationStyle: AnimationStyle.noAnimation,
@@ -272,9 +268,9 @@ Future<T?> _openMenu<T>(
           style: text.labelMedium?.copyWith(color: sage.inkSecondary),
         ),
       ),
-      for (int i = 0; i < shown.length; i++) ...<PopupMenuEntry<T>>[
+      for (int i = 0; i < groups.length; i++) ...<PopupMenuEntry<T>>[
         if (i > 0) const PopupMenuDivider(),
-        for (final SheetAction<T> action in shown[i])
+        for (final SheetAction<T> action in groups[i])
           PopupMenuItem<T>(
             value: action.value,
             child: Row(

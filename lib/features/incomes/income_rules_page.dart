@@ -177,7 +177,11 @@ class _RuleTile extends StatelessWidget {
                     ),
                     if (anchored) ...<Widget>[
                       const SizedBox(width: SageSpace.sm),
-                      _AnchorBadge(),
+                      Tag(
+                        tr('income.anchorBadge'),
+                        ink: sage.accentStrong,
+                        fill: sage.accentTint,
+                      ),
                       const AnchorHelpButton(),
                     ],
                   ],
@@ -226,25 +230,6 @@ class _RuleTile extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _AnchorBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final SageColors sage = context.sage;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: sage.accentTint,
-        borderRadius: BorderRadius.circular(SageRadius.pill),
-      ),
-      child: Text(
-        tr('income.anchorBadge'),
-        style: Theme.of(context).textTheme.labelSmall
-            ?.copyWith(color: sage.accentStrong),
       ),
     );
   }
