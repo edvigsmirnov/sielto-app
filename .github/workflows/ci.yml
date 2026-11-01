@@ -264,6 +264,7 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+          skip-decompress: true
 
       # Release asset names drop the build number: GitHub rewrites "+".
       - name: Name and checksum
