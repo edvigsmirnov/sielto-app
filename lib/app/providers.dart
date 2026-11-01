@@ -99,6 +99,15 @@ currentSpaceIdProvider = NotifierProvider<CurrentSpaceIdController, String?>(
   CurrentSpaceIdController.new,
 );
 
+/// An unarchived Space by id, or null.
+final spaceByIdProvider = Provider.family<Space?, String>(
+  (Ref ref, String id) => ref
+      .watch(spaceListProvider)
+      .value
+      ?.where((Space s) => s.id == id)
+      .firstOrNull,
+);
+
 /// The stored selection, else the only Space, else null: onboarding without
 /// Spaces, the chooser with several.
 final Provider<AsyncValue<Space?>> resolvedSpaceProvider =

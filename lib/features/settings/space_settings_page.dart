@@ -18,6 +18,7 @@ import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/categories/categories_page.dart';
 import 'package:sielto/features/incomes/income_rules_page.dart';
+import 'package:sielto/features/members/members_data.dart';
 import 'package:sielto/features/members/members_page.dart';
 import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/spaces/space_avatar.dart';
@@ -42,33 +43,8 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   /// True while the storage moves.
   bool _moving = false;
 
-  /// Null until the cloud answers.
-  int? _memberCount;
-  bool _countFailed = false;
-
   /// The limit asks for the PIN once per visit, not on every step.
   bool _limitConfirmed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_countMembers(widget.space));
-  }
-
-  Future<void> _countMembers(Space space) async {
-    if (space.storageMode != StorageMode.cloud ||
-        space.ownerId != ref.read(userIdProvider)) {
-      return;
-    }
-    final ({CloudResult result, List<Member> members}) loaded = await ref
-        .read(syncProvider.notifier)
-        .members(space.id);
-    if (!mounted) return;
-    setState(() {
-      _countFailed = loaded.result != CloudResult.done;
-      if (!_countFailed) _memberCount = loaded.members.length;
-    });
-  }
 
   @override
   void dispose() {
@@ -93,17 +69,15 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   Widget build(BuildContext context) {
     // Re-read so edits show immediately.
     final Space space =
-        ref
-            .watch(spaceListProvider)
-            .value
-            ?.where((Space s) => s.id == widget.space.id)
-            .firstOrNull ??
-        widget.space;
+        ref.watch(spaceByIdProvider(widget.space.id)) ?? widget.space;
     final bool isCurrent = ref.watch(currentSpaceProvider)?.id == space.id;
     final SpaceRepository repo = ref.watch(repositoriesProvider).spaces;
     final bool owner = space.ownerId == ref.watch(userIdProvider);
     final bool shared =
         space.storageMode == StorageMode.cloud && !space.isArchived;
+    final int? memberCount = shared && owner
+        ? ref.watch(membersProvider(space.id)).value?.count
+        : null;
 
     return Scaffold(
       backgroundColor: context.sage.surface,
@@ -215,16 +189,14 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
               label: tr('members.limit'),
               child: _LimitStepper(
                 limit: space.maxMembers,
-                min: _memberCount ?? 1,
-                enabled: _memberCount != null,
-                onChanged: (int? n) => _setLimit(space, n),
+                min: memberCount ?? 1,
+                enabled: memberCount != null,
+                onChanged: (int? n) => _setLimit(space, n, memberCount!),
               ),
             ),
             _Hint(
               tr(
-                _memberCount == null
-                    ? 'storage.noNetwork'
-                    : 'members.limitHint',
+                memberCount == null ? 'storage.noNetwork' : 'members.limitHint',
               ),
             ),
             const SizedBox(height: SageSpace.md),
@@ -233,8 +205,12 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             LinkTile(
               padding: EdgeInsets.zero,
               title: tr('members.title'),
-              onTap: () =>
+              onTap: () {
+                ref.invalidate(membersProvider(space.id));
+                unawaited(
                   pushPage<void>(context, MembersPage(spaceId: space.id)),
+                );
+              },
             ),
             const Hairline(),
             SwitchListTile.adaptive(
@@ -324,9 +300,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     if (!mounted) return;
     setState(() => _moving = false);
     _tellIfFailed(result);
-    if (result == CloudResult.done && mode == StorageMode.cloud) {
-      unawaited(_countMembers(space.copyWith(storageMode: StorageMode.cloud)));
-    }
   }
 
   void _tellIfFailed(CloudResult result) {
@@ -385,12 +358,12 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     }
   }
 
-  Future<void> _setLimit(Space space, int? max) async {
+  Future<void> _setLimit(Space space, int? max, int members) async {
     if (!_limitConfirmed) {
       if (!await confirmIdentity(context, ref) || !mounted) return;
       _limitConfirmed = true;
     }
-    if (max != null && max < (_memberCount ?? 1)) {
+    if (max != null && max < members) {
       ScaffoldMessenger.of(context).say(tr('members.belowMembers'));
       return;
     }
@@ -415,8 +388,9 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   /// The creator names a successor first; alone, leaving is deleting.
   Future<void> _leaveAsOwner(Space space) async {
     final SyncController sync = ref.read(syncProvider.notifier);
-    final ({CloudResult result, List<Member> members}) loaded = await sync
-        .members(space.id);
+    final MemberList loaded = await ref.refresh(
+      membersProvider(space.id).future,
+    );
     if (!mounted) return;
     if (loaded.result != CloudResult.done) {
       _tellIfFailed(loaded.result);
@@ -430,16 +404,13 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
       await _delete(space);
       return;
     }
-    final Map<String, MemberLabel> labels = await sync.labels(space.id);
-    if (!mounted) return;
     final Member? successor = await choiceDialog<Member>(
       context,
       title: tr('members.pickOwnerTitle'),
       body: tr('members.pickOwnerBody'),
       columns: 1,
       choices: <(String, Member)>[
-        for (final Member m in others)
-          (labels[m.userId]?.name ?? m.name ?? tr('members.noName'), m),
+        for (final Member m in others) (loaded.nameOf(m), m),
       ],
     );
     if (successor == null || !mounted) return;

@@ -1,107 +1,70 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
-import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/layout.dart';
-import 'package:sielto/core/ui/leaf_loader.dart';
-import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/members/invite_page.dart';
 import 'package:sielto/features/members/member_page.dart';
+import 'package:sielto/features/members/members_data.dart';
 import 'package:sielto/features/members/public_name.dart';
+import 'package:sielto/features/sync/cloud_body.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
 /// The people in a cloud Space; the owner manages them.
-class MembersPage extends ConsumerStatefulWidget {
+class MembersPage extends ConsumerWidget {
   const MembersPage({required this.spaceId, super.key});
 
   final String spaceId;
 
-  @override
-  ConsumerState<MembersPage> createState() => _MembersPageState();
-}
+  void _reload(WidgetRef ref) => ref.invalidate(membersProvider(spaceId));
 
-class _MembersPageState extends ConsumerState<MembersPage> {
-  ({CloudResult result, List<Member> members})? _loaded;
-  Map<String, MemberLabel> _labels = const <String, MemberLabel>{};
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_load());
+  Future<void> _invite(BuildContext context, WidgetRef ref) async {
+    if (!await ensurePublicName(context, ref) || !context.mounted) return;
+    await pushPage<void>(context, InvitePage(spaceId: spaceId));
+    if (context.mounted) _reload(ref);
   }
 
-  Future<void> _load() async {
-    setState(() => _loaded = null);
-    final SyncController sync = ref.read(syncProvider.notifier);
-    final ({CloudResult result, List<Member> members}) loaded = await sync
-        .members(widget.spaceId);
-    final Map<String, MemberLabel> labels = await sync.labels(widget.spaceId);
-    if (mounted) {
-      setState(() {
-        _loaded = loaded;
-        _labels = labels;
-      });
-    }
-  }
-
-  Future<void> _invite() async {
-    if (!await ensurePublicName(context, ref) || !mounted) return;
-    await pushPage<void>(context, InvitePage(spaceId: widget.spaceId));
-    if (mounted) await _load();
-  }
-
-  Future<void> _open(Member member, {required bool canManage}) async {
+  Future<void> _open(
+    BuildContext context,
+    WidgetRef ref,
+    MemberList list,
+    Member member,
+  ) async {
     await pushPage<void>(
       context,
       MemberPage(
-        spaceId: widget.spaceId,
+        spaceId: spaceId,
         member: member,
-        label: _labels[member.userId],
-        canManage: canManage,
+        label: list.labels[member.userId],
+        canManage: list.members.any((Member m) => m.me && m.owner),
       ),
     );
-    if (mounted) await _load();
+    if (context.mounted) _reload(ref);
   }
 
   @override
-  Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-    final ({CloudResult result, List<Member> members})? loaded = _loaded;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<MemberList> state = ref.watch(membersProvider(spaceId));
+    final MemberList? list = state.isLoading ? null : state.value;
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('members.title'))),
-      body: switch (loaded) {
-        null => const Center(child: LeafLoader()),
-        (result: CloudResult.done, members: final List<Member> members) =>
-          _list(members, _limit(), text),
-        (result: final CloudResult result, members: _) => EmptyState(
-          message: tr('storage.${result.name}'),
-          action: result == CloudResult.noNetwork
-              ? FilledButton(
-                  onPressed: _load,
-                  child: Text(tr('devices.tryAgain')),
-                )
-              : null,
-        ),
-      },
+      body: CloudBody(
+        result: list?.result,
+        onRetry: () => _reload(ref),
+        builder: (BuildContext context) => _list(context, ref, list!),
+      ),
     );
   }
 
-  /// The limit on this device, which the owner edits.
-  int? _limit() => ref
-      .watch(spaceListProvider)
-      .value
-      ?.where((Space s) => s.id == widget.spaceId)
-      .firstOrNull
-      ?.maxMembers;
-
-  Widget _list(List<Member> members, int? limit, TextTheme text) {
+  Widget _list(BuildContext context, WidgetRef ref, MemberList list) {
+    final TextTheme text = Theme.of(context).textTheme;
+    final List<Member> members = list.members;
+    final int? limit = ref.watch(spaceByIdProvider(spaceId))?.maxMembers;
     final bool owner = members.any((Member m) => m.me && m.owner);
     final int? max = limit == null ? null : math.max(limit, members.length);
     final bool room = max == null || members.length < max;
@@ -123,12 +86,12 @@ class _MembersPageState extends ConsumerState<MembersPage> {
             style: text.bodyMedium,
           ),
         ),
-        for (final Member member in members) _row(member, owner: owner),
+        for (final Member member in members) _row(context, ref, list, member),
         if (owner && room)
           Padding(
             padding: const EdgeInsets.all(SageSpace.formGutter),
             child: FilledButton(
-              onPressed: _invite,
+              onPressed: () => _invite(context, ref),
               child: Text(tr('members.invite')),
             ),
           ),
@@ -141,16 +104,20 @@ class _MembersPageState extends ConsumerState<MembersPage> {
     );
   }
 
-  Widget _row(Member member, {required bool owner}) {
-    final MemberLabel? label = _labels[member.userId];
-    final String shown = label?.name ?? member.name ?? tr('members.noName');
+  Widget _row(
+    BuildContext context,
+    WidgetRef ref,
+    MemberList list,
+    Member member,
+  ) {
+    final String shown = list.nameOf(member);
     final int? away = switch (member.lastSeen) {
       final DateTime at when !member.me => DateTime.now().difference(at).inDays,
       _ => null,
     };
     final List<String> details = <String>[
       if (member.owner) tr('members.owner'),
-      if (label?.role case final String role) role,
+      if (list.labels[member.userId]?.role case final String role) role,
       if (away != null && away > 30) plural('members.lastSeen', away),
     ];
     return ListTile(
@@ -158,7 +125,7 @@ class _MembersPageState extends ConsumerState<MembersPage> {
       title: Text(member.me ? tr('members.you', args: <String>[shown]) : shown),
       subtitle: details.isEmpty ? null : Text(details.join(' · ')),
       trailing: member.me ? null : const Icon(Icons.chevron_right),
-      onTap: member.me ? null : () => _open(member, canManage: owner),
+      onTap: member.me ? null : () => _open(context, ref, list, member),
     );
   }
 }

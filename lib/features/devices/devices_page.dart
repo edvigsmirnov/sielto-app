@@ -9,14 +9,18 @@ import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
-import 'package:sielto/core/ui/leaf_loader.dart';
-import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 import 'package:sielto/features/devices/add_device_page.dart';
 import 'package:sielto/features/security/security_page.dart';
+import 'package:sielto/features/sync/cloud_body.dart';
 import 'package:sielto/features/sync/sync_controller.dart';
 
 enum _Action { rename, unlink }
+
+final devicesProvider =
+    FutureProvider.autoDispose<
+      ({CloudResult result, List<LinkedDevice> devices})
+    >((Ref ref) => ref.read(syncProvider.notifier).devices());
 
 /// The devices linked to this account: rename, unlink, add.
 class DevicesPage extends ConsumerStatefulWidget {
@@ -29,21 +33,7 @@ class DevicesPage extends ConsumerStatefulWidget {
 class _DevicesPageState extends ConsumerState<DevicesPage> {
   static const int _inactiveDays = 90;
 
-  ({CloudResult result, List<LinkedDevice> devices})? _loaded;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_load());
-  }
-
-  Future<void> _load() async {
-    setState(() => _loaded = null);
-    final ({CloudResult result, List<LinkedDevice> devices}) loaded = await ref
-        .read(syncProvider.notifier)
-        .devices();
-    if (mounted) setState(() => _loaded = loaded);
-  }
+  void _load() => ref.invalidate(devicesProvider);
 
   Future<void> _after(Future<bool> call) async {
     final bool done = await call;
@@ -51,7 +41,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
     if (!done) {
       ScaffoldMessenger.of(context).say(tr('storage.noNetwork'));
     }
-    await _load();
+    _load();
   }
 
   Future<void> _act(LinkedDevice device, _Action action) async {
@@ -99,20 +89,25 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
 
   Future<void> _add() async {
     await pushPage<void>(context, const AddDevicePage());
-    if (mounted) await _load();
+    if (mounted) _load();
   }
 
   @override
   Widget build(BuildContext context) {
     final TextTheme text = Theme.of(context).textTheme;
-    final ({CloudResult result, List<LinkedDevice> devices})? loaded = _loaded;
+    final AsyncValue<({CloudResult result, List<LinkedDevice> devices})> state =
+        ref.watch(devicesProvider);
+    final ({CloudResult result, List<LinkedDevice> devices})? loaded =
+        state.isLoading ? null : state.value;
     return Scaffold(
       backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('devices.listTitle'))),
-      body: switch (loaded) {
-        null => const Center(child: LeafLoader()),
-        (result: CloudResult.done, devices: final List<LinkedDevice> devices) =>
-          ListView(
+      body: CloudBody(
+        result: loaded?.result,
+        onRetry: _load,
+        builder: (BuildContext context) {
+          final List<LinkedDevice> devices = loaded!.devices;
+          return ListView(
             padding: scrollPadding(
               context,
               const EdgeInsets.symmetric(vertical: SageSpace.md),
@@ -139,17 +134,9 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
                 ),
               ),
             ],
-          ),
-        (result: final CloudResult result, devices: _) => EmptyState(
-          message: tr('storage.${result.name}'),
-          action: result == CloudResult.noNetwork
-              ? FilledButton(
-                  onPressed: _load,
-                  child: Text(tr('devices.tryAgain')),
-                )
-              : null,
-        ),
-      },
+          );
+        },
+      ),
     );
   }
 

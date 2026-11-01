@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,29 +42,38 @@ class _MemberPageState extends ConsumerState<MemberPage> {
     text: widget.label?.role ?? '',
   );
 
+  late final SyncController _sync;
+  late MemberLabel _saved = (
+    name: widget.label?.name ?? '',
+    role: widget.label?.role ?? '',
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _sync = ref.read(syncProvider.notifier);
+  }
+
+  /// A desktop column can replace this page without popping it.
   @override
   void dispose() {
+    _save();
     _name.dispose();
     _role.dispose();
     super.dispose();
   }
 
-  Future<void> _save() async {
-    final String name = _name.text.trim();
-    final String role = _role.text.trim();
-    if (name == (widget.label?.name ?? '') &&
-        role == (widget.label?.role ?? '')) {
-      return;
-    }
-    await ref.read(syncProvider.notifier).setLabel(
-      widget.spaceId,
-      widget.member.userId,
-      (name: name, role: role),
+  void _save() {
+    final MemberLabel label = (
+      name: _name.text.trim(),
+      role: _role.text.trim(),
     );
+    if (label == _saved) return;
+    _saved = label;
+    unawaited(_sync.setLabel(widget.spaceId, widget.member.userId, label));
   }
 
   Future<void> _act({required bool remove}) async {
-    final SyncController sync = ref.read(syncProvider.notifier);
     final String name = widget.member.name ?? tr('members.noName');
     final bool confirmed = await confirmDialog(
       context,
@@ -77,8 +88,8 @@ class _MemberPageState extends ConsumerState<MemberPage> {
     if (!confirmed || !mounted) return;
     if (!await confirmIdentity(context, ref)) return;
     final bool done = remove
-        ? await sync.removeMember(widget.spaceId, widget.member.userId)
-        : await sync.transferOwnership(widget.spaceId, widget.member.userId);
+        ? await _sync.removeMember(widget.spaceId, widget.member.userId)
+        : await _sync.transferOwnership(widget.spaceId, widget.member.userId);
     if (!mounted) return;
     if (done) {
       Navigator.of(context).pop();
