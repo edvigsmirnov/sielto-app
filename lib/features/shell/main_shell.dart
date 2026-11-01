@@ -159,12 +159,11 @@ class _MainShellState extends ConsumerState<MainShell> {
                     shown: !layout.dashboardCollapsed,
                     width: layout.dashboard,
                     rail: _Rail(
-                      label: tr('nav.dashboard'),
-                      icon: Icons.donut_small_outlined,
+                      tab: ShellTabController.dashboard,
                       onTap: columns.toggleDashboard,
                     ),
                     child: ColumnHome(
-                      label: tr('nav.dashboard'),
+                      label: tr(shellTabs[ShellTabController.dashboard].$3),
                       routes: _dashboardRoutes,
                       child: Navigator(
                         key: _dashboard,
@@ -193,12 +192,11 @@ class _MainShellState extends ConsumerState<MainShell> {
                     shown: calendarShown,
                     width: layout.calendar,
                     rail: _Rail(
-                      label: tr('nav.calendar'),
-                      icon: Icons.calendar_month_outlined,
+                      tab: ShellTabController.calendar,
                       onTap: columns.toggleCalendar,
                     ),
                     child: ColumnHome(
-                      label: tr('nav.calendar'),
+                      label: tr(shellTabs[ShellTabController.calendar].$3),
                       routes: _calendarRoutes,
                       child: calendar,
                     ),
@@ -275,12 +273,14 @@ class _MainShellState extends ConsumerState<MainShell> {
       String? previous,
       String? next,
     ) {
-      if (previous == next || _index == 0) return;
+      if (previous == next || _index == ShellTabController.dashboard) return;
       // After the frame: the notification can arrive mid-build.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _show(0);
-        if (_controller.hasClients) _controller.jumpToPage(0);
+        _show(ShellTabController.dashboard);
+        if (_controller.hasClients) {
+          _controller.jumpToPage(ShellTabController.dashboard);
+        }
       });
     });
   }
@@ -298,7 +298,9 @@ class _MainShellState extends ConsumerState<MainShell> {
         ref.read(calendarViewProvider.notifier).back()) {
       return;
     }
-    if (_index != 0) _goTo(0);
+    if (_index != ShellTabController.dashboard) {
+      _goTo(ShellTabController.dashboard);
+    }
   }
 
   void _showDay(CalendarDate day) {
@@ -368,9 +370,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     _calendarRoutes.other = mode == ShellMode.columns
         ? _dashboardRoutes
         : _spacesRoutes;
-    final String here = tr(
-      'nav.${const <String>['dashboard', 'feed', 'calendar'][index]}',
-    );
+    final String here = tr(shellTabs[index].$3);
     final Widget pages = PageView(
       key: _pages,
       controller: _controller,
@@ -391,7 +391,9 @@ class _MainShellState extends ConsumerState<MainShell> {
           openPaymentForm(_inside.currentContext ?? context),
       const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
         ref.read(feedFilterOpenProvider.notifier).set(open: true);
-        if (mode != ShellMode.columns && index != 1) _goTo(1);
+        if (mode != ShellMode.columns && index != ShellTabController.feed) {
+          _goTo(ShellTabController.feed);
+        }
       },
     };
     return CallbackShortcuts(
@@ -401,7 +403,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         focusNode: _focus,
         autofocus: true,
         child: PopScope(
-          canPop: index == 0 && !selecting,
+          canPop: index == ShellTabController.dashboard && !selecting,
           onPopInvokedWithResult: (bool didPop, Object? _) {
             if (!didPop) _back();
           },
@@ -499,21 +501,17 @@ class _MainShellState extends ConsumerState<MainShell> {
                         selectedIndex: index,
                         onDestinationSelected: _goTo,
                         destinations: <NavigationDestination>[
-                          NavigationDestination(
-                            icon: const Icon(Icons.donut_small_outlined),
-                            selectedIcon: const Icon(Icons.donut_small),
-                            label: tr('nav.dashboard'),
-                          ),
-                          NavigationDestination(
-                            icon: const Icon(Icons.list_alt_outlined),
-                            selectedIcon: const Icon(Icons.list_alt),
-                            label: tr('nav.feed'),
-                          ),
-                          NavigationDestination(
-                            icon: const Icon(Icons.calendar_month_outlined),
-                            selectedIcon: const Icon(Icons.calendar_month),
-                            label: tr('nav.calendar'),
-                          ),
+                          for (final (
+                                IconData icon,
+                                IconData selected,
+                                String name,
+                              )
+                              in shellTabs)
+                            NavigationDestination(
+                              icon: Icon(icon),
+                              selectedIcon: Icon(selected),
+                              label: tr(name),
+                            ),
                         ],
                       ),
                     ),
@@ -549,15 +547,15 @@ class _KeepAliveState extends State<_KeepAlive>
 
 /// A collapsed column: its name, read upwards; a click expands it.
 class _Rail extends StatelessWidget {
-  const _Rail({required this.label, required this.icon, required this.onTap});
+  const _Rail({required this.tab, required this.onTap});
 
-  final String label;
-  final IconData icon;
+  final int tab;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
+    final (IconData icon, _, String name) = shellTabs[tab];
     return Material(
       color: sage.canvas,
       child: InkWell(
@@ -572,7 +570,7 @@ class _Rail extends StatelessWidget {
               RotatedBox(
                 quarterTurns: 3,
                 child: Text(
-                  label,
+                  tr(name),
                   style: Theme.of(context).textTheme.labelLarge
                       ?.copyWith(color: sage.inkSecondary),
                 ),

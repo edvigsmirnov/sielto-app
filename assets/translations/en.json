@@ -40,7 +40,7 @@
     "fieldName": "Name",
     "nameHint": "What's your name? (optional)",
     "currencyWhy": "Taken from your device settings. Each Space can use its own, and you can change it later in the Space's settings.",
-    "profileTitle": "Let's get you set up",
+    "profileTitle": "A little about you",
     "profileWhy": "You can change any of this later in Settings."
   },
   "mode": {
@@ -766,7 +766,7 @@
     "enterCurrentPin": "Enter your current PIN",
     "choosePin": "Choose a PIN, 4 to 6 digits",
     "repeatPin": "Repeat the PIN",
-    "pinsDiffer": "Those didn't match. Let's try again.",
+    "pinsDiffer": "Those didn't match. Try again.",
     "wrongPin": "Wrong PIN",
     "retryIn": {
       "one": "Try again in {} second",

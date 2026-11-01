@@ -36,7 +36,8 @@ class StartupNeedsPassphrase extends Startup {
   final Directory directory;
 
   bool get firstRun =>
-      !DatabaseKeyManager(directory: directory).envelopeAFile.existsSync();
+      !DatabaseKeyManager(directory: directory).envelopeAFile.existsSync() &&
+      !File(p.join(directory.path, databaseFileName)).existsSync();
 
   bool get canRecover =>
       DatabaseKeyManager(directory: directory).hasRecoveryKey;

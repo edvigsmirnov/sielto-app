@@ -50,22 +50,8 @@ Future<String?> choosePin(BuildContext context) => Navigator.of(context)
     );
 
 /// True once the current PIN is entered.
-Future<bool> confirmPin(BuildContext context, WidgetRef ref) async =>
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (BuildContext context) => Scaffold(
-          backgroundColor: context.sage.surface,
-          appBar: AppBar(),
-          body: PinEntry(
-            title: tr('lock.enterCurrentPin'),
-            check: (String pin) =>
-                ref.read(pinStoreProvider).check(pin, DateTime.now()),
-            onAccepted: (_) => Navigator.of(context).pop(true),
-          ),
-        ),
-      ),
-    ) ??
-    false;
+Future<bool> confirmPin(BuildContext context, WidgetRef ref) =>
+    _askPin(context, ref, tr('lock.enterCurrentPin'), biometric: false);
 
 /// Before a change to access or anything that cannot be undone. Passes when
 /// app lock is off.
@@ -74,29 +60,37 @@ Future<bool> confirmIdentity(BuildContext context, WidgetRef ref) async {
   final bool biometric = ref.read(biometricUnlockProvider);
   if (biometric && await authenticateBiometric()) return true;
   if (!context.mounted) return false;
-  return await Navigator.of(context).push<bool>(
-        MaterialPageRoute<bool>(
-          builder: (BuildContext context) => Scaffold(
-            backgroundColor: context.sage.surface,
-            appBar: AppBar(),
-            body: PinEntry(
-              title: tr('lock.confirmAction'),
-              check: (String pin) =>
-                  ref.read(pinStoreProvider).check(pin, DateTime.now()),
-              onAccepted: (_) => Navigator.of(context).pop(true),
-              onBiometric: biometric
-                  ? () async {
-                      if (await authenticateBiometric() && context.mounted) {
-                        Navigator.of(context).pop(true);
-                      }
+  return _askPin(context, ref, tr('lock.confirmAction'), biometric: biometric);
+}
+
+Future<bool> _askPin(
+  BuildContext context,
+  WidgetRef ref,
+  String title, {
+  required bool biometric,
+}) async =>
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (BuildContext context) => Scaffold(
+          backgroundColor: context.sage.surface,
+          appBar: AppBar(),
+          body: PinEntry(
+            title: title,
+            check: (String pin) =>
+                ref.read(pinStoreProvider).check(pin, DateTime.now()),
+            onAccepted: (_) => Navigator.of(context).pop(true),
+            onBiometric: biometric
+                ? () async {
+                    if (await authenticateBiometric() && context.mounted) {
+                      Navigator.of(context).pop(true);
                     }
-                  : null,
-            ),
+                  }
+                : null,
           ),
         ),
-      ) ??
-      false;
-}
+      ),
+    ) ??
+    false;
 
 class _ChoosePin extends StatefulWidget {
   const _ChoosePin();

@@ -203,6 +203,29 @@ class SetupCard extends StatelessWidget {
   }
 }
 
+/// A scrolling [SetupCard] wide; narrow, a column at most 420 wide.
+class SetupFrame extends StatelessWidget {
+  const SetupFrame({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool wide = isWide(context);
+    return Center(
+      child: SingleChildScrollView(
+        padding: wide ? EdgeInsets.zero : const EdgeInsets.all(SageSpace.xl),
+        child: wide
+            ? SetupCard(child: child)
+            : ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: child,
+              ),
+      ),
+    );
+  }
+}
+
 class _ProgressBar extends StatelessWidget {
   const _ProgressBar({required this.step, required this.stepCount});
 

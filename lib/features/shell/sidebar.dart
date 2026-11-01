@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/features/shell/shell_tab.dart';
 
 /// The one-column layout's navigation between the three screens; it narrows
 /// to icons.
@@ -37,19 +38,7 @@ class Sidebar extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   for (final (int i, (IconData, IconData, String) d)
-                      in <(IconData, IconData, String)>[
-                        (
-                          Icons.donut_small_outlined,
-                          Icons.donut_small,
-                          'nav.dashboard',
-                        ),
-                        (Icons.list_alt_outlined, Icons.list_alt, 'nav.feed'),
-                        (
-                          Icons.calendar_month_outlined,
-                          Icons.calendar_month,
-                          'nav.calendar',
-                        ),
-                      ].indexed)
+                      in shellTabs.indexed)
                     _Item(
                       icon: i == index ? d.$2 : d.$1,
                       label: tr(d.$3),

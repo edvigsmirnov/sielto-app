@@ -51,24 +51,21 @@ class PinStore {
 
     final String? stored = await storage.read(key: _pin);
     if (stored == null) return null;
-    final List<String> parts = stored.split(':');
-    final Uint8List hash = await Kdf.pin(pin, base64Decode(parts[0]));
-    if (_equal(hash, base64Decode(parts[1]))) {
-      await storage.delete(key: _failures);
-      return null;
-    }
+    // Counted first, so closing the app mid-check does not skip the lockout.
     final int failures = past.failures + 1;
     final DateTime until = now.add(lockoutFor(failures));
     await storage.write(
       key: _failures,
       value: '$failures:${until.toUtc().toIso8601String()}',
     );
+    final List<String> parts = stored.split(':');
+    final Uint8List hash = await Kdf.pin(pin, base64Decode(parts[0]));
+    if (_equal(hash, base64Decode(parts[1]))) {
+      await storage.delete(key: _failures);
+      return null;
+    }
     return until;
   }
-
-  /// When the next attempt is allowed.
-  Future<DateTime> retryAt(DateTime now) async =>
-      (await _readFailures(now)).until;
 
   Future<({int failures, DateTime until})> _readFailures(DateTime now) async {
     final String? raw = await storage.read(key: _failures);

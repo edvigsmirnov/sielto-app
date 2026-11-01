@@ -26,22 +26,11 @@ class DecryptionFailurePage extends StatelessWidget {
   /// False for a wrong key.
   final Future<bool> Function(String recoveryKey) onRecover;
 
-  /// Replaces the unreadable database with the backup.
-  final Future<void> Function(BackupContents backup, String recoveryKey)
+  /// Replaces the unreadable database with the backup. Null without a
+  /// keyring: a fresh database first needs a password.
+  final Future<void> Function(BackupContents backup, String recoveryKey)?
   onRestore;
   final Future<void> Function() onStartOver;
-
-  Future<void> _confirm(BuildContext context) async {
-    if (await confirmDialog(
-      context,
-      title: 'decryption.confirmTitle'.tr(),
-      body: 'decryption.confirmBody'.tr(),
-      confirmLabel: 'decryption.confirmAction'.tr(),
-      isDestructive: true,
-    )) {
-      await onStartOver();
-    }
-  }
 
   Future<void> _restore(BuildContext context) async {
     final Uint8List? bytes = await pickBackup(context);
@@ -54,7 +43,7 @@ class DecryptionFailurePage extends StatelessWidget {
           bytes: bytes,
           conflictsOf: (_) async => <String>{},
           onRestore: (BackupContents backup, String recoveryKey, _) =>
-              onRestore(backup, recoveryKey),
+              onRestore!(backup, recoveryKey),
         ),
       ),
     );
@@ -95,14 +84,15 @@ class DecryptionFailurePage extends StatelessWidget {
             label: 'decryption.enterRecoveryKey'.tr(),
             reason: 'decryption.noRecoveryKey'.tr(),
           ),
-        FilledButton.tonal(
-          onPressed: () => _restore(context),
-          child: Text('decryption.restoreFromBackup'.tr()),
-        ),
+        if (onRestore != null)
+          FilledButton.tonal(
+            onPressed: () => _restore(context),
+            child: Text('decryption.restoreFromBackup'.tr()),
+          ),
 
         const SizedBox(height: SageSpace.sm),
         OutlinedButton(
-          onPressed: () => _confirm(context),
+          onPressed: () => confirmStartOver(context, onStartOver),
           style: OutlinedButton.styleFrom(foregroundColor: c.danger),
           child: Text('decryption.startOver'.tr()),
         ),
@@ -110,22 +100,24 @@ class DecryptionFailurePage extends StatelessWidget {
     );
 
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: isWide(context)
-                ? EdgeInsets.zero
-                : const EdgeInsets.all(SageSpace.xl),
-            child: isWide(context)
-                ? SetupCard(child: content)
-                : ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: content,
-                  ),
-          ),
-        ),
-      ),
+      body: SafeArea(child: SetupFrame(child: content)),
     );
+  }
+}
+
+/// Asks before [onStartOver] deletes the unreadable data.
+Future<void> confirmStartOver(
+  BuildContext context,
+  Future<void> Function() onStartOver,
+) async {
+  if (await confirmDialog(
+    context,
+    title: tr('decryption.confirmTitle'),
+    body: tr('decryption.confirmBody'),
+    confirmLabel: tr('decryption.confirmAction'),
+    isDestructive: true,
+  )) {
+    await onStartOver();
   }
 }
 

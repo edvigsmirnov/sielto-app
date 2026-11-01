@@ -10,6 +10,7 @@ import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/period_selector.dart';
 import 'package:sielto/features/settings/settings_page.dart';
 import 'package:sielto/features/settings/space_settings_page.dart';
+import 'package:sielto/features/shell/app_header.dart';
 import 'package:sielto/features/spaces/space_avatar.dart';
 
 /// Above the wide layouts: the Space, its period, Space settings, profile.
@@ -36,7 +37,6 @@ class ColumnsBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final SageColors sage = context.sage;
     final Space? space = ref.watch(currentSpaceProvider);
-    final String? initial = ref.watch(profileInitialProvider);
     final ColumnsLayout layout = ref.watch(columnsLayoutProvider);
     final ColumnsLayoutController columns = ref.read(
       columnsLayoutProvider.notifier,
@@ -59,32 +59,26 @@ class ColumnsBar extends ConsumerWidget {
                 width: 300,
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Builder(
-                    builder: (BuildContext button) => TextButton.icon(
-                      onPressed: onSpaces,
-                      icon: SpaceAvatar(
-                        spaceId: space.id,
-                        title: space.title,
-                        size: 32,
-                      ),
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Flexible(
-                            child: Text(
-                              space.title,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
+                  child: TextButton.icon(
+                    onPressed: onSpaces,
+                    icon: SpaceAvatar(
+                      spaceId: space.id,
+                      title: space.title,
+                      size: 32,
+                    ),
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Flexible(
+                          child: Text(
+                            space.title,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleSmall,
                           ),
-                          const SizedBox(width: SageSpace.xs),
-                          Icon(
-                            Icons.unfold_more,
-                            size: 18,
-                            color: sage.inkLabel,
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: SageSpace.xs),
+                        Icon(Icons.unfold_more, size: 18, color: sage.inkLabel),
+                      ],
                     ),
                   ),
                 ),
@@ -134,17 +128,9 @@ class ColumnsBar extends ConsumerWidget {
                       onTap: () => onOpen(SpaceSettingsPage(space: space)),
                     ),
                     const SizedBox(width: SageSpace.sm),
-                    IconButton(
-                      tooltip: tr('settings.title'),
-                      onPressed: () => onOpen(const SettingsPage()),
-                      icon: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: sage.accentTintAlt,
-                        foregroundColor: sage.accentStrong,
-                        child: initial == null
-                            ? const Icon(Icons.person_outline, size: 18)
-                            : Text(initial),
-                      ),
+                    ProfileButton(
+                      size: 36,
+                      onTap: () => onOpen(const SettingsPage()),
                     ),
                   ],
                 ),

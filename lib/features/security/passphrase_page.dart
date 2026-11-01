@@ -1,11 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
-import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/onboarding/onboarding_scaffold.dart';
+import 'package:sielto/features/security/decryption_failure_page.dart';
 import 'package:sielto/features/security/recovery_key.dart';
 
 /// Linux without a keyring: the database password, set once and asked at
@@ -70,18 +69,6 @@ class _PassphrasePageState extends State<PassphrasePage> {
     }
   }
 
-  Future<void> _startOver() async {
-    if (await confirmDialog(
-      context,
-      title: tr('decryption.confirmTitle'),
-      body: tr('decryption.confirmBody'),
-      confirmLabel: tr('decryption.confirmAction'),
-      isDestructive: true,
-    )) {
-      await widget.onStartOver();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final TextTheme text = Theme.of(context).textTheme;
@@ -89,15 +76,12 @@ class _PassphrasePageState extends State<PassphrasePage> {
     return Scaffold(
       backgroundColor: context.sage.surface,
       body: SafeArea(
-        // Wide, the same card as onboarding.
-        child: _Frame(
+        child: SetupFrame(
           child: ListenableBuilder(
             listenable: _next.listenable,
-            builder: (BuildContext context, Widget? _) => ListView(
-              shrinkWrap: true,
-              padding: isWide(context)
-                  ? EdgeInsets.zero
-                  : const EdgeInsets.all(SageSpace.xl),
+            builder: (BuildContext context, Widget? _) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Icon(
                   Icons.lock_outline,
@@ -179,7 +163,9 @@ class _PassphrasePageState extends State<PassphrasePage> {
                 ],
                 if (_forgot)
                   TextButton(
-                    onPressed: _busy ? null : _startOver,
+                    onPressed: _busy
+                        ? null
+                        : () => confirmStartOver(context, widget.onStartOver),
                     style: TextButton.styleFrom(
                       foregroundColor: context.sage.danger,
                     ),
@@ -192,20 +178,4 @@ class _PassphrasePageState extends State<PassphrasePage> {
       ),
     );
   }
-}
-
-class _Frame extends StatelessWidget {
-  const _Frame({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => isWide(context)
-      ? SetupCard(child: child)
-      : Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: child,
-          ),
-        );
 }

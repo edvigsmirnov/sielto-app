@@ -182,8 +182,10 @@ class _BudgetAppRootState extends State<BudgetAppRoot> {
             home: DecryptionFailurePage(
               canRecover: locked.manager.hasRecoveryKey,
               onRecover: (String key) => _recover(locked, key),
-              onRestore: (BackupContents backup, String key) =>
-                  _restore(locked, backup, key),
+              onRestore: locked.manager.usesPassphrase
+                  ? null
+                  : (BackupContents backup, String key) =>
+                        _restore(locked, backup, key),
               onStartOver: () => _startOver(locked),
             ),
           ),

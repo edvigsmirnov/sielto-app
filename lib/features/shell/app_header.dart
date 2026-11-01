@@ -44,20 +44,19 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
         toolbarHeight: _toolbarHeight,
         automaticallyImplyLeading: false,
         leadingWidth: kMinInteractiveDimension + SageSpace.md * 2,
-        // Wide, the profile sits in the sidebar.
+        // Wide, the profile sits in the bar above.
         leading: ShellLayout.of(context) != ShellMode.phone
             ? null
             : Center(
-                child: _ProfileAvatar(
+                child: ProfileButton(
                   size: _controlSize,
-                  initial: ref.watch(profileInitialProvider),
                   onTap: () {
                     HapticFeedback.lightImpact();
                     pushPage<void>(context, const SettingsPage());
                   },
                 ),
               ),
-        // Tapping the Space name opens the switcher; wide, the sidebar does.
+        // Tapping the Space name opens the switcher; wide, the bar above does.
         title: ShellLayout.of(context) != ShellMode.phone
             ? Semantics(
                 header: true,
@@ -126,21 +125,17 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   }
 }
 
-/// Name initial on a disc; an icon without a name.
-class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar({
-    required this.initial,
-    required this.onTap,
-    required this.size,
-  });
+/// Name initial on a disc, an icon without a name; opens Settings.
+class ProfileButton extends ConsumerWidget {
+  const ProfileButton({required this.onTap, required this.size, super.key});
 
-  final String? initial;
   final VoidCallback onTap;
   final double size;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final SageColors sage = context.sage;
+    final String? initial = ref.watch(profileInitialProvider);
     return Tooltip(
       message: tr('settings.title'),
       excludeFromSemantics: true,
@@ -170,7 +165,7 @@ class _ProfileAvatar extends StatelessWidget {
                         color: sage.accentStrong,
                       )
                     : Text(
-                        initial!,
+                        initial,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(color: sage.accentStrong),
                       ),
