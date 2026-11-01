@@ -27,6 +27,17 @@ class AnalyticsSlice {
   final Decimal total;
   final int count;
 
+  /// [parts] as one; its [average] is over every payment.
+  factory AnalyticsSlice.sum(Iterable<AnalyticsSlice> parts) => AnalyticsSlice(
+    key: '',
+    label: '',
+    total: parts.fold(
+      Decimal.zero,
+      (Decimal t, AnalyticsSlice s) => t + s.total,
+    ),
+    count: parts.fold(0, (int c, AnalyticsSlice s) => c + s.count),
+  );
+
   Decimal get average => count == 0
       ? Decimal.zero
       : (total / Decimal.fromInt(count)).toDecimal(scaleOnInfinitePrecision: 2);
@@ -42,64 +53,20 @@ class AnalyticsRepository {
 
   final AppDatabase db;
 
-  /// Level 1: totals per category over [from]..[to], largest first. Label is the
-  /// category id. Uncategorised payments form their own slice.
-  Future<List<AnalyticsSlice>> byCategory({
+  /// Totals per category id, or per `lower(trim(title))` under its most
+  /// frequent spelling, largest first. SQL filters, Dart sums.
+  Future<List<AnalyticsSlice>> slices({
     required String spaceId,
     required CalendarDate from,
     required CalendarDate to,
     ExpenseType? expenseType,
-  }) => _slices(
-    columns:
-        "coalesce(category_id, '$uncategorisedKey') AS grouping_key, "
-        "coalesce(category_id, '$uncategorisedKey') AS label",
-    spaceId: spaceId,
-    from: from,
-    to: to,
-    expenseType: expenseType,
-  );
-
-  /// Levels 2 and 3, grouped by `lower(trim(title))` under the most frequent
-  /// spelling. Null [categoryId] is the uncategorised slice.
-  Future<List<AnalyticsSlice>> byTitle({
-    required String spaceId,
-    required CalendarDate from,
-    required CalendarDate to,
-    required String? categoryId,
-    ExpenseType? expenseType,
-  }) => _slices(
-    columns: 'lower(trim(title)) AS grouping_key, title AS label',
-    spaceId: spaceId,
-    from: from,
-    to: to,
-    expenseType: expenseType,
-    category: (id: categoryId, present: true),
-  );
-
-  /// Grouped by `lower(trim(title))` across every category.
-  Future<List<AnalyticsSlice>> byTitleAll({
-    required String spaceId,
-    required CalendarDate from,
-    required CalendarDate to,
-    ExpenseType? expenseType,
-  }) => _slices(
-    columns: 'lower(trim(title)) AS grouping_key, title AS label',
-    spaceId: spaceId,
-    from: from,
-    to: to,
-    expenseType: expenseType,
-  );
-
-  /// SQL filters, Dart sums. Optional filters are appended as clauses: drift's
-  /// `Variable` rejects null.
-  Future<List<AnalyticsSlice>> _slices({
-    required String columns,
-    required String spaceId,
-    required CalendarDate from,
-    required CalendarDate to,
-    ExpenseType? expenseType,
-    ({String? id, bool present})? category,
+    bool byTitle = false,
+    String? categoryKey,
   }) async {
+    final String columns = byTitle
+        ? 'lower(trim(title)) AS grouping_key, title AS label'
+        : "coalesce(category_id, '$uncategorisedKey') AS grouping_key, "
+              "coalesce(category_id, '$uncategorisedKey') AS label";
     final List<String> clauses = <String>[
       'space_id = ?',
       'is_deleted = 0',
@@ -111,14 +78,12 @@ class AnalyticsRepository {
       Variable<String>(to.toIso()),
     ];
 
-    if (category != null) {
-      final String? id = category.id;
-      if (id == null) {
-        clauses.add('category_id IS NULL');
-      } else {
-        clauses.add('category_id = ?');
-        variables.add(Variable<String>(id));
-      }
+    // Optional filters are clauses: drift's `Variable` rejects null.
+    if (categoryKey == uncategorisedKey) {
+      clauses.add('category_id IS NULL');
+    } else if (categoryKey != null) {
+      clauses.add('category_id = ?');
+      variables.add(Variable<String>(categoryKey));
     }
     if (expenseType != null) {
       clauses.add('expense_type = ?');

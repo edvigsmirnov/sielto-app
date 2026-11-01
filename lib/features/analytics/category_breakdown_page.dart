@@ -1,4 +1,3 @@
-import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,22 +41,16 @@ class CategoryBreakdownPage extends ConsumerWidget {
     final TextTheme text = Theme.of(context).textTheme;
     final MoneyFormat money = context.moneyIn(space.currencyCode);
     final List<AnalyticsSlice> slices =
-        ref.watch(titleTotalsProvider(categoryKey)).value ??
+        ref
+            .watch(
+              analyticsSlicesProvider((
+                byTitle: true,
+                categoryKey: categoryKey,
+              )),
+            )
+            .value ??
         const <AnalyticsSlice>[];
-    final int count = slices.fold(
-      0,
-      (int sum, AnalyticsSlice s) => sum + s.count,
-    );
-    final Decimal total = slices.fold(
-      Decimal.zero,
-      (Decimal sum, AnalyticsSlice s) => sum + s.total,
-    );
-    // Mean over all payments, not the mean of per-title means.
-    final Decimal average = count == 0
-        ? Decimal.zero
-        : (total / Decimal.fromInt(count)).toDecimal(
-            scaleOnInfinitePrecision: 2,
-          );
+    final AnalyticsSlice all = AnalyticsSlice.sum(slices);
 
     return Scaffold(
       backgroundColor: sage.surface,
@@ -74,7 +67,9 @@ class CategoryBreakdownPage extends ConsumerWidget {
             children: <Widget>[
               const RangeCaption(),
               const SizedBox(height: SageSpace.xs),
-              Center(child: Text(money.format(total), style: text.titleLarge)),
+              Center(
+                child: Text(money.format(all.total), style: text.titleLarge),
+              ),
               const SizedBox(height: SageSpace.md),
               if (slices.isNotEmpty)
                 SageCard(
@@ -89,7 +84,7 @@ class CategoryBreakdownPage extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: SageSpace.xs),
-                      Text(money.format(average), style: text.titleMedium),
+                      Text(money.format(all.average), style: text.titleMedium),
                     ],
                   ),
                 ),

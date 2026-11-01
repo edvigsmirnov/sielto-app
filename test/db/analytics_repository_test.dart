@@ -78,7 +78,7 @@ void main() {
       await spend('Lidl', '380', on: summerEnd, categoryId: food.id);
       await spend('Ticket', '420', on: summerStart, categoryId: transport.id);
 
-      final List<AnalyticsSlice> slices = await analytics.byCategory(
+      final List<AnalyticsSlice> slices = await analytics.slices(
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
@@ -96,7 +96,7 @@ void main() {
       await spend('Rewe', '600', on: summerStart, categoryId: food.id);
       await spend('Cash', '40', on: summerStart);
 
-      final List<AnalyticsSlice> slices = await analytics.byCategory(
+      final List<AnalyticsSlice> slices = await analytics.slices(
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
@@ -122,7 +122,7 @@ void main() {
         categoryId: food.id,
       );
 
-      final List<AnalyticsSlice> slices = await analytics.byCategory(
+      final List<AnalyticsSlice> slices = await analytics.slices(
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
@@ -141,7 +141,7 @@ void main() {
       );
       await spend('Cinema', '30', on: summerStart, categoryId: loans.id);
 
-      final List<AnalyticsSlice> mandatory = await analytics.byCategory(
+      final List<AnalyticsSlice> mandatory = await analytics.slices(
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
@@ -149,7 +149,7 @@ void main() {
       );
       expect(mandatory.single.total, Decimal.parse('1200'));
 
-      final List<AnalyticsSlice> variable = await analytics.byCategory(
+      final List<AnalyticsSlice> variable = await analytics.slices(
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
@@ -165,7 +165,7 @@ void main() {
       await payments.softDelete(rows.single.id);
 
       expect(
-        await analytics.byCategory(
+        await analytics.slices(
           spaceId: space.id,
           from: summerStart,
           to: summerEnd,
@@ -175,7 +175,7 @@ void main() {
     });
 
     test('incomes are not part of it', () async {
-      final List<AnalyticsSlice> slices = await analytics.byCategory(
+      final List<AnalyticsSlice> slices = await analytics.slices(
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
@@ -192,7 +192,8 @@ void main() {
       await spend('lidl', '40', on: summerStart, categoryId: home.id);
       await spend('Lidl', '10', on: summerStart);
 
-      final List<AnalyticsSlice> slices = await analytics.byTitleAll(
+      final List<AnalyticsSlice> slices = await analytics.slices(
+        byTitle: true,
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
@@ -209,11 +210,12 @@ void main() {
       await spend('lidl', '80', on: summerStart, categoryId: food.id);
       await spend(' LIDL ', '60', on: summerStart, categoryId: food.id);
 
-      final List<AnalyticsSlice> slices = await analytics.byTitle(
+      final List<AnalyticsSlice> slices = await analytics.slices(
+        byTitle: true,
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
-        categoryId: food.id,
+        categoryKey: food.id,
       );
       expect(slices.single.total, Decimal.parse('240'));
       expect(slices.single.count, 3);
@@ -226,11 +228,12 @@ void main() {
       await spend('Lidl', '10', on: summerStart, categoryId: food.id);
       await spend('lidl', '10', on: summerStart, categoryId: food.id);
 
-      final List<AnalyticsSlice> slices = await analytics.byTitle(
+      final List<AnalyticsSlice> slices = await analytics.slices(
+        byTitle: true,
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
-        categoryId: food.id,
+        categoryKey: food.id,
       );
       expect(slices.single.label, 'Lidl');
     });
@@ -241,11 +244,12 @@ void main() {
       await spend('Rewe', '600', on: summerStart, categoryId: food.id);
       await spend('Ticket', '420', on: summerStart, categoryId: transport.id);
 
-      final List<AnalyticsSlice> slices = await analytics.byTitle(
+      final List<AnalyticsSlice> slices = await analytics.slices(
+        byTitle: true,
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
-        categoryId: transport.id,
+        categoryKey: transport.id,
       );
       expect(slices.single.label, 'Ticket');
     });
@@ -257,11 +261,12 @@ void main() {
         await spend('Rewe', '600', on: summerStart, categoryId: food.id);
         await spend('Cash', '40', on: summerStart);
 
-        final List<AnalyticsSlice> slices = await analytics.byTitle(
+        final List<AnalyticsSlice> slices = await analytics.slices(
+          byTitle: true,
           spaceId: space.id,
           from: summerStart,
           to: summerEnd,
-          categoryId: null,
+          categoryKey: AnalyticsRepository.uncategorisedKey,
         );
         expect(slices.single.label, 'Cash');
       },
@@ -272,11 +277,12 @@ void main() {
       await spend('Rewe', '100', on: summerStart, categoryId: food.id);
       await spend('Rewe', '74', on: summerStart, categoryId: food.id);
 
-      final List<AnalyticsSlice> slices = await analytics.byTitle(
+      final List<AnalyticsSlice> slices = await analytics.slices(
+        byTitle: true,
         spaceId: space.id,
         from: summerStart,
         to: summerEnd,
-        categoryId: food.id,
+        categoryKey: food.id,
       );
       expect(slices.single.average, Decimal.parse('87'));
     });
@@ -290,11 +296,12 @@ void main() {
 
       // 31 / 4 = 7.75 exactly.
       expect(
-        (await analytics.byTitle(
+        (await analytics.slices(
+          byTitle: true,
           spaceId: space.id,
           from: summerStart,
           to: summerEnd,
-          categoryId: food.id,
+          categoryKey: food.id,
         )).single.average,
         Decimal.parse('7.75'),
       );

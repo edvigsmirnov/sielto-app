@@ -35,9 +35,6 @@ class AnalyticsPage extends ConsumerWidget {
     container.invalidate(analyticsChoiceProvider);
   }
 
-  /// The rest goes into one "other" slice.
-  static const int _wedges = 5;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final Space space = ref.space;
@@ -47,13 +44,13 @@ class AnalyticsPage extends ConsumerWidget {
     final bool byName =
         ref.watch(analyticsGroupingProvider) == AnalyticsGrouping.name;
     final List<AnalyticsSlice> slices =
-        ref.watch(byName ? nameTotalsProvider : categoryTotalsProvider).value ??
+        ref
+            .watch(
+              analyticsSlicesProvider((byTitle: byName, categoryKey: null)),
+            )
+            .value ??
         const <AnalyticsSlice>[];
-
-    final Decimal total = slices.fold(
-      Decimal.zero,
-      (Decimal sum, AnalyticsSlice s) => sum + s.total,
-    );
+    final Decimal total = AnalyticsSlice.sum(slices).total;
 
     return Scaffold(
       backgroundColor: context.sage.surface,
@@ -129,7 +126,7 @@ class AnalyticsPage extends ConsumerWidget {
                     onTap: () => CategoryBreakdownPage.open(
                       context,
                       categoryKey: slice.key,
-                      title: _labelOf(slice, categories),
+                      title: _titleOf(categories[slice.key]),
                     ),
                   ),
               ],
@@ -139,38 +136,39 @@ class AnalyticsPage extends ConsumerWidget {
       ),
     );
   }
+}
 
-  /// Deleted categories keep their name; a missing one is uncategorised.
-  static String _labelOf(
-    AnalyticsSlice slice,
-    Map<String, Category> categories,
-  ) => categories[slice.key]?.reportTitle ?? tr('category.none');
+/// Deleted categories keep their name; a missing one is uncategorised.
+String _titleOf(Category? category) =>
+    category?.reportTitle ?? tr('category.none');
 
-  static List<DonutSlice> wedges(
-    List<AnalyticsSlice> slices,
-    Decimal total,
-    Map<String, Category> categories,
-    SageColors sage,
-  ) {
-    if (total == Decimal.zero) return const <DonutSlice>[];
-    double fraction(Decimal part) => (part / total).toDouble();
+Color _colorOf(Category? category, SageColors sage) =>
+    parseCategoryColor(category?.color) ?? sage.sand;
 
-    final List<DonutSlice> out = <DonutSlice>[
-      for (final AnalyticsSlice s in slices.take(_wedges))
-        DonutSlice(
-          fraction: fraction(s.total),
-          // Category colour, else `sand`.
-          color: parseCategoryColor(categories[s.key]?.color) ?? sage.sand,
-        ),
-    ];
-    if (slices.length > _wedges) {
-      final Decimal rest = slices
-          .skip(_wedges)
-          .fold(Decimal.zero, (Decimal sum, AnalyticsSlice s) => sum + s.total);
-      out.add(DonutSlice(fraction: fraction(rest), color: sage.hairline));
-    }
-    return out;
-  }
+/// The rest goes into one "other" wedge.
+const int _wedgeCount = 5;
+
+List<DonutSlice> _wedges(
+  List<AnalyticsSlice> slices,
+  Decimal total,
+  Map<String, Category> categories,
+  SageColors sage,
+) {
+  if (total == Decimal.zero) return const <DonutSlice>[];
+  double fraction(Decimal part) => (part / total).toDouble();
+
+  return <DonutSlice>[
+    for (final AnalyticsSlice s in slices.take(_wedgeCount))
+      DonutSlice(
+        fraction: fraction(s.total),
+        color: _colorOf(categories[s.key], sage),
+      ),
+    if (slices.length > _wedgeCount)
+      DonutSlice(
+        fraction: fraction(AnalyticsSlice.sum(slices.skip(_wedgeCount)).total),
+        color: sage.hairline,
+      ),
+  ];
 }
 
 class _Summary extends StatelessWidget {
@@ -195,7 +193,7 @@ class _Summary extends StatelessWidget {
     return Row(
       children: <Widget>[
         DonutChart(
-          slices: AnalyticsPage.wedges(slices, total, categories, sage),
+          slices: _wedges(slices, total, categories, sage),
           centre: money.short(total),
           caption: tr('analytics.inRange'),
         ),
@@ -205,11 +203,8 @@ class _Summary extends StatelessWidget {
             children: <Widget>[
               for (final AnalyticsSlice slice in slices.take(_legend))
                 _LegendLine(
-                  color:
-                      parseCategoryColor(categories[slice.key]?.color) ??
-                      sage.sand,
-                  label:
-                      categories[slice.key]?.reportTitle ?? tr('category.none'),
+                  color: _colorOf(categories[slice.key], sage),
+                  label: _titleOf(categories[slice.key]),
                   amount: money.short(slice.total),
                 ),
             ],
@@ -298,7 +293,7 @@ class _CategoryRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        category?.reportTitle ?? tr('category.none'),
+                        _titleOf(category),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: text.bodyLarge,

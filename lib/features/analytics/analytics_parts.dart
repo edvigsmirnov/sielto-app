@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/action_sheet.dart';
@@ -49,7 +50,7 @@ class RangeHeader extends ConsumerWidget {
                 children: <Widget>[
                   Flexible(
                     child: Text(
-                      rangeLabel(range, context.locale.toString()),
+                      rangeLabel(range, context.dates),
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -95,10 +96,7 @@ class RangeHeader extends ConsumerWidget {
       ],
     );
     if (picked == null || !context.mounted) return;
-    if (picked != RangeUnit.custom) {
-      setAnalyticsUnit(ref, picked);
-      return;
-    }
+    if (picked != RangeUnit.custom) return setAnalyticsUnit(ref, picked);
     final (CalendarDate, CalendarDate)? dates = await askDateRange(
       context,
       from: range.from,
@@ -118,16 +116,14 @@ class RangeHeader extends ConsumerWidget {
 }
 
 /// Full span for a quarter; the month or year alone otherwise.
-String rangeLabel(AnalyticsRange range, String locale) {
-  final DateLabels dates = DateLabels(locale);
-  return switch (range.unit) {
-    RangeUnit.month => dates.monthYear(range.anchor),
-    RangeUnit.quarter ||
-    RangeUnit.period ||
-    RangeUnit.custom => dates.range(range.from, range.to),
-    RangeUnit.year => range.anchor.year.toString(),
-  };
-}
+String rangeLabel(AnalyticsRange range, DateLabels dates) =>
+    switch (range.unit) {
+      RangeUnit.month => dates.monthYear(range.anchor),
+      RangeUnit.quarter ||
+      RangeUnit.period ||
+      RangeUnit.custom => dates.range(range.from, range.to),
+      RangeUnit.year => range.anchor.year.toString(),
+    };
 
 /// Everything, mandatory or variable.
 class ExpenseTypeFilter extends ConsumerWidget {
@@ -157,7 +153,7 @@ class RangeCaption extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => Center(
     child: Text(
-      rangeLabel(ref.watch(analyticsRangeProvider), context.locale.toString()),
+      rangeLabel(ref.watch(analyticsRangeProvider), context.dates),
       style: Theme.of(context).textTheme.bodySmall,
     ),
   );
