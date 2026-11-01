@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/sage_widgets.dart';
 
 /// The app's dialog: a centred title and body over [content], then [actions].
 class SageDialog extends StatelessWidget {
@@ -289,12 +290,7 @@ class ChoiceGrid extends StatelessWidget {
       if (primaryLast && last) {
         return FilledButton(
           onPressed: choice.$2,
-          style: red
-              ? FilledButton.styleFrom(
-                  backgroundColor: context.sage.dangerTint,
-                  foregroundColor: context.sage.danger,
-                )
-              : null,
+          style: red ? DangerButton.styleOf(context) : null,
           child: label,
         );
       }

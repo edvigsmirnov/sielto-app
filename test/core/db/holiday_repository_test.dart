@@ -40,6 +40,22 @@ void main() {
       ]);
     });
 
+    test(
+      'a region\'s days, stored after the national ones, read in order',
+      () async {
+        await holidays.store('DE-BY', 2026, <CalendarDate>[
+          d('2026-01-01'),
+          d('2026-12-26'),
+          d('2026-01-06'),
+        ]);
+        expect(await holidays.cached('DE-BY', 2026), <CalendarDate>[
+          d('2026-01-01'),
+          d('2026-01-06'),
+          d('2026-12-26'),
+        ]);
+      },
+    );
+
     test('nothing cached and nothing to cache are different answers', () async {
       await holidays.store('DE', 2026, const <CalendarDate>[]);
       expect(await holidays.cached('DE', 2026), isEmpty);

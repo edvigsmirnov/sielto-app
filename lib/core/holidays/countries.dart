@@ -15,6 +15,12 @@ class HolidayCountry {
   final String name;
 }
 
+extension CountryNames on List<HolidayCountry> {
+  /// The code itself when unknown.
+  String nameOf(String code) =>
+      where((HolidayCountry c) => c.code == code).firstOrNull?.name ?? code;
+}
+
 const String _dir = 'assets/holidays';
 
 /// Bundled countries, named in [language]. Type inferred: `flutter_riverpod`

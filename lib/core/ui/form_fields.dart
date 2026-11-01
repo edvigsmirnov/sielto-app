@@ -56,13 +56,9 @@ class FormActionBar extends StatelessWidget {
               : Row(
                   children: <Widget>[
                     Expanded(
-                      child: FilledButton(
+                      child: DangerButton(
+                        label: tr('common.delete'),
                         onPressed: onDelete,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: context.sage.dangerTint,
-                          foregroundColor: context.sage.danger,
-                        ),
-                        child: Text(tr('common.delete')),
                       ),
                     ),
                     const SizedBox(width: SageSpace.sm),

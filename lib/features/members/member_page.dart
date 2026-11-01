@@ -142,13 +142,9 @@ class _MemberPageState extends ConsumerState<MemberPage> {
                 child: Text(tr('members.makeOwner')),
               ),
               const SizedBox(height: SageSpace.sm),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: context.sage.dangerTint,
-                  foregroundColor: context.sage.danger,
-                ),
+              DangerButton(
+                label: tr('members.remove'),
                 onPressed: () => _act(remove: true),
-                child: Text(tr('members.remove')),
               ),
             ],
           ],

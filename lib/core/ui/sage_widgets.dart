@@ -90,21 +90,26 @@ class SheetTitle extends StatelessWidget {
 /// A row that opens something: icon, title, an optional line, a chevron.
 class LinkTile extends StatelessWidget {
   const LinkTile({
-    required this.icon,
     required this.title,
     required this.onTap,
+    this.icon,
     this.subtitle,
+    this.padding,
     super.key,
   });
 
-  final IconData icon;
+  final IconData? icon;
   final String title;
   final String? subtitle;
   final VoidCallback onTap;
 
+  /// Zero inside a list that has its own gutter.
+  final EdgeInsetsGeometry? padding;
+
   @override
   Widget build(BuildContext context) => ListTile(
-    leading: Icon(icon),
+    contentPadding: padding,
+    leading: icon == null ? null : Icon(icon),
     title: Text(title),
     subtitle: subtitle == null ? null : Text(subtitle!),
     trailing: const Icon(Icons.chevron_right),
@@ -551,6 +556,26 @@ class AnimatedMoney extends StatelessWidget {
         fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
       ),
     ),
+  );
+}
+
+/// Destructive action on a tinted button.
+class DangerButton extends StatelessWidget {
+  const DangerButton({required this.label, required this.onPressed, super.key});
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  static ButtonStyle styleOf(BuildContext context) => FilledButton.styleFrom(
+    backgroundColor: context.sage.dangerTint,
+    foregroundColor: context.sage.danger,
+  );
+
+  @override
+  Widget build(BuildContext context) => FilledButton(
+    onPressed: onPressed,
+    style: styleOf(context),
+    child: Text(label),
   );
 }
 

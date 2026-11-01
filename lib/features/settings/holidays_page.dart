@@ -9,6 +9,7 @@ import 'package:sielto/core/holidays/countries.dart';
 import 'package:sielto/core/holidays/holiday_source.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/choice_field.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/form_fields.dart';
@@ -28,7 +29,6 @@ class HolidaysPage extends ConsumerWidget {
     final String? country = ref.watch(defaultCountryProvider);
     final bool offline = ref.watch(offlineModeProvider);
     final bool? consent = ref.watch(holidayConsentProvider);
-    final DateLabels dates = context.dates;
 
     return Scaffold(
       backgroundColor: context.sage.surface,
@@ -64,7 +64,7 @@ class HolidaysPage extends ConsumerWidget {
 
           const SizedBox(height: SageSpace.md),
           SectionLabel(tr('holidays.publicTitle')),
-          _PublicHolidays(country: country, dates: dates),
+          _PublicHolidays(country: country),
 
           const SizedBox(height: SageSpace.md),
           SectionLabel(tr('holidays.customTitle')),
@@ -94,24 +94,23 @@ class HolidaysPage extends ConsumerWidget {
     final List<HolidayCountry> all =
         ref.watch(holidayCountriesProvider(language)).value ??
         const <HolidayCountry>[];
-    for (final HolidayCountry c in all) {
-      if (c.code == code) return '${c.name} ($code)';
-    }
-    return code;
+    final String name = all.nameOf(code);
+    return name == code ? code : '$name ($code)';
   }
 
   Future<void> _pickCountry(BuildContext context, WidgetRef ref) async {
     final String? previous = ref.read(defaultCountryProvider);
-    final _CountryResult? picked = await showAdaptiveSheet<_CountryResult>(
+    final (String?,)? picked = await showAdaptiveSheet<(String?,)>(
       context,
       dragHandle: true,
       builder: (BuildContext _) => const _CountryPicker(),
     );
     if (picked == null) return;
 
-    await ref.read(defaultCountryProvider.notifier).set(picked.code);
+    final String? code = picked.$1;
+    await ref.read(defaultCountryProvider.notifier).set(code);
     // The first country choice asks for download consent.
-    if (picked.code != null &&
+    if (code != null &&
         previous == null &&
         ref.read(holidayConsentProvider) == null &&
         context.mounted) {
@@ -220,49 +219,26 @@ class _RegionTile extends ConsumerWidget {
     if (regions.isEmpty) return const SizedBox.shrink();
 
     final String? region = ref.watch(holidayRegionProvider);
-    final String label = region == null
-        ? tr('holidays.wholeCountry')
-        : regions
-                  .where((HolidayCountry r) => r.code == region)
-                  .firstOrNull
-                  ?.name ??
-              region;
+    String labelOf(String? code) =>
+        code == null ? tr('holidays.wholeCountry') : regions.nameOf(code);
 
-    return ListTile(
-      leading: const Icon(Icons.map_outlined),
-      title: Text(label),
-      subtitle: Text(tr('holidays.region')),
-      trailing: const Icon(Icons.chevron_right),
+    return LinkTile(
+      icon: Icons.map_outlined,
+      title: labelOf(region),
+      subtitle: tr('holidays.region'),
       onTap: () async {
-        final _CountryResult? picked = await showAdaptiveSheet<_CountryResult>(
+        final (String?,)? picked = await pickChoice<String?>(
           context,
-          dragHandle: true,
-          builder: (BuildContext sheet) => SafeArea(
-            child: SizedBox(
-              height: MediaQuery.sizeOf(sheet).height * 0.6,
-              child: ListView(
-                children: <Widget>[
-                  ListTile(
-                    title: Text(tr('holidays.wholeCountry')),
-                    selected: region == null,
-                    onTap: () =>
-                        Navigator.of(sheet).pop(const _CountryResult(null)),
-                  ),
-                  const Hairline(),
-                  for (final HolidayCountry r in regions)
-                    ListTile(
-                      title: Text(r.name),
-                      selected: r.code == region,
-                      onTap: () =>
-                          Navigator.of(sheet).pop(_CountryResult(r.code)),
-                    ),
-                ],
-              ),
-            ),
-          ),
+          title: tr('holidays.region'),
+          options: <String?>[
+            null,
+            for (final HolidayCountry r in regions) r.code,
+          ],
+          value: region,
+          labelOf: labelOf,
         );
         if (picked == null) return;
-        await ref.read(holidayRegionProvider.notifier).set(picked.code);
+        await ref.read(holidayRegionProvider.notifier).set(picked.$1);
       },
     );
   }
@@ -270,10 +246,9 @@ class _RegionTile extends ConsumerWidget {
 
 /// This year's public holidays for the default country.
 class _PublicHolidays extends ConsumerWidget {
-  const _PublicHolidays({required this.country, required this.dates});
+  const _PublicHolidays({required this.country});
 
   final String? country;
-  final DateLabels dates;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -319,7 +294,7 @@ class _PublicHolidays extends ConsumerWidget {
             subtitle: Text(
               <String>[
                 ...?names[day]?.skip(1),
-                dates.weekdayAndDate(day),
+                context.dates.weekdayAndDate(day),
               ].join('\n'),
             ),
           ),
@@ -384,14 +359,6 @@ class _Note extends StatelessWidget {
   );
 }
 
-/// Null code is the "no country" choice.
-@immutable
-class _CountryResult {
-  const _CountryResult(this.code);
-
-  final String? code;
-}
-
 class _CountryPicker extends ConsumerStatefulWidget {
   const _CountryPicker();
 
@@ -451,8 +418,7 @@ class _CountryPickerState extends ConsumerState<_CountryPicker> {
                 ),
                 title: Text(tr('holidays.noCountry')),
                 subtitle: Text(tr('holidays.noCountryBody')),
-                onTap: () =>
-                    Navigator.of(context).pop(const _CountryResult(null)),
+                onTap: () => Navigator.of(context).pop(const (null,)),
               ),
               const Hairline(),
               Expanded(
@@ -469,8 +435,7 @@ class _CountryPickerState extends ConsumerState<_CountryPicker> {
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                     onTap: () =>
-                        Navigator.of(context)
-                            .pop(_CountryResult(shown[index].code)),
+                        Navigator.of(context).pop((shown[index].code,)),
                   ),
                 ),
               ),

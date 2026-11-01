@@ -39,7 +39,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     text: widget.space.title,
   );
 
-  /// Null while the check runs.
+  /// True while the storage moves.
   bool _moving = false;
 
   /// Null until the cloud answers.
@@ -152,7 +152,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           _Hint(tr('space.modeIsPermanent')),
           const SizedBox(height: SageSpace.lg),
 
-          _Setting(
+          LabelledField(
             label: tr('space.fieldFeedOrder'),
             child: SegmentedChoice<FeedOrderMode>(
               values: FeedOrderMode.values,
@@ -169,7 +169,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           ),
           const SizedBox(height: SageSpace.lg),
 
-          _Setting(
+          LabelledField(
             label: tr('space.fieldCurrency'),
             child: CurrencyField(
               value: space.currencyCode,
@@ -185,11 +185,11 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
-          const _Rule(),
+          const Hairline(),
           const SizedBox(height: SageSpace.lg),
 
-          if (space.ownerId == ref.watch(userIdProvider))
-            _Setting(
+          if (owner)
+            LabelledField(
               label: tr('space.fieldStorage'),
               child: SegmentedChoice<StorageMode>(
                 values: StorageMode.values,
@@ -211,7 +211,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           const SizedBox(height: SageSpace.lg),
 
           if (shared && owner) ...<Widget>[
-            _Setting(
+            LabelledField(
               label: tr('members.limit'),
               child: _LimitStepper(
                 limit: space.maxMembers,
@@ -230,14 +230,13 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
             const SizedBox(height: SageSpace.md),
           ],
           if (shared) ...<Widget>[
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(tr('members.title')),
-              trailing: const Icon(Icons.chevron_right, size: 18),
+            LinkTile(
+              padding: EdgeInsets.zero,
+              title: tr('members.title'),
               onTap: () =>
                   pushPage<void>(context, MembersPage(spaceId: space.id)),
             ),
-            const _Rule(),
+            const Hairline(),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: Text(tr('activity.toggle')),
@@ -247,25 +246,23 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
                   .read(quietSpacesProvider.notifier)
                   .set(space.id, quiet: !on),
             ),
-            const _Rule(),
+            const Hairline(),
           ],
 
           // Categories and income rules are for the open Space only.
           if (isCurrent) ...<Widget>[
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(tr('category.title')),
-              trailing: const Icon(Icons.chevron_right, size: 18),
+            LinkTile(
+              padding: EdgeInsets.zero,
+              title: tr('category.title'),
               onTap: () => pushPage<void>(context, const CategoriesPage()),
             ),
-            const _Rule(),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(tr('income.regularTitle')),
-              trailing: const Icon(Icons.chevron_right, size: 18),
+            const Hairline(),
+            LinkTile(
+              padding: EdgeInsets.zero,
+              title: tr('income.regularTitle'),
               onTap: () => pushPage<void>(context, const IncomeRulesPage()),
             ),
-            const _Rule(),
+            const Hairline(),
           ],
 
           const SizedBox(height: SageSpace.xl),
@@ -277,16 +274,16 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
           _Hint(tr('space.archiveBody')),
           if (shared) ...<Widget>[
             const SizedBox(height: SageSpace.lg),
-            _DangerButton(
+            DangerButton(
               label: tr('members.leave'),
-              onTap: () => owner ? _leaveAsOwner(space) : _leave(space),
+              onPressed: () => owner ? _leaveAsOwner(space) : _leave(space),
             ),
           ],
           if (owner) ...<Widget>[
             const SizedBox(height: SageSpace.lg),
-            _DangerButton(
+            DangerButton(
               label: tr('space.delete'),
-              onTap: () => _delete(space),
+              onPressed: () => _delete(space),
             ),
           ],
         ],
@@ -294,7 +291,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     );
   }
 
-  /// Archiving is local.
   /// An empty title reverts; an unchanged one writes nothing.
   Future<void> _saveTitle(Space space) async {
     final String title = _title.text.trim();
@@ -353,23 +349,40 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     if (!confirmed || !mounted) return;
     if (!await confirmIdentity(context, ref)) return;
 
-    final bool wasOpen = ref.read(currentSpaceIdProvider) == space.id;
-    if (wasOpen) await ref.read(currentSpaceIdProvider.notifier).select(null);
-    if (cloud) {
-      final CloudResult result = await ref
-          .read(syncProvider.notifier)
-          .deleteEverywhere(space.id);
-      if (result != CloudResult.done) {
-        if (wasOpen) {
-          await ref.read(currentSpaceIdProvider.notifier).select(space.id);
+    _done(
+      await _closedWhile(space, () async {
+        if (cloud) {
+          return ref.read(syncProvider.notifier).deleteEverywhere(space.id);
         }
-        if (mounted) _tellIfFailed(result);
-        return;
-      }
+        await ref.read(repositoriesProvider).spaces.deleteForever(space.id);
+        return CloudResult.done;
+      }),
+    );
+  }
+
+  /// Closes [space] while [action] runs; reopens it if [action] fails.
+  Future<CloudResult> _closedWhile(
+    Space space,
+    Future<CloudResult> Function() action,
+  ) async {
+    final CurrentSpaceIdController current = ref.read(
+      currentSpaceIdProvider.notifier,
+    );
+    final bool wasOpen = ref.read(currentSpaceIdProvider) == space.id;
+    if (wasOpen) await current.select(null);
+    final CloudResult result = await action();
+    if (result != CloudResult.done && wasOpen) await current.select(space.id);
+    return result;
+  }
+
+  /// Closes the page, or says why the action failed.
+  void _done(CloudResult result) {
+    if (!mounted) return;
+    if (result == CloudResult.done) {
+      Navigator.of(context).pop();
     } else {
-      await ref.read(repositoriesProvider).spaces.deleteForever(space.id);
+      _tellIfFailed(result);
     }
-    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _setLimit(Space space, int? max) async {
@@ -438,22 +451,14 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
     await _leaveNow(space);
   }
 
-  Future<void> _leaveNow(Space space) async {
-    final bool wasOpen = ref.read(currentSpaceIdProvider) == space.id;
-    if (wasOpen) await ref.read(currentSpaceIdProvider.notifier).select(null);
-    final bool left = await ref
-        .read(syncProvider.notifier)
-        .leaveSpace(space.id);
-    if (!mounted) return;
-    if (!left) {
-      if (wasOpen) {
-        await ref.read(currentSpaceIdProvider.notifier).select(space.id);
-      }
-      _tellIfFailed(CloudResult.noNetwork);
-      return;
-    }
-    Navigator.of(context).pop();
-  }
+  Future<void> _leaveNow(Space space) async => _done(
+    await _closedWhile(
+      space,
+      () async => await ref.read(syncProvider.notifier).leaveSpace(space.id)
+          ? CloudResult.done
+          : CloudResult.noNetwork,
+    ),
+  );
 
   Future<void> _archive(Space space) async {
     final bool confirmed = await confirmDialog(
@@ -549,18 +554,6 @@ class _LimitStepper extends StatelessWidget {
   }
 }
 
-/// A setting's name above its control, sized like the rows around it.
-class _Setting extends StatelessWidget {
-  const _Setting({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) =>
-      LabelledField(label: label, child: child);
-}
-
 /// Small print under a setting, in line with the row labels.
 class _Hint extends StatelessWidget {
   const _Hint(this.text);
@@ -570,14 +563,6 @@ class _Hint extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Text(text, style: Theme.of(context).textTheme.bodySmall);
-}
-
-/// A separator as wide as the rows' hover.
-class _Rule extends StatelessWidget {
-  const _Rule();
-
-  @override
-  Widget build(BuildContext context) => const Hairline();
 }
 
 /// Read-only setting: label left, value right.
@@ -592,11 +577,9 @@ class _FactRow extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: SageSpace.md),
     child: Row(
       children: <Widget>[
-        Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
-        ),
+        Text(label, style: Theme.of(context).textTheme.bodyLarge),
         const SizedBox(width: SageSpace.md),
-        Flexible(
+        Expanded(
           child: Align(alignment: AlignmentDirectional.centerEnd, child: value),
         ),
       ],
@@ -636,22 +619,4 @@ class _LockedPill extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Destructive action on a tinted button.
-class _DangerButton extends StatelessWidget {
-  const _DangerButton({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => FilledButton(
-    onPressed: onTap,
-    style: FilledButton.styleFrom(
-      backgroundColor: context.sage.dangerTint,
-      foregroundColor: context.sage.danger,
-    ),
-    child: Text(label),
-  );
 }

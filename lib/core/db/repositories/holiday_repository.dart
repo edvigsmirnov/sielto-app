@@ -13,11 +13,11 @@ class HolidayRepository {
   final AppDatabase db;
   final SpaceClock clock;
 
-  /// Null when nothing is cached; empty is a valid cached result.
+  /// In date order; null when nothing is cached, empty is a valid result.
   Future<List<CalendarDate>?> cached(String countryCode, int year) async {
     final HolidayCacheData? row = await _row(countryCode, year);
     if (row == null) return null;
-    return _decode(row.holidayDates);
+    return _decode(row.holidayDates)..sort();
   }
 
   Future<bool> has(String countryCode, int year) async =>
