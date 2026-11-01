@@ -429,6 +429,7 @@
     "search": "Search categories",
     "titleTaken": "A category with this name already exists.",
     "moveRecords": "Move entries to…",
+    "moveFirst": "Move entries first",
     "moved": "Entries moved: {count}",
     "deleteManyTitle": "Delete these categories?",
     "deleteManyBody": "{titles}. Payments filed under them keep the names.",

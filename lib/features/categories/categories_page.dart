@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/db/repositories/category_repository.dart';
+import 'package:sielto/core/db/repositories/payment_repository.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/action_sheet.dart';
 import 'package:sielto/core/ui/bulk_button.dart';
@@ -156,12 +157,14 @@ class _CategoriesPageState extends ConsumerState<CategoriesPage> {
 }
 
 /// Moves every payment of [from] into a category the reader picks, then
-/// offers to delete the ones it came from. True when they were deleted.
+/// deletes the ones it came from, asking first unless [confirmed]. True when
+/// they were deleted.
 Future<bool> moveRecords(
   BuildContext context,
   WidgetRef ref,
-  List<Category> from,
-) async {
+  List<Category> from, {
+  bool confirmed = false,
+}) async {
   final CategoryChoice? target = await pickCategory(
     context,
     selectedId: from.length == 1 ? from.single.id : null,
@@ -182,34 +185,59 @@ Future<bool> moveRecords(
   ScaffoldMessenger.of(
     context,
   ).say(tr('category.moved', namedArgs: <String, String>{'count': '$moved'}));
-  return deleteCategories(context, ref, sources);
+  return deleteCategories(context, ref, sources, confirmed: confirmed);
 }
 
-/// Asks, then deletes [categories] with an undo. False when declined.
+enum _Delete { moveFirst, delete }
+
+/// Deletes [categories] with an undo, asking first unless [confirmed]. When
+/// they hold entries, the reader may move those first. False when declined.
 Future<bool> deleteCategories(
   BuildContext context,
   WidgetRef ref,
-  List<Category> categories,
-) async {
+  List<Category> categories, {
+  bool confirmed = false,
+}) async {
   final bool one = categories.length == 1;
-  final bool confirmed = await confirmDialog(
-    context,
-    title: tr(one ? 'category.deleteTitle' : 'category.deleteManyTitle'),
-    body: one
-        ? tr(
-            'category.deleteBody',
-            namedArgs: <String, String>{'title': categories.single.shownTitle},
-          )
-        : tr(
-            'category.deleteManyBody',
-            namedArgs: <String, String>{
-              'titles': categories.map((Category c) => c.shownTitle).join(', '),
-            },
-          ),
-    confirmLabel: tr('common.delete'),
-    isDestructive: true,
-  );
-  if (!confirmed || !context.mounted) return false;
+  if (!confirmed) {
+    final PaymentRepository payments = ref.read(repositoriesProvider).payments;
+    bool used = false;
+    for (final Category c in categories) {
+      used = used || await payments.anyVisibleInCategory(c.id);
+    }
+    if (!context.mounted) return false;
+    final _Delete? choice = await choiceDialog<_Delete?>(
+      context,
+      title: tr(one ? 'category.deleteTitle' : 'category.deleteManyTitle'),
+      body: one
+          ? tr(
+              'category.deleteBody',
+              namedArgs: <String, String>{
+                'title': categories.single.shownTitle,
+              },
+            )
+          : tr(
+              'category.deleteManyBody',
+              namedArgs: <String, String>{
+                'titles': categories
+                    .map((Category c) => c.shownTitle)
+                    .join(', '),
+              },
+            ),
+      columns: used ? 1 : 2,
+      choices: <(String, _Delete?)>[
+        (tr('common.cancel'), null),
+        if (used) (tr('category.moveFirst'), _Delete.moveFirst),
+        (tr('common.delete'), _Delete.delete),
+      ],
+      destructiveLast: true,
+      primaryLast: true,
+    );
+    if (choice == null || !context.mounted) return false;
+    if (choice == _Delete.moveFirst) {
+      return moveRecords(context, ref, categories, confirmed: true);
+    }
+  }
   final CategoryRepository repo = ref.read(repositoriesProvider).categories;
   final List<String> ids = <String>[for (final Category c in categories) c.id];
   await repo.setDeleted(ids, deleted: true);
