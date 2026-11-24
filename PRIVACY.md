@@ -41,7 +41,7 @@ Holidays for 204 countries are built into the app. For years beyond the built-in
 
 ## Update checks
 
-Only if you turn them on. Once a day the app asks GitHub for the latest release, and GitHub sees your IP address. Updates download from GitHub too.
+Only if you turn them on. Each time it starts, the app asks GitHub for the latest release, and GitHub sees your IP address. Updates download from GitHub too.
 
 ## Deleting your data
 

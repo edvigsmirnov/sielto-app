@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -52,29 +51,26 @@ class UpdateState {
   );
 }
 
-/// Checked at start and on every resume once a day, like the Drive snapshot.
-class UpdateController extends Notifier<UpdateState>
-    with WidgetsBindingObserver {
+/// Checked once per app start, never on resume.
+class UpdateController extends Notifier<UpdateState> {
   LocalSettings get _settings => ref.read(localSettingsProvider);
+
+  bool _startChecked = false;
 
   @override
   UpdateState build() {
-    WidgetsBinding.instance.addObserver(this);
-    ref.onDispose(() => WidgetsBinding.instance.removeObserver(this));
     final LocalSettings settings = ref.watch(localSettingsProvider);
-    Future<void>.microtask(_autoCheck);
-    if (Platform.isAndroid) unawaited(_dropInstalledApk());
+    if (!_startChecked) {
+      _startChecked = true;
+      Future<void>.microtask(_autoCheck);
+      if (Platform.isAndroid) unawaited(_dropInstalledApk());
+    }
     return UpdateState(
       enabled: settings.updateChecks,
       latest: _decode(settings.updateLatest),
       lastCheck: settings.updateLastCheck,
       dismissed: settings.updateDismissed,
     );
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(_autoCheck());
   }
 
   Future<void> setEnabled({required bool value}) async {
@@ -127,9 +123,7 @@ class UpdateController extends Notifier<UpdateState>
   }
 
   Future<void> _autoCheck() async {
-    if (state.enabled ?? false) {
-      if (checkDue(state.lastCheck, DateTime.now())) await check();
-    }
+    if (state.enabled ?? false) await check();
   }
 
   static String? _encode(Release? r) => r == null

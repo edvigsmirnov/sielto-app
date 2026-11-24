@@ -57,11 +57,4 @@ void main() {
     expect(availableUpdate(Version.parse('1.1.0-rc.2'), newest), newest);
     expect(availableUpdate(Version.parse('1.0.0'), null), isNull);
   });
-
-  test('checkDue waits a day after the last check', () {
-    final DateTime last = DateTime.utc(2026, 11, 1, 9);
-    expect(checkDue(null, last), isTrue);
-    expect(checkDue(last, last.add(const Duration(hours: 23))), isFalse);
-    expect(checkDue(last, last.add(const Duration(hours: 24))), isTrue);
-  });
 }

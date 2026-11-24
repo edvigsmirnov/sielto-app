@@ -49,7 +49,7 @@ class UpdatePlate extends ConsumerWidget {
   }
 }
 
-/// About's status row and the daily-check switch.
+/// About's status row and the start-check switch.
 class UpdateSection extends ConsumerWidget {
   const UpdateSection({super.key});
 

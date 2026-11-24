@@ -1029,12 +1029,12 @@
     "userId": "Your user id"
   },
   "update": {
-    "askPlate": "Check for new versions once a day?",
+    "askPlate": "Check for new versions at each start?",
     "turnOn": "Turn on",
     "noThanks": "No, thanks",
     "available": "Version {} is available. See what's new.",
     "checks": "Check for updates",
-    "checksHint": "Once a day, from GitHub",
+    "checksHint": "At each start, from GitHub",
     "checking": "Checking…",
     "upToDate": "Up to date",
     "notChecked": "Not checked yet",

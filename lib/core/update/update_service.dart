@@ -14,8 +14,6 @@ class UpdateService {
 
   final http.Client _client;
 
-  static const Duration interval = Duration(hours: 24);
-
   /// The highest release; pre-releases only for a pre-release build.
   Future<Release?> newest({required bool preReleases}) async {
     final http.Response response = await _client.get(
@@ -104,6 +102,3 @@ Release? newestOf(
 /// [latest] when it is ahead of the running [current] build.
 Release? availableUpdate(Version current, Release? latest) =>
     latest != null && latest.version > current ? latest : null;
-
-bool checkDue(DateTime? last, DateTime now) =>
-    last == null || now.difference(last) >= UpdateService.interval;
