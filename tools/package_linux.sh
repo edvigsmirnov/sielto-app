@@ -78,7 +78,7 @@ cat > "$METAINFO_FILE" <<METAINFO
     <name>Edvig Smirnov</name>
   </developer>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>LicenseRef-proprietary=https://github.com/edvigsmirnov/sielto-app/blob/main/LICENSE</project_license>
+  <project_license>PolyForm-Noncommercial-1.0.0</project_license>
   <description>
     <p>
       Sielto answers one question: how much can I actually spend? It subtracts
@@ -147,7 +147,7 @@ Name:           $PKG
 Version:        $PKG_VERSION
 Release:        $BUILD
 Summary:        Offline-first planner for mandatory payments and shared budgets
-License:        LicenseRef-Sielto-NonCommercial
+License:        PolyForm-Noncommercial-1.0.0
 URL:            https://github.com/edvigsmirnov/sielto-app
 BuildArch:      x86_64
 AutoReqProv:    no

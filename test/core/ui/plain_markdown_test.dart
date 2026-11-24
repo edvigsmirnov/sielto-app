@@ -19,6 +19,31 @@ void main() {
     );
   });
 
+  test('markdownBlocks keeps the title on request and drops inline markup', () {
+    expect(
+      markdownBlocks(
+        '# Licence 1.0\n\n<https://example.com/l>\n\n'
+        'See [Notices](#notices) for `Required Notice:` lines.\n'
+        '> Required Notice: Example\n'
+        '***As is, no warranty.***  The **licensor** is 5 * 3.\n',
+        keepTitle: true,
+      ),
+      <Block>[
+        (kind: BlockKind.heading, text: 'Licence 1.0'),
+        (kind: BlockKind.paragraph, text: 'https://example.com/l'),
+        (
+          kind: BlockKind.paragraph,
+          text: 'See Notices for Required Notice: lines.',
+        ),
+        (kind: BlockKind.paragraph, text: 'Required Notice: Example'),
+        (
+          kind: BlockKind.paragraph,
+          text: 'As is, no warranty. The licensor is 5 * 3.',
+        ),
+      ],
+    );
+  });
+
   test('every translation of the privacy policy has the same sections', () {
     int sections(String path) =>
         markdownBlocks(File(path).readAsStringSync())

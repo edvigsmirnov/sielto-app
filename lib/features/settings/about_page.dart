@@ -12,6 +12,7 @@ import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/dialogs.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/links.dart';
+import 'package:sielto/core/ui/plain_markdown.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/core/update/update_service.dart';
 import 'package:sielto/features/settings/privacy_page.dart';
@@ -109,39 +110,20 @@ final FutureProvider<String> _licenceProvider = FutureProvider<String>(
   (Ref ref) => rootBundle.loadString('LICENSE'),
 );
 
-/// The project's LICENSE, its hard-wrapped lines joined so it reflows.
+/// The project's LICENSE, with its own title, since it names the licence.
 class _LicencePage extends ConsumerWidget {
   const _LicencePage();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final SageColors sage = context.sage;
     final String? licence = ref.watch(_licenceProvider).value;
 
     return Scaffold(
-      backgroundColor: sage.surface,
+      backgroundColor: context.sage.surface,
       appBar: sageAppBar(context, title: Text(tr('about.licence'))),
       body: licence == null
           ? const SizedBox.shrink()
-          : SelectionArea(
-              child: ListView(
-                padding: scrollPadding(
-                  context,
-                  const EdgeInsets.all(SageSpace.gutter),
-                ),
-                children: <Widget>[
-                  for (final String paragraph in reflow(licence))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: SageSpace.md),
-                      child: Text(
-                        paragraph,
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(color: sage.ink),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+          : PlainMarkdown(licence, keepTitle: true),
     );
   }
 }
@@ -241,14 +223,3 @@ class _PackagePage extends StatelessWidget {
     );
   }
 }
-
-/// Paragraphs of [text] with their line breaks dropped, except before a
-/// numbered item.
-List<String> reflow(String text) => <String>[
-  for (final String paragraph in text.trim().split(RegExp(r'\n\s*\n')))
-    paragraph
-        .split('\n')
-        .map((String line) => line.trim())
-        .join('\n')
-        .replaceAll(RegExp(r'\n(?!\d+\. )'), ' '),
-];

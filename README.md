@@ -11,7 +11,7 @@
   <a href="https://github.com/edvigsmirnov/sielto-app/actions/workflows/ci.yml"><img src="https://github.com/edvigsmirnov/sielto-app/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/platforms-Android%20%7C%20Windows%20%7C%20Linux-5b7a5e" alt="Platforms: Android, Windows, Linux">
   <img src="https://img.shields.io/badge/Flutter-3.47-213627?logo=flutter" alt="Flutter 3.47">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-source--available-8aa58c" alt="License: source-available"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-8aa58c" alt="License: PolyForm Noncommercial 1.0.0"></a>
 </p>
 
 ---
@@ -119,4 +119,14 @@ and when there's no keyring the app asks for a passphrase instead.
 
 ## License
 
-Source-available, non-commercial. See [LICENSE](LICENSE) for the full terms.
+Sielto is licensed under the
+[PolyForm Noncommercial License 1.0.0](LICENSE): you may use, change and share
+it for any noncommercial purpose. See [LICENSE](LICENSE) for the full terms.
+
+### Name and logo
+
+The licence covers the code, not the name. "Sielto" and the leaf logo mark the
+builds published on this repository's
+[GitHub Releases](https://github.com/edvigsmirnov/sielto-app/releases), and
+may not be used on builds published anywhere else. A fork that ships builds
+uses another name and another icon.

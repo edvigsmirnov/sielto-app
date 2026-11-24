@@ -6,25 +6,41 @@ enum BlockKind { heading, bullet, paragraph }
 
 typedef Block = ({BlockKind kind, String text});
 
-/// Headings, `-` or `*` bullets and paragraphs, no inline markup. The `#`
-/// title is left out: the app bar carries it.
-List<Block> markdownBlocks(String markdown) => <Block>[
-  for (final String raw in markdown.split('\n'))
-    if (raw.trim() case final String line
-        when line.isNotEmpty && !line.startsWith('# '))
-      if (RegExp(r'^#{2,6} ').firstMatch(line) case final Match heading?)
-        (kind: BlockKind.heading, text: line.substring(heading.end))
-      else if (line.startsWith('- ') || line.startsWith('* '))
-        (kind: BlockKind.bullet, text: line.substring(2))
-      else
-        (kind: BlockKind.paragraph, text: line),
-];
+/// Headings, `-` or `*` bullets and paragraphs, inline markup dropped. The
+/// `#` title is left out unless [keepTitle]: the app bar carries it.
+List<Block> markdownBlocks(String markdown, {bool keepTitle = false}) =>
+    <Block>[
+      for (final String raw in markdown.split('\n'))
+        if (raw.trim() case final String line
+            when line.isNotEmpty && (keepTitle || !line.startsWith('# ')))
+          if (RegExp(r'^#{1,6} ').firstMatch(line) case final Match heading?)
+            (
+              kind: BlockKind.heading,
+              text: dropInlineMarkup(line.substring(heading.end)),
+            )
+          else if (line.startsWith('- ') || line.startsWith('* '))
+            (kind: BlockKind.bullet, text: dropInlineMarkup(line.substring(2)))
+          else
+            (
+              kind: BlockKind.paragraph,
+              text: dropInlineMarkup(line.replaceFirst(RegExp(r'^> ?'), '')),
+            ),
+    ];
+
+/// [text] with links reduced to their text, autolinks to their URL,
+/// emphasis and code marks removed, and runs of spaces collapsed.
+String dropInlineMarkup(String text) => text
+    .replaceAllMapped(RegExp(r'\[([^\]]*)\]\([^)]*\)'), (Match m) => m[1]!)
+    .replaceAllMapped(RegExp(r'<(https?://[^>]*)>'), (Match m) => m[1]!)
+    .replaceAll(RegExp(r'\*+(?=\S)|(?<=\S)\*+|`'), '')
+    .replaceAll(RegExp(r' {2,}'), ' ');
 
 /// [markdown] scrolled in a readable column, selectable as one text.
 class PlainMarkdown extends StatelessWidget {
-  const PlainMarkdown(this.markdown, {super.key});
+  const PlainMarkdown(this.markdown, {super.key, this.keepTitle = false});
 
   final String markdown;
+  final bool keepTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +82,11 @@ class PlainMarkdown extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              for (final Block b in markdownBlocks(markdown)) block(b),
+              for (final Block b in markdownBlocks(
+                markdown,
+                keepTitle: keepTitle,
+              ))
+                block(b),
             ],
           ),
         ),
