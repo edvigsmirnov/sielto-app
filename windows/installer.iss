@@ -45,3 +45,10 @@ Name: "{autodesktop}\Sielto"; Filename: "{app}\sielto.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\sielto.exe"; Description: "{cm:LaunchProgram,Sielto}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure InitializeWizard;
+begin
+  // The default offset is unscaled, so the Tasks checkbox loses its left edge at 150 %.
+  WizardForm.TasksList.Offset := ScaleX(6);
+end;
