@@ -2,15 +2,18 @@ import 'package:decimal/decimal.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/widgets.dart';
 import 'package:sielto/core/format/date_format.dart';
+import 'package:sielto/core/format/device_region.dart';
 import 'package:sielto/core/format/money_format.dart';
 import 'package:sielto/domain/value/calendar_date.dart';
 
-/// Formatters in the reader's language.
+/// Formatters in the reader's language; numbers follow the device region.
 extension ContextFormat on BuildContext {
   DateLabels get dates => DateLabels(locale.toString());
 
-  MoneyFormat moneyIn(String currencyCode) =>
-      MoneyFormat(locale: locale.toString(), currencyCode: currencyCode);
+  MoneyFormat moneyIn(String currencyCode) => MoneyFormat(
+    locale: DeviceRegion.numberLocale(locale),
+    currencyCode: currencyCode,
+  );
 
   /// "Title, amount, day" for a message about an entry; no amount without
   /// [currencyCode].

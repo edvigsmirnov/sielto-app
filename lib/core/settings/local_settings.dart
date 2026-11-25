@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sielto/core/format/currencies.dart';
+import 'package:sielto/core/format/device_region.dart';
 import 'package:uuid/uuid.dart';
 
 enum FeedDensity {
@@ -134,9 +134,9 @@ class LocalSettings {
   /// Default currency for new Spaces. Null until onboarding sets it.
   String? get currencyCode => _prefs.getString(_keyCurrencyCode);
 
-  /// [currencyCode], else the one [locale] uses.
-  String currencyFor(String locale) =>
-      currencyCode ?? Currencies.forLocale(locale);
+  /// [currencyCode], else the device region's.
+  String currencyFor(Locale language) =>
+      currencyCode ?? DeviceRegion.currency(language);
 
   Future<void> setCurrencyCode(String code) =>
       _prefs.setString(_keyCurrencyCode, code);

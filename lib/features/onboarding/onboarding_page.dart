@@ -194,9 +194,9 @@ class _ProfileStepState extends ConsumerState<_ProfileStep> {
 
   @override
   Widget build(BuildContext context) {
-    final String locale = context.locale.toString();
     final String currency =
-        _currency ?? ref.read(localSettingsProvider).currencyFor(locale);
+        _currency ??
+        ref.read(localSettingsProvider).currencyFor(context.locale);
 
     return OnboardingScaffold(
       step: 1,

@@ -114,10 +114,10 @@ class _SpaceFormPageState extends ConsumerState<SpaceFormPage> {
   @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
-    // Onboarding answer, else the device locale.
+    // Onboarding answer, else the device region.
     final String currency =
         _currency ??
-        ref.read(localSettingsProvider).currencyFor(context.locale.toString());
+        ref.read(localSettingsProvider).currencyFor(context.locale);
     final VoidCallback? create = _canSave ? () => _create(currency) : null;
 
     final int? step = widget.step;
