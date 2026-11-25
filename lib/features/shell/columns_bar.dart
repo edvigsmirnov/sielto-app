@@ -5,11 +5,9 @@ import 'package:sielto/app/providers.dart';
 import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
-import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/domain/value/enums.dart';
 import 'package:sielto/features/dashboard/period_selector.dart';
 import 'package:sielto/features/settings/settings_page.dart';
-import 'package:sielto/features/settings/space_settings_page.dart';
 import 'package:sielto/features/shell/app_header.dart';
 import 'package:sielto/features/spaces/space_avatar.dart';
 
@@ -121,14 +119,7 @@ class ColumnsBar extends ConsumerWidget {
                       ),
                       const SizedBox(width: SageSpace.sm),
                     ],
-                    SoftIconButton(
-                      size: 44,
-                      icon: Icons.settings_outlined,
-                      tooltip: tr('spaceSettings.title'),
-                      onTap: () => onOpen(SpaceSettingsPage(space: space)),
-                    ),
-                    const SizedBox(width: SageSpace.sm),
-                    ProfileButton(
+                    SettingsButton(
                       size: 36,
                       onTap: () => onOpen(const SettingsPage()),
                     ),

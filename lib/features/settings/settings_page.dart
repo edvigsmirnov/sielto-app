@@ -2,6 +2,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sielto/app/providers.dart';
+import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/l10n/app_locales.dart';
 import 'package:sielto/core/settings/local_settings.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
@@ -21,6 +23,7 @@ import 'package:sielto/features/security/security_page.dart';
 import 'package:sielto/features/settings/about_page.dart';
 import 'package:sielto/features/settings/holidays_page.dart';
 import 'package:sielto/features/settings/language_picker.dart';
+import 'package:sielto/features/settings/space_settings_page.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
 
 /// Profile and app settings.
@@ -30,6 +33,7 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final FeedDensity density = ref.watch(feedDensityProvider);
+    final Space? space = ref.watch(currentSpaceProvider);
 
     return Scaffold(
       backgroundColor: context.sage.surface,
@@ -112,6 +116,14 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: SageSpace.md),
           SectionLabel(tr('settings.data')),
+          if (space != null)
+            LinkTile(
+              icon: Icons.tune,
+              title: tr('spaceSettings.title'),
+              subtitle: space.title,
+              onTap: () =>
+                  pushPage<void>(context, SpaceSettingsPage(space: space)),
+            ),
           LinkTile(
             icon: Icons.dashboard_outlined,
             title: tr('settings.spaces'),

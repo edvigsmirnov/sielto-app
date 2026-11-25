@@ -2,15 +2,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sielto/app/providers.dart';
-import 'package:sielto/core/db/app_database.dart';
 import 'package:sielto/core/settings/settings_providers.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
 import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/layout.dart';
-import 'package:sielto/core/ui/sage_widgets.dart';
 import 'package:sielto/features/settings/settings_page.dart';
-import 'package:sielto/features/settings/space_settings_page.dart';
 import 'package:sielto/features/spaces/space_switcher_sheet.dart';
 
 /// Header of the main screens. Profile and gear push over the current screen.
@@ -19,7 +15,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
 
   final String title;
 
-  /// Extra controls between the title and the gear.
+  /// Controls right of the title.
   final List<Widget>? trailing;
 
   final PreferredSizeWidget? bottom;
@@ -53,7 +49,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
         leading: ShellLayout.of(context) != ShellMode.phone
             ? null
             : Center(
-                child: ProfileButton(
+                child: SettingsButton(
                   size: _controlSize,
                   onTap: () {
                     HapticFeedback.lightImpact();
@@ -88,38 +84,16 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                   ),
                 ),
               ),
-        actions: <Widget>[
-          ...?trailing,
-          if (ShellLayout.of(context) == ShellMode.phone)
-            Padding(
-              padding: const EdgeInsets.only(right: SageSpace.md),
-              child: SoftIconButton(
-                size: _controlSize,
-                icon: Icons.settings_outlined,
-                tooltip: tr('spaceSettings.title'),
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  final Space space = ref.read(currentSpaceProvider)!;
-                  DetailHost.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (BuildContext _) =>
-                          SpaceSettingsPage(space: space),
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
+        actions: trailing,
         bottom: bottom,
       ),
     );
   }
 }
 
-/// Name initial on a disc, an icon without a name; opens Settings.
-class ProfileButton extends ConsumerWidget {
-  const ProfileButton({required this.onTap, required this.size, super.key});
+/// Opens the app's Settings: the name's initial on a disc, else a cog.
+class SettingsButton extends ConsumerWidget {
+  const SettingsButton({required this.onTap, required this.size, super.key});
 
   final VoidCallback onTap;
   final double size;
@@ -152,7 +126,7 @@ class ProfileButton extends ConsumerWidget {
                 ),
                 child: initial == null
                     ? Icon(
-                        Icons.person_outline,
+                        Icons.settings_outlined,
                         size: size / 2,
                         color: sage.accentStrong,
                       )
