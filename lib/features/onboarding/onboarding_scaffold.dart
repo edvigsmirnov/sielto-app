@@ -4,8 +4,9 @@ import 'package:sielto/core/ui/detail_host.dart';
 import 'package:sielto/core/ui/form_fields.dart';
 import 'package:sielto/core/ui/layout.dart';
 
-/// Onboarding step frame: heading, explanation, fields, pinned primary action.
-class OnboardingScaffold extends StatelessWidget {
+/// Onboarding step frame: heading, explanation, fields, then the primary
+/// action at the end of the content.
+class OnboardingScaffold extends StatefulWidget {
   const OnboardingScaffold({
     required this.step,
     required this.stepCount,
@@ -41,63 +42,128 @@ class OnboardingScaffold extends StatelessWidget {
   final Widget? footer;
 
   @override
+  State<OnboardingScaffold> createState() => _OnboardingScaffoldState();
+}
+
+class _OnboardingScaffoldState extends State<OnboardingScaffold>
+    with WidgetsBindingObserver {
+  final GlobalKey _primary = GlobalKey();
+  double _keyboard = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    final double keyboard = View.of(context).viewInsets.bottom;
+    if (keyboard > _keyboard) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealPrimary());
+    }
+    _keyboard = keyboard;
+  }
+
+  /// With the keyboard up, the primary action scrolls into view as well when
+  /// the focused field still fits above it.
+  void _revealPrimary() {
+    final BuildContext? button = _primary.currentContext;
+    final BuildContext? field = FocusManager.instance.primaryFocus?.context;
+    final ScrollableState? scroll = button == null
+        ? null
+        : Scrollable.maybeOf(button);
+    if (!mounted || button == null || field == null || scroll == null) return;
+    final RenderBox buttonBox = button.findRenderObject()! as RenderBox;
+    final RenderBox fieldBox = field.findRenderObject()! as RenderBox;
+    final double fieldTop = fieldBox.localToGlobal(Offset.zero).dy;
+    final double buttonBottom = buttonBox
+        .localToGlobal(buttonBox.size.bottomLeft(Offset.zero))
+        .dy;
+    final double viewport = scroll.position.viewportDimension;
+    if (buttonBottom - fieldTop > viewport) return;
+    Scrollable.ensureVisible(
+      button,
+      alignment: 1,
+      duration: const Duration(milliseconds: 150),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final SageColors sage = context.sage;
     final TextTheme text = Theme.of(context).textTheme;
 
     final bool wide = isWide(context);
     final TextAlign align = wide ? TextAlign.center : TextAlign.start;
-    final Widget steps = Column(
-      // Wide, the card fits its content up to the window's height.
-      mainAxisSize: wide ? MainAxisSize.min : MainAxisSize.max,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        _ProgressBar(step: step, stepCount: stepCount),
-        const SizedBox(height: SageSpace.xl),
-        Semantics(
-          container: true,
-          header: true,
-          child: Text(title, style: text.titleMedium, textAlign: align),
-        ),
-        const SizedBox(height: SageSpace.sm),
-        Semantics(
-          container: true,
-          child: Text(body, style: text.bodySmall, textAlign: align),
-        ),
-        const SizedBox(height: SageSpace.lg),
-        Flexible(
-          fit: wide ? FlexFit.loose : FlexFit.tight,
-          child: ListView(
-            padding: EdgeInsets.zero,
-            shrinkWrap: wide,
-            children: children,
-          ),
-        ),
-        const SizedBox(height: SageSpace.md),
-        FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
-        if (secondaryLabel != null)
-          Padding(
-            padding: const EdgeInsets.only(top: SageSpace.sm),
-            child: Center(
-              child: TextButton(
-                onPressed: onSecondary,
-                style: TextButton.styleFrom(foregroundColor: sage.inkLabel),
-                child: Text(secondaryLabel!),
-              ),
+    final List<Widget> heading = <Widget>[
+      _ProgressBar(step: widget.step, stepCount: widget.stepCount),
+      const SizedBox(height: SageSpace.xl),
+      Semantics(
+        container: true,
+        header: true,
+        child: Text(widget.title, style: text.titleMedium, textAlign: align),
+      ),
+      const SizedBox(height: SageSpace.sm),
+      Semantics(
+        container: true,
+        child: Text(widget.body, style: text.bodySmall, textAlign: align),
+      ),
+      const SizedBox(height: SageSpace.lg),
+    ];
+    final List<Widget> actions = <Widget>[
+      const SizedBox(height: SageSpace.md),
+      FilledButton(
+        key: _primary,
+        onPressed: widget.onPrimary,
+        child: Text(widget.primaryLabel),
+      ),
+      if (widget.secondaryLabel case final String label)
+        Padding(
+          padding: const EdgeInsets.only(top: SageSpace.sm),
+          child: Center(
+            child: TextButton(
+              onPressed: widget.onSecondary,
+              style: TextButton.styleFrom(foregroundColor: sage.inkLabel),
+              child: Text(label),
             ),
           ),
-        ?footer,
-      ],
-    );
+        ),
+      ?widget.footer,
+    ];
+
     if (!wide) {
       return SafeArea(
-        child: Padding(
+        child: ListView(
           padding: const EdgeInsets.all(SageSpace.formGutter),
-          child: steps,
+          children: <Widget>[...heading, ...widget.children, ...actions],
         ),
       );
     }
-    return SetupCard(child: steps);
+    // Wide, the card fits its content up to the window's height.
+    return SetupCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          ...heading,
+          Flexible(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              children: widget.children,
+            ),
+          ),
+          ...actions,
+        ],
+      ),
+    );
   }
 }
 
