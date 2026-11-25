@@ -145,21 +145,17 @@ class WhatsNewPage extends ConsumerWidget {
               child: Readable(
                 child: SizedBox(
                   width: double.infinity,
-                  child: FilledButton(
-                    onPressed: progress != null
-                        ? null
-                        : inApp
-                        ? () => _install(context, ref)
-                        : () => openLink(context, release.page.toString()),
-                    child: Text(
-                      progress != null
-                          ? tr(
-                              'update.downloading',
-                              args: <String>['${(progress * 100).round()}'],
-                            )
-                          : tr(inApp ? 'update.install' : 'update.openPage'),
-                    ),
-                  ),
+                  child: progress != null
+                      ? _DownloadBar(progress: progress)
+                      : FilledButton(
+                          onPressed: inApp
+                              ? () => _install(context, ref)
+                              : () =>
+                                    openLink(context, release.page.toString()),
+                          child: Text(
+                            tr(inApp ? 'update.install' : 'update.openPage'),
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -168,4 +164,61 @@ class WhatsNewPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// The install button while the download runs: the accent fills it from the
+/// left, and the label reads on both the filled and the empty part.
+class _DownloadBar extends StatelessWidget {
+  const _DownloadBar({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final SageColors sage = context.sage;
+    final String label = tr(
+      'update.downloading',
+      args: <String>['${(progress * 100).round()}'],
+    );
+
+    Widget face(Color background, Color foreground) => FilledButton(
+      onPressed: null,
+      style: FilledButton.styleFrom(
+        disabledBackgroundColor: background,
+        disabledForegroundColor: foreground,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(label),
+    );
+
+    return Semantics(
+      label: label,
+      excludeSemantics: true,
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: <Widget>[
+          face(sage.accentTint, sage.ink),
+          Positioned.fill(
+            child: ClipRect(
+              clipper: _LeftShare(progress),
+              child: face(sage.accent, sage.accentOn),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LeftShare extends CustomClipper<Rect> {
+  const _LeftShare(this.share);
+
+  final double share;
+
+  @override
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0, 0, size.width * share, size.height);
+
+  @override
+  bool shouldReclip(_LeftShare oldClipper) => oldClipper.share != share;
 }
