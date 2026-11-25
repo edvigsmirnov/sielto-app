@@ -1321,6 +1321,9 @@ class _TableToolbar extends StatelessWidget {
       ),
     );
 
+    if (!figures) {
+      return Padding(padding: const EdgeInsets.all(SageSpace.md), child: side);
+    }
     return Padding(
       padding: const EdgeInsets.all(SageSpace.md),
       // An invisible copy of the buttons on the left keeps the figures in the
@@ -1339,35 +1342,32 @@ class _TableToolbar extends StatelessWidget {
           const SizedBox(width: SageSpace.md),
           Expanded(
             flex: 3,
-            child: !figures
-                ? const SizedBox.shrink()
-                : Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: SageSpace.sm,
-                    runSpacing: SageSpace.xs,
-                    children: <Widget>[
-                      figure(
-                        tr(source.availableLabel),
-                        source.availableText(money),
-                        highlighted: true,
-                        onTap: onBalanceTap,
-                      ),
-                      figure(tr('dashboard.paid'), money.format(source.paid)),
-                      figure(
-                        tr('dashboard.leftToPay'),
-                        money.format(source.remaining),
-                      ),
-                      figure(
-                        tr(source.freeLabel),
-                        source.freeText(money),
-                        color:
-                            source.runsShort ||
-                                (free ?? Decimal.zero) < Decimal.zero
-                            ? sage.danger
-                            : sage.accentStrong,
-                      ),
-                    ],
-                  ),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: SageSpace.sm,
+              runSpacing: SageSpace.xs,
+              children: <Widget>[
+                figure(
+                  tr(source.availableLabel),
+                  source.availableText(money),
+                  highlighted: true,
+                  onTap: onBalanceTap,
+                ),
+                figure(tr('dashboard.paid'), money.format(source.paid)),
+                figure(
+                  tr('dashboard.leftToPay'),
+                  money.format(source.remaining),
+                ),
+                figure(
+                  tr(source.freeLabel),
+                  source.freeText(money),
+                  color:
+                      source.runsShort || (free ?? Decimal.zero) < Decimal.zero
+                      ? sage.danger
+                      : sage.accentStrong,
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: SageSpace.md),
           Flexible(flex: 2, child: side),
