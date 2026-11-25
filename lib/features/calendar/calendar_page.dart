@@ -65,107 +65,129 @@ class CalendarPage extends ConsumerWidget {
       dates: dates,
       money: money,
     );
-    // Wide enough, one toolbar row: today and the month left, views right.
-    final Widget controls = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints box) =>
-            wide && box.maxWidth >= 860
-            ? Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: _Body.wideWidth),
-                  child: Row(
-                    children: <Widget>[
-                      OutlinedButton(
-                        onPressed: () => ref
-                            .read(selectedDateProvider.notifier)
-                            .select(today),
-                        child: Text(tr('feed.today')),
-                      ),
-                      const SizedBox(width: SageSpace.sm),
-                      SizedBox(width: 400, child: navigator),
-                      const Spacer(),
-                      SizedBox(
-                        width: _Body.paneWidth,
-                        child: _ViewSwitcher(view: view, wide: wide),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  _ViewSwitcher(view: view, wide: wide),
-                  const SizedBox(height: SageSpace.sm),
-                  navigator,
-                ],
-              ),
-      ),
-    );
+    void showToday() => ref.read(selectedDateProvider.notifier).select(today);
 
-    return Scaffold(
-      backgroundColor: context.sage.surface,
-      appBar: AppHeader(title: tr('nav.calendar')),
-      floatingActionButton: view == CalendarView.day && !wide
-          // Only the Day view has a FAB; other views add through a long press.
-          ? FloatingActionButton(
-              tooltip: tr('common.add'),
-              backgroundColor: context.sage.accent,
-              foregroundColor: context.sage.accentOn,
-              shape: const CircleBorder(),
-              onPressed: () => showDayMenu(context, ref, date: selected),
-              child: const Icon(Icons.add),
-            )
-          : null,
-      bottomNavigationBar: atBottom
-          ? SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.only(top: SageSpace.sm),
-                child: controls,
-              ),
-            )
-          : null,
-      body: FocusTraversalGroup(
-        child: SafeArea(
-          top: false,
-          child: Column(
-            children: <Widget>[
-              if (!atBottom) ...<Widget>[
-                controls,
-                const SizedBox(height: SageSpace.sm),
-              ],
-              // No freeze banner: the Calendar is not bound to one period.
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: SageSpace.gutter,
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints box) {
+        // Wide enough, one toolbar row: today and the month left, views
+        // right. Otherwise today sits in the header.
+        final bool oneRow =
+            wide && box.maxWidth - SageSpace.gutter * 2 >= _oneRowWidth;
+        final Widget controls = Padding(
+          padding: const EdgeInsets.symmetric(horizontal: SageSpace.gutter),
+          child: oneRow
+              ? Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: _Body.wideWidth,
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        OutlinedButton(
+                          onPressed: showToday,
+                          child: Text(tr('feed.today')),
+                        ),
+                        const SizedBox(width: SageSpace.sm),
+                        SizedBox(width: 400, child: navigator),
+                        const Spacer(),
+                        SizedBox(
+                          width: _Body.paneWidth,
+                          child: _ViewSwitcher(view: view, wide: wide),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: _Keys(
-                    view: view,
-                    enabled: wide,
-                    child: _Swipe(
-                      view: view,
-                      enabled: !atBottom && !desktopInput,
-                      child: _Body(
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    _ViewSwitcher(view: view, wide: wide),
+                    const SizedBox(height: SageSpace.sm),
+                    navigator,
+                  ],
+                ),
+        );
+        return Scaffold(
+          backgroundColor: context.sage.surface,
+          appBar: AppHeader(
+            title: tr('nav.calendar'),
+            trailing: oneRow
+                ? null
+                : <Widget>[
+                    Padding(
+                      padding: const EdgeInsets.only(right: SageSpace.sm),
+                      child: SoftIconButton(
+                        size: 44,
+                        icon: Icons.today_outlined,
+                        tooltip: tr('feed.today'),
+                        onTap: showToday,
+                      ),
+                    ),
+                  ],
+          ),
+          floatingActionButton: view == CalendarView.day && !wide
+              // Only the Day view has a FAB; other views add through a long press.
+              ? FloatingActionButton(
+                  tooltip: tr('common.add'),
+                  backgroundColor: context.sage.accent,
+                  foregroundColor: context.sage.accentOn,
+                  shape: const CircleBorder(),
+                  onPressed: () => showDayMenu(context, ref, date: selected),
+                  child: const Icon(Icons.add),
+                )
+              : null,
+          bottomNavigationBar: atBottom
+              ? SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: SageSpace.sm),
+                    child: controls,
+                  ),
+                )
+              : null,
+          body: FocusTraversalGroup(
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: <Widget>[
+                  if (!atBottom) ...<Widget>[
+                    controls,
+                    const SizedBox(height: SageSpace.sm),
+                  ],
+                  // No freeze banner: the Calendar is not bound to one period.
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: SageSpace.gutter,
+                      ),
+                      child: _Keys(
                         view: view,
-                        selected: selected,
-                        today: today,
-                        money: money,
-                        dates: dates,
-                        wide: wide,
+                        enabled: wide,
+                        child: _Swipe(
+                          view: view,
+                          enabled: !atBottom && !desktopInput,
+                          child: _Body(
+                            view: view,
+                            selected: selected,
+                            today: today,
+                            money: money,
+                            dates: dates,
+                            wide: wide,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
+
+  static const double _oneRowWidth = 860;
 }
 
 /// A horizontal swipe steps the view, like the arrows. Off in the Day view and
