@@ -20,6 +20,14 @@ void main() {
     expect(parse('1 200.50'), Decimal.parse('1200.5'));
   });
 
+  test('grouped amounts parse in any locale', () {
+    expect(parse('1,234.56'), Decimal.parse('1234.56'));
+    expect(parse('1.234,56'), Decimal.parse('1234.56'));
+    expect(parse('1.234'), Decimal.fromInt(1234));
+    expect(parse('1,234,567'), Decimal.fromInt(1234567));
+    expect(parse('1’234.50'), Decimal.parse('1234.5'));
+  });
+
   test('zero parses', () {
     // Zero is a dated to-do.
     expect(parse('0'), Decimal.zero);

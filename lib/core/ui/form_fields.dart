@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sielto/core/format/context_format.dart';
 import 'package:sielto/core/format/date_format.dart';
+import 'package:sielto/core/format/device_region.dart';
 import 'package:sielto/core/format/money_input.dart';
 import 'package:sielto/core/theme/sage_tokens.dart';
+import 'package:sielto/core/ui/amount_formatter.dart';
 import 'package:sielto/core/ui/layout.dart';
 import 'package:sielto/core/ui/popover.dart';
 import 'package:sielto/core/ui/sage_widgets.dart';
@@ -145,10 +147,9 @@ Future<CalendarDate?> pickDate(
   return picked == null ? null : CalendarDate.fromDateTime(picked);
 }
 
-final RegExp _amountShape = RegExp(r'^(\s*\d){0,12}\s*([.,]\d{0,2})?$');
-
-/// Digits, separators and spaces; parsing happens on save.
-class MoneyField extends StatelessWidget {
+/// Digits grouped in the device region's separators; parsing happens on
+/// save.
+class MoneyField extends StatefulWidget {
   const MoneyField({
     required this.controller,
     required this.symbol,
@@ -167,21 +168,65 @@ class MoneyField extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
 
   @override
+  State<MoneyField> createState() => _MoneyFieldState();
+}
+
+class _MoneyFieldState extends State<MoneyField> {
+  late AmountFormatter _formatter;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_normalize);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _formatter = AmountFormatter(
+      DeviceRegion.numberLocale(Localizations.localeOf(context)),
+    );
+    // The form may listen with setState, which is not allowed mid-build.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _normalize());
+  }
+
+  @override
+  void didUpdateWidget(MoneyField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) return;
+    oldWidget.controller.removeListener(_normalize);
+    widget.controller.addListener(_normalize);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_normalize);
+    super.dispose();
+  }
+
+  /// Text set in code, such as a saved amount, gets the typed grouping.
+  void _normalize() {
+    if (!mounted) return;
+    final String text = _formatter.normalize(widget.controller.text);
+    if (text == widget.controller.text) return;
+    widget.controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) => TextField(
-    controller: controller,
-    enabled: enabled,
-    autofocus: autofocus,
+    controller: widget.controller,
+    enabled: widget.enabled,
+    autofocus: widget.autofocus,
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-    inputFormatters: <TextInputFormatter>[
-      FilteringTextInputFormatter.allow(RegExp(r'[\d.,\s]')),
-      // 12 whole digits, cents at most, one decimal separator.
-      TextInputFormatter.withFunction(
-        (TextEditingValue old, TextEditingValue next) =>
-            _amountShape.hasMatch(next.text) ? next : old,
-      ),
-    ],
-    decoration: InputDecoration(suffixText: symbol, hintText: hintText),
-    onSubmitted: onSubmitted,
+    inputFormatters: <TextInputFormatter>[_formatter],
+    decoration: InputDecoration(
+      suffixText: widget.symbol,
+      hintText: widget.hintText,
+    ),
+    onSubmitted: widget.onSubmitted,
   );
 }
 

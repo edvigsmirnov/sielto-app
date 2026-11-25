@@ -50,8 +50,8 @@ void main() {
     addTearDown(c.dispose);
     await pump(t, MoneyField(controller: c, symbol: '€'));
     await t.enterText(find.byType(TextField), '123 456 789 012,34');
-    expect(c.text, '123 456 789 012,34');
+    expect(c.text, '123,456,789,012.34');
     await t.enterText(find.byType(TextField), '1234567890123');
-    expect(c.text, '123 456 789 012,34');
+    expect(c.text, '123,456,789,012.34');
   });
 }
